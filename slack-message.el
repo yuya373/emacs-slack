@@ -69,7 +69,7 @@
   (interactive)
   (let* ((json (json-encode
                 (list :id slack-message-id
-                      :channel slack-room-id
+                      :channel (slack-message-get-room-id)
                       :type "message"
                       :user (slack-user-my-id)
                       :text (slack-message-read-from-minibuffer))))
@@ -78,6 +78,28 @@
     (incf slack-message-id)
     (slack-ws-send json)
     (push hash slack-sent-message)))
+
+(defun slack-message-get-room-id ()
+  (if (boundp 'slack-room-id)
+      slack-room-id
+    (let* ((room-name (slack-message-read-room-list))
+           (room (slack-message-find-room-by-name room-name)))
+      (unless room
+        (error "Slack Room Not Found: %s" room-name))
+      (gethash "id" room))))
+
+(defun slack-message-read-room-list ()
+  (let ((completion-ignore-case t)
+        (choices (slack-message-room-list)))
+    (completing-read "Select Room"
+                     choices nil t nil nil choices)))
+
+(defun slack-message-room-list ()
+  (append (slack-group-names) (slack-im-names)))
+
+(defun slack-message-find-room-by-name (name)
+  (or (slack-group-find-by-name name)
+      (slack-im-find-by-name name)))
 
 (defun slack-message-handle-reply (payload)
   (let* ((id (gethash "reply_to" payload))

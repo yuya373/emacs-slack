@@ -21,6 +21,10 @@
     (if user
         (gethash "name" user))))
 
+(defun slack-im-names ()
+  (mapcar #'(lambda (im) (slack-im-get-user-name im))
+          slack-ims))
+
 (defun slack-im-id (name))
 
 

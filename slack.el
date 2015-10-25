@@ -35,14 +35,17 @@
 (defvar slack-channels)
 (defvar slack-bots)
 
-(defvar slack-mode-map
-  (let ((map (make-sparse-keymap)))
-    map))
+;; (defvar slack-mode-map
+;;   (let ((map (make-sparse-keymap)))
+;;     map))
 
-(define-derived-mode slack-mode fundamental-mode "Slack"
-  "Emacs Slack Client.
-\\{slack-mode-map}"
-  )
+;; (define-minor-mode slack-mode ()
+;;   "Enable Slack"
+;;   :group 'slack
+;;   :init-value nil
+;;   :global nil
+;;   :keymap slack-mode-map
+;;   :lighter " Slack")
 
 (defun slack-authorize ()
   (request
