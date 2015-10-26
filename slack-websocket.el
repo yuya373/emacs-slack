@@ -41,12 +41,25 @@
 
 (defun slack-ws-handle-message (payload)
   (message "slack-ws-handle-message")
-  (puthash "text"
-           (decode-coding-string
-            (gethash "text" payload)
-            'utf-8-unix)
-           payload)
+  (slack-ws-normalize-text payload)
   (slack-message-update payload))
+
+(defun slack-ws-normalize-text (payload)
+  (let ((text (gethash "text" payload))
+        (bot-id (gethash "bot_id" payload)))
+    (if text
+        (puthash "text"
+                 (decode-coding-string text 'utf-8-unix)
+                 payload)
+      (slack-ws-normalize-bot-fallback payload))))
+
+(defun slack-ws-normalize-bot-fallback (payload)
+  (let* ((attachments (gethash "attachments" payload))
+         (fallback (gethash "fallback" (aref attachments 0))))
+    (if fallback
+        (puthash "fallback"
+                 (decode-coding-string fallback 'utf-8-unix)
+                 payload))))
 
 (defun slack-ws-handle-reply (payload)
   (message "slack-ws-handle-reply")
