@@ -71,25 +71,20 @@
     (concat slack-im-buffer-name " : " user-name)))
 
 (defun slack-im (user-name)
-  (interactive "s")
+  (interactive (list (slack-im-read-list
+                      "Select User: "
+                      (slack-im-names))))
   (let ((im (slack-im-find-by-name user-name)))
     (unless im
       (slack-im-open user-name))
     (slack-im-history (gethash "id" im))
-    (slack-buffer-create im
-                         (slack-im-get-buffer-name im))))
+    (switch-to-buffer-other-window
+     (slack-buffer-create im
+                          (slack-im-get-buffer-name im)))))
 
-(defun slack-im-find-message (im message)
-  (let ((messages (gethash "messages" im)))
-    ))
-
-(defun slack-im-update-message (message)
-  (let ((im (slack-im-find (gethash "channel" message))))
-    (if im
-        (unless (or (slack-im-find-message im message)
-                    (not (gethash "messages" im)))
-          (setcar (gethash "messages" im) message)
-          (slack-buffer-update (slack-im-get-buffer-name im)
-                               message)))))
+(defun slack-im-read-list (prompt choices)
+  (let ((completion-ignore-case t))
+    (completing-read (format "%s" prompt)
+                     choices nil t nil nil choices)))
 
 (provide 'slack-im)
