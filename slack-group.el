@@ -51,9 +51,9 @@
     (unless group
       (error "slack-group (%s) not found." name))
     (slack-group-update-history group)
-    (switch-to-buffer-other-window (slack-buffer-create
-                                    group
-                                    (slack-group-get-buffer-name group)))))
+    (switch-to-buffer-other-window
+     (slack-buffer-create group
+      (slack-group-get-buffer-name group)))))
 
 (defun slack-update-group-list ()
   (interactive)
@@ -68,22 +68,31 @@
      :success #'on-update-group-list)))
 
 (defun slack-group-update-history (group)
-  (cl-labels ((on-group-update
-               (&key data &allow-other-keys)
-               (unless (gethash "ok" data)
-                 (error data))
-               (slack-message-set group
-                                  (gethash "messages" data))))
+  (cl-labels ((on-group-update (&key data &allow-other-keys)
+                               (slack-group-on-update-history
+                                data group)))
     (slack-request
      slack-group-history-url
      :params (list (cons "token" slack-token)
                    (cons "channel" (gethash "id" group)))
      :success #'on-group-update)))
 
+(defun slack-group-on-update-history (data group)
+  (unless (plist-get data :ok)
+    (error "%s" data))
+  (let ((messages (plist-get data :messages)))
+    (slack-group-set-messages group
+                              (slack-message-create-with-room
+                               messages
+                               group))))
+
 (defun slack-group-read-list (prompt choices)
   (let ((completion-ignore-case t))
     (completing-read (format "%s (%s): " prompt (car choices))
                      choices nil t nil nil choices)))
+
+(defun slack-group-set-messages (group messages)
+  (puthash "messages" messages group))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

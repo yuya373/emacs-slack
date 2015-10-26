@@ -30,10 +30,6 @@
                (aref (gethash "attachments" message) 0)))))
 
 
-(defun slack-buffer-time-to-string (ts)
-  (format-time-string "%Y-%m-%d %H:%M"
-                      (seconds-to-time (string-to-number ts))))
-
 (defun slack-buffer---insert-message-reactions (reactions)
   (when reactions
     (cl-labels ((insert-reaction
@@ -78,17 +74,11 @@
   (set (make-local-variable 'slack-room-id)
        (gethash "id" room)))
 
-(defun slack-buffer-insert-header (room)
-  (let ((name (gethash "name" room)))
-    (if name
-        (insert (format "Name: %s\n" name)))))
-
 (defun slack-buffer-insert-messages (room)
-  (insert "Messages\n")
   (let ((messages (gethash "messages" room)))
     (slack-buffer--insert-messages messages)))
 
-(defun slack-buffer-create (room buf-name)
+(defun slack-buffer-create (buf-name header messages)
   (let ((buffer (get-buffer-create buf-name)))
     (if buffer
         (with-current-buffer buffer
@@ -97,8 +87,10 @@
           (erase-buffer)
           (slack-mode)
           (slack-buffer-make-id room)
-          (slack-buffer-insert-header room)
-          (slack-buffer-insert-messages room)
+          (insert header)
+          (insert "Messages:\n")
+          (mapc #'(lambda (m) (insert (slack-message-to-string m)))
+                (reverse messages))
           (setq buffer-read-only t)))
     buffer))
 
