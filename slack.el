@@ -47,6 +47,8 @@
 ;;   :keymap slack-mode-map
 ;;   :lighter " Slack")
 
+(define-derived-mode slack-mode fundamental-mode "Slack")
+
 (defun slack-authorize ()
   (request
    slack-authorize-url
