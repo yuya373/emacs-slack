@@ -1,6 +1,8 @@
 (defvar slack-message-id 0)
 (defvar slack-sent-message ())
 (defvar slack-message-minibuffer-local-map nil)
+(defvar slack-message-notification-buffer-name "*Slack - notification*")
+(defvar slack-message-notification-subscription ())
 
 (defun slack-message-set (room messages)
   (puthash "messages" (append messages nil) room))
@@ -17,7 +19,7 @@
 
 (defun slack-message-update (message)
   (let ((room (slack-message-find-room message)))
-    (slack-message-popup-tip room message)
+    (slack-message-notify room message)
     (if (and room (gethash "messages" room))
         (unless (slack-message-find room message)
           (setcar (gethash "messages" room) message)
@@ -38,32 +40,45 @@
   (let ((type (slack-message-find-room-type msg))
         (channel (gethash "channel" msg)))
     (case type
-      ('group (slack-group-find channel))
-      ('im (slack-im-find channel)))))
+      (group (slack-group-find channel))
+      (im (slack-im-find channel)))))
 
 (defun slack-message-get-buffer-name (room msg)
   (let ((type (slack-message-find-room-type msg)))
     (case type
-      ('group (slack-group-get-buffer-name room))
-      ('im (slack-im-get-buffer-name room)))))
+      (group (slack-group-get-buffer-name room))
+      (im (slack-im-get-buffer-name room)))))
+
+(defun slack-message-notify (room message)
+  (let ((room-type (slack-message-find-room-type message))
+        (sender-id (gethash "user" message)))
+        (if (or (eq room-type 'im)
+                (null sender-id)
+                (not (string= sender-id (slack-user-my-id))))
+            (progn
+              (slack-message-update-notification-buffer room message)
+              (slack-message-popup-tip room message)))))
+
+(defun slack-message-update-notification-buffer (room message)
+  (slack-buffer-update-notification
+   slack-message-notification-buffer-name
+   (slack-message-to-string room message)))
 
 (defun slack-message-popup-tip (room message)
-  (let ((sender-id (gethash "user" message)))
-    (unless (string= sender-id (slack-user-my-id))
-      (popup-tip (slack-message-to-string room message)))))
-
+  (let* ((channel (gethash "channel" message))
+         (group-name (slack-group-name channel)))
+    (if (and group-name (memq (intern group-name)
+                              slack-message-notification-subscription))
+        (popup-tip (slack-message-to-string room message)))))
 
 (defun slack-message-to-string (room message)
-  (let* ((room-name (if room
-                        (gethash "name" room)
-                      "Unkown Room"))
-         (sender-id (gethash "user" message))
-         (sender-name (gethash "name"
-                               (slack-user-find sender-id)))
+  (let* ((room-name (if room (gethash "name" room)))
+         (sender-name (or
+                       (slack-user-name (gethash "user" message))
+                       (slack-bot-name (gethash "bot_id" message))))
          (text (gethash "text" message)))
     (concat "Incoming Message:\s" room-name "\n"
-            "From:\s" sender-name "\n"
-            text)))
+            "From:\s" sender-name "\n" text "\n")))
 
 (defun slack-message-send ()
   (interactive)
