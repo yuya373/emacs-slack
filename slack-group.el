@@ -22,6 +22,11 @@
   (find-if (lambda (group) (string= name (gethash "name" group)))
            slack-groups))
 
+(defun slack-group-name (id)
+  (let ((group (slack-group-find id)))
+    (if group
+        (gethash "name" group))))
+
 (defun slack-group-names ()
   (mapcar (lambda (group)
             ;; (cons (gethash "id" group) (gethash "name" group))
