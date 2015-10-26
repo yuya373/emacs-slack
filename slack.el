@@ -72,7 +72,7 @@
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)
-  (error "slack-authorize: " e))
+  (error "slack-authorize: %s" e))
 
 (defun slack-oauth2-auth ()
   (oauth2-auth
@@ -92,7 +92,8 @@
 
 (defun slack-start ()
   (interactive)
-  (slack-ws-close)
+  (if slack-ws
+    (slack-ws-close))
   (unless slack-token
     (slack-request-token))
   (slack-authorize))
