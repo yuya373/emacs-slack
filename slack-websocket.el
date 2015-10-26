@@ -20,7 +20,7 @@
     (websocket-send slack-ws frame)))
 
 (defun slack-ws-on-message (websocket frame)
-  (message "%s" (websocket-frame-payload frame))
+  ;; (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
     (let* ((json-object-type 'hash-table)
            (payload (json-read-from-string
@@ -40,29 +40,40 @@
            (gethash "reply_to" payload))))
 
 (defun slack-ws-handle-message (payload)
-  (message "slack-ws-handle-message")
-  (slack-ws-normalize-text payload)
-  (slack-message-update payload))
+  (slack-ws-handle-message-subtype payload))
 
-(defun slack-ws-normalize-text (payload)
-  (let ((text (gethash "text" payload))
-        (bot-id (gethash "bot_id" payload)))
+(defun slack-ws-handle-message-subtype (payload)
+  (let ((subtype (gethash "subtype" payload)))
+    (cond
+     ((string= subtype "bot_message") (slack-ws-handle-bot-message payload))
+     (t (slack-ws-handle-user-message payload)))))
+
+(defun slack-ws-handle-bot-message (payload)
+  (let* ((attachment (aref (gethash "attachments" payload) 0))
+         (text (gethash "text" attachment))
+         (pretext (gethash "pretext" attachment))
+         (fallback (gethash "fallback" attachment)))
+    (if (or text pretext fallback)
+        (progn
+          (puthash "text"
+                   (slack-ws-decode-string
+                    (if (> (length text) 0)
+                        (concat pretext "\n" text)
+                      fallback))
+                   payload)
+          (slack-message-update payload)))))
+
+(defun slack-ws-handle-user-message (payload)
+  (let ((text (gethash "text" payload)))
     (if text
-        (puthash "text"
-                 (decode-coding-string text 'utf-8-unix)
-                 payload)
-      (slack-ws-normalize-bot-fallback payload))))
+        (progn
+          (puthash "text" (slack-ws-decode-string text) payload)
+          (slack-message-update payload)))))
 
-(defun slack-ws-normalize-bot-fallback (payload)
-  (let* ((attachments (gethash "attachments" payload))
-         (fallback (gethash "fallback" (aref attachments 0))))
-    (if fallback
-        (puthash "fallback"
-                 (decode-coding-string fallback 'utf-8-unix)
-                 payload))))
+(defun slack-ws-decode-string (text)
+  (decode-coding-string text 'utf-8-unix))
 
 (defun slack-ws-handle-reply (payload)
-  (message "slack-ws-handle-reply")
   (let ((ok (gethash "ok" payload))
         (e (gethash "error" payload)))
     (if ok
