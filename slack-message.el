@@ -67,8 +67,9 @@
 (defun slack-message-popup-tip (room message)
   (let* ((channel (gethash "channel" message))
          (group-name (slack-group-name channel)))
-    (if (and group-name (memq (intern group-name)
-                              slack-message-notification-subscription))
+    (if (or (eq 'im (slack-message-find-room-type message))
+            (and group-name (memq (intern group-name)
+                                  slack-message-notification-subscription)))
         (popup-tip (slack-message-to-string room message)))))
 
 (defun slack-message-to-string (room message)
