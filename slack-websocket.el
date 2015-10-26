@@ -20,7 +20,7 @@
     (websocket-send slack-ws frame)))
 
 (defun slack-ws-on-message (websocket frame)
-  ;; (message "%s" (websocket-frame-payload frame))
+  (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
     (let* ((json-object-type 'hash-table)
            (payload (json-read-from-string
@@ -49,7 +49,14 @@
      (t (slack-ws-handle-user-message payload)))))
 
 (defun slack-ws-handle-bot-message (payload)
-  (let* ((attachment (aref (gethash "attachments" payload) 0))
+  (let ((attachments (gethash "attachments" payload)))
+    (if attachments
+        (slack-ws-handle-attachments-message attachments payload)
+      (slack-ws-handle-user-message payload))))
+
+(defun slack-ws-handle-attachments-message (attachments payload)
+  (let* ((attachment (aref attachments 0))
+         (title (gethash "title" attachment))
          (text (gethash "text" attachment))
          (pretext (gethash "pretext" attachment))
          (fallback (gethash "fallback" attachment)))
@@ -58,7 +65,7 @@
           (puthash "text"
                    (slack-ws-decode-string
                     (if (> (length text) 0)
-                        (concat pretext "\n" text)
+                        (concat title "\n" pretext "\n" text)
                       fallback))
                    payload)
           (slack-message-update payload)))))
