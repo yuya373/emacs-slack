@@ -94,8 +94,9 @@
         (with-current-buffer buffer
           (setq buffer-read-only nil)
           (setq line-spacing 0.5)
-          (slack-buffer-make-id room)
           (erase-buffer)
+          (slack-mode)
+          (slack-buffer-make-id room)
           (slack-buffer-insert-header room)
           (slack-buffer-insert-messages room)
           (setq buffer-read-only t)))
@@ -107,6 +108,19 @@
       (setq buffer-read-only nil)
       (goto-char (point-max))
       (slack-buffer--insert-message message)
+      (goto-char (point-max))
+      (setq buffer-read-only t))))
+
+(defun slack-buffer-update-notification (buf-name string)
+  (let ((buffer (get-buffer-create buf-name)))
+    (with-current-buffer buffer
+      (setq buffer-read-only nil)
+      (setq line-spacing 0.5)
+      (slack-mode)
+      (goto-char (point-max))
+      (insert string)
+      (insert "\n")
+      (goto-char (point-max))
       (setq buffer-read-only t))))
 
 (provide 'slack-buffer)
