@@ -45,15 +45,15 @@
 
 (defun slack-group (name)
   (interactive (list (slack-group-read-list
-                      "Select Group"
+                      "Select Group: "
                       (slack-group-names))))
   (let ((group (slack-group-find-by-name name)))
     (unless group
       (error "slack-group (%s) not found." name))
     (slack-group-update-history group)
-    (switch-to-buffer (slack-buffer-create
-                       group
-                       (slack-group-get-buffer-name group)))))
+    (switch-to-buffer-other-window (slack-buffer-create
+                                    group
+                                    (slack-group-get-buffer-name group)))))
 
 (defun slack-update-group-list ()
   (interactive)
