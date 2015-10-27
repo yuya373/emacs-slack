@@ -20,9 +20,6 @@
                                      :completep t)))
     (websocket-send slack-ws frame)))
 
-(setq debug-on-error t)
-(defvar slack-frames '())
-(defvar slack-unhandled '())
 (defun slack-ws-on-message (websocket frame)
   (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
@@ -30,16 +27,30 @@
            (payload (json-read-from-string
                      (websocket-frame-payload frame)))
            (type (plist-get payload :type)))
-      (push frame slack-frames)
-      (if (string= type "hello")
-          (message "Slack Websocket Is Ready!")
-        (slack-ws-handle-message payload)))))
+      (cond
+       ((string= type "hello")
+        (message "Slack Websocket Is Ready!"))
+       ((string= type "message")
+        (slack-ws-handle-message payload))
+       ((plist-get payload :reply_to)
+        (slack-ws-handle-reply payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
-    (unless m
-        (push m slack-unhandled)
-     (slack-message-update m))))
+    (if m
+        (progn
+          (oset m text (slack-ws-decode-string (oref m text)))
+          (slack-message-update m)))))
+
+(defun slack-ws-handle-reply (payload)
+  (let ((ok (plist-get payload :ok))
+        (e (plist-get payload :error)))
+    (if ok
+        (slack-message-handle-reply
+         (slack-message-create payload))
+      (error "code: %s msg: %s"
+             (plist-get :code e)
+             (plist-get :msg e)))))
 
 (defun slack-ws-handle-attachments-message (attachments payload)
   (let* ((attachment (aref attachments 0))
@@ -66,14 +77,5 @@
 
 (defun slack-ws-decode-string (text)
   (decode-coding-string text 'utf-8-unix))
-
-(defun slack-ws-handle-reply (payload)
-  (let ((ok (gethash "ok" payload))
-        (e (gethash "error" payload)))
-    (if ok
-        (slack-message-handle-reply payload)
-      (error "code: %s msg: %s"
-             (gethash "code" e)
-             (gethash "msg" e)))))
 
 (provide 'slack-websocket)
