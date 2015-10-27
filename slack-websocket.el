@@ -8,6 +8,7 @@
                    :on-message #'slack-ws-on-message))))
 
 (defun slack-ws-close ()
+  (interactive)
   (if slack-ws
       (progn
         (websocket-close slack-ws)
@@ -19,40 +20,25 @@
                                      :completep t)))
     (websocket-send slack-ws frame)))
 
+(defvar frames '())
+(defvar unhandled '())
 (defun slack-ws-on-message (websocket frame)
   (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
-    (let* ((json-object-type 'hash-table)
+    (let* ((json-object-type 'plist)
            (payload (json-read-from-string
                      (websocket-frame-payload frame)))
-           (type (gethash "type" payload)))
-
-      (cond ((string= type "hello")
-             (message "Slack Websocket Is Ready!"))
-            ((string= type "message")
-             (slack-ws-handle-message payload))
-            ((slack-ws-replyp payload)
-             (slack-ws-handle-reply payload))))))
-
-(defun slack-ws-replyp (payload)
-  (and (gethash "ok" payload)
-       (eq (1- slack-message-id)
-           (gethash "reply_to" payload))))
+           (type (plist-get payload :type)))
+      (push frame frames)
+      (if (string= type "hello")
+          (message "Slack Websocket Is Ready!")
+        (slack-ws-handle-message payload)))))
 
 (defun slack-ws-handle-message (payload)
-  (slack-ws-handle-message-subtype payload))
-
-(defun slack-ws-handle-message-subtype (payload)
-  (let ((subtype (gethash "subtype" payload)))
-    (cond
-     ((string= subtype "bot_message") (slack-ws-handle-bot-message payload))
-     (t (slack-ws-handle-user-message payload)))))
-
-(defun slack-ws-handle-bot-message (payload)
-  (let ((attachments (gethash "attachments" payload)))
-    (if attachments
-        (slack-ws-handle-attachments-message attachments payload)
-      (slack-ws-handle-user-message payload))))
+  (let ((m (slack-message-create payload)))
+    (if m
+        (push m unhandled))
+    (slack-message-update m)))
 
 (defun slack-ws-handle-attachments-message (attachments payload)
   (let* ((attachment (aref attachments 0))

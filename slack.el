@@ -19,6 +19,7 @@
 (require 'slack-group)
 (require 'slack-im)
 (require 'slack-message)
+(require 'slack-user-message)
 (require 'slack-request)
 (require 'slack-user)
 (require 'slack-websocket)
@@ -70,7 +71,8 @@
   (setq slack-users (gethash "users" data))
   (setq slack-bots (gethash "bots" data))
   (setq slack-ws-url (gethash "url" data))
-  (slack-ws-open slack-ws-url))
+  (slack-ws-open slack-ws-url)
+  )
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)

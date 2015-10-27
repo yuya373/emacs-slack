@@ -16,7 +16,7 @@
     (if user
         (gethash "name" user))))
 
-(defun slack-user-my-id ()
+(defun slack-my-user-id ()
   (gethash "id"
            (slack-user-find-by-name slack-user-name)))
 

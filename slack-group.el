@@ -13,6 +13,7 @@
 (defvar slack-group-history-url "https://slack.com/api/groups.history")
 (defvar slack-group-buffer-name "*Slack - Private Group*")
 (defvar slack-update-group-list-url "https://slack.com/api/groups.list")
+(defvar slack-group-subscription '())
 
 (defun slack-group-find (id)
   (find-if (lambda (group) (string= id (gethash "id" group)))
@@ -40,20 +41,29 @@
       (error "group not found"))
     (gethash "id" group)))
 
+
+(defun slack-group-subscribedp (group)
+  (let ((group-name (gethash "name" group)))
+    (and group-name
+         (memq (interm group-name) slack-group-subscription))))
+
 (defun slack-group-get-buffer-name (group)
   (concat slack-group-buffer-name " : " (gethash "name" group)))
+
+(defun slack-group-buffer-header (group)
+  (concat "Private Group: " (gethash "name" group) "\n"))
 
 (defun slack-group (name)
   (interactive (list (slack-group-read-list
                       "Select Group: "
                       (slack-group-names))))
   (let ((group (slack-group-find-by-name name)))
-    (unless group
-      (error "slack-group (%s) not found." name))
     (slack-group-update-history group)
     (switch-to-buffer-other-window
-     (slack-buffer-create group
-      (slack-group-get-buffer-name group)))))
+     (slack-buffer-create (slack-group-get-buffer-name group)
+                          (gethash "id" group)
+                          (slack-group-buffer-header group)
+                          (gethash "messages" group)))))
 
 (defun slack-update-group-list ()
   (interactive)

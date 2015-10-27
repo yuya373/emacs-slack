@@ -12,17 +12,18 @@
 
 (defmethod slack-message-equal ((msg slack-user-message) m)
   (and (slot-boundp  m 'user)
-       (string= (slot-value m 'user) (slot-value m 'user))
-       (string= (slot-value m 'ts) (slot-value m 'ts))))
+       (string= (oref m user) (oref m user))
+       (string= (oref m ts) (oref m ts))))
 
 (defmethod slack-message-to-string ((m slack-user-message))
-  (let* ((user (slack-user-find (oref m 'user)))
+  (let* ((user (slack-user-find (oref m user)))
          (name (gethash "name" user))
-         (text (oref m 'text))
+         (text (oref m text))
          (time (slack-message-time-to-string m))
          (header (concat name "\t" time)))
     (slack-message-put-header-property header)
-    (concat header "\n" text "\n")))
+    (slack-message-put-text-property text)
+    (concat "\n" header "\n" text "\n")))
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

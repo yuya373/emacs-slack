@@ -27,6 +27,10 @@
 
 (defun slack-im-id (name))
 
+(defun slack-imp (im)
+  (let ((id (gethash "id" im)))
+    (string-suffix-p "D" id)))
+
 
 (defun slack-im-push (im)
   (let ((s-im (slack-im-find (gethash "id" im))))

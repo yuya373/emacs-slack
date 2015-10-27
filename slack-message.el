@@ -4,20 +4,30 @@
 (defvar slack-message-notification-buffer-name "*Slack - notification*")
 (defvar slack-message-notification-subscription ())
 
+(defface slack-output-text
+  '((t (:weight normal :height 0.9)))
+  "Face used to text message."
+  :group 'slack-buffer)
+
+(defface slack-output-header
+  '((t (:weight bold :height 1.0 :underline t)))
+  "Face used to text message."
+  :group 'slack-buffer)
+
 (require 'eieio)
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
-   (room :initarg :room)
+   (room :initarg :room :initform nil)
    (subtype :initarg :subtype)
-   (channel :initarg :channel)
+   (channel :initarg :channel :initform nil)
    (ts :initarg :ts :type string)
    (text :initarg :text)
    (item-type :initarg :item_type)
-   (attachments :initarg :attachments :type list)
-   (reactions :initarg :reactions :type list)
+   (attachments :initarg :attachments :type (or null list))
+   (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean)
-   (pinned-to :initarg :pinned_to :type list)))
+   (pinned-to :initarg :pinned_to :type (or null list))))
 
 (defclass slack-attachments ()
   ((fallback :initarg :fallback :type string)
@@ -69,139 +79,106 @@
 (defun slack-message-collect-slots (class m)
   (mapcan #'(lambda (property)
               (if (and (symbolp property)
-                       (slot-exists-p
-                        class
-                        (intern (substring
-                                 (symbol-name property) 1))))
+                       (slot-exists-p class (intern (substring (symbol-name property) 1))))
                   (list property (plist-get m property))))
           m))
 
-(defun slack-message-create (m &key room)
+(cl-defun slack-message-create (m &key room)
   (plist-put m :reactions (append (plist-get m :reactions) nil))
   (plist-put m :attachments (append (plist-get m :attachments) nil))
   (plist-put m :pinned_to (append (plist-get m :pinned_to) nil))
+  (plist-put m :room room)
   (let ((subtype (plist-get m :subtype)))
     (cond
      ((and subtype (string-prefix-p "file" subtype))
-      (apply #'slack-file-message "file-msg" :room room
-             (slack-message-collect-slots slack-file-message m)))
-
+      (apply #'slack-file-message "file-msg"
+             (slack-message-collect-slots 'slack-file-message m)))
      ((plist-member m :user)
-      (apply #'slack-user-message "user-msg" :room room
-             (slack-message-collect-slots slack-user-message
-                                          m)))
+      (apply #'slack-user-message "user-msg"
+             (slack-message-collect-slots 'slack-user-message m)))
      ((plist-member m :bot_id)
-      (apply #'slack-bot-message "bot-msg" :room room
-             (slack-message-collect-slots slack-bot-message
-                                          m)))
+      (apply #'slack-bot-message "bot-msg"
+             (slack-message-collect-slots 'slack-bot-message m)))
      ((plist-member m :reply_to)
-      (apply #'slack-reply "reply" :room room
-             (slack-message-collect-slots slack-reply
-                                          m))))))
+      (apply #'slack-reply "reply"
+             (slack-message-collect-slots 'slack-reply m))))))
 
 (defun slack-message-create-with-room (messages room)
-  (mapcar (lambda (m) (slack-message-create m room))
+  (mapcar (lambda (m) (slack-message-create m :room room))
           messages))
 
 (defun slack-message-set (room messages)
   (let ((messages (mapcar #'slack-message-create messages)))
     (puthash "messages" messages room)))
 
-(defun slack-message-find (message messages)
-  (let ((messages (gethash "messages" room)))
-    (find-if #'(lambda (m) (slack-message-equal message m))
-             messages)))
-
-(defun slack-message-equal (m n)
-  (and (string= (gethash "name" m) (gethash "name" n))
-       (string= (gethash "ts" m) (gethash "ts" n))
+(defmethod slack-message-equal (m n)
+  (and (string= (gethash "ts" m) (gethash "ts" n))
        (string= (gethash "text" m) (gethash "text" n))))
 
-(defun slack-message-update (message)
-  (let ((room (slack-message-find-room message)))
-    (slack-message-notify room message)
+(defmethod slack-message-update ((m slack-message))
+  (let ((room (or (oref m room) (slack-message-find-room m))))
     (if room
-        (let ((messages (gethash "messages" room)))
-          (unless (slack-message-find message
-                                      messages)
-            (setcar messages message)
-            (slack-buffer-update
-             (slack-message-get-buffer-name room
-                                            message)
-             message))))))
+        (progn
+          (slack-message-popup-tip m room)
+          (slack-message-notify-buffer m room)
+          (cl-pushnew (gethash "messages" room) m
+                      :test #'slack-message-equal)
+          (slack-buffer-update (slack-message-get-buffer-name room)
+                               m)))))
 
-(defun slack-message-find-room-type (msg)
-  (let* ((channel (gethash "channel" msg))
-         (initial (substring channel 0 1)))
+(defun slack-message-room-type (msg)
+  (let ((channel (oref msg channel)))
     (cond
-     ((string= "G" initial) 'group)
-     ((string= "D" initial) 'im)
+     ((string-prefix-p "G" channel) 'group)
+     ((string-prefix-p "D" channel) 'im)
      (t nil))))
 
 (defun slack-message-find-room (msg)
-  (let ((type (slack-message-find-room-type msg))
-        (channel (gethash "channel" msg)))
+  (let ((type (slack-message-room-type msg))
+        (channel (oref msg channel)))
     (case type
       (group (slack-group-find channel))
       (im (slack-im-find channel)))))
 
-(defun slack-message-get-buffer-name (room msg)
-  (let ((type (slack-message-find-room-type msg)))
-    (case type
-      (group (slack-group-get-buffer-name room))
-      (im (slack-im-get-buffer-name room)))))
+(defun slack-message-get-buffer-name (room)
+  (if (slack-imp room)
+      (slack-im-get-buffer-name room)
+    (slack-group-get-buffer-name room)))
 
-(defun slack-message-notify (room message)
-  (let ((room-type (slack-message-find-room-type message))
-        (sender-id (gethash "user" message)))
-        (if (or (eq room-type 'im)
-                (null sender-id)
-                (not (string= sender-id (slack-user-my-id))))
-            (progn
-              (slack-message-update-notification-buffer room message)
-              (slack-message-popup-tip room message)))))
+(defmethod slack-message-sender-equalp ((m slack-message) sender-id)
+  nil)
 
-(defun slack-message-update-notification-buffer (room message)
-  (slack-buffer-update-notification
-   slack-message-notification-buffer-name
-   (slack-message-to-string room message)))
+(defmethod slack-message-notify-buffer ((m slack-message) room)
+  (if (or (slack-imp room)
+          (not (slack-message-sender-equalp m (slack-my-user-id))))
+      (slack-buffer-update-notification slack-message-notification-buffer-name
+                                        (slack-message-to-string m))))
 
-(defun slack-message-popup-tip (room message)
-  (let* ((channel (gethash "channel" message))
-         (group-name (slack-group-name channel)))
-    (if (or (eq 'im (slack-message-find-room-type message))
-            (and group-name (memq (intern group-name)
-                                  slack-message-notification-subscription)))
-        (popup-tip (slack-message-to-string room message)))))
+(defmethod slack-message-popup-tip ((m slack-message) room)
+  (if (or (slack-imp room)
+          (slack-group-subscribedp room))
+      (popup-tip (concat (if room (concat (gethash "name" room) "\n"))
+                         (slack-message-to-string m)))))
 
 (defmethod slack-message-time-to-string ((m slack-message))
   (format-time-string "%Y-%m-%d %H:%M"
                       (seconds-to-time
-                       (string-to-number (oref m 'ts)))))
-
-(defun slack-message-to-popup (m)
-  (let* ((room-name (if room (gethash "name" room)))
-         (sender-name (or
-                       (slack-user-name (gethash "user" message))
-                       (slack-bot-name (gethash "bot_id" message))))
-         (text (gethash "text" message)))
-    (concat "Incoming Message:\s" room-name "\n"
-            "From:\s" sender-name "\n" text "\n")))
+                       (string-to-number (oref m ts)))))
 
 (defun slack-message-put-header-property (header)
   (put-text-property 0 (length header)
-                       'face 'slack-output-header header))
+                       'face 'slack-message-output-header header))
 
 (defun slack-message-put-text-property (text)
   (put-text-property 0 (length text)
-                       'face 'slack-output-text text))
+                       'face 'slack-message-output-text text))
 
 (defmethod slack-message-to-string ((m slack-message))
-  (let ((ts (slack-message-to-string (oref m 'ts)))
-        (text (oref m 'text)))
+  (let ((ts (slack-message-time-to-string m))
+        (text (oref m text)))
     (slack-message-put-header-property ts)
     (slack-message-put-text-property text)
-    (concat ts "\n" text "\n")))
+    (concat "\n" ts "\n" text "\n")))
 
 (defun slack-message-send ()
   (interactive)
