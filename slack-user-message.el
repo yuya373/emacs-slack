@@ -8,12 +8,17 @@
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (edited :initarg :edited)
+   (id :initarg :id)
    (inviter :initarg :inviter)))
 
 (defmethod slack-message-equal ((msg slack-user-message) m)
   (and (slot-boundp  m 'user)
        (string= (oref m user) (oref m user))
        (string= (oref m ts) (oref m ts))))
+
+(defmethod slack-message-sender-equalp
+  ((m slack-user-message) sender-id)
+  (eq (oref m user) sender-id))
 
 (defmethod slack-message-to-string ((m slack-user-message))
   (let* ((user (slack-user-find (oref m user)))
