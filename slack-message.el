@@ -155,6 +155,7 @@
                                         (slack-message-to-string m))))
 
 (defmethod slack-message-popup-tip ((m slack-message) room)
+  (message "slack-message-popup-tip%s" m)
   (if (or (slack-imp room)
           (slack-group-subscribedp room))
       (popup-tip (concat (if room (concat (gethash "name" room) "\n"))

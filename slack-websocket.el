@@ -20,8 +20,9 @@
                                      :completep t)))
     (websocket-send slack-ws frame)))
 
-(defvar frames '())
-(defvar unhandled '())
+(setq debug-on-error t)
+(defvar slack-frames '())
+(defvar slack-unhandled '())
 (defun slack-ws-on-message (websocket frame)
   (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
@@ -29,16 +30,16 @@
            (payload (json-read-from-string
                      (websocket-frame-payload frame)))
            (type (plist-get payload :type)))
-      (push frame frames)
+      (push frame slack-frames)
       (if (string= type "hello")
           (message "Slack Websocket Is Ready!")
         (slack-ws-handle-message payload)))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
-    (if m
-        (push m unhandled))
-    (slack-message-update m)))
+    (unless m
+        (push m slack-unhandled)
+     (slack-message-update m))))
 
 (defun slack-ws-handle-attachments-message (attachments payload)
   (let* ((attachment (aref attachments 0))
