@@ -29,7 +29,7 @@
 
 (defun slack-imp (im)
   (let ((id (gethash "id" im)))
-    (string-suffix-p "D" id)))
+    (string-prefix-p "D" id)))
 
 
 (defun slack-im-push (im)
@@ -38,16 +38,17 @@
       (push im slack-ims))))
 
 (defun slack-im-set-messages (id messages)
-  (let ((im (slack-im-find id)))
-    (puthash "messages" (append messages nil) im)))
+  (let* ((im (slack-im-find id))
+        (messages (slack-message-create-with-room messages im)))
+    (puthash "messages" messages im)))
 
 (defun slack-im-history (id)
   (cl-labels ((on-im-history
                (&key data &allow-other-keys)
-               (unless (gethash "ok" data)
+               (unless (plist-get data :ok)
                  (error "slack-im-history failed %s" data))
                (slack-im-set-messages id
-                                      (gethash "messages" data))))
+                                      (plist-get data :messages))))
     (slack-request
      slack-im-history-url
      :params (list (cons "token" slack-token)
@@ -74,6 +75,9 @@
   (let ((user-name (slack-im-get-user-name im)))
     (concat slack-im-buffer-name " : " user-name)))
 
+(defun slack-im-buffer-header ()
+  (concat "Direct Message: " "\n"))
+
 (defun slack-im (user-name)
   (interactive (list (slack-im-read-list
                       "Select User: "
@@ -83,8 +87,10 @@
       (slack-im-open user-name))
     (slack-im-history (gethash "id" im))
     (switch-to-buffer-other-window
-     (slack-buffer-create im
-                          (slack-im-get-buffer-name im)))))
+     (slack-buffer-create (slack-im-get-buffer-name im)
+                          (gethash "id" im)
+                          (slack-im-buffer-header)
+                          (gethash "messages" im)))))
 
 (defun slack-im-read-list (prompt choices)
   (let ((completion-ignore-case t))
