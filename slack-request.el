@@ -7,13 +7,9 @@
   (let ((json-object-type 'plist))
     (json-read)))
 
-(defun debug (&key data error-thrown &allow-other-keys &rest _)
-  (message "data: %s" data)
-  (message "error: %s" error-thrown))
-
 (cl-defun slack-request (url &key
-                             (success #'debug)
-                             (error #'debug)
+                             (success)
+                             (error nil)
                              (params nil)
                              (parser #'slack-parse-to-plist)
                              (sync t))
