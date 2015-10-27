@@ -45,7 +45,7 @@
 (defun slack-group-subscribedp (group)
   (let ((group-name (gethash "name" group)))
     (and group-name
-         (memq (interm group-name) slack-group-subscription))))
+         (memq (intern group-name) slack-group-subscription))))
 
 (defun slack-group-get-buffer-name (group)
   (concat slack-group-buffer-name " : " (gethash "name" group)))
