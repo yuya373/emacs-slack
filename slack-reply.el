@@ -41,9 +41,9 @@
             (slack-message-update sent-msg))))))
 
 (defmethod slack-message-find-sent ((m slack-reply))
-  (let ((reply-to (oref m reply-to)))
-    (find-if #'(lambda (msg) (eq reply-to (oref msg id)))
-           slack-sent-message)))
+  (with-slots (reply-to) m
+    (cl-find-if #'(lambda (msg) (eq reply-to (oref msg id)))
+                slack-sent-message)))
 
 (defmethod slack-message-sender-equalp ((m slack-reply) sender-id)
   (string= (oref m user) sender-id))
