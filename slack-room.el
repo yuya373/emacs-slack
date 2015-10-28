@@ -32,7 +32,7 @@
    (has-pins :initarg :has_pins)
    (is-open :initarg :is_open)
    (last-read :initarg :last_read)
-   (latest :initarg :latest)
+   (latest :initarg :latest :initform nil)
    (unread-count :initarg :unread_count)
    (unread-count-display :initarg :unread_count_display)
    (messages :initarg :messages :initform nil)))
@@ -67,18 +67,25 @@
   (let ((room (gensym)))
     `(let ((,room (cdr (cl-assoc ,name (funcall ,func)
                                  :test ,test))))
-       (with-slots (id messages) ,room
-         (slack-room-history ,room)
-         (switch-to-buffer-other-window
-        (slack-buffer-create (slack-room-buffer-name ,room)
-                             id
-                             (slack-room-buffer-header ,room)
-                             messages))))))
+       (with-slots (id messages latest) ,room
+         (if (< (* 60 5)
+                (- (float-time) (string-to-number latest)))
+            (slack-room-history ,room))
+         (funcall slack-buffer-function
+          (slack-buffer-create (slack-room-buffer-name ,room)
+                               id
+                               (slack-room-buffer-header ,room)
+                               messages))))))
 
 (defun slack-room-read-list (prompt choices)
   (let ((completion-ignore-case t))
     (completing-read (format "%s" prompt)
                      choices nil t nil nil choices)))
+
+(defmethod slack-room-update-messages ((room slack-room) m)
+  (with-slots (messages) room
+    (cl-pushnew m messages :test #'slack-message-equal)
+    (oset room latest (oref m ts))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

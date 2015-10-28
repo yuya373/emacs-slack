@@ -130,15 +130,14 @@
        (string= (oref m text) (oref n text))))
 
 (defmethod slack-message-update ((m slack-message))
-  (let ((room (or (oref m room) (slack-room-find (oref m channel)))))
-    (if room
-        (progn
-          (slack-message-popup-tip m room)
-          (slack-message-notify-buffer m room)
-          (cl-pushnew m (oref room messages)
-                      :test #'slack-message-equal)
-          (slack-buffer-update (slack-room-buffer-name room)
-                               m)))))
+  (with-slots (room channel) m
+    (let ((room (or room (slack-room-find channel))))
+      (when room
+        (slack-message-popup-tip m room)
+        (slack-message-notify-buffer m room)
+        (slack-room-update-messages room m)
+        (slack-buffer-update (slack-room-buffer-name room)
+                             m)))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
