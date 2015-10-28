@@ -1,13 +1,43 @@
-(defvar slack-ws-url nil)
-(defvar slack-ws nil)
+;;; slack-websocket.el ---slack websocket interface  -*- lexical-binding: t; -*-
 
-(defun slack-ws-open (slack-ws-url)
+;; Copyright (C) 2015  南優也
+
+;; Author: 南優也 <yuyaminami@minamiyuunari-no-MacBook-Pro.local>
+;; Keywords:
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
+(require 'websocket)
+(require 'slack-message)
+
+(defvar slack-ws nil)
+(defvar slack-ws-url nil)
+
+(defun slack-ws-open ()
   (unless slack-ws
     (setq slack-ws (websocket-open
                    slack-ws-url
                    :on-message #'slack-ws-on-message))))
 
 (defun slack-ws-close ()
+  (interactive)
   (if slack-ws
       (progn
         (websocket-close slack-ws)
@@ -20,73 +50,36 @@
     (websocket-send slack-ws frame)))
 
 (defun slack-ws-on-message (websocket frame)
-  (message "%s" (websocket-frame-payload frame))
+  ;; (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
-    (let* ((json-object-type 'hash-table)
+    (let* ((json-object-type 'plist)
            (payload (json-read-from-string
                      (websocket-frame-payload frame)))
-           (type (gethash "type" payload)))
-
-      (cond ((string= type "hello")
-             (message "Slack Websocket Is Ready!"))
-            ((string= type "message")
-             (slack-ws-handle-message payload))
-            ((slack-ws-replyp payload)
-             (slack-ws-handle-reply payload))))))
-
-(defun slack-ws-replyp (payload)
-  (and (gethash "ok" payload)
-       (eq (1- slack-message-id)
-           (gethash "reply_to" payload))))
+           (type (plist-get payload :type)))
+      (cond
+       ((string= type "hello")
+        (message "Slack Websocket Is Ready!"))
+       ((string= type "message")
+        (slack-ws-handle-message payload))
+       ((plist-get payload :reply_to)
+        (slack-ws-handle-reply payload))))))
 
 (defun slack-ws-handle-message (payload)
-  (slack-ws-handle-message-subtype payload))
-
-(defun slack-ws-handle-message-subtype (payload)
-  (let ((subtype (gethash "subtype" payload)))
-    (cond
-     ((string= subtype "bot_message") (slack-ws-handle-bot-message payload))
-     (t (slack-ws-handle-user-message payload)))))
-
-(defun slack-ws-handle-bot-message (payload)
-  (let ((attachments (gethash "attachments" payload)))
-    (if attachments
-        (slack-ws-handle-attachments-message attachments payload)
-      (slack-ws-handle-user-message payload))))
-
-(defun slack-ws-handle-attachments-message (attachments payload)
-  (let* ((attachment (aref attachments 0))
-         (title (gethash "title" attachment))
-         (text (gethash "text" attachment))
-         (pretext (gethash "pretext" attachment))
-         (fallback (gethash "fallback" attachment)))
-    (if (or text pretext fallback)
-        (progn
-          (puthash "text"
-                   (slack-ws-decode-string
-                    (if (> (length text) 0)
-                        (concat title "\n" pretext "\n" text)
-                      fallback))
-                   payload)
-          (slack-message-update payload)))))
-
-(defun slack-ws-handle-user-message (payload)
-  (let ((text (gethash "text" payload)))
-    (if text
-        (progn
-          (puthash "text" (slack-ws-decode-string text) payload)
-          (slack-message-update payload)))))
-
-(defun slack-ws-decode-string (text)
-  (decode-coding-string text 'utf-8-unix))
+  (let ((m (slack-message-create payload)))
+    (if m
+        (slack-message-update
+         (slack-message-set-attributes m payload)))
+    m))
 
 (defun slack-ws-handle-reply (payload)
-  (let ((ok (gethash "ok" payload))
-        (e (gethash "error" payload)))
+  (let ((ok (plist-get payload :ok))
+        (e (plist-get payload :error)))
     (if ok
-        (slack-message-handle-reply payload)
+        (slack-message-handle-reply
+         (slack-message-create payload))
       (error "code: %s msg: %s"
-             (gethash "code" e)
-             (gethash "msg" e)))))
+             (plist-get :code e)
+             (plist-get :msg e)))))
 
 (provide 'slack-websocket)
+;;; slack-websocket.el ends here

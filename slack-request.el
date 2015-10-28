@@ -3,15 +3,15 @@
     (let ((res (json-read-from-string (buffer-string))))
       res)))
 
-(defun debug (&key data error-thrown &allow-other-keys &rest _)
-  (message "data: %s" data)
-  (message "error: %s" error-thrown))
+(defun slack-parse-to-plist ()
+  (let ((json-object-type 'plist))
+    (json-read)))
 
 (cl-defun slack-request (url &key
-                             (success #'debug)
-                             (error #'debug)
+                             (success)
+                             (error nil)
                              (params nil)
-                             (parser #'slack-parse-to-hash)
+                             (parser #'slack-parse-to-plist)
                              (sync t))
   (request
    url
