@@ -35,12 +35,14 @@
   :prefix "slack-"
   :group 'tools)
 
-(defcustom client-id nil
+(defcustom slack-client-id nil
   "Client ID provided by Slack.")
-(defcustom client-secret nil
+(defcustom slack-client-secret nil
   "Client Secret Provided by Slack.")
-(defcustom redirect-url "http://localhost:8080"
+(defcustom slack-redirect-url "http://localhost:8080"
   "Redirect url registered for Slack.")
+(defcustom slack-buffer-function #'switch-to-buffer-other-window
+  "Function to print buffer.")
 
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
@@ -94,11 +96,11 @@
   (oauth2-auth
    slack-oauth2-authorize
    slack-oauth2-access
-   client-id
-   client-secret
+   slack-client-id
+   slack-client-secret
    "client"
    nil
-   redirect-url
+   slack-redirect-url
    ))
 
 (defun slack-request-token ()
