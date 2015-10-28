@@ -62,22 +62,6 @@
   (mapcar #'(lambda (im) (cons (slack-im-user-name im) im))
           slack-ims))
 
-(defun slack-im-history (im)
-  (cl-labels ((on-im-history
-               (&key data &allow-other-keys)
-               (unless (plist-get data :ok)
-                 (error "slack-im-history failed %s" data))
-
-               (slack-room-set-messages im
-                                        (slack-message-create-with-room
-                                         (plist-get data :messages)
-                                         im))))
-    (slack-request
-     slack-im-history-url
-     :params (list (cons "token" slack-token)
-                   (cons "channel" (oref im id)))
-     :success #'on-im-history)))
-
 ;; choose user-name list and open im
 ;; (defun slack-im-open (user-name)
 ;;   (let* ((user (slack-user-find-by-name user-name))
@@ -103,21 +87,23 @@
   (concat "Direct Message: " "\n"))
 
 (defun slack-im-select (user-name)
-  (interactive (list (slack-im-read-list
+  (interactive (list (slack-room-read-list
                       "Select User: "
                       (mapcar #'car (slack-im-names)))))
-  (let ((im (cdr (cl-assoc user-name (slack-im-names) :test #'string=))))
-    (slack-im-history im)
-    (switch-to-buffer-other-window
-     (slack-buffer-create (slack-room-buffer-name im)
-                          (oref im id)
-                          (slack-room-buffer-header im)
-                          (oref im messages)))))
+  (slack-room-make-buffer user-name
+                          #'slack-im-names
+                          :test #'string=))
 
-(defun slack-im-read-list (prompt choices)
-  (let ((completion-ignore-case t))
-    (completing-read (format "%s" prompt)
-                     choices nil t nil nil choices)))
+(defmethod slack-room-history ((room slack-im))
+  (cl-labels ((on-im-history
+               (&key data &allow-other-keys)
+               (unless (plist-get data :ok)
+                 (error "slack-im-history failed %s" data))
+               (slack-room-on-history data room)))
+    (with-slots (id) room
+      (slack-room-request-update id
+                                 slack-im-history-url
+                                 #'on-im-history))))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

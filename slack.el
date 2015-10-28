@@ -15,6 +15,7 @@
 (require 'oauth2)
 (require 'popup)
 
+(require 'slack-room)
 (require 'slack-group)
 (require 'slack-im)
 (require 'slack-buffer)
@@ -34,22 +35,27 @@
   :prefix "slack-"
   :group 'tools)
 
+(defcustom client-id nil
+  "Client ID provided by Slack.")
+(defcustom client-secret nil
+  "Client Secret Provided by Slack.")
+(defcustom redirect-url "http://localhost:8080"
+  "Redirect url registered for Slack.")
+
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
-(defvar slack-groups)
-(defvar slack-ims)
-(defvar slack-users)
-(defvar slack-oauth2-authorize "https://slack.com/oauth/authorize")
-(defvar slack-oauth2-access "https://slack.com/api/oauth.access")
-(defvar slack-authorize-url "https://slack.com/api/rtm.start")
-(defvar client-id nil)
-(defvar client-secret nil)
 (defvar slack-token nil)
 (defvar slack-oauth2-token)
+(defvar slack-ims)
+(defvar slack-groups)
+(defvar slack-users)
 (defvar slack-self)
 (defvar slack-team)
 (defvar slack-channels)
 (defvar slack-bots)
+(defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
+(defconst slack-oauth2-access "https://slack.com/api/oauth.access")
+(defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
 (define-derived-mode slack-mode fundamental-mode "Slack")
 
@@ -92,7 +98,8 @@
    client-secret
    "client"
    nil
-   "http://localhost:8080"))
+   redirect-url
+   ))
 
 (defun slack-request-token ()
   (let ((token (slack-oauth2-auth)))
