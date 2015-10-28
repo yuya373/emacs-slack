@@ -45,9 +45,10 @@
                        'face 'slack-message-output-text text))
 
 (defmethod slack-message-time-to-string ((m slack-message))
-  (format-time-string "%Y-%m-%d %H:%M"
+  (with-slots (ts) m
+    (format-time-string "%Y-%m-%d %H:%M"
                       (seconds-to-time
-                       (string-to-number (oref m ts)))))
+                       (string-to-number ts)))))
 
 (defmethod slack-message-to-string ((m slack-message))
   (with-slots (text) m
