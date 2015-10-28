@@ -24,12 +24,6 @@
 
 ;;; Code:
 
-(require 'websocket)
-(require 'slack-message)
-
-(defvar slack-ws nil)
-(defvar slack-ws-url nil)
-
 (defun slack-ws-open ()
   (unless slack-ws
     (setq slack-ws (websocket-open

@@ -11,12 +11,23 @@
 (require 'cl-lib)
 (require 'json)
 (require 'request)
+(require 'websocket)
 (require 'oauth2)
 (require 'popup)
 
+(require 'slack-group)
 (require 'slack-im)
+(require 'slack-buffer)
+(require 'slack-user)
 (require 'slack-request)
 (require 'slack-websocket)
+(require 'slack-message)
+(require 'slack-message-formatter)
+(require 'slack-message-notification)
+(require 'slack-message-sender)
+(require 'slack-user-message)
+(require 'slack-bot-message)
+(require 'slack-reply)
 
 (defgroup slack nil
   "Emacs Slack Client"
@@ -65,6 +76,7 @@
   (setq slack-users       (plist-get data :users))
   (setq slack-bots        (plist-get data :bots))
   (setq slack-ws-url      (plist-get data :url))
+  (message "Slack Authorization Finished.")
   (slack-ws-open)
   )
 
