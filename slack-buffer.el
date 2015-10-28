@@ -19,12 +19,13 @@
 
 (defun slack-buffer-update (buf-name m)
   (let ((buffer (get-buffer buf-name)))
-    (with-current-buffer buffer
-      (setq buffer-read-only nil)
-      (goto-char (point-max))
-      (insert (slack-message-to-string m))
-      (goto-char (point-max))
-      (setq buffer-read-only t))))
+    (if buffer
+        (with-current-buffer buffer
+          (setq buffer-read-only nil)
+          (goto-char (point-max))
+          (insert (slack-message-to-string m))
+          (goto-char (point-max))
+          (setq buffer-read-only t)))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (get-buffer-create buf-name)))

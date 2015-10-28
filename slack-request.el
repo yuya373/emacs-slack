@@ -22,18 +22,3 @@
    :error error))
 
 (provide 'slack-request)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

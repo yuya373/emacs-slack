@@ -1,7 +1,36 @@
-(defvar slack-ws-url nil)
-(defvar slack-ws nil)
+;;; slack-websocket.el ---slack websocket interface  -*- lexical-binding: t; -*-
 
-(defun slack-ws-open (slack-ws-url)
+;; Copyright (C) 2015  南優也
+
+;; Author: 南優也 <yuyaminami@minamiyuunari-no-MacBook-Pro.local>
+;; Keywords:
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
+(require 'websocket)
+(require 'slack-message)
+
+(defvar slack-ws nil)
+(defvar slack-ws-url nil)
+
+(defun slack-ws-open ()
   (unless slack-ws
     (setq slack-ws (websocket-open
                    slack-ws-url
@@ -21,7 +50,7 @@
     (websocket-send slack-ws frame)))
 
 (defun slack-ws-on-message (websocket frame)
-  (message "%s" (websocket-frame-payload frame))
+  ;; (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
     (let* ((json-object-type 'plist)
            (payload (json-read-from-string
@@ -38,9 +67,9 @@
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
     (if m
-        (progn
-          (oset m text (slack-ws-decode-string (oref m text)))
-          (slack-message-update m)))))
+        (slack-message-update
+         (slack-message-set-attributes m payload)))
+    m))
 
 (defun slack-ws-handle-reply (payload)
   (let ((ok (plist-get payload :ok))
@@ -52,30 +81,5 @@
              (plist-get :code e)
              (plist-get :msg e)))))
 
-(defun slack-ws-handle-attachments-message (attachments payload)
-  (let* ((attachment (aref attachments 0))
-         (title (gethash "title" attachment))
-         (text (gethash "text" attachment))
-         (pretext (gethash "pretext" attachment))
-         (fallback (gethash "fallback" attachment)))
-    (if (or text pretext fallback)
-        (progn
-          (puthash "text"
-                   (slack-ws-decode-string
-                    (if (> (length text) 0)
-                        (concat title "\n" pretext "\n" text)
-                      fallback))
-                   payload)
-          (slack-message-update payload)))))
-
-(defun slack-ws-handle-user-message (payload)
-  (let ((text (gethash "text" payload)))
-    (if text
-        (progn
-          (puthash "text" (slack-ws-decode-string text) payload)
-          (slack-message-update payload)))))
-
-(defun slack-ws-decode-string (text)
-  (decode-coding-string text 'utf-8-unix))
-
 (provide 'slack-websocket)
+;;; slack-websocket.el ends here
