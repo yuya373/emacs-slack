@@ -42,10 +42,6 @@
    ((string-prefix-p "G" id) (slack-group-find id))
    ((string-prefix-p "D" id) (slack-im-find id))))
 
-(defun slack-room-name-by-id (id)
-  (let ((room (slack-room-find id)))
-    (slack-room-name room)))
-
 (defmethod slack-room-subscribedp ((room slack-room))
   nil)
 
