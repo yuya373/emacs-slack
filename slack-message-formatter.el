@@ -32,7 +32,10 @@
   :group 'slack-buffer)
 
 (defface slack-message-output-header
-  '((t (:weight bold :height 1.0 :underline t)))
+  '((t (:foreground "#FFA000"
+        :weight bold
+        :height 1.0
+        :underline t)))
   "Face used to text message."
   :group 'slack-buffer)
 
