@@ -23,6 +23,9 @@
 ;;
 
 ;;; Code:
+(require 'websocket)
+(defvar slack-ws nil)
+(defvar slack-ws-url nil)
 
 (defun slack-ws-open ()
   (unless slack-ws

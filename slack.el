@@ -11,12 +11,12 @@
 (require 'cl-lib)
 (require 'json)
 (require 'request)
-(require 'websocket)
 (require 'oauth2)
 (require 'popup)
 
 (require 'slack-room)
 (require 'slack-group)
+(require 'slack-channel)
 (require 'slack-im)
 (require 'slack-buffer)
 (require 'slack-user)
@@ -44,8 +44,6 @@
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
   "Function to print buffer.")
 
-(defvar slack-ws nil)
-(defvar slack-ws-url nil)
 (defvar slack-token nil)
 (defvar slack-oauth2-token)
 (defvar slack-ims)
@@ -76,7 +74,8 @@
       (error "slack-on-authorize: %s" data)))
   (setq slack-self        (plist-get data :self))
   (setq slack-team        (plist-get data :team))
-  (setq slack-channels    (plist-get data :channels))
+  (setq slack-channels    (mapcar #'slack-channel-create
+                                  (plist-get data :channels)))
   (setq slack-groups      (mapcar #'slack-group-create
                                   (plist-get data :groups)))
   (setq slack-ims         (mapcar #'slack-im-create
