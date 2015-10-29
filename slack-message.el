@@ -65,15 +65,18 @@
    (bot-id :initarg :bot_id)
    (ts :initarg :ts :type string)))
 
+(defun slack-message-decode-string (text)
+  (decode-coding-string text 'utf-8-unix))
+
 (defun slack-message-decode-payload (payload)
-  (cl-labels ((decode (e)
-                      (if (stringp e)
-                          (slack-message-decode-string e)
-                        e)))
+  (cl-labels ((decode (e) (if (stringp e)
+                              (slack-message-decode-string e)
+                            e)))
     (mapcar #'decode payload)))
 
 (defun slack-attachment-create (payload)
-  (plist-put payload :fields (append (plist-get payload :fields) nil))
+  (plist-put payload :fields
+             (append (plist-get payload :fields) nil))
   (let ((decoded (slack-message-decode-payload payload)))
     (apply #'slack-attachment "attachment"
          (slack-collect-slots 'slack-attachment decoded))))
@@ -83,9 +86,6 @@
     (if (< 0 (length attachments))
         (oset m attachments
               (mapcar #'slack-attachment-create attachments)))))
-
-(defun slack-message-decode-string (text)
-  (decode-coding-string text 'utf-8-unix))
 
 (defmethod slack-message-set-attributes ((m slack-message) payload)
   (let* ((decoded-payload (slack-message-decode-payload payload))

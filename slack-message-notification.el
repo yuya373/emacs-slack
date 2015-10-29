@@ -23,8 +23,9 @@
 ;;
 
 ;;; Code:
+(require 'eieio)
 
-(defvar slack-message-notification-buffer-name "*Slack - notification*")
+(defconst slack-message-notification-buffer-name "*Slack - notification*")
 (defvar slack-message-notification-subscription '())
 (defvar slack-message-tips '())
 
@@ -45,7 +46,7 @@
         (popup-tip (concat name "\n" message)
                    :point (window-start)))))
 
-(defmethod slack-message-sender-equalp ((m slack-message) sender-id)
+(defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
 
 (defmethod slack-message-minep ((m slack-message))

@@ -26,9 +26,6 @@
 
 (require 'eieio)
 (require 'slack-group)
-(require 'slack-user)
-(require 'slack-message)
-(require 'slack-buffer)
 
 (defgroup slack-im nil
   "Slack Direct Message."
@@ -37,8 +34,9 @@
 
 (defvar slack-ims)
 (defvar slack-token nil)
-(defvar slack-im-history-url "https://slack.com/api/im.history")
-(defvar slack-im-buffer-name "*Slack - Direct Messages*")
+(defconst slack-im-list-url "https://slack.com/api/im.list")
+(defconst slack-im-history-url "https://slack.com/api/im.history")
+(defconst slack-im-buffer-name "*Slack - Direct Messages*")
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)))
@@ -56,7 +54,8 @@
     (slack-user-name user)))
 
 (defun slack-im-user-name (im)
-  (slack-user-name (oref im user)))
+  (with-slots (user) im
+    (slack-user-name user)))
 
 (defun slack-im-names ()
   (mapcar #'(lambda (im) (cons (slack-im-user-name im) im))

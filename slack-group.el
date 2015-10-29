@@ -25,17 +25,19 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-room)
 
 (defgroup slack-group nil
   "Slack private groups."
   :prefix "slack-group-"
   :group 'slack)
 
-(defvar slack--group-open-url "https://slack.com/api/groups.open")
-(defvar slack-group-history-url "https://slack.com/api/groups.history")
-(defvar slack-group-buffer-name "*Slack - Private Group*")
-(defvar slack-update-group-list-url "https://slack.com/api/groups.list")
-(defvar slack-room-subscription '())
+(defconst slack--group-open-url "https://slack.com/api/groups.open")
+(defconst slack-group-history-url "https://slack.com/api/groups.history")
+(defconst slack-group-buffer-name "*Slack - Private Group*")
+(defcustom slack-room-subscription '()
+  "Group or Channel list to subscribe notification.")
+(defconst slack-group-list-url "https://slack.com/api/groups.list")
 
 (defclass slack-group (slack-room)
   ((name :initarg :name :type string)
@@ -53,7 +55,7 @@
          (slack-collect-slots 'slack-group payload)))
 
 (defun slack-group-find (id)
-  (find-if (lambda (group) (string= id (oref group id)))
+  (cl-find-if (lambda (group) (string= id (oref group id)))
            slack-groups))
 
 (defmethod slack-room-name ((room slack-group))
