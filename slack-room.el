@@ -92,5 +92,12 @@
     (cl-pushnew m messages :test #'slack-message-equal)
     (oset room latest (oref m ts))))
 
+(cl-defun slack-room-list-update (url success &key (sync t))
+  (slack-request
+   url
+   :params (list (cons "token" slack-token))
+   :success success
+   :sync sync))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

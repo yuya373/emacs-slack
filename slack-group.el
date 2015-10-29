@@ -83,13 +83,27 @@
                                  slack-group-history-url
                                  #'on-group-update))))
 
-(defun slack-group-select (name)
-  (interactive (list (slack-room-read-list
-                      "Select Group: "
-                      (mapcar #'car (slack-group-names)))))
-  (slack-room-make-buffer name
-                          #'slack-group-names
-                          :test #'string=))
+(defun slack-group-select ()
+  (interactive)
+  (let ((list (mapcar #'car (slack-group-names))))
+    (slack-room-select-from-list
+     ("Select Group: " list)
+     (slack-room-make-buffer selected
+                             #'slack-group-names
+                             :test #'string=
+                             :update nil))))
+
+(defun slack-group-list-update ()
+  (interactive)
+  (cl-labels ((on-list-update
+               (&key data &allow-other-keys)
+               (unless (plist-get data :ok)
+                 (error "%s" data))
+               (setq slack-groups (mapcar #'slack-group-create
+                                          (plist-get data :groups)))))
+    (slack-room-list-update slack-group-list-url
+                            #'on-list-update
+                            :sync nil)))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

@@ -86,13 +86,15 @@
 (defmethod slack-room-buffer-header ((_room slack-im))
   (concat "Direct Message: " "\n"))
 
-(defun slack-im-select (user-name)
-  (interactive (list (slack-room-read-list
-                      "Select User: "
-                      (mapcar #'car (slack-im-names)))))
-  (slack-room-make-buffer user-name
-                          #'slack-im-names
-                          :test #'string=))
+(defun slack-im-select ()
+  (interactive)
+  (let ((list (mapcar #'car (slack-im-names))))
+    (slack-room-select-from-list
+     ("Select User: " list)
+     (slack-room-make-buffer selected
+                             #'slack-im-names
+                             :test #'string=
+                             :update nil))))
 
 (defmethod slack-room-history ((room slack-im))
   (cl-labels ((on-im-history
@@ -104,6 +106,24 @@
       (slack-room-request-update id
                                  slack-im-history-url
                                  #'on-im-history))))
+
+(defun slack-im-list-update ()
+  (interactive)
+  (slack-user-list-update))
+
+(defun slack-im-update-room-list (users)
+  (cl-labels ((on-update-room-list (&key data &allow-other-keys)
+                                   (unless (plist-get data :ok)
+                                     (error "%s" data))
+                                   (slack-im-on-list-update data users)))
+    (slack-room-list-update slack-im-list-url
+                            #'on-update-room-list
+                            :sync nil)))
+
+(cl-defun slack-im-on-list-update (data users)
+  (let ((payloads (plist-get data :ims)))
+    (mapc #'slack-user-pushnew users)
+    (setq slack-ims (mapcar #'slack-im-create payloads))))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here
