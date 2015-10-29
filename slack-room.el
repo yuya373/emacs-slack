@@ -35,7 +35,7 @@
    (latest :initarg :latest :initform nil)
    (unread-count :initarg :unread_count)
    (unread-count-display :initarg :unread_count_display)
-   (messages :initarg :messages :initform nil)))
+   (messages :initarg :messages :initform ())))
 
 (defun slack-room-find (id)
   (cond
@@ -63,19 +63,24 @@
                    (cons "channel" ,room-id))
     :success ,success))
 
-(cl-defmacro slack-room-make-buffer (name func &key test)
+(cl-defmacro slack-room-make-buffer (name func &key test (update nil))
   (let ((room (gensym)))
     `(let ((,room (cdr (cl-assoc ,name (funcall ,func)
                                  :test ,test))))
-       (with-slots (id messages latest) ,room
-         (if (< (* 60 5)
-                (- (float-time) (string-to-number latest)))
-            (slack-room-history ,room))
+       (with-slots (messages latest) ,room
+         (if (or ,update (not messages))
+             (slack-room-history ,room))
          (funcall slack-buffer-function
-          (slack-buffer-create (slack-room-buffer-name ,room)
-                               id
-                               (slack-room-buffer-header ,room)
-                               messages))))))
+                  (slack-buffer-create
+                   (slack-room-buffer-name ,room)
+                   ,room
+                   (slack-room-buffer-header ,room)
+                   messages))))))
+
+(cl-defmacro slack-room-select-from-list ((prompt list) &body body)
+  "Bind selected from `slack-room-read-list' to selected."
+  `(let ((selected (slack-room-read-list ,prompt ,list)))
+     ,@body))
 
 (defun slack-room-read-list (prompt choices)
   (let ((completion-ignore-case t))
