@@ -28,11 +28,14 @@
 
 (defun slack-message-send ()
   (interactive)
+  (slack-message--send (slack-message-read-from-minibuffer)))
+
+(defun slack-message--send (message)
   (let* ((m (list :id slack-message-id
                   :channel (slack-message-get-room-id)
                   :type "message"
                   :user (slack-my-user-id)
-                  :text (slack-message-read-from-minibuffer)))
+                  :text message))
          (json (json-encode m))
          (obj (slack-message-create m)))
     (incf slack-message-id)
@@ -40,8 +43,8 @@
     (push obj slack-sent-message)))
 
 (defun slack-message-get-room-id ()
-  (if (boundp 'slack-room-id)
-      slack-room-id
+  (if (boundp 'slack-current-room)
+      (oref slack-current-room id)
     (oref (slack-message-read-room) id)))
 
 (defun slack-message-read-room ()
@@ -74,6 +77,20 @@
             (define-key map (kbd "RET") 'newline)
             (set-keymap-parent map minibuffer-local-map)
             map))))
+
+(defun slack-message-write-current-buffer ()
+  (interactive)
+  (with-current-buffer (current-buffer)
+    (setq buffer-read-only nil)
+    (message "Write and call `slack-message-send-from-region'")))
+
+(defun slack-message-send-from-region (beg end)
+  (interactive "r")
+  (let ((message (delete-and-extract-region beg end)))
+    (if (< 0 (length message))
+      (slack-message--send message))
+    (with-current-buffer (current-buffer)
+      (setq buffer-read-only t))))
 
 
 (provide 'slack-message-sender)
