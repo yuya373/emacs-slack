@@ -45,7 +45,7 @@
    (thumb-url :initarg :thumb_url)))
 
 (defmethod slack-message-to-string ((m slack-bot-message))
-  (with-slots (attachments bot-id) m
+  (with-slots (text attachments bot-id) m
     (let* ((name (slack-bot-name bot-id))
            (time (slack-message-time-to-string m))
            (attachment-string (mapconcat #'slack-attachment-to-string
@@ -53,7 +53,7 @@
            (header (concat name "\t" time)))
       (slack-message-put-header-property header)
       (slack-message-put-text-property attachment-string)
-      (concat header "\n" attachment-string "\n"))))
+      (concat header "\n" text "\n" attachment-string "\n"))))
 
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
