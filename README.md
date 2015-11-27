@@ -10,8 +10,8 @@ emacs client for Slack
 
 ## configure
 
-get client-id and client-secret from https://api.slack.com/applications/new
-get slack-token from https://api.slack.com/web
+- get client-id and client-secret from https://api.slack.com/applications/new
+- get slack-token from https://api.slack.com/web
 
 ```elisp
 ;; I'm using use-package and el-get
@@ -28,6 +28,7 @@ get slack-token from https://api.slack.com/web
   (setq slack-client-id "hoge")
   (setq slack-client-secret "fuga")
   (setq slack-token "hogehogehoge"))
+  (setq slack-user-name "hogehoge")
 
 ```
 
