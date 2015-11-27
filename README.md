@@ -11,7 +11,7 @@ emacs client for Slack
 ## configure
 
 ```elisp
-;; I'm using use-package
+;; I'm using use-package and el-get
 
 (el-get-bundle websocket)
 (el-get-bundle oauth2)
