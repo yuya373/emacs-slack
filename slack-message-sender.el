@@ -1,4 +1,4 @@
-;;; slack-message-sender.el ---slack message concern message sending  -*- lexical-binding: t; -*-
+;;; slack-message-sender.el --- slack message concern message sending  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
@@ -23,8 +23,19 @@
 ;;
 
 ;;; Code:
+
+(require 'eieio)
+(require 'json)
+(require 'slack-websocket)
+(require 'slack-im)
+(require 'slack-group)
+(require 'slack-message)
+
 (defvar slack-message-id 0)
 (defvar slack-message-minibuffer-local-map nil)
+(defvar slack-message-write-buffer-name "*Slack - Message Writing*")
+(defvar slack-sent-message)
+(defvar slack-buffer-function)
 
 (defun slack-message-send ()
   (interactive)
@@ -38,7 +49,7 @@
                   :text message))
          (json (json-encode m))
          (obj (slack-message-create m)))
-    (incf slack-message-id)
+    (cl-incf slack-message-id)
     (slack-ws-send json)
     (push obj slack-sent-message)))
 

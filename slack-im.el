@@ -25,7 +25,10 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-group)
+(require 'slack-util)
+(require 'slack-room)
+(require 'slack-buffer)
+(require 'slack-user)
 
 (defgroup slack-im nil
   "Slack Direct Message."
@@ -33,10 +36,14 @@
   :group 'slack)
 
 (defvar slack-ims)
-(defvar slack-token nil)
-(defconst slack-im-list-url "https://slack.com/api/im.list")
+(defvar slack-users)
+(defvar slack-token)
+(defvar slack-buffer-function)
+
 (defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
+(defconst slack-user-list-url "https://slack.com/api/users.list")
+(defconst slack-im-list-url "https://slack.com/api/im.list")
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)))
@@ -44,10 +51,6 @@
 (defun slack-im-create (payload)
   (apply #'slack-im "im"
          (slack-collect-slots 'slack-im payload)))
-
-(defun slack-im-find (id)
-  (cl-find-if #'(lambda (im) (string= id (oref im id)))
-           slack-ims))
 
 (defmethod slack-room-name ((room slack-im))
   (with-slots (user) room
@@ -89,7 +92,7 @@
   (interactive)
   (let ((list (mapcar #'car (slack-im-names))))
     (slack-room-select-from-list
-     ("Select User: " list)
+     (list "Select User: ")
      (slack-room-make-buffer selected
                              #'slack-im-names
                              :test #'string=

@@ -24,13 +24,9 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-message)
 
 (defvar slack-sent-message '())
-
-(defclass slack-reply (slack-message)
-  ((user :initarg :user :initform nil)
-   (reply-to :initarg :reply_to :type integer)
-   (id :initarg :id :type integer)))
 
 (defmethod slack-message-handle-reply ((m slack-reply))
   (with-slots (reply-to) m

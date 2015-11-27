@@ -25,6 +25,14 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-group)
+(require 'slack-buffer)
+(require 'slack-util)
+
+(defvar slack-token)
+(defvar slack-channels)
+(defvar slack-buffer-function)
+(defvar slack-groups)
 
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
@@ -34,8 +42,6 @@
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
    (num-members :initarg :num_members)))
-
-(setq debug-on-error t)
 
 (defun slack-channel-create (payload)
   (plist-put payload :members (append (plist-get payload :members) nil))
@@ -65,7 +71,7 @@
   (interactive)
   (let ((list (mapcar #'car (slack-channel-names))))
     (slack-room-select-from-list
-     ("Select Channel: " list)
+     (list "Select Channel: ")
      (slack-room-make-buffer selected
                              #'slack-channel-names
                              :test #'string=

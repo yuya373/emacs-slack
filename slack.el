@@ -9,26 +9,17 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'json)
-(require 'request)
 (require 'oauth2)
-(require 'popup)
 
-(require 'slack-room)
-(require 'slack-group)
 (require 'slack-channel)
 (require 'slack-im)
-(require 'slack-buffer)
-(require 'slack-user)
-(require 'slack-request)
-(require 'slack-websocket)
-(require 'slack-message)
-(require 'slack-message-formatter)
 (require 'slack-message-notification)
 (require 'slack-message-sender)
 (require 'slack-user-message)
 (require 'slack-bot-message)
-(require 'slack-reply)
+
+(require 'slack-websocket)
+(require 'slack-request)
 
 (defgroup slack nil
   "Emacs Slack Client"
@@ -43,8 +34,10 @@
   "Redirect url registered for Slack.")
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
   "Function to print buffer.")
+(defcustom slack-token nil
+  "Slack token provided by Slack.
+set this to save request to Slack if already have.")
 
-(defvar slack-token nil)
 (defvar slack-oauth2-token)
 (defvar slack-ims)
 (defvar slack-groups)
@@ -84,8 +77,7 @@
   (setq slack-bots        (plist-get data :bots))
   (setq slack-ws-url      (plist-get data :url))
   (message "Slack Authorization Finished.")
-  (slack-ws-open)
-  )
+  (slack-ws-open))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)
@@ -99,8 +91,7 @@
    slack-client-secret
    "client"
    nil
-   slack-redirect-url
-   ))
+   slack-redirect-url))
 
 (defun slack-request-token ()
   (let ((token (slack-oauth2-auth)))

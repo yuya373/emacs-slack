@@ -27,6 +27,8 @@
 (require 'json)
 (require 'request)
 
+(defvar slack-token)
+
 (defun slack-parse-to-hash ()
   (let ((json-object-type 'hash-table))
     (let ((res (json-read-from-string (buffer-string))))

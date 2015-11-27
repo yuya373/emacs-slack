@@ -1,4 +1,4 @@
-;;; slack-websocket.el ---slack websocket interface  -*- lexical-binding: t; -*-
+;;; slack-websocket.el --- slack websocket interface  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  南優也
 
@@ -24,6 +24,10 @@
 
 ;;; Code:
 (require 'websocket)
+(require 'slack-request)
+(require 'slack-message)
+(require 'slack-reply)
+
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
 

@@ -1,4 +1,4 @@
-;;; slack-message.el ---slack-message                -*- lexical-binding: t; -*-
+;;; slack-message.el --- slack-message                -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
@@ -25,6 +25,11 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
+(require 'slack-buffer)
+
+(defvar slack-groups)
+(defvar slack-ims)
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
@@ -37,7 +42,8 @@
    (attachments :initarg :attachments :type (or null list))
    (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean)
-   (pinned-to :initarg :pinned_to :type (or null list))))
+   (pinned-to :initarg :pinned_to :type (or null list))
+   (edited-at :initarg :edited-at :initform nil)))
 
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)

@@ -1,4 +1,4 @@
-;;; slack-message-notification.el ---concerning message notification  -*- lexical-binding: t; -*-
+;;; slack-message-notification.el --- message notification  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
@@ -24,6 +24,12 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-room)
+(require 'slack-message)
+(require 'slack-message-formatter)
+(require 'slack-buffer)
+(require 'slack-im)
+(require 'popup)
 
 (defconst slack-message-notification-buffer-name "*Slack - notification*")
 (defvar slack-message-notification-subscription '())

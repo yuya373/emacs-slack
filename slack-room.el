@@ -1,4 +1,4 @@
-;;; slack-room.el ---slack generic room interface    -*- lexical-binding: t; -*-
+;;; slack-room.el --- slack generic room interface    -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  南優也
 
@@ -25,7 +25,11 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-request)
+(require 'slack-message)
 
+(defvar slack-token)
+(defvar slack-current-room)
 (defclass slack-room ()
   ((id :initarg :id)
    (created :initarg :created)
@@ -64,7 +68,7 @@
     :success ,success))
 
 (cl-defmacro slack-room-make-buffer (name func &key test (update nil))
-  (let ((room (gensym)))
+  (let ((room (cl-gensym)))
     `(let ((,room (cdr (cl-assoc ,name (funcall ,func)
                                  :test ,test))))
        (with-slots (messages latest) ,room

@@ -1,4 +1,4 @@
-;;; slack-bot-message.el ---bot message class        -*- lexical-binding: t; -*-
+;;; slack-bot-message.el --- bot message class        -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 

@@ -1,4 +1,4 @@
-;;; slack-buffer.el ---slack buffer                  -*- lexical-binding: t; -*-
+;;; slack-buffer.el --- slack buffer                  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  南優也
 

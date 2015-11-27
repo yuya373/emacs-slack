@@ -1,4 +1,4 @@
-;;; slack-message-formatter.el ---format message text  -*- lexical-binding: t; -*-
+;;; slack-message-formatter.el --- format message text  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
@@ -25,6 +25,8 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-user)
+(require 'slack-room)
 
 (defface slack-message-output-text
   '((t (:weight normal :height 0.9)))
