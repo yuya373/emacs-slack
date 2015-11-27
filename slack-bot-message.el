@@ -25,41 +25,39 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-message)
+(require 'slack-message-formatter)
 
-(defclass slack-bot-message (slack-message)
-  ((bot-id :initarg :bot_id :type string)
-   (username :initarg :username)
-   (icons :initarg :icons)))
+(defvar slack-bots)
 
-(defclass slack-attachment ()
-  ((fallback :initarg :fallback :type string)
-   (title :initarg :title :initform nil)
-   (title-link :initarg :title_link :initform nil)
-   (pretext :initarg :pretext :initform nil)
-   (text :initarg :text :initform nil)
-   (author-name :initarg :author_name)
-   (author-link :initarg :author_link)
-   (author-icon :initarg :author_icon)
-   (fields :initarg :fields :type (or null list))
-   (image-url :initarg :image_url)
-   (thumb-url :initarg :thumb_url)))
+(defun slack-find-bot (id)
+  (cl-find-if (lambda (bot)
+             (string= id (plist-get bot :id)))
+           slack-bots))
+
+(defun slack-bot-name (id)
+  (let ((bot (slack-find-bot id)))
+    (if bot
+        (plist-get bot :name))))
 
 (defmethod slack-message-to-string ((m slack-bot-message))
   (with-slots (text attachments bot-id) m
     (let* ((name (slack-bot-name bot-id))
-           (time (slack-message-time-to-string m))
+           (time (slack-message-time-to-string (oref m ts)))
            (attachment-string (mapconcat #'slack-attachment-to-string
                                          attachments "\n"))
-           (header (concat name "\t" time)))
+           (header (concat name "\t" time))
+           (body (slack-message-unescape-string
+                  (concat text attachment-string))))
       (slack-message-put-header-property header)
       (slack-message-put-text-property attachment-string)
-      (concat header "\n" text "\n" attachment-string "\n"))))
+      (concat header "\n" body "\n"))))
 
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title) a
       (if text
-          (concat title pretext text)
+          (concat title pretext "\n" text)
         fallback)))
 
 (provide 'slack-bot-message)

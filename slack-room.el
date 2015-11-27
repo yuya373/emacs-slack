@@ -41,12 +41,11 @@
    (unread-count-display :initarg :unread_count_display)
    (messages :initarg :messages :initform ())))
 
-(defun slack-room-find (id)
-  (cond
-   ((string-prefix-p "G" id) (slack-group-find id))
-   ((string-prefix-p "D" id) (slack-im-find id))))
+(cl-defgeneric slack-room-name (room))
+(cl-defgeneric slack-room-history (room))
+(cl-defgeneric slack-room-buffer-header (room))
 
-(defmethod slack-room-subscribedp ((room slack-room))
+(defmethod slack-room-subscribedp ((_room slack-room))
   nil)
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
@@ -55,10 +54,13 @@
 (defun slack-room-on-history (data room)
   (unless (plist-get data :ok)
     (error "%s" data))
-  (let* ((datum (plist-get data :messages))
-         (messages (slack-message-create-with-room
-                      datum room)))
-    (slack-room-set-messages room messages)))
+  (cl-labels ((create-message-with-room (payload)
+                     (slack-message-set-attributes
+                      (slack-message-create payload :room room)
+                      payload)))
+    (let* ((datum (plist-get data :messages))
+           (messages (mapcar #'create-message-with-room datum)))
+      (slack-room-set-messages room messages))))
 
 (cl-defmacro slack-room-request-update (room-id url success)
   `(slack-request
@@ -79,9 +81,12 @@
                    (slack-room-buffer-name ,room)
                    ,room
                    (slack-room-buffer-header ,room)
-                   messages))))))
+                   (slack-room-get-messages, room)))))))
 
-(cl-defmacro slack-room-select-from-list ((prompt list) &body body)
+(defun slack-room-get-messages (room)
+  (mapcar #'slack-message-to-string (oref room messages)))
+
+(cl-defmacro slack-room-select-from-list ((list prompt) &body body)
   "Bind selected from `slack-room-read-list' to selected."
   `(let ((selected (slack-room-read-list ,prompt ,list)))
      ,@body))
@@ -102,6 +107,16 @@
    :params (list (cons "token" slack-token))
    :success success
    :sync sync))
+
+(defun slack-room-update-message ()
+  (interactive)
+  (unless (and (boundp 'slack-current-room) slack-current-room)
+    (error "Call From Slack Room Buffer"))
+  (slack-room-history slack-current-room)
+  (slack-buffer-create (slack-room-buffer-name slack-current-room)
+                       slack-current-room
+                       (slack-room-buffer-header slack-current-room)
+                       (slack-room-get-messages slack-current-room)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

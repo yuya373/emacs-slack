@@ -49,19 +49,72 @@
   (put-text-property 0 (length text)
                        'face 'slack-message-output-text text))
 
-(defmethod slack-message-time-to-string ((m slack-message))
-  (with-slots (ts) m
-    (format-time-string "%Y-%m-%d %H:%M"
-                      (seconds-to-time
-                       (string-to-number ts)))))
+(defun slack-message-put-hard (text)
+  (put-text-property 0 (length text) 'hard t text))
+
+(defun slack-message-time-to-string (ts)
+  (if ts
+      (format-time-string "%Y-%m-%d %H:%M"
+                          (seconds-to-time (string-to-number ts)))))
 
 (defmethod slack-message-to-string ((m slack-message))
   (with-slots (text) m
-    (let ((ts (slack-message-time-to-string m)))
+    (let ((ts (slack-message-time-to-string (oref m ts)))
+          (text (slack-message-unescape-string text)))
       (slack-message-put-header-property ts)
       (slack-message-put-text-property text)
       (concat ts "\n" text "\n"))))
 
+(defun slack-message-unescape-string (text)
+  (let* ((and-unescpaed
+          (replace-regexp-in-string "&amp;" "&" text))
+         (lt-unescaped
+          (replace-regexp-in-string "&lt;" "<" and-unescpaed))
+         (gt-unescaped
+          (replace-regexp-in-string "&gt;" ">" lt-unescaped)))
+    (slack-message-unescape-command
+     (slack-message-unescape-user-id
+      (slack-message-unescape-channel gt-unescaped)))))
+
+(defun slack-message-unescape-user-id (text)
+  (let ((user-regexp "<@\\(U.*?\\)>"))
+    (cl-labels ((unescape-user-id (text)
+                                  (concat "@" (or (slack-message-replace-user-name text)
+                                                  (slack-user-name (match-string 1 text))
+                                                  (match-string 1 text)))))
+      (replace-regexp-in-string user-regexp
+                                #'unescape-user-id
+                                text t))))
+
+(defun slack-message-replace-user-name (text)
+  (let ((user-name-regexp "<@U.*?|\\(.*?\\)>"))
+    (cl-labels ((replace-user-id-with-name (text)
+                                          (match-string 1 text)))
+      (if (string-match-p user-name-regexp text)
+        (replace-regexp-in-string user-name-regexp
+                                          #'replace-user-id-with-name
+                                          text)))))
+
+(defun slack-message-unescape-command (text)
+  (let ((command-regexp "<!\\(.*?\\)>"))
+    (cl-labels ((unescape-command
+                 (text)
+                 (concat "@" (match-string 1 text))))
+      (replace-regexp-in-string command-regexp
+                                #'unescape-command
+                                text))))
+
+(defun slack-message-unescape-channel (text)
+  (let ((channel-regexp "<#\\(C.*?\\)|\\(.*?\\)>"))
+    (cl-labels ((unescape-channel
+                 (text)
+                 (concat "@" (or (match-string 2 text)
+                                 (slack-room-find
+                                  (match-string 1 text))
+                                 (match-string 1 text)))))
+      (replace-regexp-in-string channel-regexp
+                                #'unescape-channel
+                                text t))))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here

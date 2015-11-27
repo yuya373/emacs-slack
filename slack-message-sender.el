@@ -93,15 +93,41 @@
   (interactive)
   (with-current-buffer (current-buffer)
     (setq buffer-read-only nil)
-    (message "Write and call `slack-message-send-from-region'")))
+    (message "Write message and call `slack-message-send-from-region'")))
+
+(defun slack-message-write-another-buffer ()
+  (interactive)
+  (let ((target-room (if (boundp 'slack-current-room) slack-current-room
+                       (slack-message-read-room)))
+        (buf (get-buffer-create slack-message-write-buffer-name)))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (slack-mode)
+      (insert (format "use `slack-message-send-from-region' to send message to %s\n"
+                      (slack-room-name target-room)))
+      (insert "use `slack-message-embed-mention' to write @someone\n")
+      (insert "---------------------------------------------------\n")
+      (slack-buffer-set-current-room target-room))
+    (funcall slack-buffer-function buf)))
 
 (defun slack-message-send-from-region (beg end)
   (interactive "r")
   (let ((message (delete-and-extract-region beg end)))
     (if (< 0 (length message))
-      (slack-message--send message))
-    (with-current-buffer (current-buffer)
-      (setq buffer-read-only t))))
+      (slack-message--send message))))
+
+(defun slack-message-embed-mention ()
+  (interactive)
+  (let* ((name-with-id (slack-user-names))
+        (list (mapcar #'car name-with-id)))
+    (slack-room-select-from-list
+     (list "Select User: ")
+     (let* ((user-id (cdr (cl-assoc selected
+                                    name-with-id
+                                   :test #'string=)))
+            (user-name (slack-user-name user-id)))
+       (insert (concat "<@" user-id "|" user-name ">"))))))
 
 
 (provide 'slack-message-sender)

@@ -26,18 +26,21 @@
 
 (require 'eieio)
 (require 'slack-room)
+(require 'slack-util)
+(require 'slack-buffer)
 
-(defgroup slack-group nil
-  "Slack private groups."
-  :prefix "slack-group-"
+(defcustom slack-room-subscription '()
+  "Group or Channel list to subscribe notification."
   :group 'slack)
 
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
-(defcustom slack-room-subscription '()
-  "Group or Channel list to subscribe notification.")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
+
+(defvar slack-groups)
+(defvar slack-token)
+(defvar slack-buffer-function)
 
 (defclass slack-group (slack-room)
   ((name :initarg :name :type string)
@@ -53,10 +56,6 @@
   (plist-put payload :members (append (plist-get payload :members) nil))
   (apply #'slack-group "group"
          (slack-collect-slots 'slack-group payload)))
-
-(defun slack-group-find (id)
-  (cl-find-if (lambda (group) (string= id (oref group id)))
-           slack-groups))
 
 (defmethod slack-room-name ((room slack-group))
   (oref room name))
@@ -89,7 +88,7 @@
   (interactive)
   (let ((list (mapcar #'car (slack-group-names))))
     (slack-room-select-from-list
-     ("Select Group: " list)
+     (list "Select Group: ")
      (slack-room-make-buffer selected
                              #'slack-group-names
                              :test #'string=

@@ -48,13 +48,12 @@
   (let ((frame (make-websocket-frame :opcode 'text
                                      :payload payload
                                      :completep t)))
-    (websocket-send slack-ws frame)))
+    (websocket-send-text slack-ws payload)))
 
-(defun slack-ws-on-message (websocket frame)
+(defun slack-ws-on-message (_websocket frame)
   ;; (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
-    (let* ((json-object-type 'plist)
-           (payload (json-read-from-string
+    (let* ((payload (slack-request-parse-payload
                      (websocket-frame-payload frame)))
            (type (plist-get payload :type)))
       (cond

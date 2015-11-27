@@ -38,6 +38,10 @@
   (let ((json-object-type 'plist))
     (json-read)))
 
+(defun slack-request-parse-payload (payload)
+  (let ((json-object-type 'plist))
+    (json-read-from-string payload)))
+
 (cl-defun slack-request (url &key
                              (success)
                              (error nil)

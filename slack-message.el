@@ -71,6 +71,50 @@
    (bot-id :initarg :bot_id)
    (ts :initarg :ts :type string)))
 
+(defclass slack-reply (slack-message)
+  ((user :initarg :user :initform nil)
+   (reply-to :initarg :reply_to :type integer)
+   (id :initarg :id :type integer)))
+
+(defclass slack-user-message (slack-message)
+  ((user :initarg :user :type string)
+   (edited :initarg :edited)
+   (id :initarg :id)
+   (inviter :initarg :inviter)))
+
+(defclass slack-bot-message (slack-message)
+  ((bot-id :initarg :bot_id :type string)
+   (username :initarg :username)
+   (icons :initarg :icons)))
+
+(defclass slack-attachment ()
+  ((fallback :initarg :fallback :type string)
+   (title :initarg :title :initform nil)
+   (title-link :initarg :title_link :initform nil)
+   (pretext :initarg :pretext :initform nil)
+   (text :initarg :text :initform nil)
+   (author-name :initarg :author_name)
+   (author-link :initarg :author_link)
+   (author-icon :initarg :author_icon)
+   (fields :initarg :fields :type (or null list))
+   (image-url :initarg :image_url)
+   (thumb-url :initarg :thumb_url)))
+
+(cl-defgeneric slack-message-to-string (slack-message))
+(cl-defgeneric slack-message-popup-tip (slack-message))
+(cl-defgeneric slack-message-notify-buffer (slack-message))
+
+(cl-defgeneric slack-room-buffer-name (room))
+(cl-defgeneric slack-room-update-messages (room))
+
+(defun slack-room-find (id)
+  (cl-labels ((find-room (room)
+                         (string= id (oref room id))))
+    (cond
+     ((string-prefix-p "C" id) (cl-find-if #'find-room slack-channels))
+     ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
+     ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims)))))
+
 (defun slack-message-decode-string (text)
   (decode-coding-string text 'utf-8-unix))
 
@@ -113,19 +157,14 @@
      ((and subtype (string-prefix-p "file" subtype))
       (apply #'slack-file-message "file-msg"
              (slack-collect-slots 'slack-file-message m)))
+     ((and subtype (string= "message_changed" subtype))
+      (slack-message-edited m))
      ((plist-member m :user)
       (apply #'slack-user-message "user-msg"
              (slack-collect-slots 'slack-user-message m)))
      ((plist-member m :bot_id)
       (apply #'slack-bot-message "bot-msg"
              (slack-collect-slots 'slack-bot-message m))))))
-
-(defun slack-message-create-with-room (payloads room)
-  (cl-labels ((setup (payload)
-                    (slack-message-set-attributes
-                     (slack-message-create payload :room room)
-                     payload)))
-      (mapcar #'setup payloads)))
 
 (defun slack-message-set (room messages)
   (let ((messages (mapcar #'slack-message-create messages)))
@@ -134,16 +173,30 @@
 (defmethod slack-message-equal ((m slack-message) n)
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
-
 (defmethod slack-message-update ((m slack-message))
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
-        (slack-message-popup-tip m room)
-        (slack-message-notify-buffer m room)
-        (slack-room-update-messages room m)
         (slack-buffer-update (slack-room-buffer-name room)
-                             m)))))
+                             (slack-message-to-string m))
+        (slack-room-update-messages room m)
+        (slack-message-notify-buffer m room)
+        (slack-message-popup-tip m room)))))
+
+(defun slack-message-edited (payload)
+  (cl-labels ((find-message (ts messages)
+                            (cl-find-if #'(lambda (m) (string= (oref m ts) ts))
+                                        messages)))
+    (let* ((edited-message (plist-get payload :message))
+           (room (slack-room-find (plist-get payload :channel)))
+           (message (find-message (plist-get edited-message :ts)
+                                  (oref room messages)))
+           (edited-info (plist-get edited-message :edited)))
+      (if message
+          (progn
+            (oset message text (plist-get edited-message :text))
+            (oset message edited-at (plist-get edited-info :ts))
+            (slack-message-update message))))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

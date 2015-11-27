@@ -109,9 +109,16 @@
                                  slack-im-history-url
                                  #'on-im-history))))
 
-(defun slack-im-list-update ()
-  (interactive)
-  (slack-user-list-update))
+(defun slack-user-equal-p (a b)
+  (string= (plist-get a :id) (plist-get b :id)))
+
+(defun slack-user-pushnew (user)
+  (cl-pushnew user slack-users :test #'slack-user-equal-p))
+
+(cl-defun slack-im-on-list-update (data users)
+  (let ((payloads (plist-get data :ims)))
+    (mapc #'slack-user-pushnew users)
+    (setq slack-ims (mapcar #'slack-im-create payloads))))
 
 (defun slack-im-update-room-list (users)
   (cl-labels ((on-update-room-list (&key data &allow-other-keys)
@@ -122,10 +129,19 @@
                             #'on-update-room-list
                             :sync nil)))
 
-(cl-defun slack-im-on-list-update (data users)
-  (let ((payloads (plist-get data :ims)))
-    (mapc #'slack-user-pushnew users)
-    (setq slack-ims (mapcar #'slack-im-create payloads))))
+(cl-defun slack-user-on-list-update (&key data &allow-other-keys)
+  (unless (plist-get data :ok)
+    (error "%s" data))
+  (let ((users (plist-get data :members)))
+    (slack-im-update-room-list users)))
+
+(defun slack-im-list-update ()
+  (interactive)
+  (slack-request
+   slack-user-list-url
+   :params (list (cons "token" slack-token))
+   :success #'slack-user-on-list-update
+   :sync nil))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

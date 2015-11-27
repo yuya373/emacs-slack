@@ -50,12 +50,9 @@ set this to save request to Slack if already have.")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
-(define-derived-mode slack-mode fundamental-mode "Slack")
-
 (defun slack-authorize ()
   (request
    slack-authorize-url
-   :type "GET"
    :params (list (cons "token" slack-token))
    :parser #'slack-parse-to-plist
    :success #'slack-on-authorize
@@ -107,30 +104,5 @@ set this to save request to Slack if already have.")
     (slack-request-token))
   (slack-authorize))
 
-(defun slack-find-bot (id)
-  (cl-find-if (lambda (bot)
-             (string= id (plist-get bot :id)))
-           slack-bots))
-
-(defun slack-bot-name (id)
-  (let ((bot (slack-find-bot id)))
-    (if bot
-        (plist-get bot :name))))
-
-(defun slack-class-have-slot-p (class slot)
-  (and (symbolp slot)
-       (let* ((stripped (substring (symbol-name slot) 1))
-              (replaced (replace-regexp-in-string "_" "-"
-                                                  stripped))
-              (symbolized (intern replaced)))
-         (slot-exists-p class symbolized))))
-
-(defun slack-collect-slots (class m)
-  (cl-mapcan #'(lambda (property)
-              (if (slack-class-have-slot-p class property)
-                  (list property (plist-get m property))))
-          m))
-
 (provide 'slack)
 ;;; slack ends here
-

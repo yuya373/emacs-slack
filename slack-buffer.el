@@ -25,10 +25,29 @@
 ;;; Code:
 
 (require 'eieio)
-(defvar-local slack-current-room nil)
+
+(define-derived-mode slack-mode fundamental-mode "Slack")
+
+(defvar slack-current-room)
+(make-local-variable 'slack-current-room)
 
 (defun slack-buffer-set-current-room (room)
   (set (make-local-variable 'slack-current-room) room))
+
+(defun slack-buffer-harden-newlines ()
+  (save-excursion
+    (goto-char (point-min))
+    (while (search-forward "\n" nil t)
+      (put-text-property (1- (point)) (point) 'hard t))))
+
+(defun slack-buffer-format ()
+  (setq line-spacing 0.5
+        use-hard-newlines t
+        truncate-lines nil
+        fill-column 80
+        word-wrap t)
+  (slack-buffer-harden-newlines)
+  (fill-region (point-min) (point-max) t t t))
 
 (defun slack-buffer-create (buf-name room header messages)
   (let ((buffer (get-buffer-create buf-name)))
@@ -37,45 +56,36 @@
           (setq buffer-read-only nil)
           (erase-buffer)
           (slack-mode)
-          (slack-buffer-set-current-room room)
           (insert header)
           (insert "Messages:\n")
-          (mapc #'(lambda (m) (insert (slack-message-to-string m)))
-                (reverse messages))
-          (setq line-spacing 0.5)
+          (mapc #'(lambda (m) (insert m) (insert "\n")) (reverse messages))
+          (slack-buffer-format)
+          (slack-buffer-set-current-room room)
           (setq buffer-read-only t)))
     buffer))
 
-(defun slack-buffer-update-message ()
-  (interactive)
-  (unless slack-current-room
-    (error "Call From Slack Room Buffer"))
-  (slack-room-history slack-current-room)
-  (slack-buffer-create (slack-room-buffer-name slack-current-room)
-                       slack-current-room
-                       (slack-room-buffer-header slack-current-room)
-                       (oref slack-current-room messages)))
-
-(defun slack-buffer-update (buf-name m)
+(defun slack-buffer-update (buf-name text)
   (let ((buffer (get-buffer buf-name)))
     (if buffer
         (with-current-buffer buffer
           (setq buffer-read-only nil)
           (goto-char (point-max))
-          (insert (slack-message-to-string m))
+          (insert text)
+          (insert "\n")
           (goto-char (point-max))
+          (slack-buffer-format)
           (setq buffer-read-only t)))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (get-buffer-create buf-name)))
     (with-current-buffer buffer
       (setq buffer-read-only nil)
-      (setq line-spacing 0.5)
       (slack-mode)
       (goto-char (point-max))
       (insert string)
       (insert "\n")
       (goto-char (point-max))
+      (slack-buffer-format)
       (setq buffer-read-only t))))
 
 (provide 'slack-buffer)
