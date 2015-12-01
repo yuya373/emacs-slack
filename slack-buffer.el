@@ -25,8 +25,12 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'lui)
 
-(define-derived-mode slack-mode fundamental-mode "Slack")
+(define-derived-mode slack-mode lui-mode "Slack"
+  ""
+  (lui-set-prompt "> ")
+  (setq lui-input-function 'slack-message--send))
 
 (defvar slack-current-room)
 (make-local-variable 'slack-current-room)
@@ -34,59 +38,26 @@
 (defun slack-buffer-set-current-room (room)
   (set (make-local-variable 'slack-current-room) room))
 
-(defun slack-buffer-harden-newlines ()
-  (save-excursion
-    (goto-char (point-min))
-    (while (search-forward "\n" nil t)
-      (put-text-property (1- (point)) (point) 'hard t))))
-
-(defun slack-buffer-format ()
-  (setq line-spacing 0.5
-        use-hard-newlines t
-        truncate-lines nil
-        fill-column 80
-        word-wrap t)
-  (slack-buffer-harden-newlines)
-  (fill-region (point-min) (point-max) t t t))
-
 (defun slack-buffer-create (buf-name room header messages)
   (let ((buffer (get-buffer-create buf-name)))
     (if buffer
         (with-current-buffer buffer
-          (setq buffer-read-only nil)
-          (erase-buffer)
           (slack-mode)
-          (insert header)
-          (insert "Messages:\n")
-          (mapc #'(lambda (m) (insert m) (insert "\n")) (reverse messages))
-          (slack-buffer-format)
+          (mapc (lambda (m) (lui-insert m t)) (reverse messages))
           (slack-buffer-set-current-room room)
-          (setq buffer-read-only t)))
+          (goto-char (point-max))))
     buffer))
 
 (defun slack-buffer-update (buf-name text)
   (let ((buffer (get-buffer buf-name)))
     (if buffer
         (with-current-buffer buffer
-          (setq buffer-read-only nil)
-          (goto-char (point-max))
-          (insert text)
-          (insert "\n")
-          (goto-char (point-max))
-          (slack-buffer-format)
-          (setq buffer-read-only t)))))
+          (lui-insert text)))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (get-buffer-create buf-name)))
     (with-current-buffer buffer
-      (setq buffer-read-only nil)
-      (slack-mode)
-      (goto-char (point-max))
-      (insert string)
-      (insert "\n")
-      (goto-char (point-max))
-      (slack-buffer-format)
-      (setq buffer-read-only t))))
+      (lui-insert text))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
