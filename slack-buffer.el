@@ -35,17 +35,23 @@
 (defvar slack-current-room)
 (make-local-variable 'slack-current-room)
 
+(defun slack-get-buffer-create (buf-name)
+  (let ((buffer (get-buffer buf-name)))
+    (unless buffer
+      (setq buffer (generate-new-buffer buf-name))
+      (with-current-buffer buffer
+        (slack-mode)))
+    buffer))
+
 (defun slack-buffer-set-current-room (room)
   (set (make-local-variable 'slack-current-room) room))
 
 (defun slack-buffer-create (buf-name room header messages)
-  (let ((buffer (get-buffer-create buf-name)))
-    (if buffer
-        (with-current-buffer buffer
-          (slack-mode)
-          (mapc (lambda (m) (lui-insert m t)) (reverse messages))
-          (slack-buffer-set-current-room room)
-          (goto-char (point-max))))
+  (let ((buffer (slack-get-buffer-create buf-name)))
+    (with-current-buffer buffer
+      (mapc (lambda (m) (lui-insert m t)) (reverse messages))
+      (slack-buffer-set-current-room room)
+      (goto-char (point-max)))
     buffer))
 
 (defun slack-buffer-update (buf-name text)
@@ -55,9 +61,9 @@
           (lui-insert text)))))
 
 (defun slack-buffer-update-notification (buf-name string)
-  (let ((buffer (get-buffer-create buf-name)))
+  (let ((buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
-      (lui-insert text))))
+      (lui-insert string))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
