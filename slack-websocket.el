@@ -50,26 +50,39 @@
                                      :completep t)))
     (websocket-send-text slack-ws payload)))
 
+(defun slack-ws-recursive-decode (payload)
+  (cl-labels ((decode (e) (if (stringp e)
+                              (decode-coding-string e 'utf-8-unix)
+                            e))
+              (recur (payload acc)
+                      (if (and payload (< 0 (length payload)))
+                          (let ((h (car payload)))
+                            (if (and (not (stringp h)) (or (arrayp h) (listp h)))
+                                (recur (cdr payload) (cons (recur (append h nil) ()) acc))
+                              (recur (cdr payload) (cons (decode h) acc))))
+                        (reverse acc))))
+    (recur payload ())))
+
+
 (defun slack-ws-on-message (_websocket frame)
   ;; (message "%s" (websocket-frame-payload frame))
   (when (websocket-frame-completep frame)
     (let* ((payload (slack-request-parse-payload
                      (websocket-frame-payload frame)))
-           (type (plist-get payload :type)))
+           (decoded-payload (slack-ws-recursive-decode payload))
+           (type (plist-get decoded-payload :type)))
       (cond
        ((string= type "hello")
         (message "Slack Websocket Is Ready!"))
        ((string= type "message")
-        (slack-ws-handle-message payload))
-       ((plist-get payload :reply_to)
-        (slack-ws-handle-reply payload))))))
+        (slack-ws-handle-message decoded-payload))
+       ((plist-get decoded-payload :reply_to)
+        (slack-ws-handle-reply decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
     (if m
-        (slack-message-update
-         (slack-message-set-attributes m payload)))
-    m))
+        (slack-message-update m))))
 
 (defun slack-ws-handle-reply (payload)
   (let ((ok (plist-get payload :ok))
