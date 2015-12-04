@@ -55,9 +55,7 @@
   (unless (plist-get data :ok)
     (error "%s" data))
   (cl-labels ((create-message-with-room (payload)
-                     (slack-message-set-attributes
-                      (slack-message-create payload :room room)
-                      payload)))
+                                        (slack-message-create payload :room room)))
     (let* ((datum (plist-get data :messages))
            (messages (mapcar #'create-message-with-room datum)))
       (slack-room-set-messages room messages))))
