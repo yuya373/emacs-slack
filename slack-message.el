@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2015  yuya.minami
 
-;; Author: yuya.minami(require 'eieio) <yuya.minami@yuyaminami-no-MacBook-Pro.local>
+;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
