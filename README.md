@@ -6,6 +6,8 @@ emacs client for Slack
 - [websocket](https://github.com/ahyatt/emacs-websocket)
 - oauth2
   - do `package install`
+- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
+  User Interface library).
 
 
 ## configure
@@ -18,6 +20,7 @@ emacs client for Slack
 
 (el-get-bundle websocket)
 (el-get-bundle oauth2)
+(el-get-bundle circe)
 (use-package slack
   :commands (slack-start)
   :init
