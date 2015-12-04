@@ -4,10 +4,12 @@ emacs client for Slack
 
 ## dependent
 - [websocket](https://github.com/ahyatt/emacs-websocket)
+- [request](https://github.com/tkf/emacs-request)
 - oauth2
   - do `package install`
 - [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
   User Interface library).
+- [popup](https://github.com/auto-complete/popup-el)
 
 
 ## configure
@@ -19,8 +21,10 @@ emacs client for Slack
 ;; I'm using use-package and el-get
 
 (el-get-bundle websocket)
+(el-get-bundle request)
 (el-get-bundle oauth2)
 (el-get-bundle circe)
+(el-get-bundle popup) ;; no need if you use auto-complete
 (use-package slack
   :commands (slack-start)
   :init
