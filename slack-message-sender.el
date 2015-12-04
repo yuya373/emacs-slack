@@ -117,6 +117,19 @@
     (if (< 0 (length message))
       (slack-message--send message))))
 
+(defun slack-message-embed-channel ()
+  (interactive)
+  (let* ((name-with-obj (slack-channel-names))
+         (list (mapcar #'car name-with-obj)))
+    (slack-room-select-from-list
+     (list "Select Channel: ")
+     (let* ((room (cdr (cl-assoc selected
+                                 name-with-obj
+                                 :test #'string=)))
+            (room-name (slack-room-name room)))
+       (insert (concat "<#" (oref room id) "|" room-name ">"))))))
+
+
 (defun slack-message-embed-mention ()
   (interactive)
   (let* ((name-with-id (slack-user-names))

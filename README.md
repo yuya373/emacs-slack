@@ -74,5 +74,9 @@ I recommend to chat with slackbot for tutorial using `slack-im-select`.
   - update direct message list
 - `slack-channel-list-update`
   - update chennel list
+- `slack-message-embed-mention`
+  - use to mention to user
+- `slack-message-embed-channel`
+  - use to mention to channel
 
 I'm evil user, so bind these functions if you need.
