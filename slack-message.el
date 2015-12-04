@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2015  yuya.minami
 
-;; Author: yuya.minami(require 'eieio) <yuya.minami@yuyaminami-no-MacBook-Pro.local>
+;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -115,56 +115,44 @@
      ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
      ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims)))))
 
-(defun slack-message-decode-string (text)
-  (decode-coding-string text 'utf-8-unix))
-
-(defun slack-message-decode-payload (payload)
-  (cl-labels ((decode (e) (if (stringp e)
-                              (slack-message-decode-string e)
-                            e)))
-    (mapcar #'decode payload)))
-
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (append (plist-get payload :fields) nil))
-  (let ((decoded (slack-message-decode-payload payload)))
-    (apply #'slack-attachment "attachment"
-         (slack-collect-slots 'slack-attachment decoded))))
+  (apply #'slack-attachment "attachment"
+         (slack-collect-slots 'slack-attachment payload)))
 
 (defmethod slack-message-set-attachments ((m slack-message) payload)
   (let ((attachments (plist-get payload :attachments)))
     (if (< 0 (length attachments))
         (oset m attachments
-              (mapcar #'slack-attachment-create attachments)))))
+              (mapcar #'slack-attachment-create attachments))))
+  m)
 
-(defmethod slack-message-set-attributes ((m slack-message) payload)
-  (let* ((decoded-payload (slack-message-decode-payload payload))
-         (text (plist-get decoded-payload :text)))
-    (oset m text text)
-    (slack-message-set-attachments m decoded-payload)
-    m))
-
-(cl-defun slack-message-create (m &key room)
-  (plist-put m :reactions (append (plist-get m :reactions) nil))
-  (plist-put m :attachments (append (plist-get m :attachments) nil))
-  (plist-put m :pinned_to (append (plist-get m :pinned_to) nil))
-  (plist-put m :room room)
-  (let ((subtype (plist-get m :subtype)))
-    (cond
-     ((plist-member m :reply_to)
-      (apply #'slack-reply "reply"
-             (slack-collect-slots 'slack-reply m)))
-     ((and subtype (string-prefix-p "file" subtype))
-      (apply #'slack-file-message "file-msg"
-             (slack-collect-slots 'slack-file-message m)))
-     ((and subtype (string= "message_changed" subtype))
-      (slack-message-edited m))
-     ((plist-member m :user)
-      (apply #'slack-user-message "user-msg"
-             (slack-collect-slots 'slack-user-message m)))
-     ((plist-member m :bot_id)
-      (apply #'slack-bot-message "bot-msg"
-             (slack-collect-slots 'slack-bot-message m))))))
+(cl-defun slack-message-create (payload &key room)
+  (plist-put payload :reactions (append (plist-get payload :reactions) nil))
+  (plist-put payload :attachments (append (plist-get payload :attachments) nil))
+  (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
+  (plist-put payload :room room)
+  (cl-labels ((create (m)
+                      (let ((subtype (plist-get m :subtype)))
+                        (cond
+                         ((plist-member m :reply_to)
+                          (apply #'slack-reply "reply"
+                                 (slack-collect-slots 'slack-reply m)))
+                         ((and subtype (string-prefix-p "file" subtype))
+                          (apply #'slack-file-message "file-msg"
+                                 (slack-collect-slots 'slack-file-message m)))
+                         ((and subtype (string= "message_changed" subtype))
+                          (slack-message-edited m))
+                         ((plist-member m :user)
+                          (apply #'slack-user-message "user-msg"
+                                 (slack-collect-slots 'slack-user-message m)))
+                         ((plist-member m :bot_id)
+                          (apply #'slack-bot-message "bot-msg"
+                                 (slack-collect-slots 'slack-bot-message m)))))))
+    (let ((message (create payload)))
+      (if message
+          (slack-message-set-attachments message payload)))))
 
 (defun slack-message-set (room messages)
   (let ((messages (mapcar #'slack-message-create messages)))
@@ -173,6 +161,7 @@
 (defmethod slack-message-equal ((m slack-message) n)
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
+
 (defmethod slack-message-update ((m slack-message))
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
