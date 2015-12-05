@@ -10,6 +10,8 @@ emacs client for Slack
 - [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
   User Interface library).
 - [popup](https://github.com/auto-complete/popup-el)
+- [emojify](iqbalansari/emacs-emojify) (optional)
+  - required if you want to show emoji
 
 
 ## configure
@@ -25,9 +27,11 @@ emacs client for Slack
 (el-get-bundle oauth2)
 (el-get-bundle circe)
 (el-get-bundle popup) ;; no need if you use auto-complete
+(el-get-bundle emojify) ;; required if you set `slack-enable-emoji` t
 (use-package slack
   :commands (slack-start)
   :init
+  (setq slack-enable-emoji t) ;; if you want to enable emoji, default nil
   (setq slack-buffer-function
         #'(lambda (buffer) (popwin:close-popup-window)
             (switch-to-buffer-other-window buffer)))
