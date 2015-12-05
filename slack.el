@@ -96,6 +96,7 @@ set this to save request to Slack if already have.")
     (setq slack-token
           (oauth2-token-access-token slack-oauth2-token))))
 
+;;;###autoload
 (defun slack-start ()
   (interactive)
   (if slack-ws
