@@ -35,6 +35,10 @@
 (defvar slack-current-room)
 (make-local-variable 'slack-current-room)
 
+(defcustom slack-buffer-emojify nil
+  "Show emoji with `emojify' if true."
+  :group 'slack)
+
 (defun slack-get-buffer-create (buf-name)
   (let ((buffer (get-buffer buf-name)))
     (unless buffer
@@ -46,12 +50,20 @@
 (defun slack-buffer-set-current-room (room)
   (set (make-local-variable 'slack-current-room) room))
 
+(defun slack-buffer-enable-emojify ()
+  (if slack-buffer-emojify
+      (let ((emojify (require 'emojify nil t)))
+        (unless emojify
+          (error "Emojify is not installed"))
+        (emojify-mode t))))
+
 (defun slack-buffer-create (buf-name room header messages)
   (let ((buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
       (mapc (lambda (m) (lui-insert m t)) (reverse messages))
       (slack-buffer-set-current-room room)
-      (goto-char (point-max)))
+      (goto-char (point-max))
+      (slack-buffer-enable-emojify))
     buffer))
 
 (defun slack-buffer-update (buf-name text)
