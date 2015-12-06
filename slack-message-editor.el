@@ -45,7 +45,8 @@
     keymap))
 
 (define-derived-mode slack-edit-message-mode fundamental-mode "Slack Edit Msg"
-  "")
+  ""
+  (slack-buffer-enable-emojify))
 
 
 (defun slack-message-write-another-buffer ()
