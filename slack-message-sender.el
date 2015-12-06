@@ -33,13 +33,27 @@
 
 (defvar slack-message-id 0)
 (defvar slack-message-minibuffer-local-map nil)
-(defvar slack-message-write-buffer-name "*Slack - Message Writing*")
 (defvar slack-sent-message)
 (defvar slack-buffer-function)
 
 (defun slack-message-send ()
   (interactive)
   (slack-message--send (slack-message-read-from-minibuffer)))
+
+(defun slack-message--edit (channel ts text)
+  (cl-labels ((on-edit (&key data &allow-other-keys)
+                       (when (eq (plist-get data :ok) :json-false)
+                         (let ((e (plist-get data :error)))
+                           (message "Failed to edit message: %s" e)))))
+    (slack-request
+     slack-message-edit-url
+     :type "POST"
+     :sync nil
+     :params (list (cons "token" slack-token)
+                   (cons "channel" channel)
+                   (cons "ts" ts)
+                   (cons "text" text))
+     :success #'on-edit)))
 
 (defun slack-message--send (message)
   (let* ((m (list :id slack-message-id
@@ -94,22 +108,6 @@
   (with-current-buffer (current-buffer)
     (setq buffer-read-only nil)
     (message "Write message and call `slack-message-send-from-region'")))
-
-(defun slack-message-write-another-buffer ()
-  (interactive)
-  (let ((target-room (if (boundp 'slack-current-room) slack-current-room
-                       (slack-message-read-room)))
-        (buf (get-buffer-create slack-message-write-buffer-name)))
-    (with-current-buffer buf
-      (setq buffer-read-only nil)
-      (erase-buffer)
-      (slack-mode)
-      (insert (format "use `slack-message-send-from-region' to send message to %s\n"
-                      (slack-room-name target-room)))
-      (insert "use `slack-message-embed-mention' to write @someone\n")
-      (insert "---------------------------------------------------\n")
-      (slack-buffer-set-current-room target-room))
-    (funcall slack-buffer-function buf)))
 
 (defun slack-message-send-from-region (beg end)
   (interactive "r")

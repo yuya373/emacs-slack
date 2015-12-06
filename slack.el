@@ -15,6 +15,7 @@
 (require 'slack-im)
 (require 'slack-message-notification)
 (require 'slack-message-sender)
+(require 'slack-message-editor)
 (require 'slack-user-message)
 (require 'slack-bot-message)
 
