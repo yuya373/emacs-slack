@@ -16,12 +16,17 @@
     (concat name "\t" time (if edited-at
                                (concat "\t" "edited_at: " edited-at)))))
 
+(defmethod slack-message-propertize ((m slack-user-message) text)
+  (with-slots (ts) m
+    (propertize text 'ts ts)))
+
 (defmethod slack-message-to-string ((m slack-user-message))
   (let* ((text (slack-message-unescape-string (oref m text)))
          (header (slack-user-message-header m)))
     (slack-message-put-header-property header)
     (slack-message-put-text-property text)
-    (concat header "\n" text "\n")))
+    (slack-message-propertize m
+                              (concat header "\n" text "\n"))))
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here
