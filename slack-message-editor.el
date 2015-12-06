@@ -40,6 +40,7 @@
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "C-s C-m") #'slack-message-embed-mention)
     (define-key keymap (kbd "C-s C-c") #'slack-message-embed-channel)
+    (define-key keymap (kbd "C-c C-k") #'slack-message-cancel-edit)
     (define-key keymap (kbd "C-c C-c") #'slack-message-send-edited)
     keymap))
 
@@ -89,6 +90,13 @@
   (set (make-local-variable 'slack-message-edit-buffer-type) buf-type)
   (slack-buffer-set-current-room room)
   (message "C-c C-c to send edited msg"))
+
+(defun slack-message-cancel-edit ()
+  (interactive)
+  (let ((room slack-current-room))
+    (erase-buffer)
+    (delete-window)
+    (slack-room-make-buffer-with-room room)))
 
 (defun slack-message-send-edited ()
   (interactive)
