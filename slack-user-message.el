@@ -17,9 +17,11 @@
 (defun slack-user-message-header (m)
   (let* ((name (slack-user-name (oref m user)))
          (time (slack-message-time-to-string (oref m ts)))
-         (edited-at (slack-message-time-to-string (oref m edited-at))))
-    (concat name "\t" time (if edited-at
-                               (concat "\t" "edited_at: " edited-at)))))
+         (edited-at (slack-message-time-to-string (oref m edited-at)))
+         (header (format "%s \t%s" name time)))
+    (if edited-at
+        (format "%s  edited_at: %s" header edited-at)
+      header)))
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
   (with-slots (ts) m
