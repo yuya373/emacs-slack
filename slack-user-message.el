@@ -25,7 +25,6 @@
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
   (with-slots (ts) m
-    (define-key keymap "e" #'slack-message-edit)
     (propertize text
                 'ts ts
                 'keymap slack-user-message-keymap)))
