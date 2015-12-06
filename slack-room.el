@@ -71,15 +71,17 @@
   (let ((room (cl-gensym)))
     `(let ((,room (cdr (cl-assoc ,name (funcall ,func)
                                  :test ,test))))
-       (with-slots (messages latest) ,room
-         (if (or ,update (not messages))
-             (slack-room-history ,room))
-         (funcall slack-buffer-function
-                  (slack-buffer-create
-                   (slack-room-buffer-name ,room)
-                   ,room
-                   (slack-room-buffer-header ,room)
-                   (slack-room-get-messages, room)))))))
+       (slack-room-make-buffer-with-room ,room :update ,update))))
+
+(cl-defun slack-room-make-buffer-with-room (room &key update)
+  (with-slots (messages latest) room
+    (if (or update (not messages))
+        (slack-room-history room))
+    (funcall slack-buffer-function (slack-buffer-create
+                                    (slack-room-buffer-name room)
+                                    room
+                                    (slack-room-buffer-header room)
+                                    (slack-room-get-messages room)))))
 
 (defun slack-room-get-messages (room)
   (mapcar #'slack-message-to-string (oref room messages)))
