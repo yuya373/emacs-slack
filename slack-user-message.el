@@ -6,6 +6,11 @@
 (require 'eieio)
 (require 'slack-message-formatter)
 
+(defvar slack-user-message-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap "e" #'slack-message-edit)
+    keymap))
+
 (defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
   (string= (oref m user) sender-id))
 
@@ -18,7 +23,10 @@
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
   (with-slots (ts) m
-    (propertize text 'ts ts)))
+    (define-key keymap "e" #'slack-message-edit)
+    (propertize text
+                'ts ts
+                'keymap slack-user-message-keymap)))
 
 (defmethod slack-message-to-string ((m slack-user-message))
   (let* ((text (slack-message-unescape-string (oref m text)))
