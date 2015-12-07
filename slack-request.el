@@ -43,6 +43,7 @@
     (json-read-from-string payload)))
 
 (cl-defun slack-request (url &key
+                             (type "GET")
                              (success)
                              (error nil)
                              (params nil)
@@ -50,6 +51,7 @@
                              (sync t))
   (request
    url
+   :type type
    :sync sync
    :params params
    :parser parser
