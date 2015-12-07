@@ -118,5 +118,9 @@
                        (slack-room-buffer-header slack-current-room)
                        (slack-room-get-messages slack-current-room)))
 
+(defun slack-room-find-message (room ts)
+  (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
+              (oref room messages)))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
