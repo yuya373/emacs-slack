@@ -31,7 +31,7 @@
 (defface slack-message-output-text
   '((t (:weight normal :height 0.9)))
   "Face used to text message."
-  :group 'slack-buffer)
+  :group 'slack)
 
 (defface slack-message-output-header
   '((t (:foreground "#FFA000"
@@ -39,7 +39,12 @@
         :height 1.0
         :underline t)))
   "Face used to text message."
-  :group 'slack-buffer)
+  :group 'slack)
+
+(defface slack-message-output-reaction
+  '((t (:overline t)))
+  "Face used to reactions."
+  :group 'slack)
 
 (defun slack-message-put-header-property (header)
   (put-text-property 0 (length header)
@@ -49,13 +54,21 @@
   (put-text-property 0 (length text)
                        'face 'slack-message-output-text text))
 
+(defun slack-message-put-reactions-property (text)
+  (put-text-property 0 (length text)
+                     'face 'slack-message-output-reaction text))
+
 (defun slack-message-put-hard (text)
   (put-text-property 0 (length text) 'hard t text))
 
 (defun slack-message-time-to-string (ts)
   (if ts
-      (format-time-string "%Y-%m-%d %H:%M"
+      (format-time-string "%Y-%m-%d %H:%M:%S"
                           (seconds-to-time (string-to-number ts)))))
+
+(defun slack-message-reactions-to-string (reactions)
+  (if reactions
+      (mapconcat #'slack-reaction-to-string reactions " ")))
 
 (defmethod slack-message-to-string ((m slack-message))
   (with-slots (text) m

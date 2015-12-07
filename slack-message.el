@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-reaction)
 
 (defvar slack-groups)
 (defvar slack-ims)
@@ -115,6 +116,16 @@
      ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
      ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims)))))
 
+(defun slack-reaction-create (payload)
+  (apply #'slack-reaction "reaction"
+         (slack-collect-slots 'slack-reaction payload)))
+
+(defmethod slack-message-set-reactions ((m slack-message) payload)
+  (let ((reactions (plist-get payload :reactions)))
+    (if (< 0 (length reactions))
+        (oset m reactions (mapcar #'slack-reaction-create reactions))))
+  m)
+
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (append (plist-get payload :fields) nil))
@@ -151,8 +162,9 @@
                           (apply #'slack-bot-message "bot-msg"
                                  (slack-collect-slots 'slack-bot-message m)))))))
     (let ((message (create payload)))
-      (if message
-          (slack-message-set-attachments message payload)))))
+      (when message
+        (slack-message-set-attachments message payload)
+        (slack-message-set-reactions message payload)))))
 
 (defun slack-message-set (room messages)
   (let ((messages (mapcar #'slack-message-create messages)))

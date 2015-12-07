@@ -34,12 +34,17 @@
                 'keymap slack-user-message-keymap)))
 
 (defmethod slack-message-to-string ((m slack-user-message))
-  (let* ((text (slack-message-unescape-string (oref m text)))
-         (header (slack-user-message-header m)))
-    (slack-message-put-header-property header)
-    (slack-message-put-text-property text)
-    (slack-message-propertize m
-                              (concat header "\n" text "\n"))))
+  (with-slots (text reactions) m
+    (let* ((text-escaped (slack-message-unescape-string text))
+           (header (slack-user-message-header m))
+           (reactions-str (slack-message-reactions-to-string reactions)))
+      (slack-message-put-header-property header)
+      (slack-message-put-text-property text-escaped)
+      (slack-message-put-reactions-property reactions-str)
+      (slack-message-propertize m
+                                (concat header "\n"
+                                        text "\n" "\n"
+                                        reactions-str "\n")))))
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here
