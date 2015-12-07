@@ -14,14 +14,18 @@
 (defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
   (string= (oref m user) sender-id))
 
+(defun slack-message-append-edited-at (m text)
+  (with-slots (edited-at) m
+    (if edited-at
+        (format "%s  edited_at: %s" text (slack-message-time-to-string edited-at))
+      text)))
+
 (defun slack-user-message-header (m)
   (let* ((name (slack-user-name (oref m user)))
          (time (slack-message-time-to-string (oref m ts)))
          (edited-at (slack-message-time-to-string (oref m edited-at)))
          (header (format "%s \t%s" name time)))
-    (if edited-at
-        (format "%s  edited_at: %s" header edited-at)
-      header)))
+    (slack-message-append-edited-at m header)))
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
   (with-slots (ts) m
