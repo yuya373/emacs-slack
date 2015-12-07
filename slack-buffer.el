@@ -30,6 +30,8 @@
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
   (lui-set-prompt "> ")
+  (setq lui-time-stamp-position nil)
+  (setq lui-fill-type nil)
   (setq lui-input-function 'slack-message--send))
 
 (defvar slack-current-room)
@@ -66,11 +68,24 @@
       (slack-buffer-enable-emojify))
     buffer))
 
-(defun slack-buffer-update (buf-name text)
+(cl-defun slack-buffer-update (buf-name text &key replace before)
   (let ((buffer (get-buffer buf-name)))
     (if buffer
-        (with-current-buffer buffer
-          (lui-insert text)))))
+        (if replace
+            (slack-buffer-replace buffer text before)
+          (with-current-buffer buffer (lui-insert text))))))
+
+(defun slack-buffer-replace (buffer text before)
+  (with-current-buffer buffer
+    (goto-char (point-max))
+    (let ((match (search-backward before))
+          (inhibit-read-only t))
+      (if match
+          (progn
+            (delete-region match
+                           (+ match (length before)))
+            (insert text t)
+            (goto-char (point-max)))))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (slack-get-buffer-create buf-name)))
