@@ -55,9 +55,9 @@
 
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
-  (with-slots (fallback text pretext title) a
+  (with-slots (fallback text pretext title title-link) a
       (if text
-          (concat title pretext "\n" text)
+          (concat pretext "\n" title "\n" title-link "\n" text "\n")
         fallback)))
 
 (provide 'slack-bot-message)

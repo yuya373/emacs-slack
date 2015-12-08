@@ -101,7 +101,7 @@
      (slack-buffer-update (slack-room-buffer-name ,room)
                           (slack-message-to-string msg)
                           :replace t
-                          :before before-msg)))
+                          :msg msg)))
 
 (defun slack-message-on-reaction-add (reaction ts room)
   (slack-message-on--reaction (reaction ts room)
