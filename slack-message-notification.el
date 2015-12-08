@@ -29,11 +29,12 @@
 (require 'slack-message-formatter)
 (require 'slack-buffer)
 (require 'slack-im)
-(require 'popup)
+(require 'alert)
 
 (defconst slack-message-notification-buffer-name "*Slack - notification*")
 (defvar slack-message-notification-subscription '())
 (defvar slack-message-tips '())
+(defvar alert-default-style)
 
 (defmethod slack-message-notify-buffer ((m slack-message) room)
   (if (not (slack-message-minep m))
@@ -44,13 +45,17 @@
         (slack-buffer-update-notification buf-name
                                           (concat room-name message "\n")))))
 
-(defmethod slack-message-popup-tip ((m slack-message) room)
-  (if (or (and (slack-im-p room) (not (slack-message-minep m)))
-          (and (slack-room-subscribedp room) (not (slack-message-minep m))))
-      (let ((name (slack-room-name room))
-            (message (slack-message-to-string m)))
-        (popup-tip (concat name "\n" message)
-                   :point (window-start)))))
+(defun slack-message-notify-alert (message room)
+  (if (or (and (slack-im-p room) (not (slack-message-minep message)))
+          (and (slack-room-subscribedp room) (not (slack-message-minep message))))
+      (let ((room-name (slack-room-name room))
+            (text (slack-message-to-alert message))
+            (user-name (slack-message-sender-name message)))
+        (if (and (eq alert-default-style 'notifier) (eq (aref text 0) ?\[))
+            (setq text (concat "\\" text)))
+        (alert text
+               :title (concat room-name ": @" user-name)
+               :category 'slack))))
 
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
