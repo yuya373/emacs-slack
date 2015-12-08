@@ -174,35 +174,29 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(cl-defmethod slack-message-update ((m slack-message) &key replace before)
+(cl-defmethod slack-message-update ((m slack-message) &key replace)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
         (slack-buffer-update (slack-room-buffer-name room)
                              (slack-message-to-string m)
                              :replace replace
-                             :before before)
+                             :msg m)
         (slack-room-update-messages room m)
         (slack-message-notify-buffer m room)
         (slack-message-popup-tip m room)))))
 
 (defun slack-message-edited (payload)
-  (cl-labels ((find-message (ts messages)
-                            (cl-find-if #'(lambda (m) (string= (oref m ts) ts))
-                                        messages)))
-    (let* ((edited-message (plist-get payload :message))
-           (room (slack-room-find (plist-get payload :channel)))
-           (message (find-message (plist-get edited-message :ts)
-                                  (oref room messages)))
-           (edited-info (plist-get edited-message :edited))
-           (before-msg (slack-message-to-string message)))
-      (if message
-          (progn
-            (oset message text (plist-get edited-message :text))
-            (oset message edited-at (plist-get edited-info :ts))
-            (slack-message-update message
-                                  :replace t
-                                  :before before-msg))))))
+  (let* ((edited-message (plist-get payload :message))
+         (room (slack-room-find (plist-get payload :channel)))
+         (message (slack-room-find-message room
+                                           (plist-get edited-message :ts)))
+         (edited-info (plist-get edited-message :edited)))
+    (if message
+        (progn
+          (oset message text (plist-get edited-message :text))
+          (oset message edited-at (plist-get edited-info :ts))
+          (slack-message-update message :replace t)))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
