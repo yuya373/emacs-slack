@@ -103,8 +103,7 @@
                                   slack-target-ts
                                   buf-string))
       ('new (slack-message--send buf-string)))
-    (delete-window)
-    (slack-room-make-buffer-with-room room)))
+    (delete-window)))
 
 (provide 'slack-message-editor)
 ;;; slack-message-editor.el ends here
