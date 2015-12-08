@@ -174,12 +174,14 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message))
+(cl-defmethod slack-message-update ((m slack-message) &key replace before)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
         (slack-buffer-update (slack-room-buffer-name room)
-                             (slack-message-to-string m))
+                             (slack-message-to-string m)
+                             :replace replace
+                             :before before)
         (slack-room-update-messages room m)
         (slack-message-notify-buffer m room)
         (slack-message-popup-tip m room)))))
@@ -192,12 +194,15 @@
            (room (slack-room-find (plist-get payload :channel)))
            (message (find-message (plist-get edited-message :ts)
                                   (oref room messages)))
-           (edited-info (plist-get edited-message :edited)))
+           (edited-info (plist-get edited-message :edited))
+           (before-msg (slack-message-to-string message)))
       (if message
           (progn
             (oset message text (plist-get edited-message :text))
             (oset message edited-at (plist-get edited-info :ts))
-            (slack-message-update message))))))
+            (slack-message-update message
+                                  :replace t
+                                  :before before-msg))))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
