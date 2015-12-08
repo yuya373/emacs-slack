@@ -84,7 +84,7 @@
           (progn
             (delete-region match
                            (+ match (length before)))
-            (insert text t)
+            (insert text)
             (goto-char (point-max)))))))
 
 (defun slack-buffer-update-notification (buf-name string)
