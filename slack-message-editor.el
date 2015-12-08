@@ -60,19 +60,14 @@
 
 (defun slack-message-edit ()
   (interactive)
-  (cl-labels ((find-message (room ts)
-                           (let ((messages (oref room messages)))
-                             (cl-find-if #'(lambda (m)
-                                             (string= ts (oref m ts)))
-                                         messages :from-end t))))
-    (let* ((target (thing-at-point 'word))
-           (ts (get-text-property 0 'ts target))
-           (msg (find-message slack-current-room ts)))
-      (unless msg
-        (error "Can't find original message"))
-      (unless (string= (slack-my-user-id) (oref msg user))
-        (error "Cant't edit other user's message"))
-      (slack-message-edit-text msg slack-current-room))))
+  (let* ((target (thing-at-point 'word))
+         (ts (get-text-property 0 'ts target))
+         (msg (slack-room-find-message slack-current-room ts)))
+    (unless msg
+      (error "Can't find original message"))
+    (unless (string= (slack-my-user-id) (oref msg user))
+      (error "Cant't edit other user's message"))
+    (slack-message-edit-text msg slack-current-room)))
 
 (defun slack-message-edit-text (msg room)
   (let ((buf (get-buffer-create slack-message-edit-buffer-name)))

@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-reaction)
 
 (defvar slack-groups)
 (defvar slack-ims)
@@ -115,6 +116,16 @@
      ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
      ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims)))))
 
+(defun slack-reaction-create (payload)
+  (apply #'slack-reaction "reaction"
+         (slack-collect-slots 'slack-reaction payload)))
+
+(defmethod slack-message-set-reactions ((m slack-message) payload)
+  (let ((reactions (plist-get payload :reactions)))
+    (if (< 0 (length reactions))
+        (oset m reactions (mapcar #'slack-reaction-create reactions))))
+  m)
+
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (append (plist-get payload :fields) nil))
@@ -151,8 +162,9 @@
                           (apply #'slack-bot-message "bot-msg"
                                  (slack-collect-slots 'slack-bot-message m)))))))
     (let ((message (create payload)))
-      (if message
-          (slack-message-set-attachments message payload)))))
+      (when message
+        (slack-message-set-attachments message payload)
+        (slack-message-set-reactions message payload)))))
 
 (defun slack-message-set (room messages)
   (let ((messages (mapcar #'slack-message-create messages)))
@@ -162,12 +174,14 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message))
+(cl-defmethod slack-message-update ((m slack-message) &key replace before)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
         (slack-buffer-update (slack-room-buffer-name room)
-                             (slack-message-to-string m))
+                             (slack-message-to-string m)
+                             :replace replace
+                             :before before)
         (slack-room-update-messages room m)
         (slack-message-notify-buffer m room)
         (slack-message-popup-tip m room)))))
@@ -180,12 +194,15 @@
            (room (slack-room-find (plist-get payload :channel)))
            (message (find-message (plist-get edited-message :ts)
                                   (oref room messages)))
-           (edited-info (plist-get edited-message :edited)))
+           (edited-info (plist-get edited-message :edited))
+           (before-msg (slack-message-to-string message)))
       (if message
           (progn
             (oset message text (plist-get edited-message :text))
             (oset message edited-at (plist-get edited-info :ts))
-            (slack-message-update message))))))
+            (slack-message-update message
+                                  :replace t
+                                  :before before-msg))))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
