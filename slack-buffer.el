@@ -79,7 +79,9 @@
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (get-buffer buf-name))
          (current-buffer-name (buffer-name (current-buffer))))
-    (if buffer
+    (unless (and buffer (string= current-buffer-name buf-name))
+      (slack-room-inc-unread-count room))
+    (if (and buffer (string= current-buffer-name buf-name))
         (if replace
             (slack-buffer-replace buffer msg)
           (with-current-buffer buffer
