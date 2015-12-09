@@ -179,11 +179,10 @@
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
-        (slack-buffer-update (slack-room-buffer-name room)
-                             (slack-message-to-string m)
-                             :replace replace
-                             :msg m)
         (slack-room-update-messages room m)
+        (slack-buffer-update room
+                             m
+                             :replace replace)
         (slack-message-notify-buffer m room)
         (slack-message-notify-alert m room)))))
 

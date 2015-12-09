@@ -69,14 +69,16 @@
       (slack-buffer-enable-emojify))
     buffer))
 
-(cl-defun slack-buffer-update (buf-name text &key replace msg)
-  (let ((buffer (get-buffer buf-name)))
+(cl-defun slack-buffer-update (room msg &key replace)
+  (let* ((buf-name (slack-room-buffer-name room))
+         (buffer (get-buffer buf-name))
+         (current-buffer-name (buffer-name (current-buffer))))
     (if buffer
         (if replace
-            (slack-buffer-replace buffer text msg)
-          (with-current-buffer buffer (lui-insert text))))))
+            (slack-buffer-replace buffer msg)
+          (with-current-buffer buffer
 
-(defun slack-buffer-replace (buffer text msg)
+(defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
     (let* ((cur-point (point))
            (beg (text-property-any (point-min) (point-max) 'ts (oref msg ts)))
@@ -84,7 +86,7 @@
       (if (and beg end)
           (let ((inhibit-read-only t))
             (delete-region (1- beg) end)
-            (lui-insert text)
+            (lui-insert (slack-message-to-string msg))
             (goto-char cur-point))))))
 
 (defun slack-buffer-update-notification (buf-name string)
