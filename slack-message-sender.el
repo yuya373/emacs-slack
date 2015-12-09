@@ -59,7 +59,7 @@
   (let* ((m (list :id slack-message-id
                   :channel (slack-message-get-room-id)
                   :type "message"
-                  :user (slack-my-user-id)
+                  :user slack-my-user-id
                   :text message))
          (json (json-encode m))
          (obj (slack-message-create m)))
