@@ -63,7 +63,13 @@
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
-      (mapc (lambda (m) (lui-insert m t)) (reverse messages))
+      (let ((messages (slack-room-latest-messages room)))
+        (when messages
+          (mapc (lambda (m)
+                  (lui-insert (slack-message-to-string m) t))
+                messages)
+          (slack-room-update-last-read room
+                                       (car (last messages)))))
       (slack-buffer-set-current-room room)
       (goto-char (point-max))
       (slack-buffer-enable-emojify))
@@ -77,6 +83,8 @@
         (if replace
             (slack-buffer-replace buffer msg)
           (with-current-buffer buffer
+            (slack-room-update-last-read room msg)
+            (lui-insert (slack-message-to-string msg)))))))
 
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer

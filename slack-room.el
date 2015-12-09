@@ -54,10 +54,13 @@
 (defun slack-room-on-history (data room)
   (unless (plist-get data :ok)
     (error "%s" data))
-  (cl-labels ((create-message-with-room (payload)
-                                        (slack-message-create payload :room room)))
+  (cl-labels ((create-message-with-room
+               (payload)
+               (slack-message-create payload :room room)))
     (let* ((datum (plist-get data :messages))
            (messages (mapcar #'create-message-with-room datum)))
+      (slack-room-update-last-read room
+                                   (slack-message :ts "0"))
       (slack-room-set-messages room messages))))
 
 (cl-defmacro slack-room-request-update (room-id url success)
@@ -143,6 +146,18 @@
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
+
+(defmethod slack-room-update-last-read ((room slack-room) msg)
+  (with-slots (ts) msg
+    (oset room last-read ts)))
+
+(defmethod slack-room-latest-messages ((room slack-room))
+  (with-slots (last-read messages) room
+    (cdr (cl-remove-if #'(lambda (m)
+                           (string< (oref m ts) last-read))
+                  (cl-sort (copy-seq messages)
+                           #'string<
+                           :key #'(lambda (m) (oref m ts)))))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
