@@ -59,8 +59,9 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(defun slack-buffer-create (buf-name room header messages)
-  (let ((buffer (slack-get-buffer-create buf-name)))
+(defun slack-buffer-create (room header messages)
+  (let* ((buf-name (slack-room-buffer-name room))
+         (buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
       (mapc (lambda (m) (lui-insert m t)) (reverse messages))
       (slack-buffer-set-current-room room)

@@ -74,13 +74,12 @@
 
 (cl-defun slack-room-make-buffer-with-room (room &key update)
   (with-slots (messages latest) room
-    (if (or update (not messages))
+    (if (or update (< (length messages) 1))
         (slack-room-history room))
-    (funcall slack-buffer-function (slack-buffer-create
-                                    (slack-room-buffer-name room)
-                                    room
-                                    (slack-room-buffer-header room)
-                                    (slack-room-get-messages room)))))
+    (funcall slack-buffer-function
+             (slack-buffer-create room
+                                  (slack-room-buffer-header room)
+                                  (slack-room-get-messages room)))))
 
 (defun slack-room-get-messages (room)
   (mapcar #'slack-message-to-string (oref room messages)))
@@ -122,8 +121,7 @@
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))
   (slack-room-history slack-current-room)
-  (slack-buffer-create (slack-room-buffer-name slack-current-room)
-                       slack-current-room
+  (slack-buffer-create slack-current-room
                        (slack-room-buffer-header slack-current-room)
                        (slack-room-get-messages slack-current-room)))
 
