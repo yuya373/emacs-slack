@@ -101,8 +101,9 @@
    (image-url :initarg :image_url)
    (thumb-url :initarg :thumb_url)))
 
+(cl-defgeneric slack-message-sender-name  (slack-message))
 (cl-defgeneric slack-message-to-string (slack-message))
-(cl-defgeneric slack-message-popup-tip (slack-message))
+(cl-defgeneric slack-message-to-alert (slack-message))
 (cl-defgeneric slack-message-notify-buffer (slack-message))
 
 (cl-defgeneric slack-room-buffer-name (room))
@@ -184,7 +185,7 @@
                              :msg m)
         (slack-room-update-messages room m)
         (slack-message-notify-buffer m room)
-        (slack-message-popup-tip m room)))))
+        (slack-message-notify-alert m room)))))
 
 (defun slack-message-edited (payload)
   (let* ((edited-message (plist-get payload :message))

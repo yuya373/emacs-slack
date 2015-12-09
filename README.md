@@ -9,7 +9,7 @@ emacs client for Slack
   - do `package install`
 - [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
   User Interface library).
-- [popup](https://github.com/auto-complete/popup-el)
+- [alert](https://github.com/jwiegley/alert)
 - [emojify](iqbalansari/emacs-emojify) (optional)
   - required if you want to show emoji
 
@@ -26,7 +26,7 @@ emacs client for Slack
 (el-get-bundle request)
 (el-get-bundle oauth2)
 (el-get-bundle circe)
-(el-get-bundle popup) ;; no need if you use auto-complete
+(el-get-bundle alert)
 (el-get-bundle emojify) ;; required if you set `slack-enable-emoji` t
 (use-package slack
   :commands (slack-start)
@@ -40,6 +40,12 @@ emacs client for Slack
   (setq slack-client-secret "fuga")
   (setq slack-token "hogehogehoge"))
   (setq slack-user-name "hogehoge")
+
+
+(use-package alert
+  :commands (alert)
+  :init
+  (setq alert-default-style 'notifier))
 
 ```
 
@@ -88,3 +94,11 @@ I recommend to chat with slackbot for tutorial using `slack-im-select`.
   - use to mention to channel
 
 I'm evil user, so bind these functions if you need.
+
+
+## notification
+
+see [alert](https://github.com/jwiegley/alert).
+
+
+
