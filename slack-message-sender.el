@@ -117,25 +117,24 @@
 
 (defun slack-message-embed-channel ()
   (interactive)
-  (let* ((name-with-obj (slack-channel-names))
-         (list (mapcar #'car name-with-obj)))
+  (let* ((list (slack-channel-names))
+         (candidates (mapcar #'car list)))
     (slack-room-select-from-list
-     (list "Select Channel: ")
+     (candidates "Select Channel: ")
      (let* ((room (cdr (cl-assoc selected
-                                 name-with-obj
+                                 list
                                  :test #'string=)))
             (room-name (slack-room-name room)))
        (insert (concat "<#" (oref room id) "|" room-name ">"))))))
 
-
 (defun slack-message-embed-mention ()
   (interactive)
-  (let* ((name-with-id (slack-user-names))
-        (list (mapcar #'car name-with-id)))
+  (let* ((list (slack-user-names))
+         (candidates (mapcar #'car list)))
     (slack-room-select-from-list
-     (list "Select User: ")
+     (candidates "Select User: ")
      (let* ((user-id (cdr (cl-assoc selected
-                                    name-with-id
+                                    list
                                    :test #'string=)))
             (user-name (slack-user-name user-id)))
        (insert (concat "<@" user-id "|" user-name ">"))))))
