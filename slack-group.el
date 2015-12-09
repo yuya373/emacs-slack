@@ -98,5 +98,10 @@
                             #'on-list-update
                             :sync nil)))
 
+(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
+
+(defmethod slack-room-update-mark-url ((_room slack-group))
+  slack-group-update-mark-url)
+
 (provide 'slack-group)
 ;;; slack-group.el ends here

@@ -83,8 +83,10 @@
                             #'on-list-update
                             :sync nil)))
 
+(defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
-
+(defmethod slack-room-update-mark-url ((_room slack-channel))
+  slack-channel-update-mark-url)
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

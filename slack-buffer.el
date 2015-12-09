@@ -68,8 +68,9 @@
           (mapc (lambda (m)
                   (lui-insert (slack-message-to-string m) t))
                 messages)
-          (slack-room-update-last-read room
-                                       (car (last messages)))))
+          (let ((latest-message (car (last messages))))
+            (slack-room-update-last-read room latest-message)
+            (slack-room-update-mark room latest-message))))
       (slack-buffer-set-current-room room)
       (slack-room-reset-unread-count room)
       (goto-char (point-max))

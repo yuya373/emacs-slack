@@ -165,5 +165,22 @@
 (defmethod slack-room-reset-unread-count ((room slack-room))
   (oset room unread-count-display 0))
 
+(defmethod slack-room-update-mark ((room slack-room) msg)
+  (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                              (unless (eq (plist-get data :ok) :json-true)
+                                (let ((e (plist-get data :error)))
+                                  (error "Failed to update mark: %s" e)))))
+    (with-slots (ts) msg
+      (with-slots (id) room
+        (slack-request
+         (slack-room-update-mark-url room)
+         :type "POST"
+         :params (list (cons "token"  slack-token)
+                       (cons "channel"  id)
+                       (cons "ts"  ts))
+         :success #'on-update-mark
+         :sync nil)))))
+
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

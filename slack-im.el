@@ -144,5 +144,10 @@
    :success #'slack-user-on-list-update
    :sync nil))
 
+(defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
+
+(defmethod slack-room-update-mark-url ((_room slack-im))
+  slack-im-update-mark-url)
+
 (provide 'slack-im)
 ;;; slack-im.el ends here
