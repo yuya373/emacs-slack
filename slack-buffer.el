@@ -80,17 +80,18 @@
     buffer))
 
 (cl-defun slack-buffer-update (room msg &key replace)
-  (let* ((buf-name (slack-room-buffer-name room))
-         (buffer (get-buffer buf-name))
-         (current-buffer-name (buffer-name (current-buffer))))
-    (unless (and buffer (string= current-buffer-name buf-name))
-      (slack-room-inc-unread-count room))
-    (if (and buffer (string= current-buffer-name buf-name))
-        (if replace
-            (slack-buffer-replace buffer msg)
-          (with-current-buffer buffer
-            (slack-room-update-last-read room msg)
-            (lui-insert (slack-message-to-string msg)))))))
+  (cl-labels ((do-update (buf room msg)
+                         (with-current-buffer buf
+                           (slack-room-update-last-read room msg)
+                           (lui-insert (slack-message-to-string msg)))))
+    (let* ((buf-name (slack-room-buffer-name room))
+           (buffer (get-buffer buf-name))
+           (buf-names (mapcar #'buffer-name (mapcar #'window-buffer
+                                                    (window-list)))))
+      (if (and buffer (cl-member buf-name buf-names :test #'string=))
+          (if replace (slack-buffer-replace buffer msg)
+            (do-update buffer room msg))
+        (slack-room-inc-unread-count room)))))
 
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
