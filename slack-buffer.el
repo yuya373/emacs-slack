@@ -71,6 +71,7 @@
           (slack-room-update-last-read room
                                        (car (last messages)))))
       (slack-buffer-set-current-room room)
+      (slack-room-reset-unread-count room)
       (goto-char (point-max))
       (slack-buffer-enable-emojify))
     buffer))

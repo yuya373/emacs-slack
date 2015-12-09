@@ -162,5 +162,8 @@
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (incf (oref room unread-count-display)))
 
+(defmethod slack-room-reset-unread-count ((room slack-room))
+  (oset room unread-count-display 0))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
