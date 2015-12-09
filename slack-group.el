@@ -58,9 +58,6 @@
   (apply #'slack-group "group"
          (slack-collect-slots 'slack-group payload)))
 
-(defmethod slack-room-name ((room slack-group))
-  (oref room name))
-
 (defun slack-group-names ()
   (mapcar (lambda (group)
             (cons (oref group name) group))
@@ -87,13 +84,7 @@
 
 (defun slack-group-select ()
   (interactive)
-  (let ((list (mapcar #'car (slack-group-names))))
-    (slack-room-select-from-list
-     (list "Select Group: ")
-     (slack-room-make-buffer selected
-                             #'slack-group-names
-                             :test #'string=
-                             :update nil))))
+  (slack-room-select slack-groups))
 
 (defun slack-group-list-update ()
   (interactive)

@@ -68,13 +68,7 @@
 
 (defun slack-channel-select ()
   (interactive)
-  (let ((list (mapcar #'car (slack-channel-names))))
-    (slack-room-select-from-list
-     (list "Select Channel: ")
-     (slack-room-make-buffer selected
-                             #'slack-channel-names
-                             :test #'string=
-                             :update nil))))
+  (slack-room-select slack-channels))
 
 (defun slack-channel-list-update ()
   (interactive)

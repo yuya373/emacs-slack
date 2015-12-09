@@ -67,10 +67,9 @@
                    (cons "channel" ,room-id))
     :success ,success))
 
-(cl-defmacro slack-room-make-buffer (name func &key test (update nil))
+(cl-defmacro slack-room-make-buffer (name list &key test (update nil))
   (let ((room (cl-gensym)))
-    `(let ((,room (cdr (cl-assoc ,name (funcall ,func)
-                                 :test ,test))))
+    `(let ((,room (cdr (cl-assoc ,name ,list :test ,test))))
        (slack-room-make-buffer-with-room ,room :update ,update))))
 
 (cl-defun slack-room-make-buffer-with-room (room &key update)
@@ -86,9 +85,19 @@
 (defun slack-room-get-messages (room)
   (mapcar #'slack-message-to-string (oref room messages)))
 
-(cl-defmacro slack-room-select-from-list ((list prompt) &body body)
+(defun slack-room-select (rooms)
+  (let* ((list (slack-room-names rooms))
+         (candidates (mapcar #'car list)))
+    (slack-room-select-from-list
+     (candidates "Select Channel: ")
+     (slack-room-make-buffer selected
+                             list
+                             :test #'string=
+                             :update nil))))
+
+(cl-defmacro slack-room-select-from-list ((candidates prompt) &body body)
   "Bind selected from `slack-room-read-list' to selected."
-  `(let ((selected (slack-room-read-list ,prompt ,list)))
+  `(let ((selected (slack-room-read-list ,prompt ,candidates)))
      ,@body))
 
 (defun slack-room-read-list (prompt choices)
@@ -121,6 +130,21 @@
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
               (oref room messages)))
+
+(defmethod slack-room-name-with-unread-count ((room slack-room))
+  (with-slots (name unread-count-display) room
+    (if (< 0 unread-count-display)
+        (concat name " (" (number-to-string unread-count-display) ")")
+      name)))
+
+(defun slack-room-names (rooms)
+  (mapcar #'(lambda (room)
+              (cons (slack-room-name-with-unread-count room)
+                    room))
+          rooms))
+
+(defmethod slack-room-name ((room slack-room))
+  (oref room name))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
