@@ -27,9 +27,11 @@
 (require 'eieio)
 (require 'lui)
 
+(defvar lui-prompt-string "> ")
+
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
-  (lui-set-prompt "> ")
+  (lui-set-prompt lui-prompt-string)
   (setq lui-time-stamp-position nil)
   (setq lui-fill-type nil)
   (setq lui-input-function 'slack-message--send))
@@ -96,10 +98,15 @@
            (beg (text-property-any (point-min) (point-max) 'ts (oref msg ts)))
            (end (next-single-property-change beg 'ts)))
       (if (and beg end)
-          (let ((inhibit-read-only t))
-            (delete-region (1- beg) end)
+          (let ((inhibit-read-only t)
+                (before-lui-point (marker-position lui-output-marker)))
+            (delete-region beg end)
+            (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))
-            (goto-char cur-point))))))
+            (goto-char cur-point)
+            (set-marker lui-output-marker (- (marker-position
+                                              lui-input-marker)
+                                             (length lui-prompt-string))))))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (slack-get-buffer-create buf-name)))
