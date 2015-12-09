@@ -38,7 +38,6 @@
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 
-
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
    (num-members :initarg :num_members)))

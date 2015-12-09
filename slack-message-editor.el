@@ -65,7 +65,7 @@
          (msg (slack-room-find-message slack-current-room ts)))
     (unless msg
       (error "Can't find original message"))
-    (unless (string= (slack-my-user-id) (oref msg user))
+    (unless (string= slack-my-user-id (oref msg user))
       (error "Cant't edit other user's message"))
     (slack-message-edit-text msg slack-current-room)))
 

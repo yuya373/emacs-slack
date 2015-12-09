@@ -51,10 +51,6 @@
     (if user
         (plist-get user :name))))
 
-(defun slack-my-user-id ()
-  (plist-get (slack-user-find-by-name slack-user-name)
-             :id))
-
 (defun slack-user-names ()
   (mapcar (lambda (u) (cons (plist-get u :name) (plist-get u :id)))
           slack-users))
