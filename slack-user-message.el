@@ -48,8 +48,5 @@
                                         text-escaped "\n" "\n"
                                         reactions-str "\n")))))
 
-(defmethod slack-message-sender-name ((m slack-user-message))
-  (slack-user-name (oref m user)))
-
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

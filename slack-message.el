@@ -199,5 +199,8 @@
           (oset message edited-at (plist-get edited-info :ts))
           (slack-message-update message :replace t)))))
 
+(defmethod slack-message-sender-name ((m slack-message))
+  (slack-user-name (oref m user)))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
