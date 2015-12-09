@@ -101,7 +101,9 @@
    (image-url :initarg :image_url)
    (thumb-url :initarg :thumb_url)))
 
+(cl-defgeneric slack-message-sender-name  (slack-message))
 (cl-defgeneric slack-message-to-string (slack-message))
+(cl-defgeneric slack-message-to-alert (slack-message))
 (cl-defgeneric slack-message-popup-tip (slack-message))
 (cl-defgeneric slack-message-notify-buffer (slack-message))
 

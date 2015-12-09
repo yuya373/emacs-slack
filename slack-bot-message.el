@@ -53,12 +53,25 @@
       (slack-message-put-text-property attachment-string)
       (concat header "\n" body "\n"))))
 
+(defmethod slack-message-to-alert ((m slack-bot-message))
+  (with-slots (text attachments) m
+    (if (< 0 (length text))
+          (slack-message-unescape-string text)
+      (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
+        (slack-message-unescape-string attachment-string)))))
+
+(defmethod slack-message-sender-name ((m slack-bot-message))
+  (slack-bot-name (oref m bot-id)))
+
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
       (if text
           (concat pretext "\n" title "\n" title-link "\n" text "\n")
         fallback)))
+
+(defmethod slack-attachment-to-alert ((a slack-attachment))
+  (oref a fallback))
 
 (provide 'slack-bot-message)
 ;;; slack-bot-message.el ends here
