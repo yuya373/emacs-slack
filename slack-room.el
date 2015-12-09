@@ -38,7 +38,7 @@
    (last-read :initarg :last_read)
    (latest :initarg :latest :initform nil)
    (unread-count :initarg :unread_count)
-   (unread-count-display :initarg :unread_count_display)
+   (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())))
 
 (cl-defgeneric slack-room-name (room))

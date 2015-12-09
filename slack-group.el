@@ -50,6 +50,7 @@
    (is-mpim :initarg :is_mpim)
    (members :initarg :members :type list)
    (topic :initarg :topic)
+   (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (purpose :initarg :purpose)))
 
 (defun slack-group-create (payload)
