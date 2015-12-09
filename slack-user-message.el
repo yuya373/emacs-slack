@@ -48,10 +48,6 @@
                                         text-escaped "\n" "\n"
                                         reactions-str "\n")))))
 
-(defmethod slack-message-to-alert ((m slack-user-message))
-  (with-slots (text) m
-    (slack-message-unescape-string text)))
-
 (defmethod slack-message-sender-name ((m slack-user-message))
   (slack-user-name (oref m user)))
 

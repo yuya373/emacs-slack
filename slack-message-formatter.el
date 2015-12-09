@@ -78,6 +78,10 @@
       (slack-message-put-text-property text)
       (concat ts "\n" text "\n"))))
 
+(defmethod slack-message-to-alert ((m slack-message))
+  (with-slots (text) m
+    (slack-message-unescape-string text)))
+
 (defun slack-message-unescape-string (text)
   (let* ((and-unescpaed
           (replace-regexp-in-string "&amp;" "&" text))
