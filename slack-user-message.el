@@ -45,7 +45,7 @@
       (slack-message-put-reactions-property reactions-str)
       (slack-message-propertize m
                                 (concat header "\n"
-                                        text "\n" "\n"
+                                        text-escaped "\n" "\n"
                                         reactions-str "\n")))))
 
 (defmethod slack-message-to-alert ((m slack-user-message))
