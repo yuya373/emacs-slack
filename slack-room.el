@@ -168,9 +168,9 @@
 
 (defmethod slack-room-update-mark ((room slack-room) msg)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                              (unless (eq (plist-get data :ok) :json-true)
-                                (let ((e (plist-get data :error)))
-                                  (error "Failed to update mark: %s" e)))))
+                              (if (eq (plist-get data :ok) :json-false)
+                                  (let ((e (plist-get data :error)))
+                                    (error "Failed to update mark: %s" e)))))
     (with-slots (ts) msg
       (with-slots (id) room
         (slack-request
