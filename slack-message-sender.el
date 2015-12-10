@@ -30,30 +30,17 @@
 (require 'slack-im)
 (require 'slack-group)
 (require 'slack-message)
+(require 'slack-channel)
 
 (defvar slack-message-id 0)
 (defvar slack-message-minibuffer-local-map nil)
 (defvar slack-sent-message)
 (defvar slack-buffer-function)
+(defvar slack-my-user-id)
 
 (defun slack-message-send ()
   (interactive)
   (slack-message--send (slack-message-read-from-minibuffer)))
-
-(defun slack-message--edit (channel ts text)
-  (cl-labels ((on-edit (&key data &allow-other-keys)
-                       (when (eq (plist-get data :ok) :json-false)
-                         (let ((e (plist-get data :error)))
-                           (message "Failed to edit message: %s" e)))))
-    (slack-request
-     slack-message-edit-url
-     :type "POST"
-     :sync nil
-     :params (list (cons "token" slack-token)
-                   (cons "channel" channel)
-                   (cons "ts" ts)
-                   (cons "text" text))
-     :success #'on-edit)))
 
 (defun slack-message--send (message)
   (let* ((m (list :id slack-message-id

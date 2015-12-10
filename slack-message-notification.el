@@ -35,6 +35,7 @@
 (defvar slack-message-notification-subscription '())
 (defvar slack-message-tips '())
 (defvar alert-default-style)
+(defvar slack-my-user-id)
 
 (defmethod slack-message-notify-buffer ((m slack-message) room)
   (if (not (slack-message-minep m))

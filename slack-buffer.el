@@ -61,7 +61,7 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(defun slack-buffer-create (room header messages)
+(defun slack-buffer-create (room)
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
@@ -99,8 +99,7 @@
            (beg (text-property-any (point-min) (point-max) 'ts (oref msg ts)))
            (end (next-single-property-change beg 'ts)))
       (if (and beg end)
-          (let ((inhibit-read-only t)
-                (before-lui-point (marker-position lui-output-marker)))
+          (let ((inhibit-read-only t))
             (delete-region beg end)
             (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))

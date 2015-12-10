@@ -30,6 +30,8 @@
 
 (defvar slack-token)
 (defvar slack-current-room)
+(defvar slack-buffer-function)
+
 (defclass slack-room ()
   ((id :initarg :id)
    (created :initarg :created)
@@ -44,6 +46,7 @@
 (cl-defgeneric slack-room-name (room))
 (cl-defgeneric slack-room-history (room))
 (cl-defgeneric slack-room-buffer-header (room))
+(cl-defgeneric slack-room-update-mark-url (room))
 
 (defmethod slack-room-subscribedp ((_room slack-room))
   nil)
@@ -80,12 +83,15 @@
     (if (or update (< (length messages) 1))
         (slack-room-history room))
     (funcall slack-buffer-function
-             (slack-buffer-create room
-                                  (slack-room-buffer-header room)
-                                  (slack-room-get-messages room)))))
+             (slack-buffer-create room))))
 
 (defun slack-room-get-messages (room)
   (mapcar #'slack-message-to-string (oref room messages)))
+
+(cl-defmacro slack-room-select-from-list ((candidates prompt) &body body)
+  "Bind selected from `slack-room-read-list' to selected."
+  `(let ((selected (slack-room-read-list ,prompt ,candidates)))
+     ,@body))
 
 (defun slack-room-select (rooms)
   (let* ((list (slack-room-names rooms))
@@ -96,11 +102,6 @@
                              list
                              :test #'string=
                              :update nil))))
-
-(cl-defmacro slack-room-select-from-list ((candidates prompt) &body body)
-  "Bind selected from `slack-room-read-list' to selected."
-  `(let ((selected (slack-room-read-list ,prompt ,candidates)))
-     ,@body))
 
 (defun slack-room-read-list (prompt choices)
   (let ((completion-ignore-case t))
@@ -124,9 +125,7 @@
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))
   (slack-room-history slack-current-room)
-  (slack-buffer-create slack-current-room
-                       (slack-room-buffer-header slack-current-room)
-                       (slack-room-get-messages slack-current-room)))
+  (slack-buffer-create slack-current-room))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
@@ -157,12 +156,12 @@
   (with-slots (last-read messages) room
     (cdr (cl-remove-if #'(lambda (m)
                            (string< (oref m ts) last-read))
-                  (cl-sort (copy-seq messages)
+                  (cl-sort (copy-sequence messages)
                            #'string<
                            :key #'(lambda (m) (oref m ts)))))))
 
 (defmethod slack-room-inc-unread-count ((room slack-room))
-  (incf (oref room unread-count-display)))
+  (cl-incf (oref room unread-count-display)))
 
 (defmethod slack-room-reset-unread-count ((room slack-room))
   (oset room unread-count-display 0))

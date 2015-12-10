@@ -31,6 +31,7 @@
 
 (defvar slack-groups)
 (defvar slack-ims)
+(defvar slack-channels)
 
 (defclass slack-message ()
   ((type :initarg :type :type string)

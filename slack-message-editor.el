@@ -29,6 +29,8 @@
 (defconst slack-message-edit-buffer-name "*Slack - Edit message*")
 (defconst slack-message-write-buffer-name "*Slack - Write message*")
 (defvar slack-buffer-function)
+(defvar slack-my-user-id)
+(defvar slack-token)
 (defvar slack-target-ts)
 (make-local-variable 'slack-target-ts)
 (defvar slack-message-edit-buffer-type)
@@ -104,6 +106,21 @@
                                   buf-string))
       ('new (slack-message--send buf-string)))
     (delete-window)))
+
+(defun slack-message--edit (channel ts text)
+  (cl-labels ((on-edit (&key data &allow-other-keys)
+                       (when (eq (plist-get data :ok) :json-false)
+                         (let ((e (plist-get data :error)))
+                           (message "Failed to edit message: %s" e)))))
+    (slack-request
+     slack-message-edit-url
+     :type "POST"
+     :sync nil
+     :params (list (cons "token" slack-token)
+                   (cons "channel" channel)
+                   (cons "ts" ts)
+                   (cons "text" text))
+     :success #'on-edit)))
 
 (provide 'slack-message-editor)
 ;;; slack-message-editor.el ends here

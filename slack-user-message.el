@@ -5,6 +5,8 @@
 
 (require 'eieio)
 (require 'slack-message-formatter)
+(require 'slack-message-reaction)
+(require 'slack-message-editor)
 
 (defvar slack-user-message-keymap
   (let ((keymap (make-sparse-keymap)))

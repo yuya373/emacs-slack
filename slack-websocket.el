@@ -45,10 +45,7 @@
         (setq slack-ws nil))))
 
 (defun slack-ws-send (payload)
-  (let ((frame (make-websocket-frame :opcode 'text
-                                     :payload payload
-                                     :completep t)))
-    (websocket-send-text slack-ws payload)))
+  (websocket-send-text slack-ws payload))
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
@@ -90,7 +87,7 @@
     (if ok
         (slack-message-handle-reply
          (slack-message-create payload))
-      (error "code: %s msg: %s"
+      (error "Code: %s msg: %s"
              (plist-get :code e)
              (plist-get :msg e)))))
 

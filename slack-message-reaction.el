@@ -26,9 +26,13 @@
 
 (require 'slack-message)
 (require 'slack-reaction)
+(require 'slack-room)
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
+(defvar slack-current-room)
+(make-local-variable 'slack-current-room)
+(defvar slack-token)
 
 (defun slack-message-add-reaction ()
   (interactive)
@@ -49,7 +53,7 @@
 
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r) (oref r name))
-                     reactions)))
+                      reactions)))
     (slack-room-select-from-list
      (list "Select Reaction: ")
      selected)))
@@ -92,7 +96,6 @@
 
 (cl-defmacro slack-message-on--reaction ((reaction ts room) &body body)
   `(let* ((msg (slack-room-find-message ,room ,ts))
-          (before-msg (slack-message-to-string msg))
           (reaction (make-instance 'slack-reaction
                                    :name ,reaction
                                    :count 1
@@ -129,7 +132,7 @@
                                              (cl-delete-if #'(lambda (r)
                                                                (slack-reaction-equalp same-reaction r))
                                                            (oref m reactions)))
-                                     (decf (oref same-reaction count))))))
+                                     (cl-decf (oref same-reaction count))))))
 
 (provide 'slack-message-reaction)
 ;;; slack-message-reaction.el ends here
