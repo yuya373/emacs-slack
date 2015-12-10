@@ -139,10 +139,12 @@
       name)))
 
 (defun slack-room-names (rooms)
-  (mapcar #'(lambda (room)
-              (cons (slack-room-name-with-unread-count room)
-                    room))
-          rooms))
+  (sort (mapcar #'(lambda (room)
+                    (cons (slack-room-name-with-unread-count room)
+                          room))
+                rooms)
+        #'(lambda (a b) (> (oref (cdr a) unread-count-display)
+                           (oref (cdr b) unread-count-display)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
