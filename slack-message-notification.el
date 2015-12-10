@@ -61,7 +61,7 @@
   nil)
 
 (defmethod slack-message-minep ((m slack-message))
-  (slack-message-sender-equalp m (slack-my-user-id)))
+  (slack-message-sender-equalp m slack-my-user-id))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here

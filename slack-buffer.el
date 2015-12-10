@@ -27,9 +27,11 @@
 (require 'eieio)
 (require 'lui)
 
+(defvar lui-prompt-string "> ")
+
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
-  (lui-set-prompt "> ")
+  (lui-set-prompt lui-prompt-string)
   (setq lui-time-stamp-position nil)
   (setq lui-fill-type nil)
   (setq lui-input-function 'slack-message--send))
@@ -59,32 +61,53 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(defun slack-buffer-create (buf-name room header messages)
-  (let ((buffer (slack-get-buffer-create buf-name)))
+(defun slack-buffer-create (room header messages)
+  (let* ((buf-name (slack-room-buffer-name room))
+         (buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
-      (mapc (lambda (m) (lui-insert m t)) (reverse messages))
+      (let ((messages (slack-room-latest-messages room)))
+        (when messages
+          (mapc (lambda (m)
+                  (lui-insert (slack-message-to-string m) t))
+                messages)
+          (let ((latest-message (car (last messages))))
+            (slack-room-update-last-read room latest-message)
+            (slack-room-update-mark room latest-message))))
       (slack-buffer-set-current-room room)
+      (slack-room-reset-unread-count room)
       (goto-char (point-max))
       (slack-buffer-enable-emojify))
     buffer))
 
-(cl-defun slack-buffer-update (buf-name text &key replace msg)
-  (let ((buffer (get-buffer buf-name)))
-    (if buffer
-        (if replace
-            (slack-buffer-replace buffer text msg)
-          (with-current-buffer buffer (lui-insert text))))))
+(cl-defun slack-buffer-update (room msg &key replace)
+  (cl-labels ((do-update (buf room msg)
+                         (with-current-buffer buf
+                           (slack-room-update-last-read room msg)
+                           (lui-insert (slack-message-to-string msg)))))
+    (let* ((buf-name (slack-room-buffer-name room))
+           (buffer (get-buffer buf-name))
+           (buf-names (mapcar #'buffer-name (mapcar #'window-buffer
+                                                    (window-list)))))
+      (if (and buffer (cl-member buf-name buf-names :test #'string=))
+          (if replace (slack-buffer-replace buffer msg)
+            (do-update buffer room msg))
+        (slack-room-inc-unread-count room)))))
 
-(defun slack-buffer-replace (buffer text msg)
+(defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
     (let* ((cur-point (point))
            (beg (text-property-any (point-min) (point-max) 'ts (oref msg ts)))
            (end (next-single-property-change beg 'ts)))
       (if (and beg end)
-          (let ((inhibit-read-only t))
-            (delete-region (1- beg) end)
-            (lui-insert text)
-            (goto-char cur-point))))))
+          (let ((inhibit-read-only t)
+                (before-lui-point (marker-position lui-output-marker)))
+            (delete-region beg end)
+            (set-marker lui-output-marker beg)
+            (lui-insert (slack-message-to-string msg))
+            (goto-char cur-point)
+            (set-marker lui-output-marker (- (marker-position
+                                              lui-input-marker)
+                                             (length lui-prompt-string))))))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (slack-get-buffer-create buf-name)))

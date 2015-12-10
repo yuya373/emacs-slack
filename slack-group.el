@@ -50,15 +50,13 @@
    (is-mpim :initarg :is_mpim)
    (members :initarg :members :type list)
    (topic :initarg :topic)
+   (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (purpose :initarg :purpose)))
 
 (defun slack-group-create (payload)
   (plist-put payload :members (append (plist-get payload :members) nil))
   (apply #'slack-group "group"
          (slack-collect-slots 'slack-group payload)))
-
-(defmethod slack-room-name ((room slack-group))
-  (oref room name))
 
 (defun slack-group-names ()
   (mapcar (lambda (group)
@@ -86,13 +84,7 @@
 
 (defun slack-group-select ()
   (interactive)
-  (let ((list (mapcar #'car (slack-group-names))))
-    (slack-room-select-from-list
-     (list "Select Group: ")
-     (slack-room-make-buffer selected
-                             #'slack-group-names
-                             :test #'string=
-                             :update nil))))
+  (slack-room-select slack-groups))
 
 (defun slack-group-list-update ()
   (interactive)
@@ -105,6 +97,11 @@
     (slack-room-list-update slack-group-list-url
                             #'on-list-update
                             :sync nil)))
+
+(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
+
+(defmethod slack-room-update-mark-url ((_room slack-group))
+  slack-group-update-mark-url)
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

@@ -98,10 +98,9 @@
                                    :count 1
                                    :users (list (oref msg user)))))
      ,@body
-     (slack-buffer-update (slack-room-buffer-name ,room)
-                          (slack-message-to-string msg)
-                          :replace t
-                          :msg msg)))
+     (slack-buffer-update ,room
+                          msg
+                          :replace t)))
 
 (defun slack-message-on-reaction-add (reaction ts room)
   (slack-message-on--reaction (reaction ts room)

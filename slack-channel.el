@@ -68,13 +68,7 @@
 
 (defun slack-channel-select ()
   (interactive)
-  (let ((list (mapcar #'car (slack-channel-names))))
-    (slack-room-select-from-list
-     (list "Select Channel: ")
-     (slack-room-make-buffer selected
-                             #'slack-channel-names
-                             :test #'string=
-                             :update nil))))
+  (slack-room-select slack-channels))
 
 (defun slack-channel-list-update ()
   (interactive)
@@ -89,8 +83,10 @@
                             #'on-list-update
                             :sync nil)))
 
+(defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
-
+(defmethod slack-room-update-mark-url ((_room slack-channel))
+  slack-channel-update-mark-url)
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
