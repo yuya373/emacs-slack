@@ -29,6 +29,12 @@
 
 (defvar lui-prompt-string "> ")
 
+(defvar slack-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-s C-r") #'slack-room-update-message)
+    (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
+    map))
+
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
   (lui-set-prompt lui-prompt-string)
