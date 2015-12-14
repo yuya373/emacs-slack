@@ -154,11 +154,12 @@
 
 (defmethod slack-room-latest-messages ((room slack-room))
   (with-slots (last-read messages) room
-    (cdr (cl-remove-if #'(lambda (m)
-                           (string< (oref m ts) last-read))
+    (cl-remove-if #'(lambda (m)
+                      (or (string< (oref m ts) last-read)
+                          (string= (oref m ts) last-read)))
                   (cl-sort (copy-sequence messages)
                            #'string<
-                           :key #'(lambda (m) (oref m ts)))))))
+                           :key #'(lambda (m) (oref m ts))))))
 
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
