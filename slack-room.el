@@ -43,10 +43,10 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())))
 
-(cl-defgeneric slack-room-name (room))
-(cl-defgeneric slack-room-history (room))
-(cl-defgeneric slack-room-buffer-header (room))
-(cl-defgeneric slack-room-update-mark-url (room))
+(defgeneric slack-room-name (room))
+(defgeneric slack-room-history (room))
+(defgeneric slack-room-buffer-header (room))
+(defgeneric slack-room-update-mark-url (room))
 
 (defmethod slack-room-subscribedp ((_room slack-room))
   nil)
