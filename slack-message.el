@@ -102,13 +102,13 @@
    (image-url :initarg :image_url)
    (thumb-url :initarg :thumb_url)))
 
-(cl-defgeneric slack-message-sender-name  (slack-message))
-(cl-defgeneric slack-message-to-string (slack-message))
-(cl-defgeneric slack-message-to-alert (slack-message))
-(cl-defgeneric slack-message-notify-buffer (slack-message))
+(defgeneric slack-message-sender-name  (slack-message))
+(defgeneric slack-message-to-string (slack-message))
+(defgeneric slack-message-to-alert (slack-message))
+(defgeneric slack-message-notify-buffer (slack-message))
 
-(cl-defgeneric slack-room-buffer-name (room))
-(cl-defgeneric slack-room-update-messages (room))
+(defgeneric slack-room-buffer-name (room))
+(defgeneric slack-room-update-messages (room))
 
 (defun slack-room-find (id)
   (cl-labels ((find-room (room)
@@ -176,7 +176,7 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(cl-defmethod slack-message-update ((m slack-message) &key replace)
+(defmethod slack-message-update ((m slack-message) &key replace)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
