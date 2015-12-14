@@ -1,11 +1,28 @@
-;;; slack.el --- Emacs Slack Client
+;;; slack.el --- slack client for emacs              -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2015  yuya.minami
+
+;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
+;; Keywords: tools
+;; Version: 0.0.1
+;; Package-Requires: ((websocket "1.5") (request "0.2.0") (oauth2 "0.10") (circe "2.1") (alert "1.2") (emojify "0.2"))
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 ;;; Commentary:
-;; -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2015  南優也
+;;
 
-;; Author: 南優也 <yuyaminami@minamiyuunari-no-MacBook-Pro.local>
-;; Keywords: tools,convenience,hypermedia,
 ;;; Code:
 
 (require 'cl-lib)
@@ -112,4 +129,4 @@ set this to save request to Slack if already have.")
   (slack-authorize))
 
 (provide 'slack)
-;;; slack ends here
+;;; slack.el ends here
