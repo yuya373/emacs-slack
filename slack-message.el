@@ -176,7 +176,7 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message) &key replace)
+(defmethod slack-message-update ((m slack-message) &rest replace)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
@@ -197,7 +197,7 @@
         (progn
           (oset message text (plist-get edited-message :text))
           (oset message edited-at (plist-get edited-info :ts))
-          (slack-message-update message :replace t)))))
+          (slack-message-update message t)))))
 
 (defmethod slack-message-sender-name ((m slack-message))
   (slack-user-name (oref m user)))
