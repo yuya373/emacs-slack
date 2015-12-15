@@ -58,5 +58,14 @@
    :success success
    :error error))
 
+(cl-defmacro slack-request-handle-error ((data req-name) &body body)
+  "Bind error to e if present in DATA."
+  `(if (eq (plist-get ,data :ok) :json-false)
+       (message "Failed to request %s: %s"
+                ,req-name
+                (plist-get ,data :error))
+     (progn
+       ,@body)))
+
 (provide 'slack-request)
 ;;; slack-request.el ends here
