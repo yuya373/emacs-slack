@@ -32,6 +32,10 @@
 (defvar slack-groups)
 (defvar slack-ims)
 (defvar slack-channels)
+(defvar slack-current-room)
+(defvar slack-token)
+(defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
+(defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
@@ -201,6 +205,33 @@
 
 (defmethod slack-message-sender-name ((m slack-message))
   (slack-user-name (oref m user)))
+
+(defun slack-message-pins-add ()
+  (interactive)
+  (slack-message-pins-request slack-message-pins-add-url))
+
+(defun slack-message-pins-remove ()
+  (interactive)
+  (slack-message-pins-request slack-message-pins-remove-url))
+
+(defun slack-message-pins-request (url)
+  (let* ((room slack-current-room)
+         (channel (oref room id))
+         (word (thing-at-point 'word))
+         (ts (get-text-property 0 'ts word)))
+    (unless (or slack-current-room ts)
+      (error "Call From Slack Room Buffer"))
+    (cl-labels ((on-pins-add
+                 (&key data &allow-other-keys)
+                 (slack-request-handle-error
+                  (data "slack-message-pins-request"))))
+      (slack-request
+       url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" channel)
+                     (cons "timestamp" ts))
+       :success #'on-pins-add
+       :sync nil))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
