@@ -37,7 +37,7 @@
    (created :initarg :created)
    (has-pins :initarg :has_pins)
    (is-open :initarg :is_open)
-   (last-read :initarg :last_read)
+   (last-read :initarg :last_read :type string :initform "0")
    (latest :initarg :latest :initform nil)
    (unread-count :initarg :unread_count)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
