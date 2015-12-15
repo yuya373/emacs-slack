@@ -36,7 +36,8 @@
 
 (defun slack-collect-slots (class m)
   (cl-mapcan #'(lambda (property)
-              (if (slack-class-have-slot-p class property)
+                 (if (and (slack-class-have-slot-p class property)
+                          (plist-member m property))
                   (list property (plist-get m property))))
           m))
 
