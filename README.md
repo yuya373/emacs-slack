@@ -27,9 +27,6 @@ emacs client for Slack
   :commands (slack-start)
   :init
   (setq slack-enable-emoji t) ;; if you want to enable emoji, default nil
-  (setq slack-buffer-function
-        #'(lambda (buffer) (popwin:close-popup-window)
-            (switch-to-buffer-other-window buffer)))
   (setq slack-room-subscription '(test-group slackbot))
   (setq slack-client-id "hoge")
   (setq slack-client-secret "fuga")
