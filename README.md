@@ -22,12 +22,7 @@ emacs client for Slack
 ```elisp
 ;; I'm using use-package and el-get
 
-(el-get-bundle websocket)
-(el-get-bundle request)
-(el-get-bundle oauth2)
-(el-get-bundle circe)
-(el-get-bundle alert)
-(el-get-bundle emojify) ;; required if you set `slack-enable-emoji` t
+(el-get-bundle slack)
 (use-package slack
   :commands (slack-start)
   :init
