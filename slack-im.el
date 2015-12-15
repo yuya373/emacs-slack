@@ -118,6 +118,7 @@
 
 (cl-defun slack-im-on-list-update (data users)
   (let ((payloads (plist-get data :ims)))
+    (append users nil)
     (mapc #'slack-user-pushnew users)
     (setq slack-ims (mapcar #'slack-im-create payloads))))
 

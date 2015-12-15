@@ -93,7 +93,7 @@ set this to save request to Slack if already have.")
                                   (plist-get data :groups)))
   (setq slack-ims         (mapcar #'slack-im-create
                                   (plist-get data :ims)))
-  (setq slack-users       (plist-get data :users))
+  (setq slack-users       (append (plist-get data :users) nil))
   (setq slack-bots        (plist-get data :bots))
   (setq slack-ws-url      (plist-get data :url))
   (message "Slack Authorization Finished.")
