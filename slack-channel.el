@@ -76,7 +76,7 @@
                (&key data &allow-other-keys)
                (unless (plist-get data :ok)
                  (error "%s" data))
-               (setq slack-groups
+               (setq slack-channels
                      (mapcar #'slack-channel-create
                              (plist-get data :channels)))))
     (slack-room-list-update slack-channel-list-url
