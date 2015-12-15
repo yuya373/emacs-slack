@@ -74,11 +74,11 @@
   (interactive)
   (cl-labels ((on-list-update
                (&key data &allow-other-keys)
-               (unless (plist-get data :ok)
-                 (error "%s" data))
-               (setq slack-channels
+               (slack-request-handle-error
+                (data "slack-channel-list-update")
+                (setq slack-channels
                      (mapcar #'slack-channel-create
-                             (plist-get data :channels)))))
+                             (plist-get data :channels))))))
     (slack-room-list-update slack-channel-list-url
                             #'on-list-update
                             :sync nil)))

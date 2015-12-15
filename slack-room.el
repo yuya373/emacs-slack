@@ -55,16 +55,16 @@
   (oset room messages messages))
 
 (defun slack-room-on-history (data room)
-  (unless (plist-get data :ok)
-    (error "%s" data))
-  (cl-labels ((create-message-with-room
-               (payload)
-               (slack-message-create payload :room room)))
-    (let* ((datum (plist-get data :messages))
-           (messages (mapcar #'create-message-with-room datum)))
-      (slack-room-update-last-read room
-                                   (slack-message :ts "0"))
-      (slack-room-set-messages room messages))))
+  (slack-request-handle-error
+   (data "slack-room-on-history")
+   (cl-labels ((create-message-with-room
+                (payload)
+                (slack-message-create payload :room room)))
+     (let* ((datum (plist-get data :messages))
+            (messages (mapcar #'create-message-with-room datum)))
+       (slack-room-update-last-read room
+                                    (slack-message :ts "0"))
+       (slack-room-set-messages room messages)))))
 
 (cl-defmacro slack-room-request-update (room-id url success)
   `(slack-request
@@ -169,9 +169,8 @@
 
 (defmethod slack-room-update-mark ((room slack-room) msg)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                              (if (eq (plist-get data :ok) :json-false)
-                                  (let ((e (plist-get data :error)))
-                                    (error "Failed to update mark: %s" e)))))
+                              (slack-request-handle-error
+                               (data "slack-room-update-mark"))))
     (with-slots (ts) msg
       (with-slots (id) room
         (slack-request

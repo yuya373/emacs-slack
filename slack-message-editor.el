@@ -109,9 +109,8 @@
 
 (defun slack-message--edit (channel ts text)
   (cl-labels ((on-edit (&key data &allow-other-keys)
-                       (when (eq (plist-get data :ok) :json-false)
-                         (let ((e (plist-get data :error)))
-                           (message "Failed to edit message: %s" e)))))
+                       (slack-request-handle-error
+                        (data "slack-message--edit"))))
     (slack-request
      slack-message-edit-url
      :type "POST"
