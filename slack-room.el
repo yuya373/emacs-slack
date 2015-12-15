@@ -31,6 +31,7 @@
 (defvar slack-token)
 (defvar slack-current-room)
 (defvar slack-buffer-function)
+(defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
 (defclass slack-room ()
   ((id :initarg :id)
@@ -182,6 +183,44 @@
          :success #'on-update-mark
          :sync nil)))))
 
+(defun slack-room-pins-list ()
+  (interactive)
+  (unless (boundp 'slack-current-room)
+    (error "Call from slack room buffer"))
+  (let* ((room slack-current-room)
+         (channel (oref room id)))
+    (cl-labels ((on-pins-list (&key data &allow-other-keys)
+                              (slack-request-handle-error
+                               (data "slack-room-pins-list")
+                               (slack-room-on-pins-list (plist-get data :items)
+                                                        room))))
+      (slack-request
+       slack-room-pins-list-url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" channel))
+       :success #'on-pins-list
+       :sync nil))))
+
+(defun slack-room-pinned-item-buffer-name (room)
+  (concat "*Slack - Pinned Items*"
+          " : "
+          (slack-room-name room)))
+
+(defun slack-room-on-pins-list (items room)
+  (let* ((messages (mapcar #'slack-message-create
+                           (mapcar #'(lambda (i) (plist-get i :message))
+                                   items)))
+         (buf-header (propertize "Pinned Items"
+                                 'face '(:underline t
+                                         :weight bold))))
+    (funcall slack-buffer-function
+             (slack-buffer-create-info
+              (slack-room-pinned-item-buffer-name room)
+              #'(lambda () (insert buf-header)
+                  (insert "\n\n")
+                  (mapc #'(lambda (m) (insert
+                                       (slack-message-to-string m)))
+                        messages))))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

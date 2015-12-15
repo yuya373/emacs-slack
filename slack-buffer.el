@@ -119,5 +119,17 @@
     (with-current-buffer buffer
       (lui-insert string))))
 
+(defun slack-buffer-create-info (buf-name insert-func)
+  (let ((buf (get-buffer-create buf-name)))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (goto-char (point-min))
+      (funcall insert-func)
+      (goto-char (point-max))
+      (setq buffer-read-only t)
+      (slack-buffer-enable-emojify))
+    buf))
+
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
