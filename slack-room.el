@@ -31,6 +31,7 @@
 (defvar slack-token)
 (defvar slack-current-room)
 (defvar slack-buffer-function)
+(defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
 (defclass slack-room ()
   ((id :initarg :id)
@@ -55,16 +56,16 @@
   (oset room messages messages))
 
 (defun slack-room-on-history (data room)
-  (unless (plist-get data :ok)
-    (error "%s" data))
-  (cl-labels ((create-message-with-room
-               (payload)
-               (slack-message-create payload :room room)))
-    (let* ((datum (plist-get data :messages))
-           (messages (mapcar #'create-message-with-room datum)))
-      (slack-room-update-last-read room
-                                   (slack-message :ts "0"))
-      (slack-room-set-messages room messages))))
+  (slack-request-handle-error
+   (data "slack-room-on-history")
+   (cl-labels ((create-message-with-room
+                (payload)
+                (slack-message-create payload :room room)))
+     (let* ((datum (plist-get data :messages))
+            (messages (mapcar #'create-message-with-room datum)))
+       (slack-room-update-last-read room
+                                    (slack-message :ts "0"))
+       (slack-room-set-messages room messages)))))
 
 (cl-defmacro slack-room-request-update (room-id url success)
   `(slack-request
@@ -169,9 +170,8 @@
 
 (defmethod slack-room-update-mark ((room slack-room) msg)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                              (if (eq (plist-get data :ok) :json-false)
-                                  (let ((e (plist-get data :error)))
-                                    (error "Failed to update mark: %s" e)))))
+                              (slack-request-handle-error
+                               (data "slack-room-update-mark"))))
     (with-slots (ts) msg
       (with-slots (id) room
         (slack-request
@@ -183,6 +183,44 @@
          :success #'on-update-mark
          :sync nil)))))
 
+(defun slack-room-pins-list ()
+  (interactive)
+  (unless (boundp 'slack-current-room)
+    (error "Call from slack room buffer"))
+  (let* ((room slack-current-room)
+         (channel (oref room id)))
+    (cl-labels ((on-pins-list (&key data &allow-other-keys)
+                              (slack-request-handle-error
+                               (data "slack-room-pins-list")
+                               (slack-room-on-pins-list (plist-get data :items)
+                                                        room))))
+      (slack-request
+       slack-room-pins-list-url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" channel))
+       :success #'on-pins-list
+       :sync nil))))
+
+(defun slack-room-pinned-item-buffer-name (room)
+  (concat "*Slack - Pinned Items*"
+          " : "
+          (slack-room-name room)))
+
+(defun slack-room-on-pins-list (items room)
+  (let* ((messages (mapcar #'slack-message-create
+                           (mapcar #'(lambda (i) (plist-get i :message))
+                                   items)))
+         (buf-header (propertize "Pinned Items"
+                                 'face '(:underline t
+                                         :weight bold))))
+    (funcall slack-buffer-function
+             (slack-buffer-create-info
+              (slack-room-pinned-item-buffer-name room)
+              #'(lambda () (insert buf-header)
+                  (insert "\n\n")
+                  (mapc #'(lambda (m) (insert
+                                       (slack-message-to-string m)))
+                        messages))))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -90,10 +90,10 @@
   (interactive)
   (cl-labels ((on-list-update
                (&key data &allow-other-keys)
-               (unless (plist-get data :ok)
-                 (error "%s" data))
-               (setq slack-groups (mapcar #'slack-group-create
-                                          (plist-get data :groups)))))
+               (slack-request-handle-error
+                (data "slack-group-list-update")
+                (setq slack-groups (mapcar #'slack-group-create
+                                          (plist-get data :groups))))))
     (slack-room-list-update slack-group-list-url
                             #'on-list-update
                             :sync nil)))

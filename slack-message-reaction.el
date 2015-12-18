@@ -63,11 +63,11 @@
     (read-from-minibuffer prompt)))
 
 (defun slack-message-reaction-add (reaction ts room)
-  (cl-labels ((on-reaction-add (&key data &allow-other-keys)
-                               (if (eq (plist-get data :ok) :json-false)
-                                 (let ((e (plist-get data :error)))
-                                   (message "Failed to add reaction: %s" e))
-                                 (slack-message-on-reaction-add reaction ts room))))
+  (cl-labels ((on-reaction-add
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-message-reaction-add")
+                (slack-message-on-reaction-add reaction ts room))))
     (slack-request
      slack-message-reaction-add-url
      :type "POST"
@@ -79,11 +79,11 @@
      :success #'on-reaction-add)))
 
 (defun slack-message-reaction-remove (reaction ts room)
-  (cl-labels ((on-reaction-remove (&key data &allow-other-keys)
-                                  (if (eq (plist-get data :ok) :json-false)
-                                      (let ((e (plist-get data :error)))
-                                        (message "Failed to remove reaction: %s" e))
-                                    (slack-message-on-reaction-remove reaction ts room))))
+  (cl-labels ((on-reaction-remove
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-message-reaction-remove")
+                (slack-message-on-reaction-remove reaction ts room))))
     (slack-request
      slack-message-reaction-remove-url
      :type "POST"

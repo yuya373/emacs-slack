@@ -123,19 +123,20 @@
     (setq slack-ims (mapcar #'slack-im-create payloads))))
 
 (defun slack-im-update-room-list (users)
-  (cl-labels ((on-update-room-list (&key data &allow-other-keys)
-                                   (unless (plist-get data :ok)
-                                     (error "%s" data))
-                                   (slack-im-on-list-update data users)))
+  (cl-labels ((on-update-room-list
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-im-update-room-list")
+                (slack-im-on-list-update data users))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             :sync nil)))
 
 (cl-defun slack-user-on-list-update (&key data &allow-other-keys)
-  (unless (plist-get data :ok)
-    (error "%s" data))
-  (let ((users (plist-get data :members)))
-    (slack-im-update-room-list users)))
+  (slack-request-handle-error (data "slack-im-list-update")
+                              (let ((users (plist-get data :members)))
+                                (slack-im-update-room-list users))))
+
 
 (defun slack-im-list-update ()
   (interactive)
