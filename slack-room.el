@@ -222,5 +222,9 @@
                                        (slack-message-to-string m)))
                         messages))))))
 
+(defun slack-select-rooms ()
+  (interactive)
+  (slack-room-select (append slack-ims slack-groups slack-channels)))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
