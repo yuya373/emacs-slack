@@ -110,9 +110,12 @@
             (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))
             (goto-char cur-point)
-            (set-marker lui-output-marker (- (marker-position
-                                              lui-input-marker)
-                                             (length lui-prompt-string))))))))
+            (slack-buffer-set-lui-output-marker))))))
+
+(defun slack-buffer-recover-lui-output-marker ()
+  (set-marker lui-output-marker (- (marker-position
+                                    lui-input-marker)
+                                   (length lui-prompt-string))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (slack-get-buffer-create buf-name)))
