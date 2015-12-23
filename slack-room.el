@@ -45,7 +45,7 @@
    (messages :initarg :messages :initform ())))
 
 (defgeneric slack-room-name (room))
-(defgeneric slack-room-history (room))
+(defgeneric slack-room-history (room &optional oldest))
 (defgeneric slack-room-buffer-header (room))
 (defgeneric slack-room-update-mark-url (room))
 
@@ -58,24 +58,34 @@
 (defmethod slack-room-set-messages ((room slack-room) m)
   (oset room messages m))
 
-(defun slack-room-on-history (data room)
+(defun slack-room-on-history (data room latest)
   (slack-request-handle-error
    (data "slack-room-on-history")
-   (cl-labels ((create-message-with-room
-                (payload)
-                (slack-message-create payload :room room)))
+   (cl-labels
+       ((create-message-with-room (payload)
+                                  (slack-message-create payload :room room)))
      (let* ((datum (plist-get data :messages))
             (messages (mapcar #'create-message-with-room datum)))
        (slack-room-update-last-read room
                                     (slack-message :ts "0"))
-       (slack-room-set-messages room messages)))))
+       (if latest
+           (slack-room-set-prev-messages room messages)
+         (slack-room-set-messages room messages))
+       messages))))
 
-(cl-defmacro slack-room-request-update (room-id url success)
-  `(slack-request
-    ,url
-    :params (list (cons "token" ,slack-token)
-                   (cons "channel" ,room-id))
-    :success ,success))
+(cl-defmacro slack-room-request-update (room url &optional latest)
+  `(cl-labels
+       ((on-request-update (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-room-request-update")
+                            (slack-room-on-history data ,room ,latest))))
+     (slack-request
+      ,url
+      :params (list (cons "token" ,slack-token)
+                    (cons "channel" (oref ,room id))
+                    (if ,latest
+                        (cons "latest" ,latest)))
+      :success #'on-request-update)))
 
 (cl-defmacro slack-room-make-buffer (name list &key test (update nil))
   (let ((room (cl-gensym)))

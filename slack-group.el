@@ -74,13 +74,10 @@
 (defmethod slack-room-buffer-header ((room slack-group))
   (concat "Private Group: " (slack-room-name room) "\n"))
 
-(defmethod slack-room-history ((room slack-group))
-  (cl-labels ((on-group-update (&key data &allow-other-keys)
-                               (slack-room-on-history data room)))
-    (with-slots (id) room
-      (slack-room-request-update id
-                                 slack-group-history-url
-                                 #'on-group-update))))
+(defmethod slack-room-history ((room slack-group) &optional oldest)
+  (slack-room-request-update room
+                             slack-group-history-url
+                             oldest))
 
 (defun slack-group-select ()
   (interactive)
