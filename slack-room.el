@@ -140,6 +140,25 @@
     (error "Call From Slack Room Buffer"))
   (slack-room-history slack-current-room)
   (slack-buffer-create slack-current-room))
+(defun slack-room-load-prev-messages ()
+  (interactive)
+  (let* ((msg-beg (next-single-property-change (point-min) 'ts))
+         (ts (get-text-property msg-beg 'ts))
+         (line (thing-at-point 'line))
+         (oldest (ignore-errors (get-text-property 0 'oldest line))))
+    (slack-room-history slack-current-room oldest)
+    (slack-buffer-create
+     slack-current-room
+     #'(lambda (room)
+         (let ((inhibit-read-only t)
+               (loading-message-end (next-single-property-change
+                                     (point-min)
+                                     'oldest)))
+           (delete-region (point-min) loading-message-end))
+         (set-marker lui-output-marker (point-min))
+         (slack-buffer-insert-messages room)
+         (slack-buffer-recover-lui-output-marker)
+         (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
