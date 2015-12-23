@@ -52,8 +52,11 @@
 (defmethod slack-room-subscribedp ((_room slack-room))
   nil)
 
-(defmethod slack-room-set-messages ((room slack-room) messages)
-  (oset room messages messages))
+(defmethod slack-room-set-prev-messages ((room slack-room) m)
+  (oset room messages (append (oref room messages) m)))
+
+(defmethod slack-room-set-messages ((room slack-room) m)
+  (oset room messages m))
 
 (defun slack-room-on-history (data room)
   (slack-request-handle-error
