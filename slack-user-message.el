@@ -46,8 +46,9 @@
       (slack-message-put-reactions-property reactions-str)
       (slack-message-propertize m
                                 (concat header "\n"
-                                        text-escaped "\n" "\n"
-                                        reactions-str "\n")))))
+                                        text-escaped "\n"
+                                        (if reactions-str
+                                            (concat "\n" reactions-str "\n")))))))
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here
