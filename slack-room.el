@@ -53,7 +53,8 @@
   nil)
 
 (defmethod slack-room-set-prev-messages ((room slack-room) m)
-  (oset room messages (append (oref room messages) m)))
+  (oset room messages (cl-delete-duplicates (append (oref room messages) m)
+                                            :test #'slack-message-equal)))
 
 (defmethod slack-room-set-messages ((room slack-room) m)
   (oset room messages m))
