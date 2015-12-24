@@ -161,10 +161,17 @@
          (let ((inhibit-read-only t)
                (loading-message-end (next-single-property-change
                                      cur-point
-                                     'oldest)))
-           (delete-region (point-min) loading-message-end))
-         (set-marker lui-output-marker (point-min))
-         (slack-buffer-insert-messages room)
+                                     'oldest))
+               (prev-messages (slack-room-prev-messages room oldest)))
+           (delete-region (point-min) loading-message-end)
+           (set-marker lui-output-marker (point-min))
+           (if prev-messages
+               (progn
+                 (slack-buffer-insert-previous-link (first prev-messages))
+                 (mapc (lambda (m)
+                         (lui-insert (slack-message-to-string m)))
+                       prev-messages))
+             (insert "(no more messages)")))
          (slack-buffer-recover-lui-output-marker)
          (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
 
