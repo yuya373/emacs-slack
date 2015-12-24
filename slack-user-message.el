@@ -32,10 +32,8 @@
     (slack-message-append-edited-at m header)))
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
-  (with-slots (ts) m
-    (propertize text
-                'ts ts
-                'keymap slack-user-message-keymap)))
+  (put-text-property 0 (length text) 'keymap slack-user-message-keymap text)
+  text)
 
 (defmethod slack-message-to-string ((m slack-user-message))
   (with-slots (text reactions) m
