@@ -148,7 +148,8 @@
 
 (defun slack-room-load-prev-messages ()
   (interactive)
-  (let* ((msg-beg (next-single-property-change (point-min) 'ts))
+  (let* ((cur-point (point))
+         (msg-beg (next-single-property-change cur-point 'ts))
          (ts (get-text-property msg-beg 'ts))
          (line (thing-at-point 'line))
          (oldest (ignore-errors (get-text-property 0 'oldest line))))
@@ -158,7 +159,7 @@
      #'(lambda (room)
          (let ((inhibit-read-only t)
                (loading-message-end (next-single-property-change
-                                     (point-min)
+                                     cur-point
                                      'oldest)))
            (delete-region (point-min) loading-message-end))
          (set-marker lui-output-marker (point-min))
