@@ -36,8 +36,9 @@
   text)
 
 (defmethod slack-message-to-string ((m slack-user-message))
-  (with-slots (text reactions) m
-    (let* ((text-escaped (slack-message-unescape-string text))
+  (with-slots (text reactions attachments) m
+    (let* ((attachment-string (mapconcat #'slack-attachment-to-string attachments "\n"))
+           (text-escaped (slack-message-unescape-string (concat text attachment-string)))
            (header (slack-user-message-header m))
            (reactions-str (slack-message-reactions-to-string reactions)))
       (slack-message-put-header-property header)
