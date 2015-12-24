@@ -125,7 +125,7 @@
             (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))
             (goto-char cur-point)
-            (slack-buffer-set-lui-output-marker))))))
+            (slack-buffer-recover-lui-output-marker))))))
 
 (defun slack-buffer-recover-lui-output-marker ()
   (set-marker lui-output-marker (- (marker-position
