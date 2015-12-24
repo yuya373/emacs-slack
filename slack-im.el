@@ -99,16 +99,10 @@
   (interactive)
   (slack-room-select slack-ims))
 
-(defmethod slack-room-history ((room slack-im))
-  (cl-labels ((on-im-history
-               (&key data &allow-other-keys)
-               (unless (plist-get data :ok)
-                 (error "slack-im-history failed %s" data))
-               (slack-room-on-history data room)))
-    (with-slots (id) room
-      (slack-room-request-update id
-                                 slack-im-history-url
-                                 #'on-im-history))))
+(defmethod slack-room-history ((room slack-im) &optional oldest)
+  (slack-room-request-update room
+                             slack-im-history-url
+                             oldest))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))

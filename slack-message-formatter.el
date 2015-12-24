@@ -61,6 +61,14 @@
 (defun slack-message-put-hard (text)
   (put-text-property 0 (length text) 'hard t text))
 
+(defmethod slack-message-propertize ((m slack-message) text)
+  text)
+
+(defmethod slack-message-propertize :before ((m slack-message) text)
+  (with-slots (ts) m
+    (put-text-property 0 (length text) 'ts ts text)
+    text))
+
 (defun slack-message-time-to-string (ts)
   (if ts
       (format-time-string "%Y-%m-%d %H:%M:%S"
@@ -76,7 +84,7 @@
           (text (slack-message-unescape-string text)))
       (slack-message-put-header-property ts)
       (slack-message-put-text-property text)
-      (concat ts "\n" text "\n"))))
+      (slack-message-propertize m (concat ts "\n" text "\n")))))
 
 (defmethod slack-message-to-alert ((m slack-message))
   (with-slots (text) m

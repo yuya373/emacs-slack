@@ -67,23 +67,38 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(defun slack-buffer-create (room)
+(cl-defun slack-buffer-create (room &optional (insert-func
+                                               'slack-buffer-insert-messages))
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (slack-get-buffer-create buf-name)))
     (with-current-buffer buffer
-      (let ((messages (slack-room-latest-messages room)))
-        (when messages
-          (mapc (lambda (m)
-                  (lui-insert (slack-message-to-string m) t))
-                messages)
-          (let ((latest-message (car (last messages))))
-            (slack-room-update-last-read room latest-message)
-            (slack-room-update-mark room latest-message))))
+      (if insert-func
+          (funcall insert-func room))
       (slack-buffer-set-current-room room)
       (slack-room-reset-unread-count room)
-      (goto-char (point-max))
       (slack-buffer-enable-emojify))
     buffer))
+
+(defun slack-buffer-insert-previous-link (oldest-msg)
+  (lui-insert (concat (propertize "(load more message)"
+                              'face '(:underline t)
+                              'oldest (oref oldest-msg ts)
+                              'keymap (let ((map (make-sparse-keymap)))
+                                        (define-key map (kbd "RET")
+                                          #'slack-room-load-prev-messages)
+                                        map))
+                  "\n")))
+
+(defun slack-buffer-insert-messages (room)
+  (let ((messages (slack-room-latest-messages room)))
+    (when messages
+      (slack-buffer-insert-previous-link (first messages))
+      (mapc (lambda (m)
+              (lui-insert (slack-message-to-string m) t))
+            messages)
+      (let ((latest-message (car (last messages))))
+        (slack-room-update-last-read room latest-message)
+        (slack-room-update-mark room latest-message)))))
 
 (cl-defun slack-buffer-update (room msg &key replace)
   (cl-labels ((do-update (buf room msg)
@@ -110,9 +125,12 @@
             (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))
             (goto-char cur-point)
-            (set-marker lui-output-marker (- (marker-position
-                                              lui-input-marker)
-                                             (length lui-prompt-string))))))))
+            (slack-buffer-recover-lui-output-marker))))))
+
+(defun slack-buffer-recover-lui-output-marker ()
+  (set-marker lui-output-marker (- (marker-position
+                                    lui-input-marker)
+                                   (length lui-prompt-string))))
 
 (defun slack-buffer-update-notification (buf-name string)
   (let ((buffer (slack-get-buffer-create buf-name)))

@@ -53,13 +53,10 @@
 (defmethod slack-room-buffer-header ((room slack-channel))
   (concat "Channel: " (slack-room-name room ) "\n"))
 
-(defmethod slack-room-history ((room slack-channel))
-  (cl-labels ((on-channel-update (&key data &allow-other-keys)
-                               (slack-room-on-history data room)))
-    (with-slots (id) room
-      (slack-room-request-update id
-                                 slack-channel-history-url
-                                 #'on-channel-update))))
+(defmethod slack-room-history ((room slack-channel) &optional oldest)
+  (slack-room-request-update room
+                             slack-channel-history-url
+                             oldest))
 
 (defun slack-channel-names ()
   (mapcar (lambda (channel)

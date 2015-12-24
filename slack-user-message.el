@@ -32,14 +32,13 @@
     (slack-message-append-edited-at m header)))
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
-  (with-slots (ts) m
-    (propertize text
-                'ts ts
-                'keymap slack-user-message-keymap)))
+  (put-text-property 0 (length text) 'keymap slack-user-message-keymap text)
+  text)
 
 (defmethod slack-message-to-string ((m slack-user-message))
-  (with-slots (text reactions) m
-    (let* ((text-escaped (slack-message-unescape-string text))
+  (with-slots (text reactions attachments) m
+    (let* ((attachment-string (mapconcat #'slack-attachment-to-string attachments "\n"))
+           (text-escaped (slack-message-unescape-string (concat text attachment-string)))
            (header (slack-user-message-header m))
            (reactions-str (slack-message-reactions-to-string reactions)))
       (slack-message-put-header-property header)
@@ -47,8 +46,9 @@
       (slack-message-put-reactions-property reactions-str)
       (slack-message-propertize m
                                 (concat header "\n"
-                                        text-escaped "\n" "\n"
-                                        reactions-str "\n")))))
+                                        text-escaped "\n"
+                                        (if reactions-str
+                                            (concat "\n" reactions-str "\n")))))))
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

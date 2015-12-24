@@ -51,7 +51,7 @@
                   (concat text attachment-string))))
       (slack-message-put-header-property header)
       (slack-message-put-text-property attachment-string)
-      (concat header "\n" body "\n"))))
+      (slack-message-propertize m (concat header "\n" body "\n")))))
 
 (defmethod slack-message-to-alert ((m slack-bot-message))
   (with-slots (text attachments) m
