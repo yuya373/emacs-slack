@@ -218,12 +218,6 @@
                            #'string<
                            :key #'(lambda (m) (oref m ts))))))
 
-(defmethod slack-room-inc-unread-count ((room slack-room))
-  (cl-incf (oref room unread-count-display)))
-
-(defmethod slack-room-reset-unread-count ((room slack-room))
-  (oset room unread-count-display 0))
-
 (defmethod slack-room-update-mark ((room slack-room) msg)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)
                               (slack-request-handle-error
