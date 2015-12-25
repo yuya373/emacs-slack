@@ -93,30 +93,25 @@
     (funcall slack-buffer-function
              (slack-buffer-create room))))
 
-(defun slack-room-get-messages (room)
-  (mapcar #'slack-message-to-string (oref room messages)))
-
-(cl-defmacro slack-room-select-from-list ((candidates prompt) &body body)
-  "Bind selected from `slack-room-read-list' to selected."
-  `(let ((selected (slack-room-read-list ,prompt ,candidates)))
+(cl-defmacro slack-select-from-list ((candidates prompt) &body body)
+  "Bind candidates from selected."
+  `(let ((selected (let ((completion-ignore-case t))
+                     (completing-read (format "%s" ,prompt)
+                                      ,candidates nil t nil nil ,candidates))))
      ,@body))
 
 (defun slack-room-select (rooms)
   (let* ((list (slack-room-names rooms))
          (candidates (mapcar #'car list)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (candidates "Select Channel: ")
      (slack-room-make-buffer selected
                              list
                              :test #'string=
                              :update nil))))
 
-(defun slack-room-read-list (prompt choices)
-  (let ((completion-ignore-case t))
-    (completing-read (format "%s" prompt)
-                     choices nil t nil nil choices)))
 
-(defmethod slack-room-update-messages ((room slack-room) m)
+(defmethod slack-room-update-message ((room slack-room) m)
   (with-slots (messages) room
     (cl-pushnew m messages :test #'slack-message-equal)
     (oset room latest (oref m ts))))
@@ -128,7 +123,7 @@
    :success success
    :sync sync))
 
-(defun slack-room-update-message ()
+(defun slack-room-update-messages ()
   (interactive)
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))

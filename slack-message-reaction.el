@@ -54,7 +54,7 @@
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r) (oref r name))
                       reactions)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (list "Select Reaction: ")
      selected)))
 

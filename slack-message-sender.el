@@ -106,7 +106,7 @@
   (interactive)
   (let* ((list (slack-channel-names))
          (candidates (mapcar #'car list)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (candidates "Select Channel: ")
      (let* ((room (cdr (cl-assoc selected
                                  list
@@ -118,7 +118,7 @@
   (interactive)
   (let* ((list (slack-user-names))
          (candidates (mapcar #'car list)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (candidates "Select User: ")
      (let* ((user-id (cdr (cl-assoc selected
                                     list

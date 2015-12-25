@@ -112,7 +112,7 @@
 (defgeneric slack-message-notify-buffer (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
-(defgeneric slack-room-update-messages (room))
+(defgeneric slack-room-update-message (room))
 
 (defun slack-room-find (id)
   (cl-labels ((find-room (room)
@@ -184,7 +184,7 @@
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
-        (slack-room-update-messages room m)
+        (slack-room-update-message room m)
         (slack-buffer-update room
                              m
                              :replace replace)

@@ -31,7 +31,7 @@
 
 (defvar slack-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-s C-r") #'slack-room-update-message)
+    (define-key map (kbd "C-s C-r") #'slack-room-update-messages)
     (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
     map))
 
