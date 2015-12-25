@@ -59,27 +59,20 @@
 (defmethod slack-room-set-messages ((room slack-room) m)
   (oset room messages m))
 
-(defun slack-room-on-history (data room latest)
-  (slack-request-handle-error
-   (data "slack-room-on-history")
-   (cl-labels
-       ((create-message-with-room (payload)
-                                  (slack-message-create payload :room room)))
-     (let* ((datum (plist-get data :messages))
-            (messages (mapcar #'create-message-with-room datum)))
-       (slack-room-update-last-read room
-                                    (slack-message :ts "0"))
-       (if latest
-           (slack-room-set-prev-messages room messages)
-         (slack-room-set-messages room messages))
-       messages))))
-
 (cl-defmacro slack-room-request-update (room url &optional latest)
   `(cl-labels
-       ((on-request-update (&key data &allow-other-keys)
+       ((create-message-with-room (payload)
+                                  (slack-message-create payload :room ,room))
+        (on-request-update (&key data &allow-other-keys)
                            (slack-request-handle-error
                             (data "slack-room-request-update")
-                            (slack-room-on-history data ,room ,latest))))
+                            (let* ((datum (plist-get data :messages))
+                                   (messages (mapcar #'create-message-with-room datum)))
+                              (slack-room-update-last-read room
+                                                           (slack-message :ts "0"))
+                              (if ,latest
+                                  (slack-room-set-prev-messages ,room messages)
+                                (slack-room-set-messages ,room messages))))))
      (slack-request
       ,url
       :params (list (cons "token" ,slack-token)
