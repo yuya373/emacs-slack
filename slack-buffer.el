@@ -92,7 +92,7 @@
 (defun slack-buffer-insert-messages (room)
   (let ((messages (slack-room-latest-messages room)))
     (when messages
-      (slack-buffer-insert-previous-link (first messages))
+      (slack-buffer-insert-previous-link (cl-first messages))
       (mapc (lambda (m)
               (lui-insert (slack-message-to-string m) t))
             messages)
