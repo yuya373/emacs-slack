@@ -88,12 +88,6 @@
 (defmethod slack-room-buffer-header ((_room slack-im))
   (concat "Direct Message: " "\n"))
 
-(defmethod slack-room-name-with-unread-count ((room slack-im))
-  (let ((name (slack-room-name room)))
-    (with-slots (unread-count-display) room
-      (if (< 0 unread-count-display)
-          (concat name " (" (number-to-string unread-count-display) ")")
-        name))))
 
 (defun slack-im-select ()
   (interactive)

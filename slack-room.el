@@ -168,10 +168,11 @@
               (oref room messages)))
 
 (defmethod slack-room-name-with-unread-count ((room slack-room))
-  (with-slots (name unread-count-display) room
+  (let ((name (slack-room-name room)))
+    (with-slots (unread-count-display) room
     (if (< 0 unread-count-display)
         (concat name " (" (number-to-string unread-count-display) ")")
-      name)))
+      name))))
 
 (defun slack-room-names (rooms)
   (sort (mapcar #'(lambda (room)
