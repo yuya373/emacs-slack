@@ -210,7 +210,6 @@
                            :key #'(lambda (m) (oref m ts))))))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
-  (message "%s" (slack-message-time-to-string from))
   (with-slots (messages) room
     (cl-remove-if #'(lambda (m)
                       (or (string< from (oref m ts))

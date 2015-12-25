@@ -74,7 +74,11 @@
        ((string= type "message")
         (slack-ws-handle-message decoded-payload))
        ((plist-get decoded-payload :reply_to)
-        (slack-ws-handle-reply decoded-payload))))))
+        (slack-ws-handle-reply decoded-payload))
+       ((string= type "reaction_added")
+        (slack-ws-handle-reaction-added decoded-payload))
+       ((string= type "reaction_removed")
+        (slack-ws-handle-reaction-removed decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -90,6 +94,30 @@
       (error "Code: %s msg: %s"
              (plist-get :code e)
              (plist-get :msg e)))))
+
+(cl-defmacro slack-ws-handle-reaction ((payload) &body body)
+  `(let* ((item (plist-get ,payload :item))
+         (room (slack-room-find (plist-get item :channel)))
+         (msg (slack-room-find-message room (plist-get item :ts)))
+         (r-name (plist-get ,payload :reaction))
+         (r-count 1)
+         (r-users (list (slack-user-find (plist-get ,payload :user))))
+         (reaction (make-instance 'slack-reaction
+                                  :name r-name
+                                  :count r-count
+                                  :users r-users)))
+    ,@body
+    (slack-buffer-update room msg :replace t)))
+
+(defun slack-ws-handle-reaction-added (payload)
+  (slack-ws-handle-reaction
+   (payload)
+   (slack-message-append-reaction msg reaction)))
+
+(defun slack-ws-handle-reaction-removed (payload)
+  (slack-ws-handle-reaction
+   (payload)
+   (slack-message-pop-reaction msg reaction)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

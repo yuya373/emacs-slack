@@ -121,7 +121,7 @@
            (end (next-single-property-change beg 'ts)))
       (if (and beg end)
           (let ((inhibit-read-only t))
-            (delete-region beg end)
+            (delete-region beg (+ end 1))
             (set-marker lui-output-marker beg)
             (lui-insert (slack-message-to-string msg))
             (goto-char cur-point)
