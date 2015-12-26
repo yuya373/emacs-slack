@@ -78,13 +78,31 @@
   (if reactions
       (mapconcat #'slack-reaction-to-string reactions " ")))
 
+(defmethod slack-message-header ((m slack-message))
+  (with-slots (ts) m
+      (let ((name (slack-message-sender-name m))
+            (time (slack-message-time-to-string ts)))
+        (format "%s %s" name time))))
+
 (defmethod slack-message-to-string ((m slack-message))
-  (with-slots (text) m
-    (let ((ts (slack-message-time-to-string (oref m ts)))
-          (text (slack-message-unescape-string text)))
-      (slack-message-put-header-property ts)
-      (slack-message-put-text-property text)
-      (slack-message-propertize m (concat ts "\n" text "\n")))))
+  (with-slots (text reactions attachments) m
+    (let* ((header (slack-message-header m))
+           (attachment-string (mapconcat #'slack-attachment-to-string
+                                         attachments "\n"))
+           (body (slack-message-unescape-string
+                  (concat text attachment-string)))
+           (reactions-str (slack-message-reactions-to-string
+                           reactions)))
+      (slack-message-put-header-property header)
+      (slack-message-put-text-property body)
+      (slack-message-put-reactions-property reactions-str)
+      (slack-message-propertize m
+                                (concat header "\n"
+                                        body "\n"
+                                        (if reactions-str
+                                            (concat "\n"
+                                                    reactions-str
+                                                    "\n")))))))
 
 (defmethod slack-message-to-alert ((m slack-message))
   (with-slots (text) m

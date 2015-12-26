@@ -42,25 +42,6 @@
             (plist-get bot :name)))
     (oref m username)))
 
-(defmethod slack-message-to-string ((m slack-bot-message))
-  (with-slots (text reactions attachments ts) m
-    (let* ((name (slack-bot-name m))
-           (time (slack-message-time-to-string ts))
-           (attachment-str (mapconcat #'slack-attachment-to-string
-                                         attachments "\n"))
-           (header (concat name "\t" time))
-           (body (slack-message-unescape-string
-                  (concat text attachment-str)))
-           (reactions-str (slack-message-reactions-to-string reactions)))
-      (slack-message-put-header-property header)
-      (slack-message-put-text-property attachment-str)
-      (slack-message-put-reactions-property reactions-str)
-      (slack-message-propertize m (concat header "\n"
-                                          body "\n"
-                                          (if reactions-str
-                                              (concat reactions-str
-                                                      "\n")))))))
-
 (defmethod slack-message-to-alert ((m slack-bot-message))
   (with-slots (text attachments) m
     (if (< 0 (length text))
@@ -70,7 +51,6 @@
 
 (defmethod slack-message-sender-name ((m slack-bot-message))
   (slack-bot-name m))
-
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
