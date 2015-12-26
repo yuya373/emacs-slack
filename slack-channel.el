@@ -40,6 +40,7 @@
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")
 (defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
+(defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -104,6 +105,11 @@
   (interactive)
   (slack-room-rename slack-channel-rename-url
                      (slack-channel-names)))
+
+(defun slack-channel-invite ()
+  (interactive)
+  (slack-room-invite slack-channel-invite-url
+                     #'slack-channel-names))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
