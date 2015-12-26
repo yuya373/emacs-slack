@@ -39,6 +39,7 @@
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")
+(defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -98,6 +99,11 @@
                                       (slack-room-name channel))))))
     (slack-create-room slack-channel-create-url
                        #'on-create-channel)))
+
+(defun slack-channel-rename ()
+  (interactive)
+  (slack-room-rename slack-channel-rename-url
+                     (slack-channel-names)))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
