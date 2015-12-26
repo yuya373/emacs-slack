@@ -87,7 +87,7 @@
 (defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)
 
-(defun slack-create-chanel ()
+(defun slack-create-channel ()
   (interactive)
   (cl-labels
       ((on-create-channel (&key data &allow-other-keys)
@@ -98,7 +98,7 @@
                              (push channel slack-channels)
                              (message "channel: %s created!"
                                       (slack-room-name channel))))))
-    (slack-create-room slack-channel-create-url
+    (slack-create-room slack-create-channel-url
                        #'on-create-channel)))
 
 (defun slack-channel-rename ()
