@@ -66,8 +66,7 @@
   (cl-labels ((on-reaction-add
                (&key data &allow-other-keys)
                (slack-request-handle-error
-                (data "slack-message-reaction-add")
-                (slack-message-on-reaction-add reaction ts room))))
+                (data "slack-message-reaction-add"))))
     (slack-request
      slack-message-reaction-add-url
      :type "POST"
@@ -82,8 +81,7 @@
   (cl-labels ((on-reaction-remove
                (&key data &allow-other-keys)
                (slack-request-handle-error
-                (data "slack-message-reaction-remove")
-                (slack-message-on-reaction-remove reaction ts room))))
+                (data "slack-message-reaction-remove"))))
     (slack-request
      slack-message-reaction-remove-url
      :type "POST"
@@ -93,25 +91,6 @@
                    (cons "timestamp" ts)
                    (cons "name" reaction))
      :success #'on-reaction-remove)))
-
-(cl-defmacro slack-message-on--reaction ((reaction ts room) &body body)
-  `(let* ((msg (slack-room-find-message ,room ,ts))
-          (reaction (make-instance 'slack-reaction
-                                   :name ,reaction
-                                   :count 1
-                                   :users (list (oref msg user)))))
-     ,@body
-     (slack-buffer-update ,room
-                          msg
-                          :replace t)))
-
-(defun slack-message-on-reaction-add (reaction ts room)
-  (slack-message-on--reaction (reaction ts room)
-                              (slack-message-append-reaction msg reaction)))
-
-(defun slack-message-on-reaction-remove (reaction ts room)
-  (slack-message-on--reaction (reaction ts room)
-                              (slack-message-pop-reaction msg reaction)))
 
 (cl-defmacro slack-message-find-reaction ((m reaction) &body body)
   `(let ((same-reaction (cl-find-if #'(lambda (r) (slack-reaction-equalp r ,reaction))
