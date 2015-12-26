@@ -35,29 +35,12 @@
              (string= id (plist-get bot :id)))
            slack-bots))
 
-(defun slack-bot-name (id)
-  (let ((bot (slack-find-bot id)))
-    (if bot
-        (plist-get bot :name))))
-
-(defmethod slack-message-to-string ((m slack-bot-message))
-  (with-slots (text reactions attachments bot-id) m
-    (let* ((name (slack-bot-name bot-id))
-           (time (slack-message-time-to-string (oref m ts)))
-           (attachment-str (mapconcat #'slack-attachment-to-string
-                                         attachments "\n"))
-           (header (concat name "\t" time))
-           (body (slack-message-unescape-string
-                  (concat text attachment-str)))
-           (reactions-str (slack-message-reactions-to-string reactions)))
-      (slack-message-put-header-property header)
-      (slack-message-put-text-property attachment-str)
-      (slack-message-put-reactions-property reactions-str)
-      (slack-message-propertize m (concat header "\n"
-                                          body "\n"
-                                          (if reactions-str
-                                              (concat reactions-str
-                                                      "\n")))))))
+(defmethod slack-bot-name ((m slack-bot-message))
+  (if (slot-boundp m 'bot-id)
+      (let ((bot (slack-find-bot (oref m bot-id))))
+        (if bot
+            (plist-get bot :name)))
+    (oref m username)))
 
 (defmethod slack-message-to-alert ((m slack-bot-message))
   (with-slots (text attachments) m
@@ -67,8 +50,7 @@
         (slack-message-unescape-string attachment-string)))))
 
 (defmethod slack-message-sender-name ((m slack-bot-message))
-  (slack-bot-name (oref m bot-id)))
-
+  (slack-bot-name m))
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a

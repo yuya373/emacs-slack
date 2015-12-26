@@ -31,7 +31,7 @@
 
 (defvar slack-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-s C-r") #'slack-room-update-message)
+    (define-key map (kbd "C-s C-r") #'slack-room-update-messages)
     (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
     map))
 
@@ -75,7 +75,7 @@
       (if insert-func
           (funcall insert-func room))
       (slack-buffer-set-current-room room)
-      (slack-room-reset-unread-count room)
+      (oset room unread-count-display 0)
       (slack-buffer-enable-emojify))
     buffer))
 
@@ -112,7 +112,7 @@
       (if (and buffer (cl-member buf-name buf-names :test #'string=))
           (if replace (slack-buffer-replace buffer msg)
             (do-update buffer room msg))
-        (slack-room-inc-unread-count room)))))
+        (cl-incf (oref room unread-count-display))))))
 
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer

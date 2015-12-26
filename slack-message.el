@@ -112,7 +112,7 @@
 (defgeneric slack-message-notify-buffer (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
-(defgeneric slack-room-update-messages (room))
+(defgeneric slack-room-update-message (room))
 
 (defun slack-room-find (id)
   (cl-labels ((find-room (room)
@@ -164,7 +164,7 @@
                          ((plist-member m :user)
                           (apply #'slack-user-message "user-msg"
                                  (slack-collect-slots 'slack-user-message m)))
-                         ((plist-member m :bot_id)
+                         ((and subtype (string= "bot_message" subtype))
                           (apply #'slack-bot-message "bot-msg"
                                  (slack-collect-slots 'slack-bot-message m)))))))
     (let ((message (create payload)))
@@ -184,7 +184,7 @@
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
-        (slack-room-update-messages room m)
+        (slack-room-update-message room m)
         (slack-buffer-update room
                              m
                              :replace replace)
@@ -215,11 +215,10 @@
   (slack-message-pins-request slack-message-pins-remove-url))
 
 (defun slack-message-pins-request (url)
-  (let* ((room slack-current-room)
-         (channel (oref room id))
+  (let* ((room (ignore-errors slack-current-room))
          (word (thing-at-point 'word))
-         (ts (get-text-property 0 'ts word)))
-    (unless (or slack-current-room ts)
+         (ts (ignore-errors (get-text-property 0 'ts word))))
+    (unless (or room ts)
       (error "Call From Slack Room Buffer"))
     (cl-labels ((on-pins-add
                  (&key data &allow-other-keys)
@@ -228,7 +227,7 @@
       (slack-request
        url
        :params (list (cons "token" slack-token)
-                     (cons "channel" channel)
+                     (cons "channel" (oref room id))
                      (cons "timestamp" ts))
        :success #'on-pins-add
        :sync nil))))

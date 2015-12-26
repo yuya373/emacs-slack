@@ -90,23 +90,11 @@
             (set-keymap-parent map minibuffer-local-map)
             map))))
 
-(defun slack-message-write-current-buffer ()
-  (interactive)
-  (with-current-buffer (current-buffer)
-    (setq buffer-read-only nil)
-    (message "Write message and call `slack-message-send-from-region'")))
-
-(defun slack-message-send-from-region (beg end)
-  (interactive "r")
-  (let ((message (delete-and-extract-region beg end)))
-    (if (< 0 (length message))
-      (slack-message--send message))))
-
 (defun slack-message-embed-channel ()
   (interactive)
   (let* ((list (slack-channel-names))
          (candidates (mapcar #'car list)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (candidates "Select Channel: ")
      (let* ((room (cdr (cl-assoc selected
                                  list
@@ -118,7 +106,7 @@
   (interactive)
   (let* ((list (slack-user-names))
          (candidates (mapcar #'car list)))
-    (slack-room-select-from-list
+    (slack-select-from-list
      (candidates "Select User: ")
      (let* ((user-id (cdr (cl-assoc selected
                                     list
