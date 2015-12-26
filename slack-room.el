@@ -264,5 +264,13 @@
   (interactive)
   (slack-room-select (append slack-ims slack-groups slack-channels)))
 
+(defun slack-create-room (url success)
+  (slack-request
+   url
+   :type "POST"
+   :params (list (cons "token" slack-token)
+                 (cons "name" (read-from-minibuffer "Name: ")))
+   :success success))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

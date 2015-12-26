@@ -37,6 +37,8 @@
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
+(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
+(defconst slack-create-group-url "https://slack.com/api/groups.create")
 
 (defvar slack-groups)
 (defvar slack-token)
@@ -95,10 +97,23 @@
                             #'on-list-update
                             :sync nil)))
 
-(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 
 (defmethod slack-room-update-mark-url ((_room slack-group))
   slack-group-update-mark-url)
+
+(defun slack-create-group ()
+  (interactive)
+  (cl-labels
+      ((on-create-group (&key data &allow-other-keys)
+                        (slack-request-handle-error
+                         (data "slack-create-group")
+                         (let ((group (slack-group-create
+                                       (plist-get data :group))))
+                           (push group slack-groups)
+                           (message "group: %s created!"
+                                    (slack-room-name group))))))
+    (slack-create-room slack-create-group-url
+                       #'on-create-group)))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here
