@@ -164,7 +164,7 @@
                          ((plist-member m :user)
                           (apply #'slack-user-message "user-msg"
                                  (slack-collect-slots 'slack-user-message m)))
-                         ((plist-member m :bot_id)
+                         ((and subtype (string= "bot_message" subtype))
                           (apply #'slack-bot-message "bot-msg"
                                  (slack-collect-slots 'slack-bot-message m)))))))
     (let ((message (create payload)))
