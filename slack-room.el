@@ -100,6 +100,9 @@
                                       ,candidates nil t nil nil ,candidates))))
      ,@body))
 
+(defun slack-extract-from-list (selected candidates)
+  (cdr (cl-assoc selected candidates :test #'string=)))
+
 (defun slack-room-select (rooms)
   (let* ((list (slack-room-names rooms))
          (candidates (mapcar #'car list)))
@@ -271,6 +274,30 @@
    :params (list (cons "token" slack-token)
                  (cons "name" (read-from-minibuffer "Name: ")))
    :success success))
+
+(defun slack-room-rename (url room-list)
+  (cl-labels
+      ((on-rename-success (&key data &allow-other-keys)
+                          (slack-request-handle-error
+                           (data "slack-room-rename")
+                           (let* ((room-data (plist-get data :channel))
+                                  (room (slack-room-find (plist-get room-data :id)))
+                                  (old-name (oref room name))
+                                  (new-name (plist-get room-data :name)))
+                             (oset room name new-name)
+                             (message "change %s to %s" old-name new-name)))))
+    (let* ((candidates (mapcar #'car room-list))
+           (room (slack-select-from-list
+                   ((mapcar #'car room-list) "Select Channel: ")
+                   (slack-extract-from-list selected room-list)))
+           (name (read-from-minibuffer "New Name: ")))
+      (slack-request
+       url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" (oref room id))
+                     (cons "name" name))
+       :success #'on-rename-success
+       :sync nil))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
