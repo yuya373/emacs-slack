@@ -215,11 +215,10 @@
   (slack-message-pins-request slack-message-pins-remove-url))
 
 (defun slack-message-pins-request (url)
-  (let* ((room slack-current-room)
-         (channel (oref room id))
+  (let* ((room (ignore-errors slack-current-room))
          (word (thing-at-point 'word))
-         (ts (get-text-property 0 'ts word)))
-    (unless (or slack-current-room ts)
+         (ts (ignore-errors (get-text-property 0 'ts word))))
+    (unless (or room ts)
       (error "Call From Slack Room Buffer"))
     (cl-labels ((on-pins-add
                  (&key data &allow-other-keys)
@@ -228,7 +227,7 @@
       (slack-request
        url
        :params (list (cons "token" slack-token)
-                     (cons "channel" channel)
+                     (cons "channel" (oref room id))
                      (cons "timestamp" ts))
        :success #'on-pins-add
        :sync nil))))
