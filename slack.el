@@ -72,40 +72,37 @@ set this to save request to Slack if already have.")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
 (defun slack-authorize ()
-  (request
+  (slack-request
    slack-authorize-url
    :params (list (cons "token" slack-token))
-   :parser #'slack-parse-to-plist
-   :success #'slack-on-authorize
-   :error #'slack-on-authorize-e))
+   :success #'slack-on-authorize))
 
-(defun slack-on-authorize (&key data &allow-other-keys &rest _)
-  (let ((status (plist-get data :ok)))
-    (unless status
-      (error "slack-on-authorize: %s" data)))
-  (setq slack-self        (plist-get data :self))
-  (setq slack-my-user-id (plist-get slack-self :id))
-  (setq slack-my-user-name (plist-get slack-self :name))
-  (setq slack-team        (plist-get data :team))
-  (cl-labels
-      ((create-room (data func)
-                    (plist-put data :last_read "0")
-                    (funcall func data))
-       (create-rooms (datum func)
-                     (mapcar #'(lambda (data)
-                                 (create-room data func))
-                             datum)))
-    (setq slack-channels (create-rooms (plist-get data :channels)
-                                       #'slack-channel-create))
-    (setq slack-groups (create-rooms (plist-get data :groups)
-                                     #'slack-group-create))
-    (setq slack-ims (create-rooms (plist-get data :ims)
-                                  #'slack-im-create)))
-  (setq slack-users       (append (plist-get data :users) nil))
-  (setq slack-bots        (plist-get data :bots))
-  (setq slack-ws-url      (plist-get data :url))
-  (message "Slack Authorization Finished.")
-  (slack-ws-open))
+(cl-defun slack-on-authorize (&key data &allow-other-keys)
+  (slack-request-handle-error
+   (data "slack-authorize")
+   (setq slack-self        (plist-get data :self))
+   (setq slack-my-user-id (plist-get slack-self :id))
+   (setq slack-my-user-name (plist-get slack-self :name))
+   (setq slack-team        (plist-get data :team))
+   (cl-labels
+       ((create-room (data func)
+                     (plist-put data :last_read "0")
+                     (funcall func data))
+        (create-rooms (datum func)
+                      (mapcar #'(lambda (data)
+                                  (create-room data func))
+                              (append datum nil))))
+     (setq slack-channels (create-rooms (plist-get data :channels)
+                                        #'slack-channel-create))
+     (setq slack-groups (create-rooms (plist-get data :groups)
+                                      #'slack-group-create))
+     (setq slack-ims (create-rooms (plist-get data :ims)
+                                   #'slack-im-create)))
+   (setq slack-users       (append (plist-get data :users) nil))
+   (setq slack-bots        (plist-get data :bots))
+   (setq slack-ws-url      (plist-get data :url))
+   (message "Slack Authorization Finished.")
+   (slack-ws-open)))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)
