@@ -240,13 +240,12 @@
        :success #'on-pins-list
        :sync nil))))
 
-(defun slack-room-pinned-item-buffer-name (room)
-  (concat "*Slack - Pinned Items*"
-          " : "
-          (slack-room-name room)))
-
 (defun slack-room-on-pins-list (items room)
-  (let* ((messages (mapcar #'slack-message-create
+  (cl-labels ((buffer-name (room)
+                           (concat "*Slack - Pinned Items*"
+                                   " : "
+                                   (slack-room-name room))))
+    (let* ((messages (mapcar #'slack-message-create
                            (mapcar #'(lambda (i) (plist-get i :message))
                                    items)))
          (buf-header (propertize "Pinned Items"
@@ -254,12 +253,12 @@
                                          :weight bold))))
     (funcall slack-buffer-function
              (slack-buffer-create-info
-              (slack-room-pinned-item-buffer-name room)
+              (buffer-name room)
               #'(lambda () (insert buf-header)
                   (insert "\n\n")
                   (mapc #'(lambda (m) (insert
                                        (slack-message-to-string m)))
-                        messages))))))
+                        messages)))))))
 
 (defun slack-select-rooms ()
   (interactive)
