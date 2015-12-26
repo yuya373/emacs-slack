@@ -37,6 +37,8 @@
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
+(defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
+(defconst slack-create-channel-url "https://slack.com/api/channels.create")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -80,10 +82,22 @@
                             #'on-list-update
                             :sync nil)))
 
-(defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
-
 (defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)
+
+(defun slack-create-chanel ()
+  (interactive)
+  (cl-labels
+      ((on-create-channel (&key data &allow-other-keys)
+                          (slack-request-handle-error
+                           (data "slack-channel-create")
+                           (let ((channel (slack-channel-create
+                                           (plist-get data :channel))))
+                             (push channel slack-channels)
+                             (message "channel: %s created!"
+                                      (slack-room-name channel))))))
+    (slack-create-room slack-channel-create-url
+                       #'on-create-channel)))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
