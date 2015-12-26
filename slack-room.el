@@ -167,7 +167,7 @@
            (set-marker lui-output-marker (point-min))
            (if prev-messages
                (progn
-                 (slack-buffer-insert-previous-link (first prev-messages))
+                 (slack-buffer-insert-previous-link (cl-first prev-messages))
                  (mapc (lambda (m)
                          (lui-insert (slack-message-to-string m)))
                        prev-messages))
