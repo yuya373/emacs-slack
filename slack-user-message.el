@@ -10,9 +10,6 @@
 
 (defvar slack-user-message-keymap
   (let ((keymap (make-sparse-keymap)))
-    (define-key keymap "e" #'slack-message-edit)
-    (define-key keymap "r" #'slack-message-add-reaction)
-    (define-key keymap "R" #'slack-message-remove-reaction)
     keymap))
 
 (defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
