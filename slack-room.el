@@ -299,5 +299,31 @@
        :success #'on-rename-success
        :sync nil))))
 
+(defun slack-room-invite (url room-list-func)
+  (cl-labels
+      ((on-group-invite (&key data &allow-other-keys)
+                        (slack-request-handle-error
+                         (data "slack-group-invite")
+                         (if (plist-get data :already_in_group)
+                             (message "User Already In Group.")
+                           (message "Invited!")))))
+    (let* ((group (if (boundp 'slack-currnt-room)
+                      slack-current-room
+                    (let* ((list (funcall room-list-func))
+                           (candidates (mapcar #'car list)))
+                      (slack-select-from-list
+                       (candidates "Select Group: ")
+                       (slack-extract-from-list selected list)))))
+           (users (slack-user-names))
+           (user-id (slack-select-from-list ((mapcar #'car users) "Select User: ")
+                                            (slack-extract-from-list selected
+                                                                     users))))
+      (slack-request
+       url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" (oref group id))
+                     (cons "user" user-id))
+       :success #'on-group-invite))))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -40,6 +40,7 @@
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 (defconst slack-create-group-url "https://slack.com/api/groups.create")
 (defconst slack-group-rename-url "https://slack.com/api/groups.rename")
+(defconst slack-group-invite-url "https://slack.com/api/groups.invite")
 
 (defvar slack-groups)
 (defvar slack-token)
@@ -120,6 +121,11 @@
   (interactive)
   (slack-room-rename slack-group-rename-url
                      (slack-group-names)))
+
+(defun slack-group-invite ()
+  (interactive)
+  (slack-room-invite slack-group-invite-url
+                     #'slack-group-names))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here
