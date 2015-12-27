@@ -85,8 +85,9 @@
                (slack-request-handle-error
                 (data "slack-channel-list-update")
                 (setq slack-channels
-                     (mapcar #'slack-channel-create
-                             (plist-get data :channels))))))
+                      (mapcar #'slack-channel-create
+                              (plist-get data :channels)))
+                (message "Slack Channel List Updated"))))
     (slack-room-list-update slack-channel-list-url
                             #'on-list-update
                             :sync nil)))

@@ -94,7 +94,8 @@
                (slack-request-handle-error
                 (data "slack-group-list-update")
                 (setq slack-groups (mapcar #'slack-group-create
-                                          (plist-get data :groups))))))
+                                           (plist-get data :groups)))
+                (message "Slack Group List Updated"))))
     (slack-room-list-update slack-group-list-url
                             #'on-list-update
                             :sync nil)))
