@@ -41,6 +41,7 @@
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")
 (defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
+(defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -110,6 +111,19 @@
   (interactive)
   (slack-room-invite slack-channel-invite-url
                      #'slack-channel-names))
+
+(defun slack-channel-leave ()
+  (interactive)
+  (let ((channel (slack-current-room-or-select #'slack-channel-names)))
+    (cl-labels
+        ((on-channel-leave (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-channel-leave")
+                            (oset channel is-member :json-false))))
+      (slack-room-leave slack-channel-leave-url
+                        channel
+                        #'on-channel-leave))))
+
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

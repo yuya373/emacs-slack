@@ -299,6 +299,15 @@
        :success #'on-rename-success
        :sync nil))))
 
+(defun slack-current-room-or-select (room-list-func)
+  (if (boundp 'slack-currnt-room)
+      slack-current-room
+    (let* ((list (funcall room-list-func))
+           (candidates (mapcar #'car list)))
+      (slack-select-from-list
+       (candidates "Select Group: ")
+       (slack-extract-from-list selected list)))))
+
 (defun slack-room-invite (url room-list-func)
   (cl-labels
       ((on-group-invite (&key data &allow-other-keys)
@@ -324,6 +333,19 @@
                      (cons "channel" (oref group id))
                      (cons "user" user-id))
        :success #'on-group-invite))))
+
+(defun slack-room-leave (url room &optional success)
+  (cl-labels
+      ((on-room-leave (&key data &allow-other-keys)
+                      (slack-request-handle-error
+                       (data "slack-room-leave")
+                       (message "Leave %s" (slack-room-name room)))))
+    (slack-request
+     url
+     :params (list (cons "token" slack-token)
+                   (cons "channel" (oref room id)))
+     :success (or success #'on-room-leave)
+     :sync nil)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
