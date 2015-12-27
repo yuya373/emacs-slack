@@ -86,14 +86,14 @@
         (slack-message-update m))))
 
 (defun slack-ws-handle-reply (payload)
-  (let ((ok (plist-get payload :ok))
-        (e (plist-get payload :error)))
-    (if ok
-        (slack-message-handle-reply
-         (slack-message-create payload))
-      (error "Code: %s msg: %s"
-             (plist-get :code e)
-             (plist-get :msg e)))))
+  (let ((ok (plist-get payload :ok)))
+    (if (eq ok :json-false)
+        (let ((err (plist-get payload :error)))
+          (message "Error code: %s msg: %s"
+                   (plist-get err :code)
+                   (plist-get err :msg)))
+      (slack-message-handle-reply
+       (slack-message-create payload)))))
 
 (cl-defmacro slack-ws-handle-reaction ((payload) &body body)
   `(let* ((item (plist-get ,payload :item))
