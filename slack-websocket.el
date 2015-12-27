@@ -81,10 +81,12 @@
         (slack-ws-handle-reaction-removed decoded-payload))
        ((string= type "channel_created")
         (slack-ws-handle-channel-created decoded-payload))
-       ((string= type "channel_archive")
-        (slack-ws-handle-channel-archive decoded-payload))
-       ((string= type "channel_unarchive")
-        (slack-ws-handle-channel-unarchive decoded-payload))
+       ((or (string= type "channel_archive")
+            (string= type "group_archive"))
+        (slack-ws-handle-room-archive decoded-payload))
+       ((or (string= type "channel_unarchive")
+            (string= type "group_unarchive"))
+        (slack-ws-handle-room-unarchive decoded-payload))
        ((string= type "channel_deleted")
         (slack-ws-handle-channel-deleted decoded-payload))))))
 
@@ -131,15 +133,19 @@
   (let ((id (plist-get (plist-get payload :channel) :id)))
     (slack-channel-create-from-info id)))
 
-(defun slack-ws-handle-channel-archive (payload)
+(defun slack-ws-handle-room-archive (payload)
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id)))
-    (oset room is-archived t)))
+    (oset room is-archived t)
+    (message "Channel: %s is archived"
+             (slack-room-name room))))
 
-(defun slack-ws-handle-channel-unarchive (payload)
+(defun slack-ws-handle-room-unarchive (payload)
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id)))
-    (oset room is-archived :json-false)))
+    (oset room is-archived :json-false)
+    (message "Channel: %s is unarchived"
+             (slack-room-name room))))
 
 (defun slack-ws-handle-channel-deleted (payload)
   (let ((id (plist-get payload :channel)))

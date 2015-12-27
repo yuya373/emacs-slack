@@ -42,6 +42,8 @@
 (defconst slack-group-rename-url "https://slack.com/api/groups.rename")
 (defconst slack-group-invite-url "https://slack.com/api/groups.invite")
 (defconst slack-group-leave-url "https://slack.com/api/groups.leave")
+(defconst slack-group-archive-url "https://slack.com/api/groups.archive")
+(defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
 
 (defvar slack-groups)
 (defvar slack-token)
@@ -149,6 +151,35 @@
     (if (eq is-archived :json-false)
         nil
       t)))
+
+(defun slack-group-archive ()
+  (interactive)
+  (let ((group (slack-current-room-or-select
+                (slack-group-names
+                 #'(lambda (groups)
+                     (cl-remove-if #'slack-room-archived-p
+                                   groups))))))
+    (cl-labels
+        ((on-group-archive (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-group-archive"))))
+      (slack-room-request-with-id slack-group-archive-url
+                                  (oref group id)
+                                  #'on-group-archive))))
+
+(defun slack-group-unarchive ()
+  (interactive)
+  (let ((group (slack-current-room-or-select
+                (slack-group-names
+                 #'(lambda (groups)
+                     (cl-remove-if-not #'slack-room-archived-p
+                                       groups))))))
+    (cl-labels
+        ((on-group-unarchive (&key data &allow-other-keys)
+                             (data "slack-group-unarchive")))
+      (slack-room-request-with-id slack-group-unarchive-url
+                                  (oref group id)
+                                  #'on-group-unarchive))))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here
