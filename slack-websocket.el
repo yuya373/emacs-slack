@@ -81,6 +81,10 @@
         (slack-ws-handle-reaction-removed decoded-payload))
        ((string= type "channel_created")
         (slack-ws-handle-channel-created decoded-payload))
+       ((string= type "channel_archive")
+        (slack-ws-handle-channel-archive decoded-payload))
+       ((string= type "channel_unarchive")
+        (slack-ws-handle-channel-unarchive decoded-payload))
        ((string= type "channel_deleted")
         (slack-ws-handle-channel-deleted decoded-payload))))))
 
@@ -126,6 +130,16 @@
 (defun slack-ws-handle-channel-created (payload)
   (let ((id (plist-get (plist-get payload :channel) :id)))
     (slack-channel-create-from-info id)))
+
+(defun slack-ws-handle-channel-archive (payload)
+  (let* ((id (plist-get payload :channel))
+         (room (slack-room-find id)))
+    (oset room is-archived t)))
+
+(defun slack-ws-handle-channel-unarchive (payload)
+  (let* ((id (plist-get payload :channel))
+         (room (slack-room-find id)))
+    (oset room is-archived :json-false)))
 
 (defun slack-ws-handle-channel-deleted (payload)
   (let ((id (plist-get payload :channel)))
