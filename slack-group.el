@@ -41,6 +41,7 @@
 (defconst slack-create-group-url "https://slack.com/api/groups.create")
 (defconst slack-group-rename-url "https://slack.com/api/groups.rename")
 (defconst slack-group-invite-url "https://slack.com/api/groups.invite")
+(defconst slack-group-leave-url "https://slack.com/api/groups.leave")
 
 (defvar slack-groups)
 (defvar slack-token)
@@ -127,6 +128,12 @@
   (interactive)
   (slack-room-invite slack-group-invite-url
                      #'slack-group-names))
+
+(defun slack-group-leave ()
+  (interactive)
+  (let ((group (slack-current-room-or-select #'slack-group-names)))
+    (slack-room-leave slack-group-leave-url
+                      group)))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here
