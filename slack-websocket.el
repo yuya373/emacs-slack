@@ -91,7 +91,10 @@
         (slack-ws-handle-channel-deleted decoded-payload))
        ((or (string= type "channel_rename")
             (string= type "group_rename"))
-        (slack-ws-handle-room-rename decoded-payload))))))
+        (slack-ws-handle-room-rename decoded-payload))
+       ((or (string= type "channel_joined")
+            (string= type "group_joined"))
+        (slack-ws-handle-room-joined decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -163,6 +166,18 @@
     (message "Renamed channel from %s to %s"
              old-name
              new-name)))
+
+(defun slack-ws-handle-room-joined (payload)
+  (let* ((c (plist-get payload :channel)))
+    (if (plist-get c :is_channel)
+        (let ((channel (slack-channel-create c)))
+          (push channel slack-channels)
+          (message "Joined channel %s"
+                   (slack-room-name channel)))
+      (let ((group (slack-group-create c)))
+        (push group slack-groups)
+        (message "Joined group %s"
+                 (slack-room-name group))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
