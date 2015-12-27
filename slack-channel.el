@@ -143,7 +143,7 @@
                           (slack-request-handle-error
                            (data "slack-channel-join")
                            (oset channel is-member t))))
-      (message "channel name: %s" (slack-room-name channel))
+      (message "Joined %s" (slack-room-name channel))
       (slack-request
        slack-channel-join-url
        :params (list (cons "token" slack-token)
