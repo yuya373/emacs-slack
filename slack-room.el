@@ -342,5 +342,8 @@
      :success (or success #'on-room-leave)
      :sync nil)))
 
+(defmethod slack-room-member-p ((_room slack-room))
+  t)
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

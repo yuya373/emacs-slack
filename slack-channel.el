@@ -68,6 +68,11 @@
             (cons (oref channel name) channel))
           slack-channels))
 
+(defmethod slack-room-member-p ((room slack-channel))
+  (if (eq (oref room is-member) :json-false)
+      nil
+    t))
+
 (defun slack-channel-select ()
   (interactive)
   (slack-room-select slack-channels))
