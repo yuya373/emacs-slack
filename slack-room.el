@@ -321,25 +321,26 @@
        (candidates "Select Group: ")
        (slack-extract-from-list selected list)))))
 
-(defun slack-room-invite (url room-list-func)
-  (cl-labels
-      ((on-group-invite (&key data &allow-other-keys)
-                        (slack-request-handle-error
-                         (data "slack-group-invite")
-                         (if (plist-get data :already_in_group)
-                             (message "User Already In Group.")
-                           (message "Invited!")))))
-    (let* ((room (slack-current-room-or-select room-list-func))
-           (users (slack-user-names))
-           (user-id (slack-select-from-list ((mapcar #'car users) "Select User: ")
-                                            (slack-extract-from-list selected
-                                                                     users))))
-      (slack-request
-       url
-       :params (list (cons "token" slack-token)
-                     (cons "channel" (oref room id))
-                     (cons "user" user-id))
-       :success #'on-group-invite))))
+(defmacro slack-room-invite (url room-list-func)
+  `(cl-labels
+       ((on-group-invite (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-room-invite")
+                          (if (plist-get data :already_in_group)
+                              (message "User already in group")
+                            (message "Invited!")))))
+     (let* ((room (slack-current-room-or-select ,room-list-func))
+            (users (slack-user-names))
+            (user-id (slack-select-from-list
+                      ((mapcar #'car users) "Select User: ")
+                      (slack-extract-from-list selected users))))
+       (slack-request
+        ,url
+        :params (list (cons "token" slack-token)
+                      (cons "channel" (oref room id))
+                      (cons "user" user-id))
+        :success #'on-group-invite
+        :sync nil))))
 
 (defmethod slack-room-member-p ((_room slack-room))
   t)
