@@ -294,13 +294,7 @@
   (cl-labels
       ((on-rename-success (&key data &allow-other-keys)
                           (slack-request-handle-error
-                           (data "slack-room-rename")
-                           (let* ((room-data (plist-get data :channel))
-                                  (room (slack-room-find (plist-get room-data :id)))
-                                  (old-name (oref room name))
-                                  (new-name (plist-get room-data :name)))
-                             (oset room name new-name)
-                             (message "change %s to %s" old-name new-name)))))
+                           (data "slack-room-rename"))))
     (let* ((candidates (mapcar #'car room-list))
            (room (slack-select-from-list
                   ((mapcar #'car room-list) "Select Channel: ")

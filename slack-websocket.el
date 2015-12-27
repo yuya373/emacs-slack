@@ -88,7 +88,10 @@
             (string= type "group_unarchive"))
         (slack-ws-handle-room-unarchive decoded-payload))
        ((string= type "channel_deleted")
-        (slack-ws-handle-channel-deleted decoded-payload))))))
+        (slack-ws-handle-channel-deleted decoded-payload))
+       ((or (string= type "channel_rename")
+            (string= type "group_rename"))
+        (slack-ws-handle-room-rename decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -150,6 +153,16 @@
 (defun slack-ws-handle-channel-deleted (payload)
   (let ((id (plist-get payload :channel)))
     (slack-room-deleted id)))
+
+(defun slack-ws-handle-room-rename (payload)
+  (let* ((c (plist-get payload :channel))
+         (room (slack-room-find (plist-get c :id)))
+         (old-name (slack-room-name room))
+         (new-name (plist-get c :name)))
+    (oset room name new-name)
+    (message "Renamed channel from %s to %s"
+             old-name
+             new-name)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
