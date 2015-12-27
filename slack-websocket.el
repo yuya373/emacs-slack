@@ -34,8 +34,8 @@
 (defun slack-ws-open ()
   (unless slack-ws
     (setq slack-ws (websocket-open
-                   slack-ws-url
-                   :on-message #'slack-ws-on-message))))
+                    slack-ws-url
+                    :on-message #'slack-ws-on-message))))
 
 (defun slack-ws-close ()
   (interactive)
@@ -52,12 +52,12 @@
                               (decode-coding-string e 'utf-8-unix)
                             e))
               (recur (payload acc)
-                      (if (and payload (< 0 (length payload)))
-                          (let ((h (car payload)))
-                            (if (and (not (stringp h)) (or (arrayp h) (listp h)))
-                                (recur (cdr payload) (cons (recur (append h nil) ()) acc))
-                              (recur (cdr payload) (cons (decode h) acc))))
-                        (reverse acc))))
+                     (if (and payload (< 0 (length payload)))
+                         (let ((h (car payload)))
+                           (if (and (not (stringp h)) (or (arrayp h) (listp h)))
+                               (recur (cdr payload) (cons (recur (append h nil) ()) acc))
+                             (recur (cdr payload) (cons (decode h) acc))))
+                       (reverse acc))))
     (recur payload ())))
 
 
@@ -97,17 +97,17 @@
 
 (cl-defmacro slack-ws-handle-reaction ((payload) &body body)
   `(let* ((item (plist-get ,payload :item))
-         (room (slack-room-find (plist-get item :channel)))
-         (msg (slack-room-find-message room (plist-get item :ts)))
-         (r-name (plist-get ,payload :reaction))
-         (r-count 1)
-         (r-users (list (slack-user-find (plist-get ,payload :user))))
-         (reaction (make-instance 'slack-reaction
-                                  :name r-name
-                                  :count r-count
-                                  :users r-users)))
-    ,@body
-    (slack-buffer-update room msg :replace t)))
+          (room (slack-room-find (plist-get item :channel)))
+          (msg (slack-room-find-message room (plist-get item :ts)))
+          (r-name (plist-get ,payload :reaction))
+          (r-count 1)
+          (r-users (list (slack-user-find (plist-get ,payload :user))))
+          (reaction (make-instance 'slack-reaction
+                                   :name r-name
+                                   :count r-count
+                                   :users r-users)))
+     ,@body
+     (slack-buffer-update room msg :replace t)))
 
 (defun slack-ws-handle-reaction-added (payload)
   (slack-ws-handle-reaction

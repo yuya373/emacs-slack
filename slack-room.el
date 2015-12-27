@@ -130,13 +130,13 @@
   (interactive)
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))
-    (slack-room-history slack-current-room)
-    (slack-buffer-create slack-current-room
-                         #'(lambda (room)
-                             (let ((inhibit-read-only t))
-                               (delete-region (point-min)
-                                              (marker-position lui-output-marker)))
-                             (slack-buffer-insert-messages room))))
+  (slack-room-history slack-current-room)
+  (slack-buffer-create slack-current-room
+                       #'(lambda (room)
+                           (let ((inhibit-read-only t))
+                             (delete-region (point-min)
+                                            (marker-position lui-output-marker)))
+                           (slack-buffer-insert-messages room))))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
@@ -249,19 +249,20 @@
                                    " : "
                                    (slack-room-name room))))
     (let* ((messages (mapcar #'slack-message-create
-                           (mapcar #'(lambda (i) (plist-get i :message))
-                                   items)))
-         (buf-header (propertize "Pinned Items"
-                                 'face '(:underline t
-                                         :weight bold))))
-    (funcall slack-buffer-function
-             (slack-buffer-create-info
-              (buffer-name room)
-              #'(lambda () (insert buf-header)
-                  (insert "\n\n")
-                  (mapc #'(lambda (m) (insert
-                                       (slack-message-to-string m)))
-                        messages)))))))
+                             (mapcar #'(lambda (i) (plist-get i :message))
+                                     items)))
+           (buf-header (propertize "Pinned Items"
+                                   'face '(:underline t
+                                                      :weight bold))))
+      (funcall slack-buffer-function
+               (slack-buffer-create-info
+                (buffer-name room)
+                #'(lambda ()
+                    (insert buf-header)
+                    (insert "\n\n")
+                    (mapc #'(lambda (m) (insert
+                                         (slack-message-to-string m)))
+                          messages)))))))
 
 (defun slack-select-rooms ()
   (interactive)
@@ -288,8 +289,8 @@
                              (message "change %s to %s" old-name new-name)))))
     (let* ((candidates (mapcar #'car room-list))
            (room (slack-select-from-list
-                   ((mapcar #'car room-list) "Select Channel: ")
-                   (slack-extract-from-list selected room-list)))
+                  ((mapcar #'car room-list) "Select Channel: ")
+                  (slack-extract-from-list selected room-list)))
            (name (read-from-minibuffer "New Name: ")))
       (slack-request
        url
