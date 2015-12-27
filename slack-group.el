@@ -63,10 +63,8 @@
   (apply #'slack-group "group"
          (slack-collect-slots 'slack-group payload)))
 
-(defun slack-group-names ()
-  (mapcar (lambda (group)
-            (cons (oref group name) group))
-          slack-groups))
+(defun slack-group-names (&optional filter)
+  (slack-room-names slack-groups filter))
 
 (defmethod slack-room-subscribedp ((room slack-group))
   (with-slots (name) room
@@ -127,11 +125,12 @@
 (defun slack-group-invite ()
   (interactive)
   (slack-room-invite slack-group-invite-url
-                     #'slack-group-names))
+                     (slack-group-names)))
 
 (defun slack-group-leave ()
   (interactive)
-  (let ((group (slack-current-room-or-select #'slack-group-names)))
+  (let ((group (slack-current-room-or-select
+                (slack-group-names))))
     (cl-labels
         ((on-group-leave (&key data &allow-other-keys)
                          (slack-request-handle-error

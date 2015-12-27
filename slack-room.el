@@ -104,7 +104,13 @@
   (cdr (cl-assoc selected candidates :test #'string=)))
 
 (defun slack-room-select (rooms)
-  (let* ((list (slack-room-names rooms))
+  (let* ((list (slack-room-names
+                rooms
+                #'(lambda (rooms)
+                    (cl-remove-if #'(lambda (r)
+                                      (or (not (slack-room-member-p r))
+                                          (slack-room-archived-p r)))
+                                  rooms))))
          (candidates (mapcar #'car list)))
     (slack-select-from-list
      (candidates "Select Channel: ")
@@ -176,26 +182,22 @@
         (concat "(" (number-to-string unread-count-display) ")")
       "")))
 
-(cl-defun slack-room-names (rooms &optional (only-member-p t))
-  (cl-labels
-      ((sort-rooms (l)
-                   (sort l #'(lambda (a b)
-                               (> (oref (cdr a) unread-count-display)
-                                  (oref (cdr b) unread-count-display)))))
-       (build-cons (room)
-                   (cons (format "%s %s"
-                                 (slack-room-name room)
-                                 (slack-room-unread-count room))
-                         room))
-       (filter-member-p (rooms)
-                        (if only-member-p
-                            (cl-remove-if-not #'slack-room-member-p rooms)
-                          rooms))
-       (filter-archived-p (rooms)
-                          (cl-remove-if #'slack-room-archived-p rooms)))
-    (sort-rooms (mapcar #'build-cons
-                        (filter-member-p
-                         (filter-archived-p rooms))))))
+(defmacro slack-room-names (rooms &optional filter)
+  `(cl-labels
+       ((sort-rooms (l)
+                    (sort l #'(lambda (a b)
+                                (> (oref (cdr a) unread-count-display)
+                                   (oref (cdr b) unread-count-display)))))
+        (build-cons (room)
+                    (cons (format "%s %s"
+                                  (slack-room-name room)
+                                  (slack-room-unread-count room))
+                          room)))
+     (sort-rooms
+      (mapcar #'build-cons
+              (if ,filter
+                  (funcall ,filter ,rooms)
+                ,rooms)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
@@ -312,14 +314,14 @@
        :success #'on-rename-success
        :sync nil))))
 
-(defun slack-current-room-or-select (room-list-func)
-  (if (boundp 'slack-currnt-room)
-      slack-current-room
-    (let* ((list (funcall room-list-func))
-           (candidates (mapcar #'car list)))
-      (slack-select-from-list
-       (candidates "Select Group: ")
-       (slack-extract-from-list selected list)))))
+(defmacro slack-current-room-or-select (room-list-func)
+  `(if (boundp 'slack-currnt-room)
+       slack-current-room
+     (let* ((list ,room-list-func)
+            (candidates (mapcar #'car list)))
+       (slack-select-from-list
+        (candidates "Select Group: ")
+        (slack-extract-from-list selected list)))))
 
 (defmacro slack-room-invite (url room-list-func)
   `(cl-labels

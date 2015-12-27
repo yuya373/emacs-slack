@@ -67,10 +67,8 @@
                              slack-channel-history-url
                              oldest))
 
-(defun slack-channel-names ()
-  (mapcar (lambda (channel)
-            (cons (oref channel name) channel))
-          slack-channels))
+(defun slack-channel-names (&optional filter)
+  (slack-room-names slack-channels filter))
 
 (defmethod slack-room-member-p ((room slack-channel))
   (if (eq (oref room is-member) :json-false)
@@ -120,11 +118,15 @@
 (defun slack-channel-invite ()
   (interactive)
   (slack-room-invite slack-channel-invite-url
-                     #'slack-channel-names))
+                     (slack-channel-names)))
 
 (defun slack-channel-leave ()
   (interactive)
-  (let ((channel (slack-current-room-or-select #'slack-channel-names)))
+  (let ((channel (slack-current-room-or-select
+                  (slack-channel-names
+                   #'(lambda (channels)
+                       (cl-remove-if-not #'slack-room-member-p
+                                         channels))))))
     (cl-labels
         ((on-channel-leave (&key data &allow-other-keys)
                            (slack-request-handle-error
@@ -136,10 +138,12 @@
 
 (defun slack-channel-join ()
   (interactive)
-  (let* ((list (cl-remove-if #'(lambda (e)
-                                 (or (slack-room-member-p (cdr e))
-                                     (slack-room-archived-p (cdr e))))
-                             (slack-channel-names)))
+  (let* ((list (slack-channel-names
+                #'(lambda (channels)
+                    (cl-remove-if #'(lambda (c)
+                                      (or (slack-room-member-p c)
+                                          (slack-room-archived-p c)))
+                                  channels))))
          (candidates (mapcar #'car list))
          (channel (slack-select-from-list (candidates "Select Channel: ")
                                           (slack-extract-from-list selected list))))
@@ -179,9 +183,10 @@
 (defun slack-channel-archive ()
   (interactive)
   (let ((channel (slack-current-room-or-select
-                  #'(lambda () (cl-remove-if
-                                #'(lambda (c) (slack-room-archived-p (cdr c)))
-                                (slack-channel-names))))))
+                  (slack-channel-names
+                   #'(lambda (channels)
+                       (cl-remove-if #'slack-room-archived-p
+                                     channels))))))
     (cl-labels
         ((on-channel-archive (&key data &allow-other-keys)
                              (slack-request-handle-error
@@ -193,10 +198,10 @@
 (defun slack-channel-unarchive ()
   (interactive)
   (let ((channel (slack-current-room-or-select
-                  #'(lambda ()
-                      (cl-remove-if-not
-                       #'(lambda (c) (slack-room-archived-p (cdr c)))
-                       (slack-channel-names))))))
+                  (slack-channel-names
+                   #'(lambda (channels)
+                       (cl-remove-if-not #'slack-room-archived-p
+                                         channels))))))
     (cl-labels
         ((on-channel-unarchive (&key data &allow-other-keys)
                                (slack-request-handle-error
