@@ -71,10 +71,10 @@
       (cond
        ((string= type "hello")
         (message "Slack Websocket Is Ready!"))
-       ((string= type "message")
-        (slack-ws-handle-message decoded-payload))
        ((plist-get decoded-payload :reply_to)
         (slack-ws-handle-reply decoded-payload))
+       ((string= type "message")
+        (slack-ws-handle-message decoded-payload))
        ((string= type "reaction_added")
         (slack-ws-handle-reaction-added decoded-payload))
        ((string= type "reaction_removed")
@@ -110,8 +110,9 @@
           (message "Error code: %s msg: %s"
                    (plist-get err :code)
                    (plist-get err :msg)))
-      (slack-message-handle-reply
-       (slack-message-create payload)))))
+      (if (integerp (plist-get payload :reply_to))
+          (slack-message-handle-reply
+           (slack-message-create payload))))))
 
 (cl-defmacro slack-ws-handle-reaction ((payload) &body body)
   `(let* ((item (plist-get ,payload :item))
