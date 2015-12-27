@@ -170,18 +170,22 @@
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
               (oref room messages)))
 
-(defmethod slack-room-name-with-unread-count ((room slack-room))
-  (let ((name (slack-room-name room)))
-    (with-slots (unread-count-display) room
+(defmethod slack-room-unread-count ((room slack-room))
+  (with-slots (unread-count-display) room
     (if (< 0 unread-count-display)
-        (concat name " (" (number-to-string unread-count-display) ")")
-      name))))
+        (concat "(" (number-to-string unread-count-display) ")")
+      "")))
 
-(defun slack-room-names (rooms)
+(cl-defun slack-room-names (rooms &optional (only-member-p t))
   (sort (mapcar #'(lambda (room)
-                    (cons (slack-room-name-with-unread-count room)
+                    (cons (format "%s %s"
+                                  (slack-room-name room)
+                                  (slack-room-unread-count room))
                           room))
-                rooms)
+                (if only-member-p
+                    (cl-remove-if-not #'slack-room-member-p
+                                      rooms)
+                  rooms))
         #'(lambda (a b) (> (oref (cdr a) unread-count-display)
                            (oref (cdr b) unread-count-display)))))
 
