@@ -349,5 +349,19 @@
 (defmethod slack-room-member-p ((_room slack-room))
   t)
 
+(defmethod slack-room-equal-p ((room slack-room) other)
+  (with-slots (id) room
+    (with-slots ((other-id id)) other
+      (string= id other-id))))
+
+(defun slack-room-deleted (id)
+  (let ((room (slack-room-find id)))
+    (cond
+     ((object-of-class-p room 'slack-channel)
+      (setq slack-channels (cl-delete-if #'(lambda (c)
+                                             (slack-room-equal-p room c))
+                                         slack-channels))
+      (message "Channel: %s deleted" (slack-room-name room))))))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
