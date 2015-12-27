@@ -188,11 +188,17 @@
                     (sort l #'(lambda (a b)
                                 (> (oref (cdr a) unread-count-display)
                                    (oref (cdr b) unread-count-display)))))
+        (build-label (room)
+                     (concat (im-presence room)
+                             (format "%s %s"
+                                     (slack-room-name room)
+                                     (slack-room-unread-count room))))
+        (im-presence (room)
+                     (if (object-of-class-p room 'slack-im)
+                         (slack-im-user-presence room)
+                       "  "))
         (build-cons (room)
-                    (cons (format "%s %s"
-                                  (slack-room-name room)
-                                  (slack-room-unread-count room))
-                          room)))
+                    (cons (build-label room) room)))
      (sort-rooms
       (mapcar #'build-cons
               (if ,filter

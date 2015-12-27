@@ -94,7 +94,9 @@
         (slack-ws-handle-room-rename decoded-payload))
        ((or (string= type "channel_joined")
             (string= type "group_joined"))
-        (slack-ws-handle-room-joined decoded-payload))))))
+        (slack-ws-handle-room-joined decoded-payload))
+       ((string= type "presence_change")
+        (slack-ws-handle-presence-change decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -178,6 +180,12 @@
         (push group slack-groups)
         (message "Joined group %s"
                  (slack-room-name group))))))
+
+(defun slack-ws-handle-presence-change (payload)
+  (let* ((id (plist-get payload :user))
+         (user (slack-user-find id))
+         (presence (plist-get payload :presence)))
+    (plist-put user :presence presence)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
