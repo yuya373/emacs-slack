@@ -136,7 +136,9 @@
 
 (defun slack-channel-join ()
   (interactive)
-  (let* ((list (cl-remove-if #'(lambda (e) (slack-room-member-p (cdr e)))
+  (let* ((list (cl-remove-if #'(lambda (e)
+                                 (or (slack-room-member-p (cdr e))
+                                     (slack-room-archived-p (cdr e))))
                              (slack-channel-names)))
          (candidates (mapcar #'car list))
          (channel (slack-select-from-list (candidates "Select Channel: ")
@@ -145,8 +147,8 @@
         ((on-channel-join (&key data &allow-other-keys)
                           (slack-request-handle-error
                            (data "slack-channel-join")
-                           (oset channel is-member t))))
-      (message "Joined %s" (slack-room-name channel))
+                           (oset channel is-member t)
+                           (message "Joined %s" (slack-room-name channel)))))
       (slack-request
        slack-channel-join-url
        :params (list (cons "token" slack-token)
