@@ -44,6 +44,7 @@
 (defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
 (defconst slack-channel-join-url "https://slack.com/api/channels.join")
 (defconst slack-channel-info-url "https://slack.com/api/channels.info")
+(defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -158,7 +159,7 @@
                             (slack-request-handle-error
                              (data "slack-channel-create-from-info")
                              (let ((channel (slack-channel-create
-                                            (plist-get data :channel))))
+                                             (plist-get data :channel))))
                                (push channel slack-channels)
                                (message "Channel: %s created"
                                         (slack-room-name channel))))))
@@ -171,6 +172,21 @@
    :params (list (cons "token" slack-token)
                  (cons "channel" id))
    :success success))
+
+(defun slack-channel-archive ()
+  (interactive)
+  (let ((channel (slack-current-room-or-select
+                  #'(lambda () (cl-remove-if
+                                #'(lambda (c) (slack-room-archived-p (cdr c)))
+                                (slack-channel-names))))))
+    (cl-labels
+        ((on-channel-archive (&key data &allow-other-keys)
+                             (slack-request-handle-error
+                              (data "slack-channel-archive"))))
+      (slack-room-request-with-id slack-channel-archive-url
+                                  (oref channel id)
+                                  #'on-channel-archive))))
+
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

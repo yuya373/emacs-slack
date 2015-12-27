@@ -135,5 +135,11 @@
     (slack-room-leave slack-group-leave-url
                       group)))
 
+(defmethod slack-room-archived-p ((room slack-group))
+  (with-slots (is-archived) room
+    (if (eq is-archived :json-false)
+        nil
+      t)))
+
 (provide 'slack-group)
 ;;; slack-group.el ends here

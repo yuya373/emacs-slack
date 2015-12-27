@@ -177,17 +177,25 @@
       "")))
 
 (cl-defun slack-room-names (rooms &optional (only-member-p t))
-  (sort (mapcar #'(lambda (room)
-                    (cons (format "%s %s"
-                                  (slack-room-name room)
-                                  (slack-room-unread-count room))
-                          room))
-                (if only-member-p
-                    (cl-remove-if-not #'slack-room-member-p
-                                      rooms)
-                  rooms))
-        #'(lambda (a b) (> (oref (cdr a) unread-count-display)
-                           (oref (cdr b) unread-count-display)))))
+  (cl-labels
+      ((sort-rooms (l)
+                   (sort l #'(lambda (a b)
+                               (> (oref (cdr a) unread-count-display)
+                                  (oref (cdr b) unread-count-display)))))
+       (build-cons (room)
+                   (cons (format "%s %s"
+                                 (slack-room-name room)
+                                 (slack-room-unread-count room))
+                         room))
+       (filter-member-p (rooms)
+                        (if only-member-p
+                            (cl-remove-if-not #'slack-room-member-p rooms)
+                          rooms))
+       (filter-archived-p (rooms)
+                          (cl-remove-if #'slack-room-archived-p rooms)))
+    (sort-rooms (mapcar #'build-cons
+                        (filter-member-p
+                         (filter-archived-p rooms))))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
@@ -349,6 +357,9 @@
 (defmethod slack-room-member-p ((_room slack-room))
   t)
 
+(defmethod slack-room-archived-p ((_room slack-room))
+  nil)
+
 (defmethod slack-room-equal-p ((room slack-room) other)
   (with-slots (id) room
     (with-slots ((other-id id)) other
@@ -362,6 +373,14 @@
                                              (slack-room-equal-p room c))
                                          slack-channels))
       (message "Channel: %s deleted" (slack-room-name room))))))
+
+(cl-defun slack-room-request-with-id (url id success)
+  (slack-request
+   url
+   :params (list (cons "token" slack-token)
+                 (cons "channel" id))
+   :success success
+   :sync nil))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
