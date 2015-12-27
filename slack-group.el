@@ -132,8 +132,18 @@
 (defun slack-group-leave ()
   (interactive)
   (let ((group (slack-current-room-or-select #'slack-group-names)))
-    (slack-room-leave slack-group-leave-url
-                      group)))
+    (cl-labels
+        ((on-group-leave (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-group-leave")
+                          (setq slack-groups
+                                (cl-delete-if #'(lambda (g)
+                                                  (slack-room-equal-p group
+                                                                      g))
+                                              slack-groups)))))
+      (slack-room-request-with-id slack-group-leave-url
+                                  (oref group id)
+                                  #'on-group-leave))))
 
 (defmethod slack-room-archived-p ((room slack-group))
   (with-slots (is-archived) room

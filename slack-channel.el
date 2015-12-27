@@ -130,9 +130,9 @@
                            (slack-request-handle-error
                             (data "slack-channel-leave")
                             (oset channel is-member :json-false))))
-      (slack-room-leave slack-channel-leave-url
-                        channel
-                        #'on-channel-leave))))
+      (slack-room-request-with-id slack-channel-leave-url
+                                  (oref channel id)
+                                  #'on-channel-leave))))
 
 (defun slack-channel-join ()
   (interactive)

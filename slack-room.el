@@ -341,19 +341,6 @@
                      (cons "user" user-id))
        :success #'on-group-invite))))
 
-(defun slack-room-leave (url room &optional success)
-  (cl-labels
-      ((on-room-leave (&key data &allow-other-keys)
-                      (slack-request-handle-error
-                       (data "slack-room-leave")
-                       (message "Leave %s" (slack-room-name room)))))
-    (slack-request
-     url
-     :params (list (cons "token" slack-token)
-                   (cons "channel" (oref room id)))
-     :success (or success #'on-room-leave)
-     :sync nil)))
-
 (defmethod slack-room-member-p ((_room slack-room))
   t)
 
