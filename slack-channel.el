@@ -42,6 +42,7 @@
 (defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
 (defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
+(defconst slack-channel-join-url "https://slack.com/api/channels.join")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -128,6 +129,26 @@
       (slack-room-leave slack-channel-leave-url
                         channel
                         #'on-channel-leave))))
+
+(defun slack-channel-join ()
+  (interactive)
+  (let* ((list (cl-remove-if #'(lambda (e) (slack-room-member-p (cdr e)))
+                             (slack-channel-names)))
+         (candidates (mapcar #'car list))
+         (channel (slack-select-from-list (candidates "Select Channel: ")
+                                          (slack-extract-from-list selected list))))
+    (cl-labels
+        ((on-channel-join (&key data &allow-other-keys)
+                          (slack-request-handle-error
+                           (data "slack-channel-join")
+                           (oset channel is-member t))))
+      (message "channel name: %s" (slack-room-name channel))
+      (slack-request
+       slack-channel-join-url
+       :params (list (cons "token" slack-token)
+                     (cons "name" (slack-room-name channel)))
+       :sync nil
+       :success #'on-channel-join))))
 
 
 (provide 'slack-channel)
