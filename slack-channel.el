@@ -45,6 +45,7 @@
 (defconst slack-channel-join-url "https://slack.com/api/channels.join")
 (defconst slack-channel-info-url "https://slack.com/api/channels.info")
 (defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
+(defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -187,6 +188,20 @@
                                   (oref channel id)
                                   #'on-channel-archive))))
 
+(defun slack-channel-unarchive ()
+  (interactive)
+  (let ((channel (slack-current-room-or-select
+                  #'(lambda ()
+                      (cl-remove-if-not
+                       #'(lambda (c) (slack-room-archived-p (cdr c)))
+                       (slack-channel-names))))))
+    (cl-labels
+        ((on-channel-unarchive (&key data &allow-other-keys)
+                               (slack-request-handle-error
+                                (data "slack-channel-unarchive"))))
+      (slack-room-request-with-id slack-channel-unarchive-url
+                                  (oref channel id)
+                                  #'on-channel-unarchive))))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
