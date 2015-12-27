@@ -43,6 +43,7 @@
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
 (defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
 (defconst slack-channel-join-url "https://slack.com/api/channels.join")
+(defconst slack-channel-info-url "https://slack.com/api/channels.info")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -151,6 +152,25 @@
        :sync nil
        :success #'on-channel-join))))
 
+(defun slack-channel-create-from-info (id)
+  (cl-labels
+      ((on-create-from-info (&key data &allow-other-keys)
+                            (slack-request-handle-error
+                             (data "slack-channel-create-from-info")
+                             (let ((channel (slack-channel-create
+                                            (plist-get data :channel))))
+                               (push channel slack-channels)
+                               (message "Channel: %s created"
+                                        (slack-room-name channel))))))
+    (slack-channel-fetch-info id #'on-create-from-info)))
+
+(defun slack-channel-fetch-info (id success)
+  (slack-request
+   slack-channel-info-url
+   :sync nil
+   :params (list (cons "token" slack-token)
+                 (cons "channel" id))
+   :success success))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

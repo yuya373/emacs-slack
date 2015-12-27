@@ -78,7 +78,9 @@
        ((string= type "reaction_added")
         (slack-ws-handle-reaction-added decoded-payload))
        ((string= type "reaction_removed")
-        (slack-ws-handle-reaction-removed decoded-payload))))))
+        (slack-ws-handle-reaction-removed decoded-payload))
+       ((string= type "channel_created")
+        (slack-ws-handle-channel-created decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -118,6 +120,10 @@
   (slack-ws-handle-reaction
    (payload)
    (slack-message-pop-reaction msg reaction)))
+
+(defun slack-ws-handle-channel-created (payload)
+  (let ((id (plist-get (plist-get payload :channel) :id)))
+    (slack-channel-create-from-info id)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
