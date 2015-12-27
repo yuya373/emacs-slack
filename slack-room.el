@@ -317,13 +317,7 @@
                          (if (plist-get data :already_in_group)
                              (message "User Already In Group.")
                            (message "Invited!")))))
-    (let* ((group (if (boundp 'slack-currnt-room)
-                      slack-current-room
-                    (let* ((list (funcall room-list-func))
-                           (candidates (mapcar #'car list)))
-                      (slack-select-from-list
-                       (candidates "Select Group: ")
-                       (slack-extract-from-list selected list)))))
+    (let* ((room (slack-current-room-or-select room-list-func))
            (users (slack-user-names))
            (user-id (slack-select-from-list ((mapcar #'car users) "Select User: ")
                                             (slack-extract-from-list selected
@@ -331,7 +325,7 @@
       (slack-request
        url
        :params (list (cons "token" slack-token)
-                     (cons "channel" (oref group id))
+                     (cons "channel" (oref room id))
                      (cons "user" user-id))
        :success #'on-group-invite))))
 
