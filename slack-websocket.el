@@ -171,16 +171,24 @@
              new-name)))
 
 (defun slack-ws-handle-room-joined (payload)
-  (let* ((c (plist-get payload :channel)))
-    (if (plist-get c :is_channel)
-        (let ((channel (slack-channel-create c)))
-          (push channel slack-channels)
-          (message "Joined channel %s"
-                   (slack-room-name channel)))
-      (let ((group (slack-group-create c)))
-        (push group slack-groups)
-        (message "Joined group %s"
-                 (slack-room-name group))))))
+  (cl-labels
+      ((replace-room (room rooms)
+                     (cons room (cl-delete-if
+                                 #'(lambda (r)
+                                     (slack-room-equal-p room r))
+                                 rooms))))
+    (let* ((c (plist-get payload :channel)))
+      (if (plist-get c :is_channel)
+          (let ((channel (slack-channel-create c)))
+            (setq slack-channels
+                  (replace-room channel slack-channels))
+            (message "Joined channel %s"
+                     (slack-room-name channel)))
+        (let ((group (slack-group-create c)))
+          (setq slack-groups
+                (replace-room group slack-groups))
+          (message "Joined group %s"
+                   (slack-room-name group)))))))
 
 (defun slack-ws-handle-presence-change (payload)
   (let* ((id (plist-get payload :user))
