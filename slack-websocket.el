@@ -126,7 +126,7 @@
                                    :count r-count
                                    :users r-users)))
      ,@body
-     (slack-buffer-update room msg :replace t)))
+     (slack-message-update msg t)))
 
 (defun slack-ws-handle-reaction-added (payload)
   (slack-ws-handle-reaction
