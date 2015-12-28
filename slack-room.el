@@ -316,7 +316,7 @@
        :sync nil))))
 
 (defmacro slack-current-room-or-select (room-list-func)
-  `(if (boundp 'slack-currnt-room)
+  `(if (boundp 'slack-current-room)
        slack-current-room
      (let* ((list ,room-list-func)
             (candidates (mapcar #'car list)))
