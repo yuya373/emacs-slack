@@ -119,11 +119,12 @@
                              :test #'string=
                              :update nil))))
 
-
 (defmethod slack-room-update-message ((room slack-room) m)
-  (with-slots (messages) room
-    (cl-pushnew m messages :test #'slack-message-equal)
-    (oset room latest (oref m ts))))
+  (with-slots (messages latest) room
+    (setq messages (cl-delete-if #'(lambda (other) (slack-message-equal m other))
+                                 messages))
+    (push m messages)
+    (setq latest m)))
 
 (cl-defun slack-room-list-update (url success &key (sync t))
   (slack-request
