@@ -109,7 +109,7 @@
            (buffer (get-buffer buf-name))
            (buf-names (mapcar #'buffer-name (mapcar #'window-buffer
                                                     (window-list)))))
-      (if (and buffer (cl-member buf-name buf-names :test #'string=))
+      (if buffer
           (if replace (slack-buffer-replace buffer msg)
             (do-update buffer room msg))
         (cl-incf (oref room unread-count-display))))))

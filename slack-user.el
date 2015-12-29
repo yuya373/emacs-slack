@@ -55,5 +55,10 @@
   (mapcar (lambda (u) (cons (plist-get u :name) (plist-get u :id)))
           slack-users))
 
+(defun slack-user-presence-to-string (user)
+  (if (string= (plist-get user :presence) "active")
+      "* "
+    "  "))
+
 (provide 'slack-user)
 ;;; slack-user.el ends here

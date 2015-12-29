@@ -100,8 +100,17 @@
                                       ,candidates nil t nil nil ,candidates))))
      ,@body))
 
+(defun slack-extract-from-list (selected candidates)
+  (cdr (cl-assoc selected candidates :test #'string=)))
+
 (defun slack-room-select (rooms)
-  (let* ((list (slack-room-names rooms))
+  (let* ((list (slack-room-names
+                rooms
+                #'(lambda (rooms)
+                    (cl-remove-if #'(lambda (r)
+                                      (or (not (slack-room-member-p r))
+                                          (slack-room-archived-p r)))
+                                  rooms))))
          (candidates (mapcar #'car list)))
     (slack-select-from-list
      (candidates "Select Channel: ")
@@ -110,11 +119,12 @@
                              :test #'string=
                              :update nil))))
 
-
 (defmethod slack-room-update-message ((room slack-room) m)
-  (with-slots (messages) room
-    (cl-pushnew m messages :test #'slack-message-equal)
-    (oset room latest (oref m ts))))
+  (with-slots (messages latest) room
+    (setq messages (cl-delete-if #'(lambda (other) (slack-message-equal m other))
+                                 messages))
+    (push m messages)
+    (setq latest m)))
 
 (cl-defun slack-room-list-update (url success &key (sync t))
   (slack-request
@@ -127,13 +137,13 @@
   (interactive)
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))
-    (slack-room-history slack-current-room)
-    (slack-buffer-create slack-current-room
-                         #'(lambda (room)
-                             (let ((inhibit-read-only t))
-                               (delete-region (point-min)
-                                              (marker-position lui-output-marker)))
-                             (slack-buffer-insert-messages room))))
+  (slack-room-history slack-current-room)
+  (slack-buffer-create slack-current-room
+                       #'(lambda (room)
+                           (let ((inhibit-read-only t))
+                             (delete-region (point-min)
+                                            (marker-position lui-output-marker)))
+                           (slack-buffer-insert-messages room))))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
@@ -167,20 +177,34 @@
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
               (oref room messages)))
 
-(defmethod slack-room-name-with-unread-count ((room slack-room))
-  (let ((name (slack-room-name room)))
-    (with-slots (unread-count-display) room
+(defmethod slack-room-unread-count ((room slack-room))
+  (with-slots (unread-count-display) room
     (if (< 0 unread-count-display)
-        (concat name " (" (number-to-string unread-count-display) ")")
-      name))))
+        (concat "(" (number-to-string unread-count-display) ")")
+      "")))
 
-(defun slack-room-names (rooms)
-  (sort (mapcar #'(lambda (room)
-                    (cons (slack-room-name-with-unread-count room)
-                          room))
-                rooms)
-        #'(lambda (a b) (> (oref (cdr a) unread-count-display)
-                           (oref (cdr b) unread-count-display)))))
+(defmacro slack-room-names (rooms &optional filter)
+  `(cl-labels
+       ((sort-rooms (l)
+                    (sort l #'(lambda (a b)
+                                (> (oref (cdr a) unread-count-display)
+                                   (oref (cdr b) unread-count-display)))))
+        (build-label (room)
+                     (concat (im-presence room)
+                             (format "%s %s"
+                                     (slack-room-name room)
+                                     (slack-room-unread-count room))))
+        (im-presence (room)
+                     (if (object-of-class-p room 'slack-im)
+                         (slack-im-user-presence room)
+                       "  "))
+        (build-cons (room)
+                    (cons (build-label room) room)))
+     (sort-rooms
+      (mapcar #'build-cons
+              (if ,filter
+                  (funcall ,filter ,rooms)
+                ,rooms)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
@@ -246,23 +270,108 @@
                                    " : "
                                    (slack-room-name room))))
     (let* ((messages (mapcar #'slack-message-create
-                           (mapcar #'(lambda (i) (plist-get i :message))
-                                   items)))
-         (buf-header (propertize "Pinned Items"
-                                 'face '(:underline t
-                                         :weight bold))))
-    (funcall slack-buffer-function
-             (slack-buffer-create-info
-              (buffer-name room)
-              #'(lambda () (insert buf-header)
-                  (insert "\n\n")
-                  (mapc #'(lambda (m) (insert
-                                       (slack-message-to-string m)))
-                        messages)))))))
+                             (mapcar #'(lambda (i) (plist-get i :message))
+                                     items)))
+           (buf-header (propertize "Pinned Items"
+                                   'face '(:underline t
+                                                      :weight bold))))
+      (funcall slack-buffer-function
+               (slack-buffer-create-info
+                (buffer-name room)
+                #'(lambda ()
+                    (insert buf-header)
+                    (insert "\n\n")
+                    (mapc #'(lambda (m) (insert
+                                         (slack-message-to-string m)))
+                          messages)))))))
 
 (defun slack-select-rooms ()
   (interactive)
   (slack-room-select (append slack-ims slack-groups slack-channels)))
+
+(defun slack-create-room (url success)
+  (slack-request
+   url
+   :type "POST"
+   :params (list (cons "token" slack-token)
+                 (cons "name" (read-from-minibuffer "Name: ")))
+   :success success))
+
+(defun slack-room-rename (url room-list)
+  (cl-labels
+      ((on-rename-success (&key data &allow-other-keys)
+                          (slack-request-handle-error
+                           (data "slack-room-rename"))))
+    (let* ((candidates (mapcar #'car room-list))
+           (room (slack-select-from-list
+                  ((mapcar #'car room-list) "Select Channel: ")
+                  (slack-extract-from-list selected room-list)))
+           (name (read-from-minibuffer "New Name: ")))
+      (slack-request
+       url
+       :params (list (cons "token" slack-token)
+                     (cons "channel" (oref room id))
+                     (cons "name" name))
+       :success #'on-rename-success
+       :sync nil))))
+
+(defmacro slack-current-room-or-select (room-list-func)
+  `(if (boundp 'slack-current-room)
+       slack-current-room
+     (let* ((list ,room-list-func)
+            (candidates (mapcar #'car list)))
+       (slack-select-from-list
+        (candidates "Select Group: ")
+        (slack-extract-from-list selected list)))))
+
+(defmacro slack-room-invite (url room-list-func)
+  `(cl-labels
+       ((on-group-invite (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-room-invite")
+                          (if (plist-get data :already_in_group)
+                              (message "User already in group")
+                            (message "Invited!")))))
+     (let* ((room (slack-current-room-or-select ,room-list-func))
+            (users (slack-user-names))
+            (user-id (slack-select-from-list
+                      ((mapcar #'car users) "Select User: ")
+                      (slack-extract-from-list selected users))))
+       (slack-request
+        ,url
+        :params (list (cons "token" slack-token)
+                      (cons "channel" (oref room id))
+                      (cons "user" user-id))
+        :success #'on-group-invite
+        :sync nil))))
+
+(defmethod slack-room-member-p ((_room slack-room))
+  t)
+
+(defmethod slack-room-archived-p ((_room slack-room))
+  nil)
+
+(defmethod slack-room-equal-p ((room slack-room) other)
+  (with-slots (id) room
+    (with-slots ((other-id id)) other
+      (string= id other-id))))
+
+(defun slack-room-deleted (id)
+  (let ((room (slack-room-find id)))
+    (cond
+     ((object-of-class-p room 'slack-channel)
+      (setq slack-channels (cl-delete-if #'(lambda (c)
+                                             (slack-room-equal-p room c))
+                                         slack-channels))
+      (message "Channel: %s deleted" (slack-room-name room))))))
+
+(cl-defun slack-room-request-with-id (url id success)
+  (slack-request
+   url
+   :params (list (cons "token" slack-token)
+                 (cons "channel" id))
+   :success success
+   :sync nil))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -100,7 +100,7 @@
                                  list
                                  :test #'string=)))
             (room-name (slack-room-name room)))
-       (insert (concat "<#" (oref room id) "|" room-name ">"))))))
+       (insert (concat "<#" (oref room id) "|" room-name "> "))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
@@ -112,7 +112,7 @@
                                     list
                                    :test #'string=)))
             (user-name (slack-user-name user-id)))
-       (insert (concat "<@" user-id "|" user-name ">"))))))
+       (insert (concat "<@" user-id "|" user-name "> "))))))
 
 
 (provide 'slack-message-sender)

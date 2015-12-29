@@ -37,6 +37,13 @@
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
+(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
+(defconst slack-create-group-url "https://slack.com/api/groups.create")
+(defconst slack-group-rename-url "https://slack.com/api/groups.rename")
+(defconst slack-group-invite-url "https://slack.com/api/groups.invite")
+(defconst slack-group-leave-url "https://slack.com/api/groups.leave")
+(defconst slack-group-archive-url "https://slack.com/api/groups.archive")
+(defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
 
 (defvar slack-groups)
 (defvar slack-token)
@@ -58,10 +65,8 @@
   (apply #'slack-group "group"
          (slack-collect-slots 'slack-group payload)))
 
-(defun slack-group-names ()
-  (mapcar (lambda (group)
-            (cons (oref group name) group))
-          slack-groups))
+(defun slack-group-names (&optional filter)
+  (slack-room-names slack-groups filter))
 
 (defmethod slack-room-subscribedp ((room slack-group))
   (with-slots (name) room
@@ -90,15 +95,91 @@
                (slack-request-handle-error
                 (data "slack-group-list-update")
                 (setq slack-groups (mapcar #'slack-group-create
-                                          (plist-get data :groups))))))
+                                           (plist-get data :groups)))
+                (message "Slack Group List Updated"))))
     (slack-room-list-update slack-group-list-url
                             #'on-list-update
                             :sync nil)))
 
-(defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 
 (defmethod slack-room-update-mark-url ((_room slack-group))
   slack-group-update-mark-url)
+
+(defun slack-create-group ()
+  (interactive)
+  (cl-labels
+      ((on-create-group (&key data &allow-other-keys)
+                        (slack-request-handle-error
+                         (data "slack-create-group")
+                         (let ((group (slack-group-create
+                                       (plist-get data :group))))
+                           (push group slack-groups)
+                           (message "group: %s created!"
+                                    (slack-room-name group))))))
+    (slack-create-room slack-create-group-url
+                       #'on-create-group)))
+
+(defun slack-group-rename ()
+  (interactive)
+  (slack-room-rename slack-group-rename-url
+                     (slack-group-names)))
+
+(defun slack-group-invite ()
+  (interactive)
+  (slack-room-invite slack-group-invite-url
+                     (slack-group-names)))
+
+(defun slack-group-leave ()
+  (interactive)
+  (let ((group (slack-current-room-or-select
+                (slack-group-names))))
+    (cl-labels
+        ((on-group-leave (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-group-leave")
+                          (setq slack-groups
+                                (cl-delete-if #'(lambda (g)
+                                                  (slack-room-equal-p group
+                                                                      g))
+                                              slack-groups)))))
+      (slack-room-request-with-id slack-group-leave-url
+                                  (oref group id)
+                                  #'on-group-leave))))
+
+(defmethod slack-room-archived-p ((room slack-group))
+  (with-slots (is-archived) room
+    (if (eq is-archived :json-false)
+        nil
+      t)))
+
+(defun slack-group-archive ()
+  (interactive)
+  (let ((group (slack-current-room-or-select
+                (slack-group-names
+                 #'(lambda (groups)
+                     (cl-remove-if #'slack-room-archived-p
+                                   groups))))))
+    (cl-labels
+        ((on-group-archive (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-group-archive"))))
+      (slack-room-request-with-id slack-group-archive-url
+                                  (oref group id)
+                                  #'on-group-archive))))
+
+(defun slack-group-unarchive ()
+  (interactive)
+  (let ((group (slack-current-room-or-select
+                (slack-group-names
+                 #'(lambda (groups)
+                     (cl-remove-if-not #'slack-room-archived-p
+                                       groups))))))
+    (cl-labels
+        ((on-group-unarchive (&key data &allow-other-keys)
+                             (data "slack-group-unarchive")))
+      (slack-room-request-with-id slack-group-unarchive-url
+                                  (oref group id)
+                                  #'on-group-unarchive))))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

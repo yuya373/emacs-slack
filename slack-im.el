@@ -52,6 +52,11 @@
   (apply #'slack-im "im"
          (slack-collect-slots 'slack-im payload)))
 
+(defmethod slack-im-user-presence ((room slack-im))
+  (with-slots ((user-id user)) room
+    (let ((user (slack-user-find user-id)))
+      (slack-user-presence-to-string user))))
+
 (defmethod slack-room-name ((room slack-im))
   (with-slots (user) room
     (slack-user-name user)))
@@ -104,18 +109,16 @@
 (defun slack-user-pushnew (user)
   (cl-pushnew user slack-users :test #'slack-user-equal-p))
 
-(cl-defun slack-im-on-list-update (data users)
-  (let ((payloads (plist-get data :ims)))
-    (append users nil)
-    (mapc #'slack-user-pushnew users)
-    (setq slack-ims (mapcar #'slack-im-create payloads))))
-
 (defun slack-im-update-room-list (users)
   (cl-labels ((on-update-room-list
                (&key data &allow-other-keys)
                (slack-request-handle-error
                 (data "slack-im-update-room-list")
-                (slack-im-on-list-update data users))))
+                (append users nil)
+                (mapc #'slack-user-pushnew users)
+                (setq slack-ims (mapcar #'slack-im-create
+                                        (plist-get data :ims)))
+                (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             :sync nil)))

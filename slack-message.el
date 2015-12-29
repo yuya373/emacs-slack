@@ -180,7 +180,7 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message) &rest replace)
+(defmethod slack-message-update ((m slack-message) &optional replace)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
