@@ -96,7 +96,10 @@
             (string= type "group_joined"))
         (slack-ws-handle-room-joined decoded-payload))
        ((string= type "presence_change")
-        (slack-ws-handle-presence-change decoded-payload))))))
+        (slack-ws-handle-presence-change decoded-payload))
+       ((or (string= type "bot_added")
+            (string= type "bot_changed"))
+        (slack-ws-handle-bot decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -195,6 +198,10 @@
          (user (slack-user-find id))
          (presence (plist-get payload :presence)))
     (plist-put user :presence presence)))
+
+(defun slack-ws-handle-bot (payload)
+  (let ((bot (plist-get payload :bot)))
+    (push bot slack-bots)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
