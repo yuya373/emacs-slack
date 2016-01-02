@@ -51,6 +51,14 @@
          (reaction (slack-message-reaction-select reactions)))
     (slack-message-reaction-remove reaction ts room)))
 
+(defun slack-message-show-reaction-users ()
+  (interactive)
+  (let* ((reaction (ignore-errors (get-text-property (point) 'reaction))))
+    (if reaction
+        (let ((user-names (slack-reaction-user-names reaction)))
+          (message "reacted users: %s" (mapconcat #'identity user-names ", ")))
+      (message "Can't get reaction:"))))
+
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r) (oref r name))
                       reactions)))

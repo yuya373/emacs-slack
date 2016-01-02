@@ -38,11 +38,18 @@
         (oset r users (nconc (oref other users) (oref r users)))
         r)))
 
+(defmethod slack-reaction-user-names ((r slack-reaction))
+  (with-slots (users) r
+    (mapcar #'slack-user-name
+            users)))
+
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
 
 (defmethod slack-reaction-to-string ((r slack-reaction))
-  (format ":%s:: %d" (oref r name) (oref r count)))
+  (let ((text (format ":%s:: %d" (oref r name) (oref r count))))
+    (put-text-property 0 (length text) 'reaction r text)
+    text))
 
 
 (provide 'slack-reaction)
