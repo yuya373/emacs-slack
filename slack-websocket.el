@@ -42,7 +42,9 @@
   (if slack-ws
       (progn
         (websocket-close slack-ws)
-        (setq slack-ws nil))))
+        (setq slack-ws nil)
+        (message "Slack Websocket Closed"))
+    (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
   (websocket-send-text slack-ws payload))
