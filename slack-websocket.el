@@ -114,7 +114,12 @@
         (slack-ws-handle-presence-change decoded-payload))
        ((or (string= type "bot_added")
             (string= type "bot_changed"))
-        (slack-ws-handle-bot decoded-payload))))))
+        (slack-ws-handle-bot decoded-payload))
+       ((string= type "file_shared")
+        (slack-ws-handle-file-shared decoded-payload))
+       ((or (string= type "file_deleted")
+            (string= type "file_unshared"))
+        (slack-ws-handle-file-deleted decoded-payload))))))
 
 (defun slack-ws-handle-message (payload)
   (let ((m (slack-message-create payload)))
@@ -238,6 +243,18 @@
     (cl-incf slack-message-id)
     (slack-ws-send json)
     (message "Slack Websocket PING")))
+
+(defun slack-ws-handle-file-shared (payload)
+  (let ((file (slack-file-create (plist-get payload :file))))
+    (slack-file-pushnew file)))
+
+(defun slack-ws-handle-file-deleted (payload)
+  (let ((file-id (plist-get payload :file_id))
+        (room (slack-file-room-obj)))
+    (with-slots (messages last-read) room
+      (setq messages (cl-remove-if #'(lambda (f)
+                                       (string= file-id (oref f id)))
+                                   messages)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
