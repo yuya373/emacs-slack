@@ -30,6 +30,7 @@
 
 (require 'slack-channel)
 (require 'slack-im)
+(require 'slack-file)
 (require 'slack-message-notification)
 (require 'slack-message-sender)
 (require 'slack-message-editor)

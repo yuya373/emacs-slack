@@ -53,6 +53,9 @@
 (defmethod slack-room-subscribedp ((_room slack-room))
   nil)
 
+(defmethod slack-room-buffer-name ((room slack-room))
+  (concat "*Slack*" " : " (slack-room-name room)))
+
 (defmethod slack-room-set-prev-messages ((room slack-room) m)
   (oset room messages (cl-delete-duplicates (append (oref room messages) m)
                                             :test #'slack-message-equal)))
