@@ -34,7 +34,8 @@
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
 (defclass slack-room ()
-  ((id :initarg :id)
+  ((name :initarg :name :type string)
+   (id :initarg :id)
    (created :initarg :created)
    (has-pins :initarg :has_pins)
    (is-open :initarg :is_open)
