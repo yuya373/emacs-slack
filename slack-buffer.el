@@ -45,6 +45,8 @@
 (defvar slack-current-room)
 (make-local-variable 'slack-current-room)
 
+(defvar slack-current-message nil)
+
 (defcustom slack-buffer-emojify nil
   "Show emoji with `emojify' if true."
   :group 'slack)
@@ -54,7 +56,9 @@
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
       (with-current-buffer buffer
-        (slack-mode)))
+        (slack-mode)
+        (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
+        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
     buffer))
 
 (defun slack-buffer-set-current-room (room)
@@ -89,12 +93,31 @@
                                         map))
                   "\n")))
 
+(defun slack-buffer-add-last-ts-property ()
+  (when slack-current-message
+    (add-text-properties
+     (point-min) (point-max)
+     `(slack-last-ts ,lui-time-stamp-last))))
+
+(defun slack-buffer-add-ts-property ()
+  (when slack-current-message
+    (add-text-properties
+     (point-min) (point-max)
+     `(ts ,(oref slack-current-message ts)))))
+
+(defun slack-buffer-insert (message &optional not-tracked-p)
+  (let ((lui-time-stamp-time (slack-message-time-stamp message))
+        (beg lui-input-marker)
+        (inhibit-read-only t))
+    (let ((slack-current-message message))
+      (lui-insert (slack-message-to-string message) not-tracked-p))))
+
 (defun slack-buffer-insert-messages (room)
   (let ((messages (slack-room-latest-messages room)))
     (when messages
       (slack-buffer-insert-previous-link (cl-first messages))
       (mapc (lambda (m)
-              (lui-insert (slack-message-to-string m) t))
+              (slack-buffer-insert m t))
             messages)
       (let ((latest-message (car (last messages))))
         (slack-room-update-last-read room latest-message)
@@ -104,7 +127,7 @@
   (cl-labels ((do-update (buf room msg)
                          (with-current-buffer buf
                            (slack-room-update-last-read room msg)
-                           (lui-insert (slack-message-to-string msg)))))
+                           (slack-buffer-insert msg))))
     (let* ((buf-name (slack-room-buffer-name room))
            (buffer (get-buffer buf-name))
            (buf-names (mapcar #'buffer-name (mapcar #'window-buffer
@@ -119,12 +142,13 @@
   (with-current-buffer buffer
     (let* ((cur-point (point))
            (beg (text-property-any (point-min) (point-max) 'ts (oref msg ts)))
-           (end (next-single-property-change beg 'ts)))
+           (end (next-single-property-change beg 'ts))
+           (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
       (if (and beg end)
           (let ((inhibit-read-only t))
-            (delete-region beg (+ end 1))
+            (delete-region beg end)
             (set-marker lui-output-marker beg)
-            (lui-insert (slack-message-to-string msg))
+            (slack-buffer-insert msg)
             (goto-char cur-point)
             (slack-buffer-recover-lui-output-marker))))))
 
