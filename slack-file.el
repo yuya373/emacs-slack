@@ -123,11 +123,12 @@
   (interactive)
   (let ((room (slack-file-room-obj)))
     (with-slots (messages) room
-      (unless messages
-        (slack-room-history room)))
-    (slack-file-create-buffer)))
+      (if messages
+          (slack-file-create-buffer)
+        (slack-room-history room nil #'slack-file-create-buffer)))))
 
-(defmethod slack-room-history ((room slack-file-room) &optional oldest)
+(defmethod slack-room-history ((room slack-file-room)
+                               &optional oldest after-success)
   (cl-labels
       ((on-file-list (&key data &allow-other-keys)
                      (slack-request-handle-error
@@ -138,14 +139,17 @@
                             (append (plist-get data :files) nil))
                       (unless oldest
                         (slack-room-update-last-read room
-                                                     (slack-message :ts "0"))))))
+                                                     (slack-message :ts "0")))
+                      (if after-success
+                          (funcall after-success)))))
 
     (slack-request
      slack-file-list-url
      :params (list (cons "token" slack-token)
                    (if oldest
                        (cons "ts_to" oldest)))
-     :success #'on-file-list)))
+     :success #'on-file-list
+     :sync nil)))
 
 (defun slack-file-upload ()
   (interactive)

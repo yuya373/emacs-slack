@@ -98,11 +98,6 @@
   (interactive)
   (slack-room-select slack-ims))
 
-(defmethod slack-room-history ((room slack-im) &optional oldest)
-  (slack-room-request-update room
-                             slack-im-history-url
-                             oldest))
-
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
 
@@ -141,6 +136,9 @@
 
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
+
+(defmethod slack-room-history-url ((_room slack-im))
+  slack-im-history-url)
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

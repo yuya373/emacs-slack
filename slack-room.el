@@ -46,7 +46,7 @@
    (messages :initarg :messages :initform ())))
 
 (defgeneric slack-room-name (room))
-(defgeneric slack-room-history (room &optional oldest))
+(defgeneric slack-room-history (room &optional oldest after-success sync))
 (defgeneric slack-room-buffer-header (room))
 (defgeneric slack-room-update-mark-url (room))
 
@@ -63,10 +63,11 @@
 (defmethod slack-room-set-messages ((room slack-room) m)
   (oset room messages m))
 
-(cl-defmacro slack-room-request-update (room url &optional latest)
+(cl-defmacro slack-room-request-update (room url latest after-success sync)
   `(cl-labels
        ((create-message-with-room (payload)
-                                  (slack-message-create payload :room ,room))
+                                  (slack-message-create payload
+                                                        :room ,room))
         (on-request-update (&key data &allow-other-keys)
                            (slack-request-handle-error
                             (data "slack-room-request-update")
@@ -76,14 +77,18 @@
                                   (slack-room-set-prev-messages ,room messages)
                                 (slack-room-set-messages ,room messages)
                                 (let ((m (slack-message :ts "0")))
-                                  (slack-room-update-last-read room m)))))))
+                                  (slack-room-update-last-read room m)))
+                              (if (and ,after-success
+                                       (functionp ,after-success))
+                                  (funcall ,after-success))))))
      (slack-request
       ,url
       :params (list (cons "token" ,slack-token)
                     (cons "channel" (oref ,room id))
                     (if ,latest
                         (cons "latest" ,latest)))
-      :success #'on-request-update)))
+      :success #'on-request-update
+      :sync (if ,sync t nil))))
 
 (cl-defmacro slack-room-make-buffer (name list &key test (update nil))
   (let ((room (cl-gensym)))
@@ -382,6 +387,17 @@
                  (cons "channel" id))
    :success success
    :sync nil))
+
+(defmethod slack-room-history ((room slack-room)
+                               &optional
+                               oldest
+                               after-success
+                               async)
+  (slack-room-request-update room
+                             (slack-room-history-url room)
+                             oldest
+                             after-success
+                             (if async nil t)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

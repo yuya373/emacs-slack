@@ -62,11 +62,6 @@
 (defmethod slack-room-buffer-header ((room slack-channel))
   (concat "Channel: " (slack-room-name room ) "\n"))
 
-(defmethod slack-room-history ((room slack-channel) &optional oldest)
-  (slack-room-request-update room
-                             slack-channel-history-url
-                             oldest))
-
 (defun slack-channel-names (&optional filter)
   (slack-room-names slack-channels filter))
 
@@ -205,6 +200,9 @@
       (slack-room-request-with-id slack-channel-unarchive-url
                                   (oref channel id)
                                   #'on-channel-unarchive))))
+
+(defmethod slack-room-history-url ((_room slack-channel))
+  slack-channel-history-url)
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
