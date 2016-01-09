@@ -57,7 +57,7 @@
    ;; (username :initarg :username)
    ;; (display-as-bot :initarg :display_as_bot)
    (upload :initarg :upload)
-   (user :initarg :user)))
+   (user :initarg :user :initform nil)))
 
 (defclass slack-file ()
   ((id :initarg :id)

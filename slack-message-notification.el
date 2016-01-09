@@ -48,11 +48,17 @@
 
 (defun slack-message-notify-alert (message room)
   (if (or (and (slack-im-p room) (not (slack-message-minep message)))
+          (and (slack-group-p room) (slack-mpim-p room)
+               (not (slack-message-minep message)))
           (and (slack-room-subscribedp room) (not (slack-message-minep message))))
       (let ((room-name (slack-room-name room))
             (text (slack-message-to-alert message))
             (user-name (slack-message-sender-name message)))
-        (if (and (eq alert-default-style 'notifier) (eq (aref text 0) ?\[))
+        (if (and (eq alert-default-style 'notifier)
+                 (or (eq (aref text 0) ?\[)
+                     (eq (aref text 0) ?\{)
+                     (eq (aref text 0) ?\<)
+                     (eq (aref text 0) ?\()))
             (setq text (concat "\\" text)))
         (alert text
                :title (concat room-name ": @" user-name)

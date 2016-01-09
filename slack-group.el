@@ -181,5 +181,10 @@
                                   (oref group id)
                                   #'on-group-unarchive))))
 
+(defmethod slack-mpim-p ((room slack-group))
+  (with-slots (is-mpim) room
+    (unless (eq is-mpim :json-false)
+      t)))
+
 (provide 'slack-group)
 ;;; slack-group.el ends here
