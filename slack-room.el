@@ -159,7 +159,7 @@
          (let ((inhibit-read-only t)
                (loading-message-end (next-single-property-change
                                      cur-point
-                                     'oldest))
+                                     'slack-last-ts))
                (prev-messages (slack-room-prev-messages room oldest)))
            (delete-region (point-min) loading-message-end)
            (set-marker lui-output-marker (point-min))
