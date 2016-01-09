@@ -108,6 +108,13 @@ set this to save request to Slack if already have.")
    (setq slack-bots        (plist-get data :bots))
    (setq slack-ws-url      (plist-get data :url))
    (message "Slack Authorization Finished.")
+   (mapc #'(lambda (room)
+             (if (slack-room-subscribedp room)
+                 (slack-room-history room
+                                     nil
+                                     nil
+                                     t)))
+    (append slack-groups slack-ims slack-channels))
    (slack-ws-open)))
 
 (defun slack-on-authorize-e
