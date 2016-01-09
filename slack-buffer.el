@@ -107,9 +107,10 @@
                            (lui-insert (slack-message-to-string msg)))))
     (let* ((buf-name (slack-room-buffer-name room))
            (buffer (get-buffer buf-name))
-           (buf-names (mapcar #'buffer-name (mapcar #'window-buffer
+           (win-buf-names (mapcar #'buffer-name (mapcar #'window-buffer
                                                     (window-list)))))
-      (unless (cl-member buf-name buf-names :test #'string=)
+      (if (cl-member buf-name win-buf-names :test #'string=)
+          (slack-room-update-mark room msg)
         (cl-incf (oref room unread-count-display)))
       (if buffer
           (if replace (slack-buffer-replace buffer msg)
