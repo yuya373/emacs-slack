@@ -28,14 +28,20 @@
 (require 'slack-message)
 (require 'slack-reply)
 
+(defvar slack-ws-ping-success)
+(defvar slack-ws-ping-time)
+(defvar slack-ws-ping-id)
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
+(defvar slack-ws-ping-timer)
 
 (defun slack-ws-open ()
   (unless slack-ws
     (setq slack-ws (websocket-open
                     slack-ws-url
-                    :on-message #'slack-ws-on-message))))
+                    :on-message #'slack-ws-on-message))
+    (setq slack-ws-ping-timer
+          (run-at-time "5 min" 300 #'slack-ws-ping))))
 
 (defun slack-ws-close ()
   (interactive)
@@ -47,7 +53,12 @@
     (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
-  (websocket-send-text slack-ws payload))
+  (condition-case e
+      (websocket-send-text slack-ws payload)
+    ('websocket-closed
+     (message "Slack Websocket is Closed. Try to Reconnect")
+     (slack-start)
+     (websocket-send-text slack-ws payload))))
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
@@ -71,6 +82,8 @@
            (decoded-payload (slack-ws-recursive-decode payload))
            (type (plist-get decoded-payload :type)))
       (cond
+       ((string= type "pong")
+        (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
@@ -204,6 +217,24 @@
 (defun slack-ws-handle-bot (payload)
   (let ((bot (plist-get payload :bot)))
     (push bot slack-bots)))
+
+(defun slack-ws-handle-pong (payload)
+  (let ((pong-time (plist-get payload :time))
+        (pong-id (plist-get payload :reply_to)))
+    (if (and (string= slack-ws-ping-time pong-time)
+             (eq slack-ws-ping-id pong-id))
+        (message "Slack Websocket PONG"))))
+
+(defun slack-ws-ping ()
+  (let* ((m (list :id slack-message-id
+                  :type "ping"
+                  :time (format-time-string "%s")))
+         (json (json-encode m)))
+    (setq slack-ws-ping-id (plist-get m :id)
+          slack-ws-ping-time (plist-get m :time))
+    (cl-incf slack-message-id)
+    (slack-ws-send json)
+    (message "Slack Websocket PING")))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
