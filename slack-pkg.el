@@ -3,6 +3,6 @@
   '((websocket "1.5")
     (request "0.2.0")
     (oauth2 "0.10")
-    (circe "2.1")
+    (circe "2.2")
     (alert "1.2")
     (emojify "0.2")))

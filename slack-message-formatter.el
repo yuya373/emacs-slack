@@ -79,10 +79,7 @@
       (mapconcat #'slack-reaction-to-string reactions " ")))
 
 (defmethod slack-message-header ((m slack-message))
-  (with-slots (ts) m
-      (let ((name (slack-message-sender-name m))
-            (time (slack-message-time-to-string ts)))
-        (format "%s %s" name time))))
+  (slack-message-sender-name m))
 
 (defmethod slack-message-to-string ((m slack-message))
   (with-slots (text reactions attachments) m

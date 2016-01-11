@@ -232,5 +232,8 @@
        :success #'on-pins-add
        :sync nil))))
 
+(defun slack-message-time-stamp (message)
+  (seconds-to-time (string-to-number (oref message ts))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

@@ -20,7 +20,7 @@
     (let* ((name (slack-message-sender-name m))
            (time (slack-message-time-to-string ts))
            (edited-at (slack-message-time-to-string edited-at))
-           (header (format "%s %s" name time)))
+           (header (format "%s" name)))
       (if edited-at
           (format "%s edited_at: %s" header edited-at)
         header))))
