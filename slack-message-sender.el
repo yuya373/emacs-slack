@@ -104,15 +104,20 @@
 
 (defun slack-message-embed-mention ()
   (interactive)
-  (let* ((list (slack-user-names))
+  (let* ((pre-defined (list (cons "here" "here")
+                            (cons "channel" "channel")))
+         (list (append pre-defined (slack-user-names)))
          (candidates (mapcar #'car list)))
     (slack-select-from-list
      (candidates "Select User: ")
-     (let* ((user-id (cdr (cl-assoc selected
-                                    list
-                                   :test #'string=)))
-            (user-name (slack-user-name user-id)))
-       (insert (concat "<@" user-id "|" user-name "> "))))))
+     (if (or (string= selected "here")
+             (string= selected "channel"))
+         (insert (concat "<!" selected "> "))
+       (let* ((user-id (cdr (cl-assoc selected
+                                      list
+                                      :test #'string=)))
+              (user-name (slack-user-name user-id)))
+         (insert (concat "<@" user-id "|" user-name "> ")))))))
 
 
 (provide 'slack-message-sender)
