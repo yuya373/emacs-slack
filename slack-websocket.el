@@ -143,8 +143,10 @@
                                    :name r-name
                                    :count r-count
                                    :users r-users)))
-     ,@body
-     (slack-message-update msg t)))
+     (if msg
+         (progn
+           ,@body
+           (slack-message-update msg t)))))
 
 (defun slack-ws-handle-reaction-added (payload)
   (slack-ws-handle-reaction
