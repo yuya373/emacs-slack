@@ -115,12 +115,13 @@
 (defgeneric slack-room-update-message (room))
 
 (defun slack-room-find (id)
-  (cl-labels ((find-room (room)
-                         (string= id (oref room id))))
-    (cond
-     ((string-prefix-p "C" id) (cl-find-if #'find-room slack-channels))
-     ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
-     ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims)))))
+  (if id
+      (cl-labels ((find-room (room)
+                             (string= id (oref room id))))
+        (cond
+         ((string-prefix-p "C" id) (cl-find-if #'find-room slack-channels))
+         ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
+         ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims))))))
 
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
