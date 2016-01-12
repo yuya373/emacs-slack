@@ -167,9 +167,9 @@
                (progn
                  (slack-buffer-insert-previous-link (cl-first prev-messages))
                  (mapc (lambda (m)
-                         (lui-insert (slack-message-to-string m)))
+                         (slack-buffer-insert m))
                        prev-messages))
-             (insert "(no more messages)")))
+             (insert "(no more messages)\n")))
          (slack-buffer-recover-lui-output-marker)
          (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
 
