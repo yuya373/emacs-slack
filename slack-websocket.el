@@ -134,19 +134,20 @@
 
 (cl-defmacro slack-ws-handle-reaction ((payload) &body body)
   `(let* ((item (plist-get ,payload :item))
-          (room (slack-room-find (plist-get item :channel)))
-          (msg (slack-room-find-message room (plist-get item :ts)))
-          (r-name (plist-get ,payload :reaction))
-          (r-count 1)
-          (r-users (list (slack-user-find (plist-get ,payload :user))))
-          (reaction (make-instance 'slack-reaction
-                                   :name r-name
-                                   :count r-count
-                                   :users r-users)))
-     (if msg
-         (progn
-           ,@body
-           (slack-message-update msg t)))))
+          (room (slack-room-find (plist-get item :channel))))
+     (if room
+         (let ((msg (slack-room-find-message room (plist-get item :ts))))
+           (if msg
+               (let* ((r-name (plist-get ,payload :reaction))
+                      (r-count 1)
+                      (r-users (list (slack-user-find (plist-get ,payload :user))))
+                      (reaction (make-instance 'slack-reaction
+                                               :name r-name
+                                               :count r-count
+                                               :users r-users)))
+
+                 ,@body
+                 (slack-message-update msg t)))))))
 
 (defun slack-ws-handle-reaction-added (payload)
   (slack-ws-handle-reaction
