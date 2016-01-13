@@ -68,11 +68,11 @@
                             (data "slack-room-request-update")
                             (let* ((datum (plist-get data :messages))
                                    (messages (mapcar #'create-message-with-room datum)))
-                              (slack-room-update-last-read room
-                                                           (slack-message :ts "0"))
                               (if ,latest
                                   (slack-room-set-prev-messages ,room messages)
-                                (slack-room-set-messages ,room messages))))))
+                                (slack-room-set-messages ,room messages)
+                                (let ((m (slack-message :ts "0")))
+                                  (slack-room-update-last-read room m)))))))
      (slack-request
       ,url
       :params (list (cons "token" ,slack-token)
