@@ -183,12 +183,18 @@
         (concat "(" (number-to-string unread-count-display) ")")
       "")))
 
+(defmethod slack-room-latest-ts ((room slack-room))
+  (with-slots (latest) room
+    (if latest
+        (oref latest ts)
+      "0")))
+
 (defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
        ((sort-rooms (l)
                     (sort l #'(lambda (a b)
-                                (> (oref (cdr a) unread-count-display)
-                                   (oref (cdr b) unread-count-display)))))
+                                (string> (slack-room-latest-ts (cdr a))
+                                         (slack-room-latest-ts (cdr b))))))
         (build-label (room)
                      (concat (im-presence room)
                              (format "%s %s"
