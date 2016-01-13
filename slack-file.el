@@ -128,7 +128,10 @@
         (slack-room-history room nil #'slack-file-create-buffer)))))
 
 (defmethod slack-room-history ((room slack-file-room)
-                               &optional oldest after-success)
+                               &optional
+                               oldest
+                               after-success
+                               async)
   (cl-labels
       ((on-file-list (&key data &allow-other-keys)
                      (slack-request-handle-error
@@ -149,7 +152,7 @@
                    (if oldest
                        (cons "ts_to" oldest)))
      :success #'on-file-list
-     :sync nil)))
+     :sync (if async nil t))))
 
 (defun slack-file-upload ()
   (interactive)
