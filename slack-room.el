@@ -156,31 +156,37 @@
 
 (defun slack-room-load-prev-messages ()
   (interactive)
-  (let* ((cur-point (point))
-         (msg-beg (next-single-property-change cur-point 'ts))
-         (ts (get-text-property msg-beg 'ts))
-         (line (thing-at-point 'line))
-         (oldest (ignore-errors (get-text-property 0 'oldest line))))
-    (slack-room-history slack-current-room oldest)
-    (slack-buffer-create
-     slack-current-room
-     #'(lambda (room)
-         (let ((inhibit-read-only t)
-               (loading-message-end (1- (next-single-property-change
-                                         cur-point
-                                         'slack-last-ts)))
-               (prev-messages (slack-room-prev-messages room oldest)))
-           (delete-region (point-min) loading-message-end)
-           (set-marker lui-output-marker (point-min))
-           (if prev-messages
-               (progn
-                 (slack-buffer-insert-previous-link (cl-first prev-messages))
-                 (mapc (lambda (m)
-                         (slack-buffer-insert m))
-                       prev-messages))
-             (insert "(no more messages)\n")))
-         (slack-buffer-recover-lui-output-marker)
-         (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
+  (cl-labels
+      ((render-prev-messages
+        (current-room cur-point oldest ts)
+        (slack-buffer-create
+         current-room
+         #'(lambda (room)
+             (let ((inhibit-read-only t)
+                   (loading-message-end (1- (next-single-property-change
+                                             cur-point
+                                             'slack-last-ts)))
+                   (prev-messages (slack-room-prev-messages room oldest)))
+               (delete-region (point-min) loading-message-end)
+               (set-marker lui-output-marker (point-min))
+               (if prev-messages
+                   (progn
+                     (slack-buffer-insert-previous-link (cl-first prev-messages))
+                     (mapc (lambda (m)
+                             (slack-buffer-insert m t))
+                           prev-messages))
+                 (insert "(no more messages)\n")))
+             (slack-buffer-recover-lui-output-marker)
+             (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
+    (let* ((cur-point (point))
+           (msg-beg (next-single-property-change cur-point 'ts))
+           (ts (get-text-property msg-beg 'ts))
+           (line (thing-at-point 'line))
+           (oldest (ignore-errors (get-text-property 0 'oldest line)))
+           (current-room slack-current-room))
+      (slack-room-history current-room
+                          oldest
+                          #'(lambda () (render-prev-messages current-room cur-point oldest ts))))))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
