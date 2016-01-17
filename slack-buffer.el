@@ -38,7 +38,6 @@
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
   (lui-set-prompt lui-prompt-string)
-  (setq lui-fill-type nil)
   (setq lui-input-function 'slack-message--send))
 
 (define-derived-mode slack-info-mode lui-mode "Slack Info"
