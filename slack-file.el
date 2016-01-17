@@ -185,7 +185,7 @@
            (filetype (read-from-minibuffer "Filetype: "
                                            (file-name-extension
                                             (buffer-file-name buf))))
-           (initial-comment (slack-message-read-from-minibuffer)))
+           (initial-comment (read-from-minibuffer "Message: ")))
       (slack-request
        slack-file-upload-url
        :type "POST"
