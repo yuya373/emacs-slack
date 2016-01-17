@@ -163,9 +163,8 @@
          current-room
          #'(lambda (room)
              (let ((inhibit-read-only t)
-                   (loading-message-end (1- (next-single-property-change
-                                             cur-point
-                                             'slack-last-ts)))
+                   (loading-message-end (text-property-any (point-min) (point-max)
+                                                           'ts oldest))
                    (prev-messages (slack-room-prev-messages room oldest)))
                (delete-region (point-min) loading-message-end)
                (set-marker lui-output-marker (point-min))
