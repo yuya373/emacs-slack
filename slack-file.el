@@ -90,9 +90,7 @@
 (defmethod slack-message-to-string ((file slack-file))
   (with-slots (ts name size filetype permalink user initial-comment reactions)
       file
-    (let* ((header (format "%s\t%s"
-                           (slack-user-name user)
-                           (slack-message-time-to-string ts)))
+    (let* ((header (slack-user-name user))
            (body (format "name: %s\nsize: %s\ntype: %s\n%s\n"
                          name size filetype permalink))
            (reactions-str (slack-message-reactions-to-string
