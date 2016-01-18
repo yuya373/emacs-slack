@@ -86,7 +86,12 @@ set this to save request to Slack if already have.")
    (setq slack-team        (plist-get data :team))
    (cl-labels
        ((create-room (data func)
-                     (plist-put data :last_read "0")
+                     (unless (plist-get data :last_read)
+                       (plist-put data :last_read "0"))
+                     (if (plist-get data :latest)
+                         (plist-put data :latest
+                                    (slack-message-create
+                                     (plist-get data  :latest))))
                      (funcall func data))
         (create-rooms (datum func)
                       (mapcar #'(lambda (data)
@@ -128,7 +133,7 @@ set this to save request to Slack if already have.")
 (defun slack-start ()
   (interactive)
   (if slack-ws
-    (slack-ws-close))
+      (slack-ws-close))
   (unless slack-token
     (slack-request-token))
   (slack-authorize))
