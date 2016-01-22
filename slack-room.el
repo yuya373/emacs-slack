@@ -34,7 +34,8 @@
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
 (defclass slack-room ()
-  ((id :initarg :id)
+  ((name :initarg :name :type string)
+   (id :initarg :id)
    (created :initarg :created)
    (has-pins :initarg :has_pins)
    (is-open :initarg :is_open)
@@ -45,12 +46,15 @@
    (messages :initarg :messages :initform ())))
 
 (defgeneric slack-room-name (room))
-(defgeneric slack-room-history (room &optional oldest))
+(defgeneric slack-room-history (room &optional oldest after-success sync))
 (defgeneric slack-room-buffer-header (room))
 (defgeneric slack-room-update-mark-url (room))
 
 (defmethod slack-room-subscribedp ((_room slack-room))
   nil)
+
+(defmethod slack-room-buffer-name ((room slack-room))
+  (concat "*Slack*" " : " (slack-room-name room)))
 
 (defmethod slack-room-set-prev-messages ((room slack-room) m)
   (oset room messages (cl-delete-duplicates (append (oref room messages) m)
@@ -59,10 +63,11 @@
 (defmethod slack-room-set-messages ((room slack-room) m)
   (oset room messages m))
 
-(cl-defmacro slack-room-request-update (room url &optional latest)
+(cl-defmacro slack-room-request-update (room url latest after-success sync)
   `(cl-labels
        ((create-message-with-room (payload)
-                                  (slack-message-create payload :room ,room))
+                                  (slack-message-create payload
+                                                        :room ,room))
         (on-request-update (&key data &allow-other-keys)
                            (slack-request-handle-error
                             (data "slack-room-request-update")
@@ -72,14 +77,18 @@
                                   (slack-room-set-prev-messages ,room messages)
                                 (slack-room-set-messages ,room messages)
                                 (let ((m (slack-message :ts "0")))
-                                  (slack-room-update-last-read room m)))))))
+                                  (slack-room-update-last-read room m)))
+                              (if (and ,after-success
+                                       (functionp ,after-success))
+                                  (funcall ,after-success))))))
      (slack-request
       ,url
       :params (list (cons "token" ,slack-token)
                     (cons "channel" (oref ,room id))
                     (if ,latest
                         (cons "latest" ,latest)))
-      :success #'on-request-update)))
+      :success #'on-request-update
+      :sync (if ,sync t nil))))
 
 (cl-defmacro slack-room-make-buffer (name list &key test (update nil))
   (let ((room (cl-gensym)))
@@ -147,31 +156,36 @@
 
 (defun slack-room-load-prev-messages ()
   (interactive)
-  (let* ((cur-point (point))
-         (msg-beg (next-single-property-change cur-point 'ts))
-         (ts (get-text-property msg-beg 'ts))
-         (line (thing-at-point 'line))
-         (oldest (ignore-errors (get-text-property 0 'oldest line))))
-    (slack-room-history slack-current-room oldest)
-    (slack-buffer-create
-     slack-current-room
-     #'(lambda (room)
-         (let ((inhibit-read-only t)
-               (loading-message-end (1- (next-single-property-change
-                                         cur-point
-                                         'slack-last-ts)))
-               (prev-messages (slack-room-prev-messages room oldest)))
-           (delete-region (point-min) loading-message-end)
-           (set-marker lui-output-marker (point-min))
-           (if prev-messages
-               (progn
-                 (slack-buffer-insert-previous-link (cl-first prev-messages))
-                 (mapc (lambda (m)
-                         (slack-buffer-insert m))
-                       prev-messages))
-             (insert "(no more messages)\n")))
-         (slack-buffer-recover-lui-output-marker)
-         (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
+  (cl-labels
+      ((render-prev-messages
+        (current-room cur-point oldest ts)
+        (slack-buffer-create
+         current-room
+         #'(lambda (room)
+             (let ((inhibit-read-only t)
+                   (loading-message-end (text-property-any (point-min) (point-max)
+                                                           'ts oldest))
+                   (prev-messages (slack-room-prev-messages room oldest)))
+               (delete-region (point-min) loading-message-end)
+               (set-marker lui-output-marker (point-min))
+               (if prev-messages
+                   (progn
+                     (slack-buffer-insert-previous-link (cl-first prev-messages))
+                     (mapc (lambda (m)
+                             (slack-buffer-insert m t))
+                           prev-messages))
+                 (insert "(no more messages)\n")))
+             (slack-buffer-recover-lui-output-marker)
+             (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
+    (let* ((cur-point (point))
+           (msg-beg (next-single-property-change cur-point 'ts))
+           (ts (get-text-property msg-beg 'ts))
+           (line (thing-at-point 'line))
+           (oldest (ignore-errors (get-text-property 0 'oldest line)))
+           (current-room slack-current-room))
+      (slack-room-history current-room
+                          oldest
+                          #'(lambda () (render-prev-messages current-room cur-point oldest ts))))))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
@@ -378,6 +392,17 @@
                  (cons "channel" id))
    :success success
    :sync nil))
+
+(defmethod slack-room-history ((room slack-room)
+                               &optional
+                               oldest
+                               after-success
+                               async)
+  (slack-room-request-update room
+                             (slack-room-history-url room)
+                             oldest
+                             after-success
+                             (if async nil t)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -38,8 +38,11 @@
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
   (lui-set-prompt lui-prompt-string)
-  (setq lui-fill-type nil)
   (setq lui-input-function 'slack-message--send))
+
+(define-derived-mode slack-info-mode lui-mode "Slack Info"
+  ""
+  (lui-set-prompt lui-prompt-string))
 
 (defvar slack-current-room)
 (make-local-variable 'slack-current-room)
@@ -70,18 +73,6 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(cl-defun slack-buffer-create (room &optional (insert-func
-                                               'slack-buffer-insert-messages))
-  (let* ((buf-name (slack-room-buffer-name room))
-         (buffer (slack-get-buffer-create buf-name)))
-    (with-current-buffer buffer
-      (if insert-func
-          (funcall insert-func room))
-      (slack-buffer-set-current-room room)
-      (oset room unread-count-display 0)
-      (slack-buffer-enable-emojify))
-    buffer))
-
 (defun slack-buffer-insert-previous-link (oldest-msg)
   (lui-insert (concat (propertize "(load more message)"
                               'face '(:underline t)
@@ -91,6 +82,24 @@
                                           #'slack-room-load-prev-messages)
                                         map))
                   "\n")))
+(cl-defun slack-buffer-create (room &optional
+                                    (insert-func
+                                     #'slack-buffer-insert-messages)
+                                    (type 'message))
+  (cl-labels
+      ((get-buffer (type buf-name)
+                   (ecase type
+                     (message (slack-get-buffer-create buf-name))
+                     (info (slack-get-info-buffer-create buf-name)))))
+    (let* ((buf-name (slack-room-buffer-name room))
+           (buffer (get-buffer type buf-name)))
+      (with-current-buffer buffer
+        (if insert-func
+            (funcall insert-func room))
+        (slack-buffer-set-current-room room)
+        (oset room unread-count-display 0)
+        (slack-buffer-enable-emojify))
+      buffer)))
 
 (defun slack-buffer-add-last-ts-property ()
   (when slack-current-message
@@ -162,8 +171,16 @@
     (with-current-buffer buffer
       (lui-insert string))))
 
+(defun slack-get-info-buffer-create (buf-name)
+  (let ((buffer (get-buffer buf-name)))
+    (unless buffer
+      (setq buffer (generate-new-buffer buf-name))
+      (with-current-buffer buffer
+        (slack-info-mode)))
+    buffer))
+
 (defun slack-buffer-create-info (buf-name insert-func)
-  (let ((buf (get-buffer-create buf-name)))
+  (let ((buf (slack-get-info-buffer-create buf-name)))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (erase-buffer)

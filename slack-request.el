@@ -48,12 +48,16 @@
                              (error nil)
                              (params nil)
                              (parser #'slack-parse-to-plist)
-                             (sync t))
+                             (sync t)
+                             (files nil)
+                             (headers nil))
   (request
    url
    :type type
    :sync sync
    :params params
+   :files files
+   :headers headers
    :parser parser
    :success success
    :error error))

@@ -79,11 +79,6 @@
 (defmethod slack-room-buffer-header ((room slack-group))
   (concat "Private Group: " (slack-room-name room) "\n"))
 
-(defmethod slack-room-history ((room slack-group) &optional oldest)
-  (slack-room-request-update room
-                             slack-group-history-url
-                             oldest))
-
 (defun slack-group-select ()
   (interactive)
   (slack-room-select slack-groups))
@@ -185,6 +180,9 @@
   (with-slots (is-mpim) room
     (unless (eq is-mpim :json-false)
       t)))
+
+(defmethod slack-room-history-url ((_room slack-group))
+  slack-group-history-url)
 
 (provide 'slack-group)
 ;;; slack-group.el ends here
