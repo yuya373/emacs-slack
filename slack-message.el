@@ -163,7 +163,7 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message) &optional replace)
+(defmethod slack-message-update ((m slack-message) &optional replace no-notify)
   (with-slots (room channel) m
     (let ((room (or room (slack-room-find channel))))
       (when room
@@ -171,8 +171,9 @@
         (slack-buffer-update room
                              m
                              :replace replace)
-        (slack-message-notify-buffer m room)
-        (slack-message-notify-alert m room)))))
+        (unless no-notify
+          (slack-message-notify-buffer m room)
+          (slack-message-notify-alert m room))))))
 
 (defun slack-message-edited (payload)
   (let* ((edited-message (plist-get payload :message))

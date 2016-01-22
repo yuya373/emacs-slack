@@ -152,12 +152,13 @@
                                                :users r-users)))
 
                  ,@body
-                 (slack-message-update msg t)))))))
+                 (slack-message-update msg t t)))))))
 
 (defun slack-ws-handle-reaction-added (payload)
   (slack-ws-handle-reaction
    (payload)
-   (slack-message-append-reaction msg reaction)))
+   (slack-message-append-reaction msg reaction)
+   (slack-reaction-notify payload)))
 
 (defun slack-ws-handle-reaction-removed (payload)
   (slack-ws-handle-reaction

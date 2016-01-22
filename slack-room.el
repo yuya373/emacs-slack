@@ -207,8 +207,8 @@
   `(cl-labels
        ((sort-rooms (l)
                     (sort l #'(lambda (a b)
-                                (string> (slack-room-latest-ts (cdr a))
-                                         (slack-room-latest-ts (cdr b))))))
+                                (string< (slack-room-latest-ts (cdr b))
+                                         (slack-room-latest-ts (cdr a))))))
         (build-label (room)
                      (concat (im-presence room)
                              (format "%s %s"
