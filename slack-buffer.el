@@ -59,6 +59,7 @@
       (setq buffer (generate-new-buffer buf-name))
       (with-current-buffer buffer
         (slack-mode)
+        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
         (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
     buffer))
@@ -190,6 +191,11 @@
       (setq buffer-read-only t)
       (slack-buffer-enable-emojify))
     buf))
+
+(defun slack-reset-room-last-read ()
+  (let ((room slack-current-room))
+    (slack-room-update-last-read room
+                                 (slack-message :ts "0"))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

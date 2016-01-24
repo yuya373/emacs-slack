@@ -91,7 +91,6 @@
 (defgeneric slack-message-sender-name  (slack-message))
 (defgeneric slack-message-to-string (slack-message))
 (defgeneric slack-message-to-alert (slack-message))
-(defgeneric slack-message-notify-buffer (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
 (defgeneric slack-room-update-message (room))
@@ -172,7 +171,6 @@
                              m
                              :replace replace)
         (unless no-notify
-          (slack-message-notify-buffer m room)
           (slack-message-notify-alert m room))))))
 
 (defun slack-message-edited (payload)

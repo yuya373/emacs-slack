@@ -31,20 +31,10 @@
 (require 'slack-im)
 (require 'alert)
 
-(defconst slack-message-notification-buffer-name "*Slack - notification*")
 (defvar slack-message-notification-subscription '())
 (defvar slack-message-tips '())
 (defvar alert-default-style)
 (defvar slack-my-user-id)
-
-(defmethod slack-message-notify-buffer ((m slack-message) room)
-  (if (not (slack-message-minep m))
-      (let ((room-name (concat (slack-room-name room) ": "))
-            (message (slack-message-to-string m))
-            (buf-name slack-message-notification-buffer-name))
-        (slack-message-put-header-property room-name)
-        (slack-buffer-update-notification buf-name
-                                          (concat room-name message "\n")))))
 
 (defun slack-message-notify-alert (message room)
   (if (or (and (slack-im-p room) (not (slack-message-minep message)))
