@@ -76,7 +76,7 @@
    (icons :initarg :icons)))
 
 (defclass slack-attachment ()
-  ((fallback :initarg :fallback :type string)
+  ((fallback :initarg :fallback :initform nil)
    (title :initarg :title :initform nil)
    (title-link :initarg :title_link :initform nil)
    (pretext :initarg :pretext :initform nil)

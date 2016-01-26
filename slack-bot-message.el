@@ -54,9 +54,10 @@
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
-      (if text
-          (concat pretext "\n" title "\n" title-link "\n" text "\n")
-        fallback)))
+    (mapconcat #'identity
+               (cl-remove-if #'null
+                             (list pretext title title-link text fallback))
+               "\n")))
 
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
