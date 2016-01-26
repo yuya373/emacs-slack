@@ -130,9 +130,8 @@
 
 (defmethod slack-room-update-message ((room slack-room) m)
   (with-slots (messages latest) room
-    (setq messages (cl-delete-if #'(lambda (other) (slack-message-equal m other))
-                                 messages))
-    (push m messages)
+    (when (< 0 (length messages))
+      (cl-pushnew m messages :test #'slack-message-equal))
     (setq latest m)))
 
 (cl-defun slack-room-list-update (url success &key (sync t))
