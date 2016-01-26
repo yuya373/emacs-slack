@@ -173,7 +173,7 @@
            (target-channels (select-channels channels '()))
            (channel-ids (mapconcat #'(lambda (selected)
                                        (channel-id selected channels))
-                                   (delete-if #'null target-channels)
+                                   (cl-delete-if #'null target-channels)
                                    ","))
            (buf (find-file-noselect
                  (car (find-file-read-args

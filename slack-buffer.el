@@ -89,7 +89,7 @@
                                     (type 'message))
   (cl-labels
       ((get-buffer (type buf-name)
-                   (ecase type
+                   (cl-ecase type
                      (message (slack-get-buffer-create buf-name))
                      (info (slack-get-info-buffer-create buf-name)))))
     (let* ((buf-name (slack-room-buffer-name room))
