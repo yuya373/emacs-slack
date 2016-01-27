@@ -34,6 +34,7 @@
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
 (defvar slack-ws-ping-timer)
+(defvar slack-ws-waiting-resend nil)
 
 (defun slack-ws-open ()
   (unless slack-ws
@@ -53,12 +54,17 @@
     (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
-  (condition-case e
-      (websocket-send-text slack-ws payload)
-    ('websocket-closed
-     (message "Slack Websocket is Closed. Try to Reconnect")
-     (slack-start)
-     (websocket-send-text slack-ws payload))))
+  (cl-labels ((restart (payload)
+                       (message "Slack Websocket is Closed. Try to Reconnect")
+                       (slack-start)
+                       (push payload slack-ws-waiting-resend)))
+    (if (websocket-openp slack-ws)
+        (condition-case e
+            (websocket-send-text slack-ws payload)
+          ('websocket-closed
+           (restart payload)))
+      (restart payload))))
+
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
