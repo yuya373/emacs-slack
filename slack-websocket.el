@@ -66,6 +66,12 @@
       (restart payload))))
 
 
+(defun slack-ws-resend ()
+  (let ((waiting slack-ws-waiting-resend))
+    (setq slack-ws-waiting-resend nil)
+    (mapcar #'slack-ws-send
+            waiting)))
+
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
                               (decode-coding-string e 'utf-8-unix)
@@ -91,6 +97,7 @@
        ((string= type "pong")
         (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
+        (slack-ws-resend)
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
         (slack-ws-handle-reply decoded-payload))
