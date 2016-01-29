@@ -28,7 +28,6 @@
 (require 'slack-message)
 (require 'slack-reply)
 
-(defvar slack-ws-ping-success)
 (defvar slack-ws-ping-time)
 (defvar slack-ws-ping-id)
 (defvar slack-ws nil)
