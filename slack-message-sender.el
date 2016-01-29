@@ -34,7 +34,7 @@
 
 (defvar slack-message-id 0)
 (defvar slack-message-minibuffer-local-map nil)
-(defvar slack-sent-message)
+(defvar slack-sent-message (make-hash-table))
 (defvar slack-buffer-function)
 (defvar slack-my-user-id)
 
@@ -43,6 +43,7 @@
   (slack-message--send (slack-message-read-from-minibuffer)))
 
 (defun slack-message--send (message)
+  (cl-incf slack-message-id)
   (let* ((m (list :id slack-message-id
                   :channel (slack-message-get-room-id)
                   :type "message"
@@ -50,9 +51,8 @@
                   :text message))
          (json (json-encode m))
          (obj (slack-message-create m)))
-    (cl-incf slack-message-id)
     (slack-ws-send json)
-    (push obj slack-sent-message)))
+    (puthash slack-message-id obj slack-sent-message)))
 
 (defun slack-message-get-room-id ()
   (if (boundp 'slack-current-room)
