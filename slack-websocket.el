@@ -63,20 +63,27 @@
 (defun slack-ws-send (payload)
   (cl-labels ((restart (payload)
                        (message "Slack Websocket is Closed. Try to Reconnect")
-                       (slack-start)
-                       (push payload slack-ws-waiting-resend)))
+                       (slack-start))
+              (delete-from-waiting-list
+               (payload)
+               (setq slack-ws-waiting-resend
+                     (cl-remove-if #'(lambda (p) (string= payload p))
+                                slack-ws-waiting-resend))))
+    (push payload slack-ws-waiting-resend)
     (if (websocket-openp slack-ws)
         (condition-case e
-            (websocket-send-text slack-ws payload)
-          ('websocket-closed
-           (restart payload)))
+            (progn
+              (websocket-send-text slack-ws payload)
+              (delete-from-waiting-list payload))
+          ('websocket-closed (restart payload)))
       (restart payload))))
-
 
 (defun slack-ws-resend ()
   (let ((waiting slack-ws-waiting-resend))
     (setq slack-ws-waiting-resend nil)
-    (mapcar #'slack-ws-send
+    (mapcar #'(lambda (m)
+                (slack-ws-send m)
+                (sleep-for 1))
             waiting)))
 
 (defun slack-ws-recursive-decode (payload)
