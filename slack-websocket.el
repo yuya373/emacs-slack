@@ -28,12 +28,17 @@
 (require 'slack-message)
 (require 'slack-reply)
 
-(defvar slack-ws-ping-success)
 (defvar slack-ws-ping-time)
 (defvar slack-ws-ping-id)
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
 (defvar slack-ws-ping-timer)
+(defvar slack-ws-ping-timeout-timer nil)
+(defvar slack-ws-waiting-resend nil)
+(defvar slack-last-ping-time nil)
+(defcustom slack-ws-reconnect-auto nil
+  "If t, reconnect slack websocket server when ping timeout."
+  :group 'slack)
 
 (defun slack-ws-open ()
   (unless slack-ws
@@ -41,7 +46,7 @@
                     slack-ws-url
                     :on-message #'slack-ws-on-message))
     (setq slack-ws-ping-timer
-          (run-at-time "5 min" 300 #'slack-ws-ping))))
+          (run-at-time "10 sec" 10 #'slack-ws-ping))))
 
 (defun slack-ws-close ()
   (interactive)
@@ -49,16 +54,36 @@
       (progn
         (websocket-close slack-ws)
         (setq slack-ws nil)
+        (slack-ws-cancel-ping-timer)
+        (slack-ws-cancel-timeout-timer)
         (message "Slack Websocket Closed"))
     (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
-  (condition-case e
-      (websocket-send-text slack-ws payload)
-    ('websocket-closed
-     (message "Slack Websocket is Closed. Try to Reconnect")
-     (slack-start)
-     (websocket-send-text slack-ws payload))))
+  (cl-labels ((restart (payload)
+                       (message "Slack Websocket is Closed. Try to Reconnect")
+                       (slack-start))
+              (delete-from-waiting-list
+               (payload)
+               (setq slack-ws-waiting-resend
+                     (cl-remove-if #'(lambda (p) (string= payload p))
+                                slack-ws-waiting-resend))))
+    (push payload slack-ws-waiting-resend)
+    (if (websocket-openp slack-ws)
+        (condition-case e
+            (progn
+              (websocket-send-text slack-ws payload)
+              (delete-from-waiting-list payload))
+          ('websocket-closed (restart payload)))
+      (restart payload))))
+
+(defun slack-ws-resend ()
+  (let ((waiting slack-ws-waiting-resend))
+    (setq slack-ws-waiting-resend nil)
+    (mapcar #'(lambda (m)
+                (slack-ws-send m)
+                (sleep-for 1))
+            waiting)))
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
@@ -81,10 +106,12 @@
                      (websocket-frame-payload frame)))
            (decoded-payload (slack-ws-recursive-decode payload))
            (type (plist-get decoded-payload :type)))
+      ;; (message "%s" decoded-payload)
       (cond
        ((string= type "pong")
         (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
+        (slack-ws-resend)
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
         (slack-ws-handle-reply decoded-payload))
@@ -133,9 +160,10 @@
           (message "Error code: %s msg: %s"
                    (plist-get err :code)
                    (plist-get err :msg)))
-      (if (integerp (plist-get payload :reply_to))
-          (slack-message-handle-reply
-           (slack-message-create payload))))))
+      (let ((message-id (plist-get payload :reply_to)))
+        (if (integerp message-id)
+            (slack-message-handle-reply
+             (slack-message-create payload)))))))
 
 (cl-defmacro slack-ws-handle-reaction ((payload) &body body)
   `(let* ((item (plist-get ,payload :item))
@@ -145,7 +173,7 @@
            (if msg
                (let* ((r-name (plist-get ,payload :reaction))
                       (r-count 1)
-                      (r-users (list (slack-user-find (plist-get ,payload :user))))
+                      (r-users (list (plist-get ,payload :user)))
                       (reaction (make-instance 'slack-reaction
                                                :name r-name
                                                :count r-count
@@ -227,12 +255,26 @@
   (let ((bot (plist-get payload :bot)))
     (push bot slack-bots)))
 
-(defun slack-ws-handle-pong (payload)
-  (let ((pong-time (plist-get payload :time))
-        (pong-id (plist-get payload :reply_to)))
-    (if (and (string= slack-ws-ping-time pong-time)
-             (eq slack-ws-ping-id pong-id))
-        (message "Slack Websocket PONG"))))
+(defun slack-ws-cancel-timeout-timer ()
+  (if (timerp slack-ws-ping-timeout-timer)
+      (cancel-timer slack-ws-ping-timeout-timer))
+  (setq slack-ws-ping-timeout-timer nil))
+
+(defun slack-ws-cancel-ping-timer ()
+  (if (timerp slack-ws-ping-timer)
+      (cancel-timer slack-ws-ping-timer))
+  (setq slack-ws-ping-timer nil))
+
+(defun slack-ws-ping-timeout ()
+  (slack-ws-cancel-timeout-timer)
+  (slack-ws-cancel-ping-timer)
+  (if slack-ws-reconnect-auto
+      (slack-start)
+    (message "Slack Websocket PING Timeout.")
+    (slack-ws-close)))
+
+(defun slack-ws-handle-pong (_payload)
+  (slack-ws-cancel-timeout-timer))
 
 (defun slack-ws-ping ()
   (let* ((m (list :id slack-message-id
@@ -241,9 +283,9 @@
          (json (json-encode m)))
     (setq slack-ws-ping-id (plist-get m :id)
           slack-ws-ping-time (plist-get m :time))
-    (cl-incf slack-message-id)
     (slack-ws-send json)
-    (message "Slack Websocket PING")))
+    (setq slack-ws-ping-timeout-timer
+          (run-at-time "5 sec" nil #'slack-ws-ping-timeout))))
 
 (defun slack-ws-handle-file-shared (payload)
   (let ((file (slack-file-create (plist-get payload :file))))
