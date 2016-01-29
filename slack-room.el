@@ -145,13 +145,15 @@
   (interactive)
   (unless (and (boundp 'slack-current-room) slack-current-room)
     (error "Call From Slack Room Buffer"))
-  (slack-room-history slack-current-room)
-  (slack-buffer-create slack-current-room
-                       #'(lambda (room)
-                           (let ((inhibit-read-only t))
-                             (delete-region (point-min)
-                                            (marker-position lui-output-marker)))
-                           (slack-buffer-insert-messages room))))
+  (let ((cur-point (point)))
+    (slack-room-history slack-current-room)
+    (slack-buffer-create slack-current-room
+                         #'(lambda (room)
+                             (let ((inhibit-read-only t))
+                               (delete-region (point-min)
+                                              (marker-position lui-output-marker)))
+                             (slack-buffer-insert-messages room)
+                             (goto-char cur-point)))))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
