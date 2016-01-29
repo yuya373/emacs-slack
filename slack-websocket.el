@@ -173,7 +173,7 @@
            (if msg
                (let* ((r-name (plist-get ,payload :reaction))
                       (r-count 1)
-                      (r-users (list (slack-user-find (plist-get ,payload :user))))
+                      (r-users (list (plist-get ,payload :user)))
                       (reaction (make-instance 'slack-reaction
                                                :name r-name
                                                :count r-count
