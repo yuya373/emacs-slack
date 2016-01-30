@@ -67,7 +67,7 @@
                (payload)
                (setq slack-ws-waiting-resend
                      (cl-remove-if #'(lambda (p) (string= payload p))
-                                slack-ws-waiting-resend))))
+                                   slack-ws-waiting-resend))))
     (push payload slack-ws-waiting-resend)
     (if (websocket-openp slack-ws)
         (condition-case e
@@ -266,11 +266,11 @@
   (setq slack-ws-ping-timer nil))
 
 (defun slack-ws-ping-timeout ()
+  (message "Slack Websocket PING Timeout.")
   (slack-ws-cancel-timeout-timer)
   (slack-ws-cancel-ping-timer)
   (if slack-ws-reconnect-auto
       (slack-start)
-    (message "Slack Websocket PING Timeout.")
     (slack-ws-close)))
 
 (defun slack-ws-handle-pong (_payload)
