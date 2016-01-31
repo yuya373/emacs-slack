@@ -60,7 +60,7 @@
     (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
-  (cl-labels ((restart (payload)
+  (cl-labels ((restart ()
                        (message "Slack Websocket is Closed. Try to Reconnect")
                        (slack-start))
               (delete-from-waiting-list
@@ -74,8 +74,8 @@
             (progn
               (websocket-send-text slack-ws payload)
               (delete-from-waiting-list payload))
-          ('websocket-closed (restart payload)))
-      (restart payload))))
+          ('websocket-closed (restart)))
+      (restart))))
 
 (defun slack-ws-resend ()
   (let ((waiting slack-ws-waiting-resend))

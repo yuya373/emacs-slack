@@ -76,7 +76,8 @@ set this to save request to Slack if already have.")
   (slack-request
    slack-authorize-url
    :params (list (cons "token" slack-token))
-   :success #'slack-on-authorize))
+   :success #'slack-on-authorize
+   :sync nil))
 
 (cl-defun slack-on-authorize (&key data &allow-other-keys)
   (slack-request-handle-error
