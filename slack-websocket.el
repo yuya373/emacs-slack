@@ -44,9 +44,7 @@
   (unless slack-ws
     (setq slack-ws (websocket-open
                     slack-ws-url
-                    :on-message #'slack-ws-on-message))
-    (setq slack-ws-ping-timer
-          (run-at-time "10 sec" 10 #'slack-ws-ping))))
+                    :on-message #'slack-ws-on-message))))
 
 (defun slack-ws-close ()
   (interactive)
@@ -111,6 +109,8 @@
        ((string= type "pong")
         (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
+        (setq slack-ws-ping-timer
+              (run-at-time "10 sec" 10 #'slack-ws-ping))
         (slack-ws-resend)
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
