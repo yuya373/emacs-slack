@@ -44,9 +44,7 @@
   (unless slack-ws
     (setq slack-ws (websocket-open
                     slack-ws-url
-                    :on-message #'slack-ws-on-message))
-    (setq slack-ws-ping-timer
-          (run-at-time "10 sec" 10 #'slack-ws-ping))))
+                    :on-message #'slack-ws-on-message))))
 
 (defun slack-ws-close ()
   (interactive)
@@ -60,7 +58,7 @@
     (message "Slack Websocket is not open")))
 
 (defun slack-ws-send (payload)
-  (cl-labels ((restart (payload)
+  (cl-labels ((restart ()
                        (message "Slack Websocket is Closed. Try to Reconnect")
                        (slack-start))
               (delete-from-waiting-list
@@ -74,8 +72,8 @@
             (progn
               (websocket-send-text slack-ws payload)
               (delete-from-waiting-list payload))
-          ('websocket-closed (restart payload)))
-      (restart payload))))
+          ('websocket-closed (restart)))
+      (restart))))
 
 (defun slack-ws-resend ()
   (let ((waiting slack-ws-waiting-resend))
@@ -111,6 +109,8 @@
        ((string= type "pong")
         (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
+        (setq slack-ws-ping-timer
+              (run-at-time "10 sec" 10 #'slack-ws-ping))
         (slack-ws-resend)
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
