@@ -36,9 +36,12 @@
 (defvar slack-ws-ping-timeout-timer nil)
 (defvar slack-ws-waiting-resend nil)
 (defvar slack-last-ping-time nil)
+(defvar slack-ws-last-pong nil)
+(defvar slack-ws-timeout-sec 20)
 (defvar slack-ws-reconnect-timer nil)
 (defvar slack-ws-last-reconnect-after-sec 1)
 (defvar slack-ws-reconnect-after-sec-max 4096)
+(defvar slack-ws-check-ping-timeout-timer nil)
 (defcustom slack-ws-reconnect-auto nil
   "If t, reconnect slack websocket server when ping timeout."
   :group 'slack)
@@ -55,8 +58,8 @@
       (progn
         (websocket-close slack-ws)
         (setq slack-ws nil)
+        (setq slack-ws-last-pong nil)
         (slack-ws-cancel-ping-timer)
-        (slack-ws-cancel-timeout-timer)
         (message "Slack Websocket Closed"))
     (message "Slack Websocket is not open")))
 
@@ -258,10 +261,11 @@
   (let ((bot (plist-get payload :bot)))
     (push bot slack-bots)))
 
-(defun slack-ws-cancel-timeout-timer ()
-  (if (timerp slack-ws-ping-timeout-timer)
-      (cancel-timer slack-ws-ping-timeout-timer))
-  (setq slack-ws-ping-timeout-timer nil))
+(defun slack-ws-cancel-check-ping-timeout-timer ()
+  (if (timerp slack-ws-check-ping-timeout-timer)
+      (cancel-timer slack-ws-check-ping-timeout-timer))
+  (setq slack-ws-check-ping-timeout-timer nil)
+  (setq slack-ws-last-pong nil))
 
 (defun slack-ws-cancel-ping-timer ()
   (if (timerp slack-ws-ping-timer)
@@ -269,12 +273,13 @@
   (setq slack-ws-ping-timer nil))
 
 (defun slack-ws-ping-timeout ()
+  (slack-ws-cancel-check-ping-timeout-timer)
   (message "Slack Websocket PING Timeout.")
-  (slack-ws-cancel-timeout-timer)
+  (slack-ws-close)
   (slack-ws-cancel-ping-timer)
   (if slack-ws-reconnect-auto
-      (slack-start)
-    (slack-ws-close)))
+      (setq slack-ws-reconnect-timer
+            (run-at-time "1 sec" nil #'slack-ws-reconnect))))
 (defun slack-ws-reconnect ()
   (message "Slack Websocket Try To Reconnect")
   (let* ((last-reconnect slack-ws-last-reconnect-after-sec)
@@ -291,8 +296,15 @@
                               (run-at-time after nil
                                            #'slack-ws-reconnect)))))))
 
+(defun slack-ws-check-ping-timeout ()
+  (if slack-ws-last-pong
+      (let* ((current (time-to-seconds (current-time)))
+             (since-last-pong (- current slack-ws-last-pong)))
+        (when (> since-last-pong 20)
+          (slack-ws-ping-timeout)))))
+
 (defun slack-ws-handle-pong (_payload)
-  (slack-ws-cancel-timeout-timer))
+  (setq slack-ws-last-pong (time-to-seconds (current-time))))
 
 (defun slack-ws-ping ()
   (let* ((m (list :id slack-message-id
@@ -301,9 +313,8 @@
          (json (json-encode m)))
     (setq slack-ws-ping-id (plist-get m :id)
           slack-ws-ping-time (plist-get m :time))
-    (slack-ws-send json)
-    (setq slack-ws-ping-timeout-timer
-          (run-at-time "5 sec" nil #'slack-ws-ping-timeout))))
+    (slack-ws-send json)))
+
 
 (defun slack-ws-handle-file-shared (payload)
   (let ((file (slack-file-create (plist-get payload :file))))
