@@ -32,7 +32,7 @@
 (defvar slack-ws-ping-id)
 (defvar slack-ws nil)
 (defvar slack-ws-url nil)
-(defvar slack-ws-ping-timer)
+(defvar slack-ws-ping-timer nil)
 (defvar slack-ws-ping-timeout-timer nil)
 (defvar slack-ws-waiting-resend nil)
 (defvar slack-last-ping-time nil)
@@ -115,8 +115,14 @@
        ((string= type "pong")
         (slack-ws-handle-pong decoded-payload))
        ((string= type "hello")
-        (setq slack-ws-ping-timer
-              (run-at-time "10 sec" 10 #'slack-ws-ping))
+        (slack-ws-cancel-reconnect-timer)
+        (unless slack-ws-ping-timer
+          (setq slack-ws-ping-timer
+                (run-at-time t 10 #'slack-ws-ping)))
+        (unless slack-ws-check-ping-timeout-timer
+          (setq slack-ws-check-ping-timeout-timer
+                (run-at-time t slack-ws-timeout-sec
+                             #'slack-ws-check-ping-timeout)))
         (slack-ws-resend)
         (message "Slack Websocket Is Ready!"))
        ((plist-get decoded-payload :reply_to)
@@ -280,6 +286,14 @@
   (if slack-ws-reconnect-auto
       (setq slack-ws-reconnect-timer
             (run-at-time "1 sec" nil #'slack-ws-reconnect))))
+
+(defun slack-ws-cancel-reconnect-timer ()
+  ;; called when hello response received
+  (if (timerp slack-ws-reconnect-timer)
+      (cancel-timer slack-ws-reconnect-timer))
+  (setq slack-ws-reconnect-timer nil)
+  (setq slack-ws-last-reconnect-after-sec 1))
+
 (defun slack-ws-reconnect ()
   (message "Slack Websocket Try To Reconnect")
   (let* ((last-reconnect slack-ws-last-reconnect-after-sec)
