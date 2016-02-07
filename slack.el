@@ -72,12 +72,13 @@ set this to save request to Slack if already have.")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
-(defun slack-authorize ()
+(defun slack-authorize (&optional error-callback)
   (slack-request
    slack-authorize-url
    :params (list (cons "token" slack-token))
    :success #'slack-on-authorize
-   :sync nil))
+   :sync nil
+   :error error-callback))
 
 (cl-defun slack-on-authorize (&key data &allow-other-keys)
   (slack-request-handle-error
@@ -115,7 +116,7 @@ set this to save request to Slack if already have.")
                                      nil
                                      nil
                                      t)))
-    (append slack-groups slack-ims slack-channels))
+         (append slack-groups slack-ims slack-channels))
    (slack-ws-open)))
 
 (defun slack-on-authorize-e

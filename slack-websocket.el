@@ -36,6 +36,9 @@
 (defvar slack-ws-ping-timeout-timer nil)
 (defvar slack-ws-waiting-resend nil)
 (defvar slack-last-ping-time nil)
+(defvar slack-ws-reconnect-timer nil)
+(defvar slack-ws-last-reconnect-after-sec 1)
+(defvar slack-ws-reconnect-after-sec-max 4096)
 (defcustom slack-ws-reconnect-auto nil
   "If t, reconnect slack websocket server when ping timeout."
   :group 'slack)
@@ -272,6 +275,21 @@
   (if slack-ws-reconnect-auto
       (slack-start)
     (slack-ws-close)))
+(defun slack-ws-reconnect ()
+  (message "Slack Websocket Try To Reconnect")
+  (let* ((last-reconnect slack-ws-last-reconnect-after-sec)
+         (after (if (> last-reconnect slack-ws-reconnect-after-sec-max)
+                    1
+                  (* last-reconnect 2))))
+    (setq slack-ws-last-reconnect-after-sec after)
+    (slack-ws-close)
+    (slack-authorize (cl-function
+                      (lambda
+                        (&key error-thrown &allow-other-keys)
+                        (message "Slack Reconnect Error: %s" error-thrown)
+                        (setq slack-ws-reconnect-timer
+                              (run-at-time after nil
+                                           #'slack-ws-reconnect)))))))
 
 (defun slack-ws-handle-pong (_payload)
   (slack-ws-cancel-timeout-timer))
