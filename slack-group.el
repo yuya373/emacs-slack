@@ -74,10 +74,7 @@
           " : "
           (slack-team-name team)
           " : "
-          (slack-room-name room)))
-
-(defmethod slack-room-buffer-header ((room slack-group))
-  (concat "Private Group: " (slack-room-name room) "\n"))
+          (slack-room-name room team)))
 
 (defun slack-group-select ()
   (interactive)

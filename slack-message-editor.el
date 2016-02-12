@@ -105,7 +105,7 @@
                                 team)))
     (erase-buffer)
     (delete-window)
-    (slack-room-make-buffer-with-room room :team team)))
+    (slack-room-make-buffer-with-room room team)))
 
 (defun slack-message-send-edited ()
   (interactive)

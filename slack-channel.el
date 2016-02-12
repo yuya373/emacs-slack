@@ -58,10 +58,7 @@
           " : "
           (slack-team-name team)
           " : "
-          (slack-room-name room)))
-
-(defmethod slack-room-buffer-header ((room slack-channel))
-  (concat "Channel: " (slack-room-name room ) "\n"))
+          (slack-room-name room team)))
 
 (defun slack-channel-names (team &optional filter)
   (with-slots (channels) team
@@ -158,7 +155,7 @@
       (slack-request
        slack-channel-join-url
        team
-       :params (list (cons "name" (slack-room-name channel)))
+       :params (list (cons "name" (slack-room-name channel team)))
        :sync nil
        :success #'on-channel-join))))
 

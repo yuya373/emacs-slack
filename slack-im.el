@@ -69,10 +69,6 @@
             (slack-team-name team)
             " : " user-name)))
 
-(defmethod slack-room-buffer-header ((_room slack-im))
-  (concat "Direct Message: " "\n"))
-
-
 (defun slack-im-select ()
   (interactive)
   (let ((team (slack-team-select)))

@@ -46,9 +46,8 @@
    (messages :initarg :messages :initform ())
    (team-id :initarg :team-id)))
 
-(defgeneric slack-room-name (room))
+(defgeneric slack-room-name (room) team)
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
-(defgeneric slack-room-buffer-header (room))
 (defgeneric slack-room-update-mark-url (room))
 
 (defmethod slack-room-subscribedp ((_room slack-room) team)
@@ -59,7 +58,7 @@
           " : "
           (slack-team-name team)
           " : "
-          (slack-room-name room)))
+          (slack-room-name room team)))
 
 (defmethod slack-room-set-prev-messages ((room slack-room) m)
   (oset room messages (cl-delete-duplicates (append (oref room messages) m)
@@ -102,9 +101,10 @@
     `(let ((,room-id (oref (cdr (cl-assoc ,name ,list :test ,test))
                            id)))
        (slack-room-make-buffer-with-room (slack-room-find ,room-id ,team)
-                                         :update ,update :team ,team))))
+                                         ,team
+                                         :update ,update))))
 
-(cl-defun slack-room-make-buffer-with-room (room &key update team)
+(cl-defun slack-room-make-buffer-with-room (room team &key update)
   (with-slots (messages latest) room
     (if (or update (< (length messages) 1))
         (slack-room-history room team))
@@ -426,7 +426,7 @@
       (with-slots (channels) team
         (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
                                      channels)))
-      (message "Channel: %s deleted" (slack-room-name room))))))
+      (message "Channel: %s deleted" (slack-room-name room team))))))
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request
