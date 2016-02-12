@@ -28,6 +28,7 @@
 (require 'cl-lib)
 (require 'oauth2)
 
+(require 'slack-team)
 (require 'slack-channel)
 (require 'slack-im)
 (require 'slack-file)
