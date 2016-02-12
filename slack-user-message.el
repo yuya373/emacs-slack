@@ -15,9 +15,9 @@
 (defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
   (string= (oref m user) sender-id))
 
-(defmethod slack-message-header ((m slack-user-message))
+(defmethod slack-message-header ((m slack-user-message) team)
   (with-slots (ts edited-at) m
-    (let* ((name (slack-message-sender-name m))
+    (let* ((name (slack-message-sender-name m team))
            (time (slack-message-time-to-string ts))
            (edited-at (slack-message-time-to-string edited-at))
            (header (format "%s" name)))

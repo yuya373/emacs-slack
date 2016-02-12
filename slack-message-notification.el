@@ -31,19 +31,17 @@
 (require 'slack-im)
 (require 'alert)
 
-(defvar slack-message-notification-subscription '())
-(defvar slack-message-tips '())
 (defvar alert-default-style)
-(defvar slack-my-user-id)
 
-(defun slack-message-notify-alert (message room)
-  (if (or (and (slack-im-p room) (not (slack-message-minep message)))
+(defun slack-message-notify-alert (message room team)
+  (if (or (and (slack-im-p room) (not (slack-message-minep message team)))
           (and (slack-group-p room) (slack-mpim-p room)
-               (not (slack-message-minep message)))
-          (and (slack-room-subscribedp room) (not (slack-message-minep message))))
-      (let ((room-name (slack-room-name room))
-            (text (slack-message-to-alert message))
-            (user-name (slack-message-sender-name message)))
+               (not (slack-message-minep message team)))
+          (and (slack-room-subscribedp room team)
+               (not (slack-message-minep message team))))
+      (let ((room-name (slack-room-name room team))
+            (text (slack-message-to-alert message team))
+            (user-name (slack-message-sender-name message team)))
         (if (and (eq alert-default-style 'notifier)
                  (or (eq (aref text 0) ?\[)
                      (eq (aref text 0) ?\{)
@@ -57,8 +55,11 @@
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
 
-(defmethod slack-message-minep ((m slack-message))
-  (slack-message-sender-equalp m slack-my-user-id))
+(defmethod slack-message-minep ((m slack-message) team)
+  (if team
+      (with-slots (self-id) team
+        (slack-message-sender-equalp m self-id))
+    (slack-message-sender-equalp m (oref team self-id))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here

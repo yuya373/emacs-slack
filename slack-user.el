@@ -27,33 +27,33 @@
 (require 'slack-request)
 (require 'slack-room)
 
-(defvar slack-users)
-(defvar slack-token)
+(defun slack-user-find (id team)
+  (with-slots (users) team
+    (cl-find-if (lambda (user)
+                  (string= id (plist-get user :id)))
+                users)))
 
-(defun slack-user-find (id)
-  (cl-find-if (lambda (user)
-             (string= id (plist-get user :id)))
-           slack-users))
+(defun slack-user-find-by-name (name team)
+  (with-slots (users) team
+    (cl-find-if (lambda (user)
+                  (string= name (plist-get user :name)))
+                users)))
 
-(defun slack-user-find-by-name (name)
-  (cl-find-if (lambda (user)
-             (string= name (plist-get user :name)))
-           slack-users))
-
-(defun slack-user-get-id (name)
-  (let ((user (slack-user-find-by-name name)))
+(defun slack-user-get-id (name team)
+  (let ((user (slack-user-find-by-name name team)))
     (if user
-        (plist-get user :id)
-      nil)))
+        (plist-get user :id))))
 
-(defun slack-user-name (id)
-  (let ((user (slack-user-find id)))
+(defun slack-user-name (id team)
+  (let ((user (slack-user-find id team)))
     (if user
         (plist-get user :name))))
 
-(defun slack-user-names ()
-  (mapcar (lambda (u) (cons (plist-get u :name) (plist-get u :id)))
-          slack-users))
+(defun slack-user-names (team)
+  (with-slots (users) team
+    (mapcar (lambda (u) (cons (plist-get u :name)
+                              (plist-get u :id)))
+            users)))
 
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")

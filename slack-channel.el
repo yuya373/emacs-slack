@@ -29,10 +29,7 @@
 (require 'slack-buffer)
 (require 'slack-util)
 
-(defvar slack-token)
-(defvar slack-channels)
 (defvar slack-buffer-function)
-(defvar slack-groups)
 
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
@@ -56,14 +53,19 @@
   (apply #'slack-channel "channel"
          (slack-collect-slots 'slack-channel payload)))
 
-(defmethod slack-room-buffer-name ((room slack-channel))
-  (concat slack-channel-buffer-name " : " (slack-room-name room)))
+(defmethod slack-room-buffer-name ((room slack-channel) team)
+  (concat slack-channel-buffer-name
+          " : "
+          (slack-team-name team)
+          " : "
+          (slack-room-name room)))
 
 (defmethod slack-room-buffer-header ((room slack-channel))
   (concat "Channel: " (slack-room-name room ) "\n"))
 
-(defun slack-channel-names (&optional filter)
-  (slack-room-names slack-channels filter))
+(defun slack-channel-names (team &optional filter)
+  (with-slots (channels) team
+    (slack-room-names channels team filter)))
 
 (defmethod slack-room-member-p ((room slack-channel))
   (if (eq (oref room is-member) :json-false)
@@ -72,137 +74,166 @@
 
 (defun slack-channel-select ()
   (interactive)
-  (slack-room-select slack-channels))
+  (let ((team (slack-team-select)))
+    (with-slots (channels) team
+      (slack-room-select channels team))))
 
 (defun slack-channel-list-update ()
   (interactive)
-  (cl-labels ((on-list-update
-               (&key data &allow-other-keys)
-               (slack-request-handle-error
-                (data "slack-channel-list-update")
-                (setq slack-channels
-                      (mapcar #'slack-channel-create
-                              (plist-get data :channels)))
-                (message "Slack Channel List Updated"))))
-    (slack-room-list-update slack-channel-list-url
-                            #'on-list-update
-                            :sync nil)))
+  (let ((team (slack-team-select)))
+    (cl-labels ((on-list-update
+                 (&key data &allow-other-keys)
+                 (slack-request-handle-error
+                  (data "slack-channel-list-update")
+                  (oset team channels
+                        (mapcar #'slack-channel-create
+                                (plist-get data :channels)))
+                  (message "Slack Channel List Updated"))))
+      (slack-room-list-update slack-channel-list-url
+                              #'on-list-update
+                              team
+                              :sync nil))))
 
 (defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)
 
 (defun slack-create-channel ()
   (interactive)
-  (cl-labels
-      ((on-create-channel (&key data &allow-other-keys)
-                          (slack-request-handle-error
-                           (data "slack-channel-create")
-                           (let ((channel (slack-channel-create
-                                           (plist-get data :channel))))
-                             (push channel slack-channels)
-                             (message "channel: %s created!"
-                                      (slack-room-name channel))))))
-    (slack-create-room slack-create-channel-url
-                       #'on-create-channel)))
+  (let ((team (slack-team-select)))
+    (cl-labels
+        ((on-create-channel (&key data &allow-other-keys)
+                            (slack-request-handle-error
+                             (data "slack-channel-create"))))
+      (slack-create-room slack-create-channel-url
+                         team
+                         #'on-create-channel))))
 
 (defun slack-channel-rename ()
   (interactive)
   (slack-room-rename slack-channel-rename-url
-                     (slack-channel-names)))
+                     #'slack-channel-names))
 
 (defun slack-channel-invite ()
   (interactive)
   (slack-room-invite slack-channel-invite-url
-                     (slack-channel-names)))
+                     #'slack-channel-names))
 
 (defun slack-channel-leave ()
   (interactive)
-  (let ((channel (slack-current-room-or-select
-                  (slack-channel-names
-                   #'(lambda (channels)
-                       (cl-remove-if-not #'slack-room-member-p
-                                         channels))))))
+  (let* ((team (slack-team-select))
+         (channel (slack-current-room-or-select
+                   (slack-channel-names
+                    team
+                    #'(lambda (channels)
+                        (cl-remove-if-not #'slack-room-member-p
+                                          channels))))))
     (cl-labels
         ((on-channel-leave (&key data &allow-other-keys)
                            (slack-request-handle-error
                             (data "slack-channel-leave")
-                            (oset channel is-member :json-false))))
+                            (oset channel is-member :json-false)
+                            (message "Left Channel: %s"
+                                     (slack-room-name channel team)))))
       (slack-room-request-with-id slack-channel-leave-url
                                   (oref channel id)
+                                  team
                                   #'on-channel-leave))))
 
 (defun slack-channel-join ()
   (interactive)
-  (let* ((channel (slack-current-room-or-select
+  (let* ((team (slack-team-select))
+         (channel (slack-current-room-or-select
                    (slack-channel-names
+                    team
                     #'(lambda (channels)
-                        (cl-remove-if #'(lambda (c)
-                                          (or (slack-room-member-p c)
-                                              (slack-room-archived-p c)))
-                                      channels))))))
+                        (cl-remove-if
+                         #'(lambda (c)
+                             (or (slack-room-member-p c)
+                                 (slack-room-archived-p c)))
+                         channels))))))
     (cl-labels
         ((on-channel-join (&key data &allow-other-keys)
                           (slack-request-handle-error
                            (data "slack-channel-join"))))
       (slack-request
        slack-channel-join-url
-       :params (list (cons "token" slack-token)
-                     (cons "name" (slack-room-name channel)))
+       team
+       :params (list (cons "name" (slack-room-name channel)))
        :sync nil
        :success #'on-channel-join))))
 
-(defun slack-channel-create-from-info (id)
+(defun slack-channel-create-from-info (id team)
   (cl-labels
-      ((on-create-from-info (&key data &allow-other-keys)
-                            (slack-request-handle-error
-                             (data "slack-channel-create-from-info")
-                             (let ((channel (slack-channel-create
-                                             (plist-get data :channel))))
-                               (push channel slack-channels)
-                               (message "Channel: %s created"
-                                        (slack-room-name channel))))))
-    (slack-channel-fetch-info id #'on-create-from-info)))
+      ((on-create-from-info
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-channel-create-from-info")
+         (let* ((c-data (plist-get data :channel))
+                (latest (plist-get c-data :latest)))
+           (if latest
+               (plist-put c-data :latest
+                          (slack-message-create latest)))
+           (if (plist-get c-data :is_channel)
+               (let ((channel (slack-channel-create
+                               c-data)))
+                 (with-slots (channels) team
+                   (push channel channels))
+                 (message "Channel: %s created"
+                          (slack-room-name channel team))))))))
+    (slack-channel-fetch-info id team #'on-create-from-info)))
 
-(defun slack-channel-fetch-info (id success)
+(defun slack-channel-fetch-info (id team success)
   (slack-request
    slack-channel-info-url
+   team
    :sync nil
-   :params (list (cons "token" slack-token)
-                 (cons "channel" id))
+   :params (list (cons "channel" id))
    :success success))
 
 (defun slack-channel-archive ()
   (interactive)
-  (let ((channel (slack-current-room-or-select
-                  (slack-channel-names
-                   #'(lambda (channels)
-                       (cl-remove-if #'slack-room-archived-p
-                                     channels))))))
+  (let* ((team (slack-team-select))
+         (channel (slack-current-room-or-select
+                   (slack-channel-names
+                    team
+                    #'(lambda (channels)
+                        (cl-remove-if #'slack-room-archived-p
+                                      channels))))))
     (cl-labels
         ((on-channel-archive (&key data &allow-other-keys)
                              (slack-request-handle-error
                               (data "slack-channel-archive"))))
       (slack-room-request-with-id slack-channel-archive-url
                                   (oref channel id)
+                                  team
                                   #'on-channel-archive))))
 
 (defun slack-channel-unarchive ()
   (interactive)
-  (let ((channel (slack-current-room-or-select
-                  (slack-channel-names
-                   #'(lambda (channels)
-                       (cl-remove-if-not #'slack-room-archived-p
-                                         channels))))))
+  (let* ((team (slack-team-select))
+         (channel (slack-current-room-or-select
+                   (slack-channel-names
+                    team
+                    #'(lambda (channels)
+                        (cl-remove-if-not #'slack-room-archived-p
+                                          channels))))))
     (cl-labels
         ((on-channel-unarchive (&key data &allow-other-keys)
                                (slack-request-handle-error
                                 (data "slack-channel-unarchive"))))
       (slack-room-request-with-id slack-channel-unarchive-url
                                   (oref channel id)
+                                  team
                                   #'on-channel-unarchive))))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
+
+(defmethod slack-room-subscribedp ((room slack-channel) team)
+  (with-slots (subscribed-channels) team
+    (let ((name (slack-room-name room team)))
+      (and name
+           (memq (intern name) subscribed-channels)))))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

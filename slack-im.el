@@ -30,14 +30,6 @@
 (require 'slack-buffer)
 (require 'slack-user)
 
-(defgroup slack-im nil
-  "Slack Direct Message."
-  :prefix "slack-im-"
-  :group 'slack)
-
-(defvar slack-ims)
-(defvar slack-users)
-(defvar slack-token)
 (defvar slack-buffer-function)
 
 (defconst slack-im-history-url "https://slack.com/api/im.history")
@@ -52,43 +44,30 @@
   (apply #'slack-im "im"
          (slack-collect-slots 'slack-im payload)))
 
-(defmethod slack-im-user-presence ((room slack-im))
+(defmethod slack-im-user-presence ((room slack-im) team)
   (with-slots ((user-id user)) room
-    (let ((user (slack-user-find user-id)))
+    (let ((user (slack-user-find user-id team)))
       (slack-user-presence-to-string user))))
 
-(defmethod slack-room-name ((room slack-im))
+(defmethod slack-room-name ((room slack-im) team)
   (with-slots (user) room
-    (slack-user-name user)))
+    (slack-user-name user team)))
 
-(defun slack-im-user-name (im)
+(defun slack-im-user-name (im team)
   (with-slots (user) im
-    (slack-user-name user)))
+    (slack-user-name user team)))
 
-(defun slack-im-names ()
-  (mapcar #'(lambda (im) (cons (slack-im-user-name im) im))
-          slack-ims))
+(defun slack-im-names (team)
+  (with-slots (ims) team
+    (mapcar #'(lambda (im) (cons (slack-im-user-name im team) im))
+            ims)))
 
-;; choose user-name list and open im
-;; (defun slack-im-open (user-name)
-;;   (let* ((user (slack-user-find-by-name user-name))
-;;          (user-id (gethash "id" user)))
-;;     (cl-labels ((on-im-open
-;;                  (&key data &allow-other-keys)
-;;                  (unless (gethash "ok" data)
-;;                    (error "slack-im-open failed"))
-;;                  (slack-im-history
-;;                   (gethash "id"
-;;                            (gethash "channel" data)))))
-;;       (slack-request
-;;        slack-im-open-url
-;;        :params (list (cons "token" slack-token)
-;;                      (cons "user" user-id))
-;;        :success #'on-im-open))))
-
-(defmethod slack-room-buffer-name ((room slack-im))
-  (let ((user-name (slack-user-name (oref room user))))
-    (concat slack-im-buffer-name " : " user-name)))
+(defmethod slack-room-buffer-name ((room slack-im) team)
+  (let ((user-name (slack-user-name (oref room user) team)))
+    (concat slack-im-buffer-name
+            " : "
+            (slack-team-name team)
+            " : " user-name)))
 
 (defmethod slack-room-buffer-header ((_room slack-im))
   (concat "Direct Message: " "\n"))
@@ -96,41 +75,43 @@
 
 (defun slack-im-select ()
   (interactive)
-  (slack-room-select slack-ims))
+  (let ((team (slack-team-select)))
+    (with-slots (ims) team
+      (slack-room-select ims team))))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
 
-(defun slack-user-pushnew (user)
-  (cl-pushnew user slack-users :test #'slack-user-equal-p))
+(defun slack-user-pushnew (user team)
+  (with-slots (users) team
+    (cl-pushnew user users :test #'slack-user-equal-p)))
 
-(defun slack-im-update-room-list (users)
+(defun slack-im-update-room-list (users team)
   (cl-labels ((on-update-room-list
                (&key data &allow-other-keys)
                (slack-request-handle-error
                 (data "slack-im-update-room-list")
-                (append users nil)
-                (mapc #'slack-user-pushnew users)
-                (setq slack-ims (mapcar #'slack-im-create
+                (mapc #'(lambda (u) (slack-user-pushnew u team))
+                      (append users nil))
+                (oset team ims (mapcar #'slack-im-create
                                         (plist-get data :ims)))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
+                            team
                             :sync nil)))
-
-(cl-defun slack-user-on-list-update (&key data &allow-other-keys)
-  (slack-request-handle-error (data "slack-im-list-update")
-                              (let ((users (plist-get data :members)))
-                                (slack-im-update-room-list users))))
-
 
 (defun slack-im-list-update ()
   (interactive)
-  (slack-request
-   slack-user-list-url
-   :params (list (cons "token" slack-token))
-   :success #'slack-user-on-list-update
-   :sync nil))
+  (let ((team (slack-team-select)))
+    (slack-request
+     slack-user-list-url
+     team
+     :success (cl-function (lambda (&key data &allow-other-keys)
+                             (slack-request-handle-error (data "slack-im-list-update")
+                              (let ((users (plist-get data :members)))
+                                (slack-im-update-room-list users team)))))
+     :sync nil)))
 
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 

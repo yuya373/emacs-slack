@@ -29,11 +29,8 @@
 (require 'slack-buffer)
 (require 'slack-reaction)
 
-(defvar slack-groups)
-(defvar slack-ims)
-(defvar slack-channels)
-(defvar slack-current-room)
-(defvar slack-token)
+(defvar slack-current-room-id)
+(defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
 
@@ -88,21 +85,25 @@
    (image-url :initarg :image_url)
    (thumb-url :initarg :thumb_url)))
 
-(defgeneric slack-message-sender-name  (slack-message))
+(defgeneric slack-message-sender-name  (slack-message team))
 (defgeneric slack-message-to-string (slack-message))
 (defgeneric slack-message-to-alert (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
 (defgeneric slack-room-update-message (room))
 
-(defun slack-room-find (id)
+(defun slack-room-find (id team)
   (if id
-      (cl-labels ((find-room (room)
-                             (string= id (oref room id))))
-        (cond
-         ((string-prefix-p "C" id) (cl-find-if #'find-room slack-channels))
-         ((string-prefix-p "G" id) (cl-find-if #'find-room slack-groups))
-         ((string-prefix-p "D" id) (cl-find-if #'find-room slack-ims))))))
+      (if (string= "slack-file" id)
+          (slack-file-room-obj team)
+        (cl-labels ((find-room (room)
+                               (string= id (oref room id))))
+          (if team
+              (with-slots (channels groups ims) team
+                (cond
+                 ((string-prefix-p "C" id) (cl-find-if #'find-room channels))
+                 ((string-prefix-p "G" id) (cl-find-if #'find-room groups))
+                 ((string-prefix-p "D" id) (cl-find-if #'find-room ims)))))))))
 
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
@@ -127,7 +128,7 @@
               (mapcar #'slack-attachment-create attachments))))
   m)
 
-(cl-defun slack-message-create (payload &key room)
+(cl-defun slack-message-create (payload &key room team)
   (plist-put payload :reactions (append (plist-get payload :reactions) nil))
   (plist-put payload :attachments (append (plist-get payload :attachments) nil))
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
@@ -142,7 +143,7 @@
                           (apply #'slack-file-message "file-msg"
                                  (slack-collect-slots 'slack-file-message m)))
                          ((and subtype (string= "message_changed" subtype))
-                          (slack-message-edited m))
+                          (slack-message-edited m team))
                          ((plist-member m :user)
                           (apply #'slack-user-message "user-msg"
                                  (slack-collect-slots 'slack-user-message m)))
@@ -162,20 +163,22 @@
   (and (string= (oref m ts) (oref n ts))
        (string= (oref m text) (oref n text))))
 
-(defmethod slack-message-update ((m slack-message) &optional replace no-notify)
-  (with-slots (room channel) m
-    (let ((room (or room (slack-room-find channel))))
+(defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
+  (with-slots (channel) m
+    (let ((room (slack-room-find channel team)))
       (when room
         (slack-room-update-message room m)
         (slack-buffer-update room
                              m
-                             :replace replace)
+                             :replace replace
+                             :team team)
         (unless no-notify
-          (slack-message-notify-alert m room))))))
+          (slack-message-notify-alert m room team))))))
 
-(defun slack-message-edited (payload)
+(defun slack-message-edited (payload team)
+  (message "slack-message-edited: %s" (oref team id))
   (let* ((edited-message (plist-get payload :message))
-         (room (slack-room-find (plist-get payload :channel)))
+         (room (slack-room-find (plist-get payload :channel) team))
          (message (slack-room-find-message room
                                            (plist-get edited-message :ts)))
          (edited-info (plist-get edited-message :edited)))
@@ -183,10 +186,10 @@
         (progn
           (oset message text (plist-get edited-message :text))
           (oset message edited-at (plist-get edited-info :ts))
-          (slack-message-update message t)))))
+          (slack-message-update message team t)))))
 
-(defmethod slack-message-sender-name ((m slack-message))
-  (slack-user-name (oref m user)))
+(defmethod slack-message-sender-name ((m slack-message) team)
+  (slack-user-name (oref m user) team))
 
 (defun slack-message-pins-add ()
   (interactive)
@@ -197,10 +200,15 @@
   (slack-message-pins-request slack-message-pins-remove-url))
 
 (defun slack-message-pins-request (url)
-  (let* ((room (ignore-errors slack-current-room))
+  (unless (and (bound-and-true-p slack-current-team-id)
+               (bound-and-true-p slack-current-room-id))
+    (error "Call From Slack Room Buffer"))
+  (let* ((team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id
+                                team))
          (word (thing-at-point 'word))
          (ts (ignore-errors (get-text-property 0 'ts word))))
-    (unless (or room ts)
+    (unless ts
       (error "Call From Slack Room Buffer"))
     (cl-labels ((on-pins-add
                  (&key data &allow-other-keys)
@@ -208,8 +216,8 @@
                   (data "slack-message-pins-request"))))
       (slack-request
        url
-       :params (list (cons "token" slack-token)
-                     (cons "channel" (oref room id))
+       team
+       :params (list (cons "channel" (oref room id))
                      (cons "timestamp" ts))
        :success #'on-pins-add
        :sync nil))))

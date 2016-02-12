@@ -27,8 +27,6 @@
 (require 'json)
 (require 'request)
 
-(defvar slack-token)
-
 (defun slack-parse-to-hash ()
   (let ((json-object-type 'hash-table))
     (let ((res (json-read-from-string (buffer-string))))
@@ -42,7 +40,7 @@
   (let ((json-object-type 'plist))
     (json-read-from-string payload)))
 
-(cl-defun slack-request (url &key
+(cl-defun slack-request (url team &key
                              (type "GET")
                              (success)
                              (error nil)
@@ -55,7 +53,8 @@
    url
    :type type
    :sync sync
-   :params params
+   :params (cons (cons "token" (oref team token))
+                 params)
    :files files
    :headers headers
    :parser parser

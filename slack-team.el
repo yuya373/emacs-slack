@@ -138,7 +138,7 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (if (slack-team-connectedp team) team))
                         slack-teams)))
 
-(defun slack-set-current-team ()
+(defun slack-change-current-team ()
   (interactive)
   (let ((team (slack-team-find-by-name
                (completing-read
