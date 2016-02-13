@@ -39,11 +39,17 @@
   (interactive)
   (slack-message--send (slack-message-read-from-minibuffer)))
 
+(defun slack-message-inc-id (team)
+  (with-slots (message-id) team
+    (if (eq message-id (1- most-positive-fixnum))
+        (setq message-id 1)
+      (cl-incf message-id))))
+
 (defun slack-message--send (message)
   (if slack-current-team-id
       (let ((team (slack-team-find slack-current-team-id)))
+        (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
-          (cl-incf message-id)
           (let* ((m (list :id message-id
                           :channel (slack-message-get-room-id)
                           :type "message"

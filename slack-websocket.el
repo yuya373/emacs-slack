@@ -276,8 +276,8 @@
             (run-at-time t 10 #'(lambda () (slack-ws-ping team)))))))
 
 (defun slack-ws-ping (team)
+  (slack-message-inc-id team)
   (with-slots (message-id) team
-    (cl-incf message-id)
     (let* ((m (list :id message-id
                     :type "ping"
                     :time (format-time-string "%s")))
