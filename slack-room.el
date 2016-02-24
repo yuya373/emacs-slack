@@ -145,7 +145,8 @@
   (with-slots (messages latest) room
     (when (< 0 (length messages))
       (cl-pushnew m messages :test #'slack-message-equal))
-    (setq latest m)))
+    (if (string< (oref latest ts) (oref m ts))
+        (setq latest m))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
