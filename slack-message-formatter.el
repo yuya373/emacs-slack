@@ -89,7 +89,8 @@
              (attachment-string (mapconcat #'slack-attachment-to-string
                                            attachments "\n"))
              (body (slack-message-unescape-string
-                    (concat text attachment-string)
+                    (concat text (if (< 0 (length attachment-string))
+                                     (concat "\n" attachment-string)))
                     team))
              (reactions-str (slack-message-reactions-to-string
                              reactions)))
