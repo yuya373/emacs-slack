@@ -36,7 +36,6 @@
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
-   (room :initarg :room :initform nil)
    (subtype :initarg :subtype)
    (channel :initarg :channel :initform nil)
    (ts :initarg :ts :type string)
@@ -128,11 +127,12 @@
               (mapcar #'slack-attachment-create attachments))))
   m)
 
-(cl-defun slack-message-create (payload &key room team)
+(cl-defun slack-message-create (payload &key room)
   (plist-put payload :reactions (append (plist-get payload :reactions) nil))
   (plist-put payload :attachments (append (plist-get payload :attachments) nil))
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
-  (plist-put payload :room room)
+  (if room
+      (plist-put payload :channel (oref room id)))
   (cl-labels ((create (m)
                       (let ((subtype (plist-get m :subtype)))
                         (cond
@@ -142,8 +142,6 @@
                          ((and subtype (string-prefix-p "file" subtype))
                           (apply #'slack-file-message "file-msg"
                                  (slack-collect-slots 'slack-file-message m)))
-                         ((and subtype (string= "message_changed" subtype))
-                          (slack-message-edited m team))
                          ((plist-member m :user)
                           (apply #'slack-user-message "user-msg"
                                  (slack-collect-slots 'slack-user-message m)))
@@ -154,10 +152,6 @@
       (when message
         (slack-message-set-attachments message payload)
         (slack-message-set-reactions message payload)))))
-
-(defun slack-message-set (room messages)
-  (let ((messages (mapcar #'slack-message-create messages)))
-    (puthash "messages" messages room)))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (and (string= (oref m ts) (oref n ts))
@@ -176,7 +170,6 @@
           (slack-message-notify-alert m room team))))))
 
 (defun slack-message-edited (payload team)
-  (message "slack-message-edited: %s" (oref team id))
   (let* ((edited-message (plist-get payload :message))
          (room (slack-room-find (plist-get payload :channel) team))
          (message (slack-room-find-message room

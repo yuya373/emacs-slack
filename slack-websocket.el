@@ -147,9 +147,14 @@
         (slack-ws-handle-room-marked decoded-payload team))))))
 
 (defun slack-ws-handle-message (payload team)
-  (let ((m (slack-message-create payload :team team)))
-    (when m
-      (slack-message-update m team))))
+  (let ((subtype (plist-get payload :subtype)))
+    (cond
+     ((and subtype (string= subtype "message_changed"))
+      (slack-message-edited payload team))
+     (t
+      (let ((m (slack-message-create payload)))
+        (when m
+          (slack-message-update m team)))))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
