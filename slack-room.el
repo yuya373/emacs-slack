@@ -217,7 +217,8 @@
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
-              (oref room messages)))
+              (oref room messages)
+              :from-end t))
 
 (defmethod slack-room-unread-count ((room slack-room))
   (with-slots (unread-count-display) room
