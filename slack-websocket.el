@@ -135,7 +135,7 @@
         (slack-ws-handle-presence-change decoded-payload team))
        ((or (string= type "bot_added")
             (string= type "bot_changed"))
-        (slack-ws-handle-bot decoded-payload) team)
+        (slack-ws-handle-bot decoded-payload team))
        ((string= type "file_shared")
         (slack-ws-handle-file-shared decoded-payload team))
        ((or (string= type "file_deleted")
