@@ -73,7 +73,7 @@
                     (if (plist-get data :latest)
                         (plist-put data :latest
                                    (slack-message-create
-                                    (plist-get data  :latest))))
+                                    (plist-get data :latest))))
                     (funcall func data))
        (create-rooms (datum team func)
                      (mapcar #'(lambda (data)
