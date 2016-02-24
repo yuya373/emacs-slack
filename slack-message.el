@@ -177,8 +177,13 @@
          (edited-info (plist-get edited-message :edited)))
     (if message
         (progn
-          (oset message text (plist-get edited-message :text))
-          (oset message edited-at (plist-get edited-info :ts))
+          (with-slots (text edited-at attachments) message
+            (setq text (plist-get edited-message :text))
+            (setq edited-at (plist-get edited-info :ts))
+            (if (plist-get edited-message :attachments)
+                (setq attachments
+                      (mapcar #'slack-attachment-create
+                              (plist-get edited-message :attachments)))))
           (slack-message-update message team t)))))
 
 (defmethod slack-message-sender-name ((m slack-message) team)
