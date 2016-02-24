@@ -101,7 +101,6 @@
             (funcall insert-func room team))
         (slack-buffer-set-current-room-id room)
         (slack-buffer-set-current-team-id team)
-        (oset room unread-count-display 0)
         (slack-buffer-enable-emojify))
       buffer)))
 
@@ -125,15 +124,20 @@
       (lui-insert (slack-message-to-string message team) not-tracked-p))))
 
 (defun slack-buffer-insert-messages (room team)
-  (let ((messages (slack-room-latest-messages room)))
-    (when messages
-      (slack-buffer-insert-previous-link (cl-first messages))
-      (mapc (lambda (m)
-              (slack-buffer-insert m team t))
-            messages)
-      (let ((latest-message (car (last messages))))
-        (slack-room-update-last-read room latest-message)
-        (slack-room-update-mark room team latest-message)))))
+  (let* ((sorted (slack-room-sorted-messages room))
+         (messages (slack-room-latest-messages room sorted)))
+    (if messages
+        (progn
+          (slack-buffer-insert-previous-link (cl-first messages))
+          (mapc (lambda (m)
+                  (slack-buffer-insert m team t))
+                messages)
+          (let ((latest-message (car (last messages))))
+            (slack-room-update-last-read room latest-message)
+            (slack-room-update-mark room team latest-message)))
+      (unless (eq 0 (oref room unread-count-display))
+        (let ((last-message (car (last sorted))))
+          (slack-room-update-mark room team last-message))))))
 
 
 (cl-defun slack-buffer-update (room msg &key replace team)

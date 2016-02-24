@@ -140,7 +140,11 @@
         (slack-ws-handle-file-shared decoded-payload team))
        ((or (string= type "file_deleted")
             (string= type "file_unshared"))
-        (slack-ws-handle-file-deleted decoded-payload team))))))
+        (slack-ws-handle-file-deleted decoded-payload team))
+       ((or (string= type "im_marked")
+            (string= type "channel_marked")
+            (string= type "group_marked"))
+        (slack-ws-handle-room-marked decoded-payload team))))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((m (slack-message-create payload :team team)))
@@ -354,6 +358,14 @@
 (defun slack-ws-handle-pong (_payload team)
   (with-slots (last-pong) team
     (setq last-pong (time-to-seconds (current-time)))))
+
+(defun slack-ws-handle-room-marked (payload team)
+  (let ((room (slack-room-find (plist-get payload :channel)
+                               team))
+        (new-unread-count-display (plist-get payload :unread_count_display)))
+    (with-slots (unread-count-display) room
+      (setq unread-count-display new-unread-count-display))
+    (message "handle: %s" (oref room unread-count-display))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

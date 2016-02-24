@@ -260,14 +260,18 @@
   (with-slots (ts) msg
     (oset room last-read ts)))
 
-(defmethod slack-room-latest-messages ((room slack-room))
-  (with-slots (last-read messages) room
+(defmethod slack-room-latest-messages ((room slack-room) messages)
+  (with-slots (last-read) room
     (cl-remove-if #'(lambda (m)
                       (or (string< (oref m ts) last-read)
                           (string= (oref m ts) last-read)))
-                  (cl-sort (copy-sequence messages)
-                           #'string<
-                           :key #'(lambda (m) (oref m ts))))))
+                  messages)))
+
+(defmethod slack-room-sorted-messages ((room slack-room))
+  (with-slots (messages) room
+    (cl-sort (copy-sequence messages)
+             #'string<
+             :key #'(lambda (m) (oref m ts)))))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
