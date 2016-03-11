@@ -81,6 +81,13 @@ use `slack-change-current-team' to change `slack-current-team'"
   (oref team name))
 
 (defun slack-register-team (&rest plist)
+  (interactive
+   (let ((name (read-from-minibuffer "Team Name: "))
+         (client-id (read-from-minibuffer "Client Id: "))
+         (client-secret (read-from-minibuffer "Cliend Secret: "))
+         (token (read-from-minibuffer "Token: ")))
+     (list :name name :client-id client-id :client-secret client-secret
+           :token token)))
   (cl-labels ((same-client-id
                (client-id)
                (cl-find-if #'(lambda (team)
