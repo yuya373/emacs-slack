@@ -166,5 +166,18 @@ use `slack-change-current-team' to change `slack-current-team'"
   (unless (slack-team-connectedp team)
     (slack-start team)))
 
+(defun slack-team-delete ()
+  (interactive)
+  (let ((selected (slack-team-select t)))
+    (if (yes-or-no-p (format "Delete %s from `slack-teams'?"
+                             (oref selected name)))
+        (progn
+          (setq slack-teams
+                (cl-remove-if #'(lambda (team)
+                                  (slack-team-equalp selected team))
+                              slack-teams))
+          (slack-team-disconnect selected)
+          (message "Delete %s from `slack-teams'" (oref selected name))))))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here
