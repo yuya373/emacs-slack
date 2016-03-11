@@ -43,11 +43,13 @@
     (oref m username)))
 
 (defmethod slack-message-to-alert ((m slack-bot-message))
-  (with-slots (text attachments) m
-    (if (< 0 (length text))
+  (let ((text (if (slot-boundp m 'text)
+                  (oref m text))))
+    (with-slots (attachments) m
+      (if (and text (< 0 (length text)))
           (slack-message-unescape-string text)
-      (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
-        (slack-message-unescape-string attachment-string)))))
+        (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
+          (slack-message-unescape-string attachment-string))))))
 
 (defmethod slack-message-sender-name ((m slack-bot-message))
   (slack-bot-name m))

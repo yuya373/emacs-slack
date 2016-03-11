@@ -82,24 +82,26 @@
   (slack-message-sender-name m))
 
 (defmethod slack-message-to-string ((m slack-message))
-  (with-slots (text reactions attachments) m
-    (let* ((header (slack-message-header m))
-           (attachment-string (mapconcat #'slack-attachment-to-string
-                                         attachments "\n"))
-           (body (slack-message-unescape-string
-                  (concat text attachment-string)))
-           (reactions-str (slack-message-reactions-to-string
-                           reactions)))
-      (slack-message-put-header-property header)
-      (slack-message-put-text-property body)
-      (slack-message-put-reactions-property reactions-str)
-      (slack-message-propertize m
-                                (concat header "\n"
-                                        body "\n"
-                                        (if reactions-str
-                                            (concat "\n"
-                                                    reactions-str
-                                                    "\n")))))))
+  (let ((text (if (slot-boundp m 'text)
+                  (oref m text))))
+    (with-slots (reactions attachments) m
+      (let* ((header (slack-message-header m))
+             (attachment-string (mapconcat #'slack-attachment-to-string
+                                           attachments "\n"))
+             (body (slack-message-unescape-string
+                    (concat text attachment-string)))
+             (reactions-str (slack-message-reactions-to-string
+                             reactions)))
+        (slack-message-put-header-property header)
+        (slack-message-put-text-property body)
+        (slack-message-put-reactions-property reactions-str)
+        (slack-message-propertize m
+                                  (concat header "\n"
+                                          body "\n"
+                                          (if reactions-str
+                                              (concat "\n"
+                                                      reactions-str
+                                                      "\n"))))))))
 
 (defmethod slack-message-to-alert ((m slack-message))
   (with-slots (text) m
