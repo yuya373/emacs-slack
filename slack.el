@@ -109,12 +109,8 @@
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
        (mapc #'(lambda (room)
-                 (if (slack-room-subscribedp room team)
-                     (slack-room-history room
-                                         team
-                                         nil
-                                         nil
-                                         t)))
+                 (slack-room-history room team
+                                     nil nil t))
              (append groups ims channels)))
      (slack-ws-open team))))
 
