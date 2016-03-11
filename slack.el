@@ -149,7 +149,9 @@
                (sleep-for 0.5)))
     (if team
         (start team)
-      (mapcan #'start slack-teams))))
+      (if slack-teams
+          (mapcan #'start slack-teams)
+        (slack-start (slack-register-team))))))
 
 (provide 'slack)
 ;;; slack.el ends here
