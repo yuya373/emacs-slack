@@ -63,7 +63,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (sent-message :initform (make-hash-table))
    (message-id :initform 0)
    (connected :initform nil)
-   (subscribed-channels :initarg :subscribed-channels :type list)))
+   (subscribed-channels :initarg :subscribed-channels
+                        :type list :initform nil)))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
@@ -95,7 +96,7 @@ use `slack-change-current-team' to change `slack-current-team'"
     (let ((missing (missing plist)))
       (if missing
           (error "Missing Keyword: %s" missing)))
-    (let ((team (apply #'slack-team (slack-collect-slots 'slack-team plist))))
+    (let ((team (apply #'slack-team "team" (slack-collect-slots 'slack-team plist))))
       (mapcan #'(lambda (other) (if (slack-team-equalp team other)
                                     (progn
                                       (slack-team-disconnect other)

@@ -49,9 +49,11 @@
    (num-members :initarg :num_members)))
 
 (defun slack-channel-create (payload)
-  (plist-put payload :members (append (plist-get payload :members) nil))
-  (apply #'slack-channel "channel"
-         (slack-collect-slots 'slack-channel payload)))
+  (let ((msg (slack-message-create (plist-get payload :latest))))
+    (plist-put payload :members (append (plist-get payload :members) nil))
+    (plist-put payload :latest msg)
+    (apply #'slack-channel "channel"
+           (slack-collect-slots 'slack-channel payload))))
 
 (defmethod slack-room-buffer-name ((room slack-channel) team)
   (concat slack-channel-buffer-name

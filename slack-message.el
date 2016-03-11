@@ -38,7 +38,7 @@
   ((type :initarg :type :type string)
    (subtype :initarg :subtype)
    (channel :initarg :channel :initform nil)
-   (ts :initarg :ts :type string)
+   (ts :initarg :ts :type string :initform "")
    (text :initarg :text)
    (item-type :initarg :item_type)
    (attachments :initarg :attachments :type (or null list))
@@ -88,7 +88,7 @@
 (defgeneric slack-message-to-string (slack-message))
 (defgeneric slack-message-to-alert (slack-message))
 
-(defgeneric slack-room-buffer-name (room) team)
+(defgeneric slack-room-buffer-name (room team))
 (defgeneric slack-room-update-message (room))
 
 (defun slack-room-find (id team)

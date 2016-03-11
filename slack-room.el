@@ -46,7 +46,7 @@
    (messages :initarg :messages :initform ())
    (team-id :initarg :team-id)))
 
-(defgeneric slack-room-name (room) team)
+(defgeneric slack-room-name (room team))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
 (defgeneric slack-room-update-mark-url (room))
 
@@ -82,7 +82,7 @@
             (if ,latest
                 (slack-room-set-prev-messages ,room messages)
               (slack-room-set-messages ,room messages)
-              (let ((m (slack-message :ts "0")))
+              (let ((m (slack-message "msg" :ts "0")))
                 (slack-room-update-last-read room m)))
             (if (and ,after-success
                      (functionp ,after-success))
@@ -227,9 +227,9 @@
       "")))
 
 (defmethod slack-room-latest-ts ((room slack-room))
-  (with-slots (latest) room
-    (if latest
-        (oref latest ts)
+  (let ((sorted (slack-room-sorted-messages room)))
+    (if sorted
+        (oref (car (last sorted)) ts)
       "0")))
 
 (defmacro slack-room-names (rooms team &optional filter)

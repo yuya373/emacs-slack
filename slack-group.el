@@ -55,9 +55,11 @@
    (purpose :initarg :purpose)))
 
 (defun slack-group-create (payload)
-  (plist-put payload :members (append (plist-get payload :members) nil))
-  (apply #'slack-group "group"
-         (slack-collect-slots 'slack-group payload)))
+  (let ((msg (slack-message-create (plist-get payload :latest))))
+    (plist-put payload :members (append (plist-get payload :members) nil))
+    (plist-put payload :latest msg)
+    (apply #'slack-group "group"
+           (slack-collect-slots 'slack-group payload))))
 
 (defun slack-group-names (team &optional filter)
   (with-slots (groups) team
