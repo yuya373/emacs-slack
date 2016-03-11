@@ -119,19 +119,22 @@ use `slack-change-current-team' to change `slack-current-team'"
       (cl-find-if #'(lambda (team) (string= name (oref team name)))
                   slack-teams)))
 
-(defun slack-team-select ()
-  (cl-labels ((select-team ()
-                           (slack-team-find-by-name
-                            (completing-read
-                             "Select Team: "
-                             (mapcar #'(lambda (team) (oref team name))
-                                     (slack-team-connected-list))))))
+(defun slack-team-select (&optional no-default)
+  (cl-labels ((select-team
+               ()
+               (slack-team-find-by-name
+                (completing-read
+                 "Select Team: "
+                 (mapcar #'(lambda (team) (oref team name))
+                         (slack-team-connected-list))))))
     (let ((team (if (and slack-prefer-current-team
-                         slack-current-team)
+                         slack-current-team
+                         (not no-default))
                     slack-current-team
                   (select-team))))
       (if (and slack-prefer-current-team
-               (not slack-current-team))
+               (not slack-current-team)
+               (not no-default))
           (if (yes-or-no-p (format "Set %s to current-team?"
                                    (oref team name)))
               (setq slack-current-team team)))
