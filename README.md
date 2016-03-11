@@ -10,7 +10,7 @@ emacs client for Slack
 - [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
   User Interface library).
 - [alert](https://github.com/jwiegley/alert)
-- [emojify](iqbalansari/emacs-emojify) (optional)
+- [emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
   - required if you want to show emoji
 
 
@@ -91,6 +91,3 @@ I'm evil user, so bind these functions if you need.
 ## notification
 
 see [alert](https://github.com/jwiegley/alert).
-
-
-
