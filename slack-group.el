@@ -71,12 +71,10 @@
       (and name
            (memq (intern name) subscribed-channels)))))
 
-(defmethod slack-room-buffer-name ((room slack-group) team)
+(defmethod slack-room-buffer-name ((room slack-group))
   (concat slack-group-buffer-name
           " : "
-          (slack-team-name team)
-          " : "
-          (slack-room-name room team)))
+          (slack-room-name-with-team-name room)))
 
 (defun slack-group-select ()
   (interactive)

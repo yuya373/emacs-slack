@@ -94,7 +94,7 @@
                    (cl-ecase type
                      (message (slack-get-buffer-create buf-name))
                      (info (slack-get-info-buffer-create buf-name)))))
-    (let* ((buf-name (slack-room-buffer-name room team))
+    (let* ((buf-name (slack-room-buffer-name room))
            (buffer (get-buffer type buf-name)))
       (with-current-buffer buffer
         (if insert-func
@@ -146,7 +146,7 @@
                          (with-current-buffer buf
                            (slack-room-update-last-read room msg)
                            (slack-buffer-insert msg team))))
-    (let* ((buf-name (slack-room-buffer-name room team))
+    (let* ((buf-name (slack-room-buffer-name room))
            (buffer (get-buffer buf-name))
            (win-buf-names (mapcar #'buffer-name (mapcar #'window-buffer
                                                         (window-list)))))

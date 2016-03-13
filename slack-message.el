@@ -88,7 +88,7 @@
 (defgeneric slack-message-to-string (slack-message))
 (defgeneric slack-message-to-alert (slack-message))
 
-(defgeneric slack-room-buffer-name (room team))
+(defgeneric slack-room-buffer-name (room))
 (defgeneric slack-room-update-message (room))
 
 (defun slack-room-find (id team)

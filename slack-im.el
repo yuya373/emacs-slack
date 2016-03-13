@@ -68,12 +68,10 @@
     (mapcar #'(lambda (im) (cons (slack-im-user-name im team) im))
             ims)))
 
-(defmethod slack-room-buffer-name ((room slack-im) team)
-  (let ((user-name (slack-user-name (oref room user) team)))
-    (concat slack-im-buffer-name
-            " : "
-            (slack-team-name team)
-            " : " user-name)))
+(defmethod slack-room-buffer-name ((room slack-im))
+  (concat slack-im-buffer-name
+          " : "
+          (slack-room-name-with-team-name room)))
 
 (defun slack-im-select ()
   (interactive)

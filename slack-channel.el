@@ -55,12 +55,10 @@
     (apply #'slack-channel "channel"
            (slack-collect-slots 'slack-channel payload))))
 
-(defmethod slack-room-buffer-name ((room slack-channel) team)
+(defmethod slack-room-buffer-name ((room slack-channel))
   (concat slack-channel-buffer-name
           " : "
-          (slack-team-name team)
-          " : "
-          (slack-room-name room team)))
+          (slack-room-name-with-team-name room)))
 
 (defun slack-channel-names (team &optional filter)
   (with-slots (channels) team
