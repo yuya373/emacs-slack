@@ -50,7 +50,7 @@
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
 (defgeneric slack-room-update-mark-url (room))
 
-(defmethod slack-room-subscribedp ((_room slack-room) team)
+(defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
 
 (defmethod slack-room-buffer-name ((room slack-room))
