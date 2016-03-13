@@ -105,14 +105,6 @@
       :success #'on-request-update
       :sync (if ,sync t nil))))
 
-(cl-defmacro slack-room-make-buffer (name list &key test (update nil) team)
-  (let ((room-id (cl-gensym)))
-    `(let ((,room-id (oref (cdr (cl-assoc ,name ,list :test ,test))
-                           id)))
-       (slack-room-make-buffer-with-room (slack-room-find ,room-id ,team)
-                                         ,team
-                                         :update ,update))))
-
 (cl-defun slack-room-make-buffer-with-room (room team &key update)
   (with-slots (messages latest) room
     (if (or update (< (length messages) 1))
