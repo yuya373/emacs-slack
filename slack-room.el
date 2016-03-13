@@ -109,12 +109,14 @@
     (funcall slack-buffer-function
              (slack-buffer-create room team))))
 
-(cl-defmacro slack-select-from-list ((candidates prompt) &body body)
+(cl-defmacro slack-select-from-list ((alist prompt) &body body)
   "Bind candidates from selected."
-  `(let ((selected (let ((completion-ignore-case t))
-                     (completing-read (format "%s" ,prompt)
-                                      ,candidates nil t nil nil ,candidates))))
-     ,@body))
+  (let ((key (cl-gensym)))
+    `(let* ((,key (let ((completion-ignore-case t))
+                    (completing-read (format "%s" ,prompt)
+                                     ,alist nil t)))
+            (selected (cdr (assoc ,key alist))))
+       ,@body)))
 
 (defun slack-extract-from-list (selected candidates)
   (cdr (cl-assoc selected candidates :test #'string=)))
