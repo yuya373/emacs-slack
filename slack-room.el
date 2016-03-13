@@ -343,7 +343,7 @@
   (cl-labels ((buffer-name (room)
                            (concat "*Slack - Pinned Items*"
                                    " : "
-                                   (slack-room-name room team))))
+                                   (slack-room-name-with-team-name room))))
     (let* ((messages (mapcar #'slack-message-create
                              (mapcar #'(lambda (i)
                                          (plist-get i :message))
@@ -450,7 +450,8 @@
       (with-slots (channels) team
         (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
                                      channels)))
-      (message "Channel: %s deleted" (slack-room-name room team))))))
+      (message "Channel: %s deleted"
+               (slack-room-name-with-team-name room))))))
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request

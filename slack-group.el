@@ -67,7 +67,7 @@
 
 (defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
-    (let ((name (slack-room-name room team)))
+    (let ((name (slack-room-name room)))
       (and name
            (memq (intern name) subscribed-channels)))))
 
@@ -140,7 +140,7 @@
                                      (slack-room-equal-p group g))
                                  groups)))
            (message "Left Group: %s"
-                    (slack-room-name group team)))))
+                    (slack-room-name-with-team-name group)))))
       (slack-room-request-with-id slack-group-leave-url
                                   (oref group id)
                                   team

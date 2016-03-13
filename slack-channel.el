@@ -132,7 +132,7 @@
                             (data "slack-channel-leave")
                             (oset channel is-member :json-false)
                             (message "Left Channel: %s"
-                                     (slack-room-name channel team)))))
+                                     (slack-room-name channel)))))
       (slack-room-request-with-id slack-channel-leave-url
                                   (oref channel id)
                                   team
@@ -157,7 +157,7 @@
       (slack-request
        slack-channel-join-url
        team
-       :params (list (cons "name" (slack-room-name channel team)))
+       :params (list (cons "name" (slack-room-name channel)))
        :sync nil
        :success #'on-channel-join))))
 
@@ -178,7 +178,7 @@
                  (with-slots (channels) team
                    (push channel channels))
                  (message "Channel: %s created"
-                          (slack-room-name channel team))))))))
+                          (slack-room-name-with-team-name channel))))))))
     (slack-channel-fetch-info id team #'on-create-from-info)))
 
 (defun slack-channel-fetch-info (id team success)
@@ -230,7 +230,7 @@
 
 (defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team
-    (let ((name (slack-room-name room team)))
+    (let ((name (slack-room-name room)))
       (and name
            (memq (intern name) subscribed-channels)))))
 

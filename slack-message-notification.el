@@ -39,7 +39,7 @@
                (not (slack-message-minep message team)))
           (and (slack-room-subscribedp room team)
                (not (slack-message-minep message team))))
-      (let ((room-name (slack-room-name room team))
+      (let ((room-name (slack-room-name-with-team-name room))
             (text (slack-message-to-alert message team))
             (user-name (slack-message-sender-name message team)))
         (if (and (eq alert-default-style 'notifier)

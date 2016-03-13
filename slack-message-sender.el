@@ -112,7 +112,7 @@
        (let* ((room (cdr (cl-assoc selected
                                    list
                                    :test #'string=)))
-              (room-name (slack-room-name room team)))
+              (room-name (slack-room-name room)))
          (insert (concat "<#" (oref room id) "|" room-name "> ")))))))
 
 (defun slack-message-embed-mention ()
