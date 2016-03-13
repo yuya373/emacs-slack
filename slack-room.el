@@ -365,9 +365,10 @@
 
 (defun slack-select-rooms ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (with-slots (ims groups channels) team
-      (slack-room-select (append ims groups channels) team))))
+  (slack-room-select
+   (cl-loop for team in slack-teams
+            append (with-slots (groups ims channels) team
+                     (append ims groups channels)))))
 
 (defun slack-create-room (url team success)
   (slack-request

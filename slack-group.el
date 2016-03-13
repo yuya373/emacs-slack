@@ -80,9 +80,9 @@
 
 (defun slack-group-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (with-slots (groups) team
-      (slack-room-select groups team))))
+  (slack-room-select
+   (cl-loop for team in slack-teams
+            append (oref team groups))))
 
 (defun slack-group-list-update ()
   (interactive)
