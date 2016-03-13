@@ -128,30 +128,32 @@
   m)
 
 (cl-defun slack-message-create (payload &key room)
-  (plist-put payload :reactions (append (plist-get payload :reactions) nil))
-  (plist-put payload :attachments (append (plist-get payload :attachments) nil))
-  (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
-  (if room
-      (plist-put payload :channel (oref room id)))
-  (cl-labels ((create (m)
-                      (let ((subtype (plist-get m :subtype)))
-                        (cond
-                         ((plist-member m :reply_to)
-                          (apply #'slack-reply "reply"
-                                 (slack-collect-slots 'slack-reply m)))
-                         ((and subtype (string-prefix-p "file" subtype))
-                          (apply #'slack-file-message "file-msg"
-                                 (slack-collect-slots 'slack-file-message m)))
-                         ((plist-member m :user)
-                          (apply #'slack-user-message "user-msg"
-                                 (slack-collect-slots 'slack-user-message m)))
-                         ((and subtype (string= "bot_message" subtype))
-                          (apply #'slack-bot-message "bot-msg"
-                                 (slack-collect-slots 'slack-bot-message m)))))))
-    (let ((message (create payload)))
-      (when message
-        (slack-message-set-attachments message payload)
-        (slack-message-set-reactions message payload)))))
+  (when payload
+    (plist-put payload :reactions (append (plist-get payload :reactions) nil))
+    (plist-put payload :attachments (append (plist-get payload :attachments) nil))
+    (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
+    (if room
+        (plist-put payload :channel (oref room id)))
+    (cl-labels ((create
+                 (m)
+                 (let ((subtype (plist-get m :subtype)))
+                   (cond
+                    ((plist-member m :reply_to)
+                     (apply #'slack-reply "reply"
+                            (slack-collect-slots 'slack-reply m)))
+                    ((and subtype (string-prefix-p "file" subtype))
+                     (apply #'slack-file-message "file-msg"
+                            (slack-collect-slots 'slack-file-message m)))
+                    ((plist-member m :user)
+                     (apply #'slack-user-message "user-msg"
+                            (slack-collect-slots 'slack-user-message m)))
+                    ((and subtype (string= "bot_message" subtype))
+                     (apply #'slack-bot-message "bot-msg"
+                            (slack-collect-slots 'slack-bot-message m)))))))
+      (let ((message (create payload)))
+        (when message
+          (slack-message-set-attachments message payload)
+          (slack-message-set-reactions message payload))))))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (and (string= (oref m ts) (oref n ts))
