@@ -148,7 +148,7 @@
                (append (plist-get data :files) nil))
          (unless oldest
            (slack-room-update-last-read room
-                                        (slack-message :ts "0")))
+                                        (slack-message "msg" :ts "0")))
          (if after-success
              (funcall after-success)))))
 
