@@ -40,11 +40,6 @@
 (defclass slack-im (slack-room)
   ((user :initarg :user)))
 
-(defun slack-im-create (payload team)
-  (apply #'slack-im "im"
-         (slack-collect-slots 'slack-im
-                              (slack-room-prepare-payload payload team))))
-
 (defmethod slack-room-name-with-team-name ((room slack-im))
   (with-slots (team-id user) room
     (let* ((team (slack-team-find team-id))
@@ -95,8 +90,10 @@
                 (data "slack-im-update-room-list")
                 (mapc #'(lambda (u) (slack-user-pushnew u team))
                       (append users nil))
-                (oset team ims (mapcar #'slack-im-create
-                                       (plist-get data :ims)))
+                (oset team ims
+                      (mapcar #'(lambda (d)
+                                  (slack-room-create d team 'slack-im))
+                              (plist-get data :ims)))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list

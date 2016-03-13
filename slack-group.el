@@ -54,11 +54,6 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (purpose :initarg :purpose)))
 
-(defun slack-group-create (payload team)
-  (apply #'slack-group "group"
-         (slack-collect-slots 'slack-group
-                              (slack-room-prepare-payload payload team))))
-
 (defun slack-group-names (team &optional filter)
   (with-slots (groups) team
     (slack-room-names groups filter)))
@@ -88,8 +83,10 @@
                  (slack-request-handle-error
                   (data "slack-group-list-update")
                   (with-slots (groups) team
-                    (setq groups (mapcar #'slack-group-create
-                                         (plist-get data :groups))))
+                    (setq groups
+                          (mapcar #'(lambda (g)
+                                      (slack-room-create g team 'slack-group))
+                                  (plist-get data :groups))))
                   (message "Slack Group List Updated"))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update

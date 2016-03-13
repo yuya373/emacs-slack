@@ -57,6 +57,12 @@
     (plist-put payload :latest msg))
   payload)
 
+(defun slack-room-create (payload team class)
+  (apply #'make-instance class
+         (slack-collect-slots class
+                              (slack-room-prepare-payload payload
+                                                          team))))
+
 (defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
 

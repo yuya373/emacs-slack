@@ -48,11 +48,6 @@
   ((is-member :initarg :is_member)
    (num-members :initarg :num_members)))
 
-(defun slack-channel-create (payload team)
-  (apply #'slack-channel "channel"
-         (slack-collect-slots 'slack-channel
-                              (slack-room-prepare-payload payload team))))
-
 (defmethod slack-room-buffer-name ((room slack-channel))
   (concat slack-channel-buffer-name
           " : "
@@ -81,7 +76,8 @@
                  (slack-request-handle-error
                   (data "slack-channel-list-update")
                   (oset team channels
-                        (mapcar #'slack-channel-create
+                        (mapcar #'(lambda (d)
+                                    (slack-room-create d team 'slack-channel))
                                 (plist-get data :channels)))
                   (message "Slack Channel List Updated"))))
       (slack-room-list-update slack-channel-list-url
@@ -169,8 +165,8 @@
                (plist-put c-data :latest
                           (slack-message-create latest)))
            (if (plist-get c-data :is_channel)
-               (let ((channel (slack-channel-create
-                               c-data)))
+               (let ((channel
+                      (slack-room-create c-data team 'slack-channel)))
                  (with-slots (channels) team
                    (push channel channels))
                  (message "Channel: %s created"

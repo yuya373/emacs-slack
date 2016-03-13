@@ -240,13 +240,13 @@
                                  rooms))))
     (let* ((c (plist-get payload :channel)))
       (if (plist-get c :is_channel)
-          (let ((channel (slack-channel-create c)))
+          (let ((channel (slack-room-create c team 'slack-channel)))
             (with-slots (channels) team
               (setq channels
                     (replace-room channel channels)))
             (message "Joined channel %s"
                      (slack-room-name-with-team-name channel)))
-        (let ((group (slack-group-create c)))
+        (let ((group (slack-room-create c team 'slack-group)))
           (with-slots (groups) team
             (setq groups
                   (replace-room group groups)))

@@ -93,32 +93,24 @@ set this to save request to Slack if already have.")
 
 (defun slack-update-team (data team)
   (cl-labels
-      ((create-room (data func)
-                    (unless (plist-get data :last_read)
-                      (plist-put data :last_read "0"))
-                    (if (plist-get data :latest)
-                        (plist-put data :latest
-                                   (slack-message-create
-                                    (plist-get data :latest))))
-                    (funcall func data))
-       (create-rooms (datum team func)
-                     (mapcar #'(lambda (data)
-                                 (plist-put data :team-id (oref team id))
-                                 (create-room data func))
-                             (append datum nil))))
+      ((create-rooms
+        (datum team class)
+        (mapcar #'(lambda (data)
+                    (slack-room-create data team class))
+                (append datum nil))))
     (let ((self (plist-get data :self))
           (team-data (plist-get data :team)))
       (oset team id (plist-get team-data :id))
       (oset team name (plist-get team-data :name))
-      (oset team channels (create-rooms (plist-get data :channels)
-                                        team
-                                        #'slack-channel-create))
-      (oset team groups (create-rooms (plist-get data :groups)
-                                      team
-                                      #'slack-group-create))
-      (oset team ims (create-rooms (plist-get data :ims)
-                                   team
-                                   #'slack-im-create))
+      (oset team channels
+            (create-rooms (plist-get data :channels)
+                          team 'slack-channel))
+      (oset team groups
+            (create-rooms (plist-get data :groups)
+                          team 'slack-group))
+      (oset team ims
+            (create-rooms (plist-get data :ims)
+                          team 'slack-im))
       (oset team self self)
       (oset team self-id (plist-get self :id))
       (oset team self-name (plist-get self :name))
