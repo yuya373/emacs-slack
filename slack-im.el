@@ -96,7 +96,7 @@
                 (mapc #'(lambda (u) (slack-user-pushnew u team))
                       (append users nil))
                 (oset team ims (mapcar #'slack-im-create
-                                        (plist-get data :ims)))
+                                       (plist-get data :ims)))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
@@ -111,8 +111,8 @@
      team
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (slack-request-handle-error (data "slack-im-list-update")
-                              (let ((users (plist-get data :members)))
-                                (slack-im-update-room-list users team)))))
+                                                         (let ((users (plist-get data :members)))
+                                                           (slack-im-update-room-list users team)))))
      :sync nil)))
 
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
