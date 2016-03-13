@@ -62,7 +62,7 @@
 
 (defun slack-channel-names (team &optional filter)
   (with-slots (channels) team
-    (slack-room-names channels team filter)))
+    (slack-room-names channels filter)))
 
 (defmethod slack-room-member-p ((room slack-channel))
   (if (eq (oref room is-member) :json-false)

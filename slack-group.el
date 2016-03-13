@@ -63,7 +63,7 @@
 
 (defun slack-group-names (team &optional filter)
   (with-slots (groups) team
-    (slack-room-names groups team filter)))
+    (slack-room-names groups filter)))
 
 (defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
