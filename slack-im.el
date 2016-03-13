@@ -43,6 +43,11 @@
 (defun slack-im-create (payload)
   (apply #'slack-im "im"
          (slack-collect-slots 'slack-im payload)))
+(defmethod slack-room-name-with-team-name ((room slack-im))
+  (with-slots (team-id user) room
+    (let* ((team (slack-team-find team-id))
+           (user-name (slack-user-name user team)))
+      (format "%s - %s" (oref team name) user-name))))
 
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots ((user-id user) team-id) room
@@ -50,9 +55,9 @@
            (user (slack-user-find user-id team)))
       (slack-user-presence-to-string user))))
 
-(defmethod slack-room-name ((room slack-im) team)
-  (with-slots (user) room
-    (slack-user-name user team)))
+(defmethod slack-room-name ((room slack-im))
+  (with-slots (user team-id) room
+    (slack-user-name user (slack-team-find team-id))))
 
 (defun slack-im-user-name (im team)
   (with-slots (user) im
