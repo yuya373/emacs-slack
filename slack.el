@@ -4,7 +4,7 @@
 
 ;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords: tools
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Package-Requires: ((websocket "1.5") (request "0.2.0") (oauth2 "0.10") (circe "2.1") (alert "1.2") (emojify "0.2"))
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
