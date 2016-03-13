@@ -52,6 +52,32 @@
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
   "Function to print buffer.")
 
+(defvar slack-use-register-team-string
+  "use `slack-register-team' instead.")
+
+(defcustom slack-client-id nil
+  "Client ID provided by Slack.")
+(make-obsolete-variable
+ 'slack-client-id slack-use-register-team-string
+ "0.0.2")
+(defcustom slack-client-secret nil
+  "Client Secret Provided by Slack.")
+(make-obsolete-variable
+ 'slack-client-secret slack-use-register-team-string
+ "0.0.2")
+(defcustom slack-token nil
+  "Slack token provided by Slack.
+set this to save request to Slack if already have.")
+(make-obsolete-variable
+ 'slack-token slack-use-register-team-string
+ "0.0.2")
+(defcustom slack-room-subscription '()
+  "Group or Channel list to subscribe notification."
+  :group 'slack)
+(make-obsolete-variable
+ 'slack-room-subscription slack-use-register-team-string
+ "0.0.2")
+
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
