@@ -50,6 +50,13 @@
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
 (defgeneric slack-room-update-mark-url (room))
 
+(defun slack-room-prepare-payload (payload team)
+  (plist-put payload :members (append (plist-get payload :members) nil))
+  (plist-put payload :team-id (oref team id))
+  (let ((msg (slack-message-create (plist-get payload :latest))))
+    (plist-put payload :latest msg))
+  payload)
+
 (defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
 

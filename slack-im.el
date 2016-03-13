@@ -40,9 +40,11 @@
 (defclass slack-im (slack-room)
   ((user :initarg :user)))
 
-(defun slack-im-create (payload)
+(defun slack-im-create (payload team)
   (apply #'slack-im "im"
-         (slack-collect-slots 'slack-im payload)))
+         (slack-collect-slots 'slack-im
+                              (slack-room-prepare-payload payload team))))
+
 (defmethod slack-room-name-with-team-name ((room slack-im))
   (with-slots (team-id user) room
     (let* ((team (slack-team-find team-id))
