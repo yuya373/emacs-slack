@@ -176,7 +176,7 @@ set this to save request to Slack if already have.")
     (if team
         (start team)
       (if slack-teams
-          (mapcan #'start slack-teams)
+          (cl-mapcan #'start slack-teams)
         (slack-start (slack-register-team))))))
 
 (provide 'slack)
