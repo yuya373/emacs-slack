@@ -121,23 +121,20 @@
 (defun slack-extract-from-list (selected candidates)
   (cdr (cl-assoc selected candidates :test #'string=)))
 
-(defun slack-room-select (rooms team)
-  (let* ((list (slack-room-names
-                rooms
-                team
-                #'(lambda (rooms)
-                    (cl-remove-if #'(lambda (r)
-                                      (or (not (slack-room-member-p r))
-                                          (slack-room-archived-p r)))
-                                  rooms))))
-         (candidates (mapcar #'car list)))
+(defun slack-room-select (rooms)
+  (let* ((alist (slack-room-names
+                 rooms
+                 #'(lambda (rs)
+                     (cl-remove-if #'(lambda (r)
+                                       (or (not (slack-room-member-p r))
+                                           (slack-room-archived-p r)))
+                                   rs)))))
     (slack-select-from-list
-     (candidates "Select Channel: ")
-     (slack-room-make-buffer selected
-                             list
-                             :test #'string=
-                             :update nil
-                             :team team))))
+     (alist "Select Channel: ")
+     (slack-room-make-buffer-with-room
+      selected
+      (slack-team-find (oref selected team-id))
+      :update nil))))
 
 (defmethod slack-room-update-message ((room slack-room) m)
   (unless (object-of-class-p m 'slack-message)
