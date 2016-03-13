@@ -125,7 +125,8 @@
 
 (defun slack-buffer-insert-messages (room team)
   (let* ((sorted (slack-room-sorted-messages room))
-         (messages (slack-room-latest-messages room sorted)))
+         (messages (nreverse
+                    (slack-room-latest-messages room sorted))))
     (if messages
         (progn
           (slack-buffer-insert-previous-link (cl-first messages))
@@ -136,8 +137,8 @@
             (slack-room-update-last-read room latest-message)
             (slack-room-update-mark room team latest-message)))
       (unless (eq 0 (oref room unread-count-display))
-        (let ((last-message (car (last sorted))))
-          (slack-room-update-mark room team last-message))))))
+        (let ((latest-message (car sorted)))
+          (slack-room-update-mark room team latest-message))))))
 
 
 (cl-defun slack-buffer-update (room msg &key replace team)

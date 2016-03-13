@@ -283,11 +283,15 @@
                           (string= (oref m ts) last-read)))
                   messages)))
 
+(defun slack-room-sort-messages (messages)
+  (nreverse
+   (cl-sort (copy-sequence messages)
+            #'string<
+            :key #'(lambda (m) (oref m ts)))))
+
 (defmethod slack-room-sorted-messages ((room slack-room))
   (with-slots (messages) room
-    (cl-sort (copy-sequence messages)
-             #'string<
-             :key #'(lambda (m) (oref m ts)))))
+    (slack-room-sort-messages messages)))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
