@@ -58,12 +58,16 @@
           " : "
           (slack-room-name-with-team-name room)))
 
-(defmethod slack-room-set-prev-messages ((room slack-room) m)
-  (oset room messages (cl-delete-duplicates (append (oref room messages) m)
-                                            :test #'slack-message-equal)))
+(defmethod slack-room-set-prev-messages ((room slack-room) prev-messages)
+  (slack-room-set-messages
+   (cl-delete-duplicates (append (oref room messages)
+                                 prev-messages)
+                         :test #'slack-message-equal)))
 
 (defmethod slack-room-set-messages ((room slack-room) m)
-  (oset room messages m))
+  (let ((sorted (slack-room-sort-messages m)))
+    (oset room messages sorted)
+    (oset room latest (car sorted))))
 
 (cl-defmacro slack-room-request-update (room team url latest after-success sync)
   `(cl-labels
