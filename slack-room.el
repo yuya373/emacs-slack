@@ -53,12 +53,10 @@
 (defmethod slack-room-subscribedp ((_room slack-room) team)
   nil)
 
-(defmethod slack-room-buffer-name ((room slack-room) team)
+(defmethod slack-room-buffer-name ((room slack-room))
   (concat "*Slack*"
           " : "
-          (slack-team-name team)
-          " : "
-          (slack-room-name room team)))
+          (slack-room-name-with-team-name room)))
 
 (defmethod slack-room-set-prev-messages ((room slack-room) m)
   (oset room messages (cl-delete-duplicates (append (oref room messages) m)
@@ -227,38 +225,50 @@
       "")))
 
 (defmethod slack-room-latest-ts ((room slack-room))
-  (let ((sorted (slack-room-sorted-messages room)))
-    (if sorted
-        (oref (car (last sorted)) ts)
-      "0")))
+  (with-slots (latest) room
+    (if latest
+        (oref latest ts)
+      "0"))
+  ;; (let ((sorted (slack-room-sorted-messages room)))
+  ;;   (if sorted
+  ;;       (oref (car (last sorted)) ts)
+  ;;     "0"))
+  )
 
-(defmacro slack-room-names (rooms team &optional filter)
 (defmethod slack-room-name-with-team-name ((room slack-room))
   (with-slots (team-id name) room
     (let ((team (slack-team-find team-id)))
       (format "%s - %s" (oref team name) name))))
 
+(defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
        ((sort-rooms (l)
-                    (sort l #'(lambda (a b)
-                                (string< (slack-room-latest-ts (cdr b))
-                                         (slack-room-latest-ts (cdr a))))))
+                    (nreverse (cl-sort l
+                                       #'string<
+                                       :key #'(lambda (r)
+                                                (slack-room-latest-ts
+                                                 (cdr r))))))
         (build-label (room)
                      (concat (im-presence room)
                              (format "%s %s"
-                                     (slack-room-name room ,team)
+                                     (slack-room-name-with-team-name room)
                                      (slack-room-unread-count room))))
         (im-presence (room)
                      (if (object-of-class-p room 'slack-im)
-                         (slack-im-user-presence room ,team)
+                         (slack-im-user-presence room)
                        "  "))
         (build-cons (room)
                     (cons (build-label room) room)))
      (sort-rooms
-      (mapcar #'build-cons
-              (if ,filter
-                  (funcall ,filter ,rooms)
-                ,rooms)))))
+      (cl-loop for room in (if ,filter
+                               (funcall ,filter ,rooms)
+                             ,rooms)
+               collect (cons (build-label room) room))
+      ;; (mapcar #'build-cons
+      ;;         (if ,filter
+      ;;             (funcall ,filter ,rooms)
+      ;;           ,rooms))
+      )))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
