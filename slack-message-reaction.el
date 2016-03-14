@@ -114,9 +114,9 @@
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction)
   (slack-message-find-reaction (m reaction)
-                           (if same-reaction
-                               (join same-reaction reaction)
-                             (push reaction (oref m reactions)))))
+                               (if same-reaction
+                                   (join same-reaction reaction)
+                                 (push reaction (oref m reactions)))))
 
 (defmethod slack-message-pop-reaction ((m slack-message) reaction)
   (slack-message-find-reaction (m reaction)
