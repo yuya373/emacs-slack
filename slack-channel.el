@@ -67,7 +67,8 @@
   (let ((team (slack-team-select)))
     (slack-room-select
      (cl-loop for team in (list team)
-              append (oref team channels)))))
+              for channels = (oref team channels)
+              nconc channels))))
 
 (defun slack-channel-list-update ()
   (interactive)

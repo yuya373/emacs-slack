@@ -126,10 +126,8 @@ set this to save request to Slack if already have.")
    (message "Slack Authorization Finished.")
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
-       (mapc #'(lambda (room)
-                 (slack-room-history room team
-                                     nil nil t))
-             (append groups ims channels)))
+       (cl-loop for room in (nconc groups ims channels)
+                do (slack-room-history room team nil nil t)))
      (slack-ws-open team))))
 
 (defun slack-on-authorize-e
@@ -163,12 +161,12 @@ set this to save request to Slack if already have.")
                      (slack-ws-close team))
                  (unless token
                    (slack-request-token team)))
-               (slack-authorize team)
-               (sleep-for 0.5)))
+               (slack-authorize team)))
     (if team
         (start team)
       (if slack-teams
-          (cl-mapcan #'start slack-teams)
+          (cl-loop for team in slack-teams
+                   do (start team))
         (slack-start (slack-register-team))))))
 
 (provide 'slack)

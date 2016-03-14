@@ -73,9 +73,8 @@
 (defun slack-ws-resend (team)
   (with-slots (waiting-send) team
     (setq waiting-send nil)
-    (mapcar #'(lambda (m) (slack-ws-send m team)
-                (sleep-for 1))
-            waiting-send)))
+    (cl-loop for msg in waiting-send
+             do (sleep-for 1) (slack-ws-send msg team))))
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)

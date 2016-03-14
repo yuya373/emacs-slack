@@ -75,7 +75,8 @@
   (let ((team (slack-team-select)))
     (slack-room-select
      (cl-loop for team in (list team)
-              append (oref team ims)))))
+              for ims = (oref team ims)
+              nconc ims))))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
