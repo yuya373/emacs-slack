@@ -64,9 +64,10 @@
 
 (defun slack-channel-select ()
   (interactive)
-  (slack-room-select
-   (cl-loop for team in slack-teams
-            append (oref team channels))))
+  (let ((team (slack-team-select)))
+    (slack-room-select
+     (cl-loop for team in (list team)
+              append (oref team channels)))))
 
 (defun slack-channel-list-update ()
   (interactive)

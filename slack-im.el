@@ -72,9 +72,10 @@
 
 (defun slack-im-select ()
   (interactive)
-  (slack-room-select
-   (cl-loop for team in slack-teams
-            append (oref team ims))))
+  (let ((team (slack-team-select)))
+    (slack-room-select
+     (cl-loop for team in (list team)
+              append (oref team ims)))))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
