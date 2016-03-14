@@ -114,11 +114,12 @@
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
-                   (slack-channel-names
-                    team
-                    #'(lambda (channels)
-                        (cl-remove-if-not #'slack-room-member-p
-                                          channels))))))
+                   #'(lambda ()
+                       (slack-channel-names
+                        team
+                        #'(lambda (channels)
+                            (cl-remove-if-not #'slack-room-member-p
+                                              channels)))))))
     (cl-labels
         ((on-channel-leave (&key data &allow-other-keys)
                            (slack-request-handle-error
@@ -135,14 +136,15 @@
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
-                   (slack-channel-names
-                    team
-                    #'(lambda (channels)
-                        (cl-remove-if
-                         #'(lambda (c)
-                             (or (slack-room-member-p c)
-                                 (slack-room-archived-p c)))
-                         channels))))))
+                   #'(lambda ()
+                       (slack-channel-names
+                        team
+                        #'(lambda (channels)
+                            (cl-remove-if
+                             #'(lambda (c)
+                                 (or (slack-room-member-p c)
+                                     (slack-room-archived-p c)))
+                             channels)))))))
     (cl-labels
         ((on-channel-join (&key data &allow-other-keys)
                           (slack-request-handle-error
@@ -186,11 +188,12 @@
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
-                   (slack-channel-names
-                    team
-                    #'(lambda (channels)
-                        (cl-remove-if #'slack-room-archived-p
-                                      channels))))))
+                   #'(lambda ()
+                       (slack-channel-names
+                        team
+                        #'(lambda (channels)
+                            (cl-remove-if #'slack-room-archived-p
+                                          channels)))))))
     (cl-labels
         ((on-channel-archive (&key data &allow-other-keys)
                              (slack-request-handle-error
@@ -204,11 +207,12 @@
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
-                   (slack-channel-names
-                    team
-                    #'(lambda (channels)
-                        (cl-remove-if-not #'slack-room-archived-p
-                                          channels))))))
+                   #'(lambda ()
+                       (slack-channel-names
+                        team
+                        #'(lambda (channels)
+                            (cl-remove-if-not #'slack-room-archived-p
+                                              channels)))))))
     (cl-labels
         ((on-channel-unarchive (&key data &allow-other-keys)
                                (slack-request-handle-error

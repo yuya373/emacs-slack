@@ -408,18 +408,16 @@
        :success #'on-rename-success
        :sync nil))))
 
-(defmacro slack-current-room-or-select (room-list)
+(defmacro slack-current-room-or-select (room-alist-func)
   `(if (and (boundp 'slack-current-room-id)
             (boundp 'slack-current-team-id))
        (slack-room-find slack-current-room-id
                         (slack-team-find slack-current-team-id))
-     (let* ((list ,room-list)
-            (candidates (mapcar #'car list)))
+     (let* ((room-alist (funcall ,room-alist-func)))
        (slack-select-from-list
-        (candidates "Select Channel: ")
-        (slack-extract-from-list selected list)))))
+        (room-alist "Select Channel: ")))))
 
-(defmacro slack-room-invite (url room-list-func)
+(defmacro slack-room-invite (url room-alist-func)
   `(cl-labels
        ((on-group-invite (&key data &allow-other-keys)
                          (slack-request-handle-error
@@ -429,7 +427,10 @@
                             (message "Invited!")))))
      (let* ((team (slack-team-select))
             (room (slack-current-room-or-select
-                   (funcall ,room-list-func team)))
+                   #'(lambda () (funcall ,room-alist-func team
+                                         #'(lambda (rooms)
+                                             (cl-remove-if #'slack-room-archived-p
+                                                           rooms))))))
             (users (slack-user-names team))
             (user-id (slack-select-from-list
                       (users "Select User: "))))

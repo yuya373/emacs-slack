@@ -122,7 +122,8 @@
   (interactive)
   (let* ((team (slack-team-select))
          (group (slack-current-room-or-select
-                 (slack-group-names team))))
+                 #'(lambda ()
+                     (slack-group-names team)))))
     (cl-labels
         ((on-group-leave
           (&key data &allow-other-keys)
@@ -150,11 +151,12 @@
   (interactive)
   (let* ((team (slack-team-select))
          (group (slack-current-room-or-select
-                 (slack-group-names
-                  team
-                  #'(lambda (groups)
-                      (cl-remove-if #'slack-room-archived-p
-                                    groups))))))
+                 #'(lambda ()
+                     (slack-group-names
+                      team
+                      #'(lambda (groups)
+                          (cl-remove-if #'slack-room-archived-p
+                                        groups)))))))
     (cl-labels
         ((on-group-archive (&key data &allow-other-keys)
                            (slack-request-handle-error
@@ -168,11 +170,12 @@
   (interactive)
   (let* ((team (slack-team-select))
          (group (slack-current-room-or-select
-                 (slack-group-names
-                  team
-                  #'(lambda (groups)
-                      (cl-remove-if-not #'slack-room-archived-p
-                                        groups))))))
+                 #'(lambda ()
+                     (slack-group-names
+                      team
+                      #'(lambda (groups)
+                          (cl-remove-if-not #'slack-room-archived-p
+                                            groups)))))))
     (cl-labels
         ((on-group-unarchive (&key _data &allow-other-keys)
                              (data "slack-group-unarchive")))
