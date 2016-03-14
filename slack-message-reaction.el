@@ -65,7 +65,9 @@
       (message "Can't get reaction:"))))
 
 (defun slack-message-reaction-select (reactions)
-  (let ((list (mapcar #'(lambda (r) (oref r name))
+  (let ((list (mapcar #'(lambda (r)
+                          (cons (oref r name)
+                                (oref r name)))
                       reactions)))
     (slack-select-from-list
      (list "Select Reaction: ")

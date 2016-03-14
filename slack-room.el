@@ -124,10 +124,11 @@
     `(let* ((,key (let ((completion-ignore-case t))
                     (completing-read (format "%s" ,prompt)
                                      ,alist nil t)))
-            (selected (cdr (assoc ,key alist))))
-       ,@body)))
+            (selected (slack-extract-from-alist ,key ,alist)))
+       ,@body
+       selected)))
 
-(defun slack-extract-from-list (selected candidates)
+(defun slack-extract-from-alist (selected candidates)
   (cdr (cl-assoc selected candidates :test #'string=)))
 
 (defun slack-room-select (rooms)
@@ -389,17 +390,15 @@
    :success success
    :sync nil))
 
-(defun slack-room-rename (url room-list-func)
+(defun slack-room-rename (url room-alist-func)
   (cl-labels
       ((on-rename-success (&key data &allow-other-keys)
                           (slack-request-handle-error
                            (data "slack-room-rename"))))
     (let* ((team (slack-team-select))
-           (room-list (funcall room-list-func team))
-           (candidates (mapcar #'car room-list))
+           (room-alist (funcall room-alist-func team))
            (room (slack-select-from-list
-                  (candidates "Select Channel: ")
-                  (slack-extract-from-list selected room-list)))
+                  (room-alist "Select Channel: ")))
            (name (read-from-minibuffer "New Name: ")))
       (slack-request
        url
@@ -433,8 +432,7 @@
                    (funcall ,room-list-func team)))
             (users (slack-user-names team))
             (user-id (slack-select-from-list
-                      ((mapcar #'car users) "Select User: ")
-                      (slack-extract-from-list selected users))))
+                      (users "Select User: "))))
        (slack-request
         ,url
         team

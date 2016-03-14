@@ -105,13 +105,10 @@
 (defun slack-message-embed-channel ()
   (interactive)
   (let ((team (slack-team-select)))
-    (let* ((list (slack-channel-names team))
-           (candidates (mapcar #'car list)))
+    (let* ((alist (slack-channel-names team)))
       (slack-select-from-list
-       (candidates "Select Channel: ")
-       (let* ((room (cdr (cl-assoc selected
-                                   list
-                                   :test #'string=)))
+       (alist "Select Channel: ")
+       (let* ((room selected)
               (room-name (slack-room-name room)))
          (insert (concat "<#" (oref room id) "|" room-name "> ")))))))
 
@@ -120,16 +117,13 @@
   (let ((team (slack-team-select)))
     (let* ((pre-defined (list (cons "here" "here")
                               (cons "channel" "channel")))
-           (list (append pre-defined (slack-user-names team)))
-           (candidates (mapcar #'car list)))
+           (alist (append pre-defined (slack-user-names team))))
       (slack-select-from-list
-       (candidates "Select User: ")
+       (alist "Select User: ")
        (if (or (string= selected "here")
                (string= selected "channel"))
            (insert (concat "<!" selected "> "))
-         (let* ((user-id (cdr (cl-assoc selected
-                                        list
-                                        :test #'string=)))
+         (let* ((user-id selected)
                 (user-name (slack-user-name user-id team)))
            (insert (concat "<@" user-id "|" user-name "> "))))))))
 
