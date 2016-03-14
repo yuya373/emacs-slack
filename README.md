@@ -31,6 +31,7 @@ emacs client for Slack
   :config
   (slack-register-team
    :name "emacs-slack"
+   :default t
    :client-id "aaaaaaaaaaa.00000000000"
    :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
    :token "aaaa-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
