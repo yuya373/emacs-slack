@@ -55,7 +55,8 @@
   (with-slots (file-room) team
     (if file-room
         file-room
-      (setq file-room (slack-file-room :name "Files"
+      (setq file-room (slack-file-room "file-room"
+                                       :name "Files"
                                        :id "slack-file"
                                        :created (format-time-string "%s")
                                        :is_open t
