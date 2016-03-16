@@ -58,6 +58,7 @@
       (setq file-room (slack-file-room "file-room"
                                        :name "Files"
                                        :id "slack-file"
+                                       :team-id (oref team id)
                                        :created (format-time-string "%s")
                                        :is_open t
                                        :last_read "0"
