@@ -76,7 +76,7 @@
                               (if ,latest
                                   (slack-room-set-prev-messages ,room messages)
                                 (slack-room-set-messages ,room messages)
-                                (let ((m (slack-message :ts "0")))
+                                (let ((m (slack-message "msg" :ts "0")))
                                   (slack-room-update-last-read room m)))
                               (if (and ,after-success
                                        (functionp ,after-success))
