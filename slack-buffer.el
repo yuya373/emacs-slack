@@ -195,7 +195,7 @@
 (defun slack-reset-room-last-read ()
   (let ((room slack-current-room))
     (slack-room-update-last-read room
-                                 (slack-message :ts "0"))))
+                                 (slack-message "msg" :ts "0"))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
