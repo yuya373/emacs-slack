@@ -178,9 +178,10 @@
                    (oref (cdr (cl-assoc selected channels :test #'string=))
                          id)))
     (let* ((team (slack-team-select))
-           (channels (nconc (slack-im-names team)
-                            (slack-channel-names team)
-                            (slack-group-names team)))
+           (channels (slack-room-names
+                      (append (oref team ims)
+                              (oref team channels)
+                              (oref team groups))))
            (target-channels (select-channels channels '()))
            (channel-ids (mapconcat #'(lambda (selected)
                                        (channel-id selected channels))
