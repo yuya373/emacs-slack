@@ -64,11 +64,6 @@
 (defmethod slack-message-propertize ((m slack-message) text)
   text)
 
-(defmethod slack-message-propertize :before ((m slack-message) text)
-  (with-slots (ts) m
-    (put-text-property 0 (length text) 'ts ts text)
-    text))
-
 (defun slack-message-time-to-string (ts)
   (if ts
       (format-time-string "%Y-%m-%d %H:%M:%S"
