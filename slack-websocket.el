@@ -74,9 +74,10 @@
 
 (defun slack-ws-resend (team)
   (with-slots (waiting-send) team
-    (setq waiting-send nil)
-    (cl-loop for msg in waiting-send
-             do (sleep-for 1) (slack-ws-send msg team))))
+    (let ((candidate waiting-send))
+      (setq waiting-send nil)
+      (cl-loop for msg in candidate
+               do (sleep-for 1) (slack-ws-send msg team)))))
 
 (defun slack-ws-recursive-decode (payload)
   (cl-labels ((decode (e) (if (stringp e)
