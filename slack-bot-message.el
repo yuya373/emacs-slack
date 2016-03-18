@@ -28,31 +28,30 @@
 (require 'slack-message)
 (require 'slack-message-formatter)
 
-(defvar slack-bots)
+(defun slack-find-bot (id team)
+  (with-slots (bots) team
+    (cl-find-if (lambda (bot)
+                  (string= id (plist-get bot :id)))
+                bots)))
 
-(defun slack-find-bot (id)
-  (cl-find-if (lambda (bot)
-             (string= id (plist-get bot :id)))
-           slack-bots))
-
-(defmethod slack-bot-name ((m slack-bot-message))
+(defmethod slack-bot-name ((m slack-bot-message) team)
   (if (slot-boundp m 'bot-id)
-      (let ((bot (slack-find-bot (oref m bot-id))))
+      (let ((bot (slack-find-bot (oref m bot-id) team)))
         (if bot
             (plist-get bot :name)))
     (oref m username)))
 
-(defmethod slack-message-to-alert ((m slack-bot-message))
+(defmethod slack-message-to-alert ((m slack-bot-message) team)
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
     (with-slots (attachments) m
       (if (and text (< 0 (length text)))
-          (slack-message-unescape-string text)
+          (slack-message-unescape-string text team)
         (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
-          (slack-message-unescape-string attachment-string))))))
+          (slack-message-unescape-string attachment-string team))))))
 
-(defmethod slack-message-sender-name ((m slack-bot-message))
-  (slack-bot-name m))
+(defmethod slack-message-sender-name ((m slack-bot-message) team)
+  (slack-bot-name m team))
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a

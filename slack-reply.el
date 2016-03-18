@@ -26,22 +26,19 @@
 (require 'eieio)
 (require 'slack-message)
 
-(defmethod slack-message-handle-reply ((m slack-reply))
+(defmethod slack-message-handle-reply ((m slack-reply) team)
   (with-slots (reply-to) m
-    (let ((sent-msg (slack-message-find-sent m)))
+    (let ((sent-msg (slack-message-find-sent m team)))
       (if sent-msg
           (progn
             (oset sent-msg ts (oref m ts))
-            (slack-message-update sent-msg))))))
+            (slack-message-update sent-msg team))))))
 
-(defmethod slack-message-find-sent ((m slack-reply))
-  (cl-labels
-      ((find (reply-to)
-             (cl-find-if #'(lambda (msg) (eq reply-to (oref msg id)))
-                         slack-sent-message)))
-    (with-slots (reply-to) m
-      (let ((found (gethash reply-to slack-sent-message)))
-        (remhash reply-to slack-sent-message)
+(defmethod slack-message-find-sent ((m slack-reply) team)
+  (with-slots (reply-to) m
+    (with-slots (sent-message) team
+      (let ((found (gethash reply-to sent-message)))
+        (remhash reply-to sent-message)
         found))))
 
 (defmethod slack-message-sender-equalp ((m slack-reply) sender-id)

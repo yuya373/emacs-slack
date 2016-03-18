@@ -31,8 +31,6 @@
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
 (defconst slack-file-delete-url "https://slack.com/api/files.delete")
 
-(defvar slack-file-room-obj nil)
-
 (defclass slack-file ()
   ((id :initarg :id)
    (created :initarg :created)
@@ -53,18 +51,21 @@
 
 (defclass slack-file-room (slack-room) ())
 
-(defun slack-file-room-obj ()
-  (if slack-file-room-obj
-      slack-file-room-obj
-    (setq slack-file-room-obj (slack-file-room :name "Files"
-                                               :id "slack-file"
-                                               :created (format-time-string "%s")
-                                               :is_open t
-                                               :last_read "0"
-                                               :latest nil
-                                               :unread_count 0
-                                               :unread_count_display 0
-                                               :messages '()))))
+(defun slack-file-room-obj (team)
+  (with-slots (file-room) team
+    (if file-room
+        file-room
+      (setq file-room (slack-file-room "file-room"
+                                       :name "Files"
+                                       :id "slack-file"
+                                       :team-id (oref team id)
+                                       :created (format-time-string "%s")
+                                       :is_open t
+                                       :last_read "0"
+                                       :latest nil
+                                       :unread_count 0
+                                       :unread_count_display 0
+                                       :messages '())))))
 
 (defun slack-file-create (payload)
   (plist-put payload :channels (append (plist-get payload :channels) nil))
@@ -81,16 +82,16 @@
 (defmethod slack-message-equal ((f slack-file) other)
   (string= (oref f id) (oref other id)))
 
-(defmethod slack-file-pushnew ((f slack-file))
-  (let ((room (slack-file-room-obj)))
+(defmethod slack-file-pushnew ((f slack-file) team)
+  (let ((room (slack-file-room-obj team)))
     (with-slots (messages) room
       (cl-pushnew f messages
                   :test #'slack-message-equal))))
 
-(defmethod slack-message-to-string ((file slack-file))
+(defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions)
       file
-    (let* ((header (slack-user-name user))
+    (let* ((header (slack-user-name user team))
            (body (format "name: %s\nsize: %s\ntype: %s\n%s\n"
                          name size filetype permalink))
            (reactions-str (slack-message-reactions-to-string
@@ -98,56 +99,65 @@
       (slack-message-put-header-property header)
       (slack-message-put-text-property body)
       (slack-message-put-reactions-property reactions-str)
-      (let ((message (concat header "\n" body
-                             (if initial-comment
-                                 (format "comment: %s\n%s\n"
-                                         (slack-user-name (plist-get initial-comment :user))
-                                         (slack-message-unescape-string
-                                          (plist-get initial-comment :comment))))
-                             (if reactions-str
-                                 (concat "\n" reactions-str "\n")))))
+      (let ((message
+             (concat header "\n" body
+                     (if initial-comment
+                         (format "comment: %s\n%s\n"
+                                 (slack-user-name
+                                  (plist-get initial-comment :user)
+                                  team)
+                                 (slack-message-unescape-string
+                                  (plist-get initial-comment :comment)
+                                  team)))
+                     (if reactions-str
+                         (concat "\n" reactions-str "\n")))))
         (put-text-property 0 (length message) 'ts ts message)
         message))))
 
-(defmethod slack-room-update-mark ((_room slack-file-room) _msg))
+(defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
-(defun slack-file-create-buffer ()
+(defun slack-file-create-buffer (team)
   (funcall slack-buffer-function
-           (slack-buffer-create (slack-file-room-obj)
+           (slack-buffer-create (slack-file-room-obj team)
+                                team
                                 #'slack-buffer-insert-messages
                                 'info)))
 
 (defun slack-file-list ()
   (interactive)
-  (let ((room (slack-file-room-obj)))
+  (let* ((team (slack-team-select))
+         (room (slack-file-room-obj team)))
     (with-slots (messages) room
       (if messages
-          (slack-file-create-buffer)
-        (slack-room-history room nil #'slack-file-create-buffer)))))
+          (slack-file-create-buffer team)
+        (slack-room-history room team nil
+                            #'(lambda ()
+                                (slack-file-create-buffer team)))))))
 
-(defmethod slack-room-history ((room slack-file-room)
+(defmethod slack-room-history ((room slack-file-room) team
                                &optional
                                oldest
                                after-success
                                async)
   (cl-labels
-      ((on-file-list (&key data &allow-other-keys)
-                     (slack-request-handle-error
-                      (data "slack-file-list")
-                      (mapc #'(lambda (payload)
-                                (let ((file (slack-file-create payload)))
-                                  (slack-file-pushnew file)))
-                            (append (plist-get data :files) nil))
-                      (unless oldest
-                        (slack-room-update-last-read room
-                                                     (slack-message :ts "0")))
-                      (if after-success
-                          (funcall after-success)))))
+      ((on-file-list
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-file-list")
+         (mapc #'(lambda (payload)
+                   (slack-file-pushnew (slack-file-create payload)
+                                       team))
+               (append (plist-get data :files) nil))
+         (unless oldest
+           (slack-room-update-last-read room
+                                        (slack-message "msg" :ts "0")))
+         (if after-success
+             (funcall after-success)))))
 
     (slack-request
      slack-file-list-url
-     :params (list (cons "token" slack-token)
-                   (if oldest
+     team
+     :params (list (if oldest
                        (cons "ts_to" oldest)))
      :success #'on-file-list
      :sync (if async nil t))))
@@ -167,9 +177,11 @@
        (channel-id (selected channels)
                    (oref (cdr (cl-assoc selected channels :test #'string=))
                          id)))
-    (let* ((channels (nconc (slack-im-names)
-                            (slack-channel-names)
-                            (slack-group-names)))
+    (let* ((team (slack-team-select))
+           (channels (slack-room-names
+                      (append (oref team ims)
+                              (oref team channels)
+                              (oref team groups))))
            (target-channels (select-channels channels '()))
            (channel-ids (mapconcat #'(lambda (selected)
                                        (channel-id selected channels))
@@ -188,9 +200,9 @@
            (initial-comment (read-from-minibuffer "Message: ")))
       (slack-request
        slack-file-upload-url
+       team
        :type "POST"
-       :params (list (cons "token" slack-token)
-                     (cons "filename" filename)
+       :params (list (cons "filename" filename)
                      (cons "channels" channel-ids)
                      (cons "filetype" filetype)
                      (if initial-comment
@@ -206,10 +218,11 @@
       ((on-file-delete (&key data &allow-other-keys)
                        (slack-request-handle-error
                         (data "slack-file-delete"))))
-    (let* ((files (oref (slack-file-room-obj) messages))
+    (let* ((team (slack-team-select))
+           (files (oref (slack-file-room-obj team) messages))
            (your-files (cl-remove-if #'(lambda (f)
                                          (not (string= (oref f user)
-                                                       slack-my-user-id)))
+                                                       (oref team self-id))))
                                      files))
            (candidates (mapcar #'(lambda (f)
                                    (cons (concat
@@ -222,8 +235,8 @@
            (deleting-file (cdr (cl-assoc selected candidates :test #'string=))))
       (slack-request
        slack-file-delete-url
-       :params (list (cons "token" slack-token)
-                     (cons "file" (oref deleting-file id)))
+       team
+       :params (list (cons "file" (oref deleting-file id)))
        :sync nil
        :success #'on-file-delete))))
 

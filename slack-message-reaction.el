@@ -30,37 +30,44 @@
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
-(defvar slack-current-room)
-(make-local-variable 'slack-current-room)
-(defvar slack-token)
+(defvar slack-current-team-id)
+(defvar slack-current-room-id)
 
 (defun slack-message-add-reaction ()
   (interactive)
   (let* ((word (thing-at-point 'word))
          (ts (get-text-property 0 'ts word))
-         (reaction (slack-message-reaction-input)))
-    (slack-message-reaction-add reaction ts slack-current-room)))
+         (reaction (slack-message-reaction-input))
+         (team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id
+                                team)))
+    (slack-message-reaction-add reaction ts room team)))
 
 (defun slack-message-remove-reaction ()
   (interactive)
-  (let* ((room slack-current-room)
+  (let* ((team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id
+                                team))
          (word (thing-at-point 'word))
          (ts (get-text-property 0 'ts word))
          (msg (slack-room-find-message room ts))
          (reactions (oref msg reactions))
          (reaction (slack-message-reaction-select reactions)))
-    (slack-message-reaction-remove reaction ts room)))
+    (slack-message-reaction-remove reaction ts room team)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)
-  (let* ((reaction (ignore-errors (get-text-property (point) 'reaction))))
+  (let* ((team (slack-team-find slack-current-team-id))
+         (reaction (ignore-errors (get-text-property (point) 'reaction))))
     (if reaction
-        (let ((user-names (slack-reaction-user-names reaction)))
+        (let ((user-names (slack-reaction-user-names reaction team)))
           (message "reacted users: %s" (mapconcat #'identity user-names ", ")))
       (message "Can't get reaction:"))))
 
 (defun slack-message-reaction-select (reactions)
-  (let ((list (mapcar #'(lambda (r) (oref r name))
+  (let ((list (mapcar #'(lambda (r)
+                          (cons (oref r name)
+                                (oref r name)))
                       reactions)))
     (slack-select-from-list
      (list "Select Reaction: ")
@@ -70,32 +77,32 @@
   (let ((prompt "Emoji: "))
     (read-from-minibuffer prompt)))
 
-(defun slack-message-reaction-add (reaction ts room)
+(defun slack-message-reaction-add (reaction ts room team)
   (cl-labels ((on-reaction-add
                (&key data &allow-other-keys)
                (slack-request-handle-error
                 (data "slack-message-reaction-add"))))
     (slack-request
      slack-message-reaction-add-url
+     team
      :type "POST"
      :sync nil
-     :params (list (cons "token" slack-token)
-                   (cons "channel" (oref room id))
+     :params (list (cons "channel" (oref room id))
                    (cons "timestamp" ts)
                    (cons "name" reaction))
      :success #'on-reaction-add)))
 
-(defun slack-message-reaction-remove (reaction ts room)
+(defun slack-message-reaction-remove (reaction ts room team)
   (cl-labels ((on-reaction-remove
                (&key data &allow-other-keys)
                (slack-request-handle-error
                 (data "slack-message-reaction-remove"))))
     (slack-request
      slack-message-reaction-remove-url
+     team
      :type "POST"
      :sync nil
-     :params (list (cons "token" slack-token)
-                   (cons "channel" (oref room id))
+     :params (list (cons "channel" (oref room id))
                    (cons "timestamp" ts)
                    (cons "name" reaction))
      :success #'on-reaction-remove)))
@@ -107,9 +114,9 @@
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction)
   (slack-message-find-reaction (m reaction)
-                           (if same-reaction
-                               (join same-reaction reaction)
-                             (push reaction (oref m reactions)))))
+                               (if same-reaction
+                                   (join same-reaction reaction)
+                                 (push reaction (oref m reactions)))))
 
 (defmethod slack-message-pop-reaction ((m slack-message) reaction)
   (slack-message-find-reaction (m reaction)

@@ -4,7 +4,7 @@
 
 ;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords: tools
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Package-Requires: ((websocket "1.5") (request "0.2.0") (oauth2 "0.10") (circe "2.1") (alert "1.2") (emojify "0.2"))
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 (require 'cl-lib)
 (require 'oauth2)
 
+(require 'slack-team)
 (require 'slack-channel)
 (require 'slack-im)
 (require 'slack-file)
@@ -46,106 +47,128 @@
   :prefix "slack-"
   :group 'tools)
 
-(defcustom slack-client-id nil
-  "Client ID provided by Slack.")
-(defcustom slack-client-secret nil
-  "Client Secret Provided by Slack.")
 (defcustom slack-redirect-url "http://localhost:8080"
   "Redirect url registered for Slack.")
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
   "Function to print buffer.")
+
+(defvar slack-use-register-team-string
+  "use `slack-register-team' instead.")
+
+(defcustom slack-client-id nil
+  "Client ID provided by Slack.")
+(make-obsolete-variable
+ 'slack-client-id slack-use-register-team-string
+ "0.0.2")
+(defcustom slack-client-secret nil
+  "Client Secret Provided by Slack.")
+(make-obsolete-variable
+ 'slack-client-secret slack-use-register-team-string
+ "0.0.2")
 (defcustom slack-token nil
   "Slack token provided by Slack.
 set this to save request to Slack if already have.")
+(make-obsolete-variable
+ 'slack-token slack-use-register-team-string
+ "0.0.2")
+(defcustom slack-room-subscription '()
+  "Group or Channel list to subscribe notification."
+  :group 'slack)
+(make-obsolete-variable
+ 'slack-room-subscription slack-use-register-team-string
+ "0.0.2")
 
-(defvar slack-oauth2-token)
-(defvar slack-ims)
-(defvar slack-groups)
-(defvar slack-users)
-(defvar slack-self)
-(defvar slack-my-user-id)
-(defvar slack-my-user-name)
-(defvar slack-team)
-(defvar slack-channels)
-(defvar slack-bots)
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
-(defun slack-authorize ()
+(defun slack-authorize (team &optional error-callback)
   (slack-request
    slack-authorize-url
-   :params (list (cons "token" slack-token))
-   :success #'slack-on-authorize
-   :sync nil))
+   team
+   :success (cl-function (lambda (&key data &allow-other-keys)
+                           (slack-on-authorize data team)))
+   :sync nil
+   :error error-callback))
 
-(cl-defun slack-on-authorize (&key data &allow-other-keys)
+(defun slack-update-team (data team)
+  (cl-labels
+      ((create-rooms
+        (datum team class)
+        (mapcar #'(lambda (data)
+                    (slack-room-create data team class))
+                (append datum nil))))
+    (let ((self (plist-get data :self))
+          (team-data (plist-get data :team)))
+      (oset team id (plist-get team-data :id))
+      (oset team name (plist-get team-data :name))
+      (oset team channels
+            (create-rooms (plist-get data :channels)
+                          team 'slack-channel))
+      (oset team groups
+            (create-rooms (plist-get data :groups)
+                          team 'slack-group))
+      (oset team ims
+            (create-rooms (plist-get data :ims)
+                          team 'slack-im))
+      (oset team self self)
+      (oset team self-id (plist-get self :id))
+      (oset team self-name (plist-get self :name))
+      (oset team users (append (plist-get data :users) nil))
+      (oset team bots (append (plist-get data :bots) nil))
+      (oset team ws-url (plist-get data :url))
+      (oset team connected t)
+      team)))
+
+(cl-defun slack-on-authorize (data team)
   (slack-request-handle-error
    (data "slack-authorize")
-   (setq slack-self        (plist-get data :self))
-   (setq slack-my-user-id (plist-get slack-self :id))
-   (setq slack-my-user-name (plist-get slack-self :name))
-   (setq slack-team        (plist-get data :team))
-   (cl-labels
-       ((create-room (data func)
-                     (unless (plist-get data :last_read)
-                       (plist-put data :last_read "0"))
-                     (if (plist-get data :latest)
-                         (plist-put data :latest
-                                    (slack-message-create
-                                     (plist-get data  :latest))))
-                     (funcall func data))
-        (create-rooms (datum func)
-                      (mapcar #'(lambda (data)
-                                  (create-room data func))
-                              (append datum nil))))
-     (setq slack-channels (create-rooms (plist-get data :channels)
-                                        #'slack-channel-create))
-     (setq slack-groups (create-rooms (plist-get data :groups)
-                                      #'slack-group-create))
-     (setq slack-ims (create-rooms (plist-get data :ims)
-                                   #'slack-im-create)))
-   (setq slack-users       (append (plist-get data :users) nil))
-   (setq slack-bots        (plist-get data :bots))
-   (setq slack-ws-url      (plist-get data :url))
-   (message "Slack Authorization Finished.")
-   (mapc #'(lambda (room)
-             (if (slack-room-subscribedp room)
-                 (slack-room-history room
-                                     nil
-                                     nil
-                                     t)))
-    (append slack-groups slack-ims slack-channels))
-   (slack-ws-open)))
+   (message "Slack Authorization Finished - %s"
+            (oref team name))
+   (let ((team (slack-update-team data team)))
+     (with-slots (groups ims channels) team
+       (cl-loop for room in (append groups ims channels)
+                do (slack-room-history room team nil nil t)))
+     (slack-ws-open team))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)
   (error "slack-authorize: %s" error-thrown))
 
-(defun slack-oauth2-auth ()
-  (oauth2-auth
-   slack-oauth2-authorize
-   slack-oauth2-access
-   slack-client-id
-   slack-client-secret
-   "client"
-   nil
-   slack-redirect-url))
+(defun slack-oauth2-auth (team)
+  (with-slots (client-id client-secret) team
+    (oauth2-auth
+     slack-oauth2-authorize
+     slack-oauth2-access
+     client-id
+     client-secret
+     "client"
+     nil
+     slack-redirect-url)))
 
-(defun slack-request-token ()
-  (let ((token (slack-oauth2-auth)))
-    (setq slack-oauth2-token token)
-    (setq slack-token
-          (oauth2-token-access-token slack-oauth2-token))))
+(defun slack-request-token (team)
+  (with-slots (token) team
+    (setq token
+          (oauth2-token-access-token
+           (slack-oauth2-auth team)))))
 
 ;;;###autoload
-(defun slack-start ()
+(defun slack-start (&optional team)
   (interactive)
-  (if slack-ws
-      (slack-ws-close))
-  (unless slack-token
-    (slack-request-token))
-  (slack-authorize))
+  (cl-labels ((start
+               (team)
+               (with-slots (ws-conn token) team
+                 (if ws-conn
+                     (slack-ws-close team))
+                 (unless token
+                   (slack-request-token team)))
+               (slack-authorize team)))
+    (if team
+        (start team)
+      (if slack-teams
+          (cl-loop for team in slack-teams
+                   do (start team))
+        (slack-start (slack-register-team))))))
 
 (provide 'slack)
 ;;; slack.el ends here

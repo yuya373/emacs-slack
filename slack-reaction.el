@@ -38,9 +38,9 @@
         (oset r users (nconc (oref other users) (oref r users)))
         r)))
 
-(defmethod slack-reaction-user-names ((r slack-reaction))
+(defmethod slack-reaction-user-names ((r slack-reaction) team)
   (with-slots (users) r
-    (mapcar #'slack-user-name
+    (mapcar #'(lambda (u) (slack-user-name u team))
             users)))
 
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
@@ -51,14 +51,15 @@
     (put-text-property 0 (length text) 'reaction r text)
     text))
 
-(defun slack-reaction-notify (payload)
+(defun slack-reaction-notify (payload team)
   (let* ((user-id (plist-get payload :user))
-         (room (slack-room-find (plist-get (plist-get payload :item) :channel)))
+         (room (slack-room-find (plist-get (plist-get payload :item) :channel)
+                                team))
          (reaction (plist-get payload :reaction))
          (msg (slack-user-message "msg"
                                   :text (format "added reaction %s" reaction)
                                   :user user-id)))
-    (slack-message-notify-alert msg room)))
+    (slack-message-notify-alert msg room team)))
 
 (provide 'slack-reaction)
 ;;; slack-reaction.el ends here
