@@ -126,7 +126,7 @@ set this to save request to Slack if already have.")
    (message "Slack Authorization Finished.")
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
-       (cl-loop for room in (nconc groups ims channels)
+       (cl-loop for room in (append groups ims channels)
                 do (slack-room-history room team nil nil t)))
      (slack-ws-open team))))
 
