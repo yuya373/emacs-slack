@@ -368,8 +368,7 @@
                                team))
         (new-unread-count-display (plist-get payload :unread_count_display)))
     (with-slots (unread-count-display) room
-      (setq unread-count-display new-unread-count-display))
-    (message "handle: %s" (oref room unread-count-display))))
+      (setq unread-count-display new-unread-count-display))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
