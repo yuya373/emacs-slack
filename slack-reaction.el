@@ -55,8 +55,9 @@
   (let* ((user-id (plist-get payload :user))
          (room (slack-room-find (plist-get (plist-get payload :item) :channel)))
          (reaction (plist-get payload :reaction))
-         (msg (slack-user-message :text (format "added reaction %s" reaction)
-                             :user user-id)))
+         (msg (slack-user-message "msg"
+                                  :text (format "added reaction %s" reaction)
+                                  :user user-id)))
     (slack-message-notify-alert msg room)))
 
 (provide 'slack-reaction)
