@@ -126,12 +126,9 @@
     `(let* ((,key (let ((completion-ignore-case t))
                     (completing-read (format "%s" ,prompt)
                                      ,alist nil t)))
-            (selected (slack-extract-from-alist ,key ,alist)))
+            (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
        ,@body
        selected)))
-
-(defun slack-extract-from-alist (selected candidates)
-  (cdr (cl-assoc selected candidates :test #'string=)))
 
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
