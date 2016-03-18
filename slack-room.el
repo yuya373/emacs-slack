@@ -93,8 +93,9 @@
          (slack-request-handle-error
           (data "slack-room-request-update")
           (let* ((datum (plist-get data :messages))
-                 (messages (mapcar #'create-message-with-room
-                                   datum)))
+                 (messages
+                  (cl-loop for data across datum
+                           collect (create-message-with-room data))))
             (if ,latest
                 (slack-room-set-prev-messages ,room messages)
               (slack-room-set-messages ,room messages)
