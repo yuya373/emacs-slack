@@ -123,7 +123,8 @@ set this to save request to Slack if already have.")
 (cl-defun slack-on-authorize (data team)
   (slack-request-handle-error
    (data "slack-authorize")
-   (message "Slack Authorization Finished.")
+   (message "Slack Authorization Finished - %s"
+            (oref team name))
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
        (cl-loop for room in (append groups ims channels)

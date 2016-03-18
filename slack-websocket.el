@@ -42,21 +42,23 @@
   (interactive)
   (unless team
     (setq team (slack-team-select)))
-  (with-slots (connected ws-conn last-pong) team
-    (if ws-conn
-        (progn
-          (websocket-close ws-conn)
-          (setq ws-conn nil)
-          (setq connected nil)
-          (slack-ws-cancel-ping-timer team)
-          (slack-ws-cancel-check-ping-timeout-timer team)
-          (slack-ws-cancel-reconnect-timer team)
-          (message "Slack Websocket Closed"))
-      (message "Slack Websocket is not open"))))
+  (let ((team-name (oref team name)))
+    (with-slots (connected ws-conn last-pong) team
+      (if ws-conn
+          (progn
+            (websocket-close ws-conn)
+            (setq ws-conn nil)
+            (setq connected nil)
+            (slack-ws-cancel-ping-timer team)
+            (slack-ws-cancel-check-ping-timeout-timer team)
+            (slack-ws-cancel-reconnect-timer team)
+            (message "Slack Websocket Closed - %s" team-name))
+        (message "Slack Websocket is not open - %s" team-name)))))
 
 (defun slack-ws-send (payload team)
   (cl-labels ((restart (team)
-                       (message "Slack Websocket is Closed. Try to Reconnect")
+                       (message "Slack Websocket is Closed. Try to Reconnect - %s"
+                                (oref team name))
                        (slack-start team)))
     (with-slots (waiting-send ws-conn) team
       (push payload waiting-send)
@@ -105,7 +107,8 @@
         (slack-ws-set-ping-timer team)
         (slack-ws-set-check-ping-timer team)
         (slack-ws-resend team)
-        (message "Slack Websocket Is Ready!"))
+        (message "Slack Websocket Is Ready! - %s"
+                 (oref team name)))
        ((plist-get decoded-payload :reply_to)
         (slack-ws-handle-reply decoded-payload team))
        ((string= type "message")
