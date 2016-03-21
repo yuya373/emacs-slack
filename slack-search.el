@@ -341,7 +341,7 @@
 
 (defmethod slack-buffer-insert-previous-link ((oldest slack-search-message))
   (let ((inhibit-read-only t))
-    (set-marker lui-output-marker (point-min))
+    (goto-char (point-min))
     (insert (concat (propertize "(load more message)"
                                 'face '(:underline t)
                                 'oldest (oref oldest ts)
@@ -352,7 +352,7 @@
                                             #'slack-room-load-prev-messages)
                                           map))
                     "\n\n"))
-    (slack-buffer-recover-lui-output-marker)))
+    (set-marker lui-output-marker (point))))
 
 (defmethod slack-message-equal ((m slack-search-message) n)
   (with-slots ((m-info info) (m-ts ts)) m
