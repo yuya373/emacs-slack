@@ -386,27 +386,42 @@
 
 (defmethod slack-room-history ((room slack-search-result) team
                                &optional
-                               _oldest after-success _async)
-  (let* ((next-page (1+ (oref room current-page))))
-    (cl-labels ((on-history
-                 (&key data &allow-other-keys)
-                 (slack-request-handle-error
-                  (data "slack-room-history")
-                  (let* ((messages (cl-case (oref room type)
-                                     ('message
-                                      (plist-get data :messages))
-                                     ('file
-                                      (plist-get data :files))))
-                         (prev (cl-loop
-                                for match across (plist-get messages :matches)
-                                collect (slack-search-create-message match room))))
-                    (oset room current-page next-page)
-                    (oset room messages
-                          (nconc (oref room messages)
-                                 (nreverse prev)))
-                    (if after-success
-                        (funcall after-success))))))
-      (if (< (oref room total-page) next-page)
+                               oldest after-success async)
+  (cl-labels
+      ((on-history
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-room-history")
+         (let* ((messages (cl-case (oref room type)
+                            ('message
+                             (plist-get data :messages))
+                            ('file
+                             (plist-get data :files))))
+                (prev (cl-loop
+                       for match across (plist-get messages :matches)
+                       collect (slack-search-create-message match room))))
+           (oset room current-page
+                 (plist-get (plist-get messages :paging) :page))
+           (if oldest
+               (progn
+                 (oset room messages
+                       (nconc (oref room messages)
+                              (nreverse prev))))
+             (slack-room-update-last-read
+              room
+              (slack-search-message "ssm" :ts "0"
+                                    :info
+                                    (slack-search-message-info
+                                     "ssmi" :channel-id "")))
+             (oset room messages prev))
+           (if after-success
+               (funcall after-success))))))
+    (let* ((current-page (oref room current-page))
+           (total-page (oref room total-page))
+           (next-page (if oldest
+                          (1+ current-page)
+                        1)))
+      (if (< total-page next-page)
           (message "Already Last Page")
         (with-slots (type query sort sort-dir) room
           (cl-case type
@@ -416,14 +431,16 @@
                                            sort
                                            sort-dir
                                            #'on-history
-                                           next-page))
+                                           next-page
+                                           async))
             ('file
              (slack-search-request-file team
                                         query
                                         sort
                                         sort-dir
                                         #'on-history
-                                        next-page))))))))
+                                        next-page
+                                        async))))))))
 
 (provide 'slack-search)
 ;;; slack-search.el ends here
