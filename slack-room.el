@@ -194,13 +194,13 @@
                                                       oldest))
              (prev-messages (slack-room-prev-messages room oldest)))
          (delete-region (point-min) loading-message-end)
-         (set-marker lui-output-marker (point-min))
          (if prev-messages
              (progn
+               (slack-buffer-insert-previous-link (cl-first prev-messages))
                (cl-loop for m in prev-messages
-                        do (slack-buffer-insert m team t))
-               (slack-buffer-insert-previous-link (cl-first prev-messages)))
-           (insert "(no more messages)\n")))
+                        do (slack-buffer-insert m team t)))
+           (set-marker lui-output-marker (point-min))
+           (lui-insert "(no more messages)\n")))
        (slack-buffer-recover-lui-output-marker)
        (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))))
 
