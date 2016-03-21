@@ -62,7 +62,7 @@
         (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
     buffer))
 
-(defun slack-buffer-set-current-room-id (room)
+(defmethod slack-buffer-set-current-room-id ((room slack-room))
   (set (make-local-variable 'slack-current-room-id) (oref room id)))
 
 (defun slack-buffer-set-current-team-id (team)
