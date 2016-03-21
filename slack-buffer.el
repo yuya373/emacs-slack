@@ -203,7 +203,10 @@
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
       (with-current-buffer buffer
-        (slack-info-mode)))
+        (slack-info-mode)
+        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
+        (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
+        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
     buffer))
 
 (defun slack-buffer-create-info (buf-name insert-func)
