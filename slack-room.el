@@ -237,12 +237,7 @@
   (with-slots (latest) room
     (if latest
         (oref latest ts)
-      "0"))
-  ;; (let ((sorted (slack-room-sorted-messages room)))
-  ;;   (if sorted
-  ;;       (oref (car (last sorted)) ts)
-  ;;     "0"))
-  )
+      "0")))
 
 (defmethod slack-room-name-with-team-name ((room slack-room))
   (with-slots (team-id name) room
@@ -272,12 +267,7 @@
       (cl-loop for room in (if ,filter
                                (funcall ,filter ,rooms)
                              ,rooms)
-               collect (cons (build-label room) room))
-      ;; (mapcar #'build-cons
-      ;;         (if ,filter
-      ;;             (funcall ,filter ,rooms)
-      ;;           ,rooms))
-      )))
+               collect (cons (build-label room) room)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
