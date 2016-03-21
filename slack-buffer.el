@@ -134,9 +134,8 @@
     (if messages
         (progn
           (slack-buffer-insert-previous-link (cl-first messages))
-          (mapc (lambda (m)
-                  (slack-buffer-insert m team t))
-                messages)
+          (cl-loop for m in messages
+                   do (slack-buffer-insert m team t))
           (let ((latest-message (car (last messages))))
             (slack-room-update-last-read room latest-message)
             (slack-room-update-mark room team latest-message)))
