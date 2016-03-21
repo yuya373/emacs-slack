@@ -182,46 +182,45 @@
                              (slack-buffer-insert-messages room team)
                              (goto-char cur-point)))))
 
+(defmethod slack-room-render-prev-messages ((room slack-room) team
+                                            cur-point oldest ts)
+  (slack-buffer-create
+   room team
+   :insert-func
+   #'(lambda (room team)
+       (let ((inhibit-read-only t)
+             (loading-message-end (slack-buffer-ts-eq (point-min)
+                                                      (point-max)
+                                                      oldest))
+             (prev-messages (slack-room-prev-messages room oldest)))
+         (delete-region (point-min) loading-message-end)
+         (set-marker lui-output-marker (point-min))
+         (if prev-messages
+             (progn
+               (cl-loop for m in prev-messages
+                        do (slack-buffer-insert m team t))
+               (slack-buffer-insert-previous-link (cl-first prev-messages)))
+           (insert "(no more messages)\n")))
+       (slack-buffer-recover-lui-output-marker)
+       (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))))
+
 (defun slack-room-load-prev-messages ()
   (interactive)
-  (cl-labels
-      ((render-prev-messages
-        (current-room current-team cur-point oldest ts)
-        (slack-buffer-create
-         current-room
-         current-team
-         #'(lambda (room team)
-             (let ((inhibit-read-only t)
-                   (loading-message-end (slack-buffer-ts-eq (point-min)
-                                                            (point-max)
-                                                            oldest))
-                   (prev-messages (slack-room-prev-messages room oldest)))
-               (delete-region (point-min) loading-message-end)
-               (if prev-messages
-                   (progn
-                     (slack-buffer-insert-previous-link (cl-first prev-messages))
-                     (mapc (lambda (m)
-                             (slack-buffer-insert m team t))
-                           prev-messages))
-                 (set-marker lui-output-marker (point-min))
-                 (lui-insert "(no more messages)\n")))
-             (slack-buffer-recover-lui-output-marker)
-             (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts))))))
-    (let* ((cur-point (point))
-           (msg-beg (next-single-property-change cur-point 'ts))
-           (ts (get-text-property msg-beg 'ts))
-           (line (thing-at-point 'line))
-           (oldest (ignore-errors (get-text-property 0 'oldest line)))
-           (current-team (slack-team-find slack-current-team-id))
-           (current-room (slack-room-find slack-current-room-id
-                                          current-team)))
-      (slack-room-history current-room
-                          current-team
-                          oldest
-                          #'(lambda () (render-prev-messages
-                                        current-room
-                                        current-team
-                                        cur-point oldest ts))))))
+  (let* ((cur-point (point))
+         (msg-beg (next-single-property-change cur-point 'ts))
+         (ts (get-text-property msg-beg 'ts))
+         (line (thing-at-point 'line))
+         (oldest (ignore-errors (get-text-property 0 'oldest line)))
+         (current-team (slack-team-find slack-current-team-id))
+         (current-room (slack-room-find slack-current-room-id
+                                        current-team)))
+    (slack-room-history current-room
+                        current-team
+                        oldest
+                        #'(lambda () (slack-room-render-prev-messages
+                                      current-room
+                                      current-team
+                                      cur-point oldest ts)))))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
