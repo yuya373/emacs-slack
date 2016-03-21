@@ -31,10 +31,9 @@
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
 (defconst slack-file-delete-url "https://slack.com/api/files.delete")
 
-(defclass slack-file ()
+(defclass slack-file (slack-message)
   ((id :initarg :id)
    (created :initarg :created)
-   (ts :initarg :ts :type string)
    (name :initarg :name)
    (size :initarg :size)
    (public :initarg :public)
@@ -46,7 +45,6 @@
    (channels :initarg :channels :type list)
    (groups :initarg :groups :type list)
    (ims :initarg :ims :type list)
-   (reactions :initarg :reactions :type list)
    (username :initarg :username)))
 
 (defclass slack-file-room (slack-room) ())
