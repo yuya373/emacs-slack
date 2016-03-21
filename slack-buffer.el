@@ -157,35 +157,33 @@
           (if replace (slack-buffer-replace buffer msg)
             (do-update buffer room msg))))))
 
+(defun slack-buffer-ts-eq (start end ts)
+  (cl-loop for i from start to end
+           if (string= (get-text-property i 'ts)
+                       ts)
+           return i))
+
+(defun slack-buffer-ts-not-eq (start end ts)
+  (cl-loop for i from start to end
+           if (not (string= (get-text-property i 'ts)
+                            ts))
+           return i))
+
 (defun slack-buffer-replace (buffer msg)
-  (cl-labels ((ts-eq
-               (start ts)
-               (cl-loop for i from start to (point-max)
-                        if (string=
-                            (get-text-property i 'ts)
-                            ts)
-                        return i))
-              (ts-not-eq
-               (start ts)
-               (cl-loop for i from start to (point-max)
-                        if (not (string=
-                                 (get-text-property i 'ts)
-                                 ts))
-                        return i)))
-    (with-current-buffer buffer
-      (let* ((cur-point (point))
-             (ts (oref msg ts))
-             (beg (ts-eq (point-min) ts))
-             (end (ts-not-eq beg ts))
-             (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
-        (if (and beg end)
-            (let ((inhibit-read-only t))
-              (delete-region beg end)
-              (set-marker lui-output-marker beg)
-              (slack-buffer-insert msg
-                                   (slack-team-find slack-current-team-id))
-              (goto-char cur-point)
-              (slack-buffer-recover-lui-output-marker)))))))
+  (with-current-buffer buffer
+    (let* ((cur-point (point))
+           (ts (oref msg ts))
+           (beg (slack-buffer-ts-eq (point-min) (point-max) ts))
+           (end (slack-buffer-ts-not-eq beg (point-max) ts))
+           (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
+      (if (and beg end)
+          (let ((inhibit-read-only t))
+            (delete-region beg end)
+            (set-marker lui-output-marker beg)
+            (slack-buffer-insert msg
+                                 (slack-team-find slack-current-team-id))
+            (goto-char cur-point)
+            (slack-buffer-recover-lui-output-marker))))))
 
 (defun slack-buffer-recover-lui-output-marker ()
   (set-marker lui-output-marker (- (marker-position
