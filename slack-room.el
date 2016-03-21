@@ -191,9 +191,9 @@
          current-team
          #'(lambda (room team)
              (let ((inhibit-read-only t)
-                   (loading-message-end (text-property-any
-                                         (point-min) (point-max)
-                                         'ts oldest))
+                   (loading-message-end (slack-buffer-ts-eq (point-min)
+                                                            (point-max)
+                                                            oldest))
                    (prev-messages (slack-room-prev-messages room oldest)))
                (delete-region (point-min) loading-message-end)
                (set-marker lui-output-marker (point-min))
@@ -206,7 +206,7 @@
                            prev-messages))
                  (insert "(no more messages)\n")))
              (slack-buffer-recover-lui-output-marker)
-             (goto-char (text-property-any (point-min) (point-max) 'ts ts))))))
+             (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts))))))
     (let* ((cur-point (point))
            (msg-beg (next-single-property-change cur-point 'ts))
            (ts (get-text-property msg-beg 'ts))
