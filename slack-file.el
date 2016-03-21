@@ -120,8 +120,7 @@
   (funcall slack-buffer-function
            (slack-buffer-create (slack-file-room-obj team)
                                 team
-                                #'slack-buffer-insert-messages
-                                'info)))
+                                :type 'info)))
 
 (defun slack-file-list ()
   (interactive)

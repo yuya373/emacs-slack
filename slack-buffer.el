@@ -89,7 +89,7 @@
     (set-marker lui-output-marker (point))))
 
 (cl-defun slack-buffer-create (room team
-                                    &optional
+                                    &key
                                     (insert-func
                                      #'slack-buffer-insert-messages)
                                     (type 'message))

@@ -174,6 +174,7 @@
     (slack-room-history room team)
     (slack-buffer-create room
                          team
+                         :insert-func
                          #'(lambda (room team)
                              (let ((inhibit-read-only t))
                                (delete-region (point-min)
