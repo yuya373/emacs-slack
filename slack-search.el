@@ -224,17 +224,19 @@
 
 (cl-defun slack-search-request-message (team query sort sort-dir success
                                              &optional
-                                             (page 1))
-  (slack-search-request team query sort sort-dir success page
+                                             (page 1)
+                                             (async t))
+  (slack-search-request team query sort sort-dir success page async
                         "https://slack.com/api/search.messages"))
 
 (cl-defun slack-search-request-file (team query sort sort-dir success
                                           &optional
-                                          (page 1))
-  (slack-search-request team query sort sort-dir success page
+                                          (page 1)
+                                          (async t))
+  (slack-search-request team query sort sort-dir success page async
                         "https://slack.com/api/search.files"))
 
-(defun slack-search-request (team query sort sort-dir success page url)
+(defun slack-search-request (team query sort sort-dir success page async url)
   (if (< 0 (length query))
       (slack-request
        url
@@ -245,7 +247,7 @@
                      (cons "sort_dir" sort-dir)
                      (cons "page" (number-to-string page)))
        :success success
-       :sync nil)))
+       :sync (not async))))
 
 (defun slack-search-alist (team)
   (with-slots (search-results) team
