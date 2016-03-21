@@ -26,7 +26,6 @@
 
 (require 'eieio)
 (require 'slack-util)
-(require 'slack-buffer)
 (require 'slack-reaction)
 
 (defvar slack-current-room-id)

@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'lui)
+(require 'slack-room)
 
 (defvar lui-prompt-string "> ")
 
