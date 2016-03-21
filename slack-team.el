@@ -46,6 +46,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (groups :initarg :groups)
    (ims :initarg :ims)
    (file-room :initform nil)
+   (search-results :initform nil)
    (users :initarg :users)
    (bots :initarg :bots)
    (ws-url :initarg :ws-url)
