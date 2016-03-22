@@ -76,7 +76,7 @@
           (error "Emojify is not installed"))
         (emojify-mode t))))
 
-(defun slack-buffer-insert-previous-link (oldest-msg)
+(defmethod slack-buffer-insert-previous-link ((oldest-msg slack-message))
   (let ((inhibit-read-only t))
     (goto-char (point-min))
     (insert (concat (propertize "(load more message)"
