@@ -76,14 +76,18 @@
         (emojify-mode t))))
 
 (defun slack-buffer-insert-previous-link (oldest-msg)
-  (lui-insert (concat (propertize "(load more message)"
+  (let ((inhibit-read-only t))
+    (goto-char (point-min))
+    (insert (concat (propertize "(load more message)"
                                   'face '(:underline t)
                                   'oldest (oref oldest-msg ts)
                                   'keymap (let ((map (make-sparse-keymap)))
                                             (define-key map (kbd "RET")
                                               #'slack-room-load-prev-messages)
                                             map))
-                      "\n")))
+                    "\n\n"))
+    (set-marker lui-output-marker (point))))
+
 (cl-defun slack-buffer-create (room team
                                     &optional
                                     (insert-func
