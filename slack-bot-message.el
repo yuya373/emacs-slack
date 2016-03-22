@@ -38,7 +38,8 @@
   (if (slot-boundp m 'bot-id)
       (let ((bot (slack-find-bot (oref m bot-id) team)))
         (if bot
-            (plist-get bot :name)))
+            (plist-get bot :name)
+          (oref m username)))
     (oref m username)))
 
 (defmethod slack-message-to-alert ((m slack-bot-message) team)
