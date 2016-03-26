@@ -70,6 +70,7 @@
   (plist-put payload :groups (append (plist-get payload :groups) nil))
   (plist-put payload :ims (append (plist-get payload :ims) nil))
   (plist-put payload :reactions (append (plist-get payload :reactions) nil))
+  (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
   (let ((file (apply #'slack-file "file"
                      (slack-collect-slots 'slack-file payload))))
@@ -141,16 +142,17 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-file-list")
-         (mapc #'(lambda (payload)
-                   (slack-file-pushnew (slack-file-create payload)
-                                       team))
-               (append (plist-get data :files) nil))
-         (unless oldest
-           (slack-room-update-last-read room
-                                        (slack-message "msg" :ts "0")))
+         (let ((files (cl-loop for e across (plist-get data :files)
+                               collect (slack-file-create e))))
+           (if oldest
+               (progn
+                 (slack-room-update-last-read room
+                                              (make-instance 'slack-message
+                                                             :ts "0"))
+                 (slack-room-set-prev-messages room files))
+             (slack-room-set-messages room files)))
          (if after-success
              (funcall after-success)))))
-
     (slack-request
      slack-file-list-url
      team
