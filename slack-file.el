@@ -145,11 +145,10 @@
          (let ((files (cl-loop for e across (plist-get data :files)
                                collect (slack-file-create e))))
            (if oldest
-               (progn
-                 (slack-room-update-last-read room
-                                              (make-instance 'slack-message
-                                                             :ts "0"))
-                 (slack-room-set-prev-messages room files))
+               (slack-room-set-prev-messages room files)
+             (slack-room-update-last-read room
+                                          (make-instance 'slack-message
+                                                         :ts "0"))
              (slack-room-set-messages room files)))
          (if after-success
              (funcall after-success)))))
