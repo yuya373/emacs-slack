@@ -210,8 +210,8 @@
              (slack-buffer-insert msg
                                   (slack-team-find slack-current-team-id))
 
-             (slack-buffer-recover-lui-output-marker)))))
-    (slack-buffer-goto ts)))
+             (slack-buffer-recover-lui-output-marker)
+             (slack-buffer-goto ts)))))))
 
 (defun slack-buffer-recover-lui-output-marker ()
   (set-marker lui-output-marker (- (marker-position
