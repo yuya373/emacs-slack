@@ -79,8 +79,7 @@
         (emojify-mode t))))
 
 (defun slack-buffer-goto (ts)
-  (slack-buffer-widen
-   (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts))))
+  (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))
 
 (defmethod slack-buffer-insert-previous-link ((room slack-room))
   (slack-buffer-widen
@@ -210,8 +209,9 @@
              (set-marker lui-output-marker beg)
              (slack-buffer-insert msg
                                   (slack-team-find slack-current-team-id))
-             (slack-buffer-goto ts)
-             (slack-buffer-recover-lui-output-marker)))))))
+
+             (slack-buffer-recover-lui-output-marker)))))
+    (slack-buffer-goto ts)))
 
 (defun slack-buffer-recover-lui-output-marker ()
   (set-marker lui-output-marker (- (marker-position
