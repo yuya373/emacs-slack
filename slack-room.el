@@ -40,7 +40,8 @@
    (has-pins :initarg :has_pins)
    (is-open :initarg :is_open)
    (last-read :initarg :last_read :type string :initform "0")
-   (latest :initarg :latest :initform nil)
+   (latest :initarg :latest)
+   (oldest :initarg :oldest)
    (unread-count :initarg :unread_count)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
@@ -70,18 +71,6 @@
   (concat "*Slack*"
           " : "
           (slack-room-name-with-team-name room)))
-
-(defmethod slack-room-set-prev-messages ((room slack-room) prev-messages)
-  (slack-room-set-messages
-   room
-   (cl-delete-duplicates (append (oref room messages)
-                                 prev-messages)
-                         :test #'slack-message-equal)))
-
-(defmethod slack-room-set-messages ((room slack-room) m)
-  (let ((sorted (slack-room-sort-messages m)))
-    (oset room messages sorted)
-    (oset room latest (car sorted))))
 
 (cl-defmacro slack-room-request-update (room team url latest after-success sync)
   `(cl-labels
@@ -152,8 +141,7 @@
     (when (< 0 (length messages))
       (cl-pushnew m messages :test #'slack-message-equal))
     (if (or (null latest)
-            (and (object-of-class-p latest 'slack-message)
-                 (string< (oref latest ts) (oref m ts))))
+            (string< (oref latest ts) (oref m ts)))
         (setq latest m))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
@@ -172,55 +160,51 @@
          (room (slack-room-find slack-current-room-id team))
          (cur-point (point)))
     (slack-room-history room team)
-    (slack-buffer-create room
-                         team
-                         #'(lambda (room team)
-                             (let ((inhibit-read-only t))
-                               (delete-region (point-min)
-                                              (marker-position lui-output-marker)))
-                             (slack-buffer-insert-messages room team)
-                             (goto-char cur-point)))))
+    (slack-buffer-create
+     room team :insert-func
+     #'(lambda (room team)
+         (slack-buffer-widen
+          (let ((inhibit-read-only t))
+            (delete-region (point-min) (marker-position lui-output-marker))))
+         (slack-buffer-insert-previous-link room)
+         (slack-buffer-insert-messages room team)
+         (goto-char cur-point)))))
+
+(defmethod slack-room-render-prev-messages ((room slack-room) team
+                                            oldest ts)
+  (slack-buffer-create
+   room team
+   :insert-func
+   #'(lambda (room team)
+       (slack-buffer-widen
+        (let ((inhibit-read-only t)
+              (loading-message-end
+               (slack-buffer-ts-eq (point-min) (point-max) oldest)))
+          (delete-region (point-min) loading-message-end)
+          (slack-buffer-insert-prev-messages room team oldest)))
+       (slack-buffer-goto ts))))
+
+(defmethod slack-room-prev-link-info ((room slack-room))
+  (with-slots (oldest) room
+    (oref oldest ts)))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
-  (cl-labels
-      ((render-prev-messages
-        (current-room current-team cur-point oldest ts)
-        (slack-buffer-create
-         current-room
-         current-team
-         #'(lambda (room team)
-             (let ((inhibit-read-only t)
-                   (loading-message-end (slack-buffer-ts-eq (point-min)
-                                                            (point-max)
-                                                            oldest))
-                   (prev-messages (slack-room-prev-messages room oldest)))
-               (delete-region (point-min) loading-message-end)
-               (if prev-messages
-                   (progn
-                     (slack-buffer-insert-previous-link (cl-first prev-messages))
-                     (mapc (lambda (m)
-                             (slack-buffer-insert m team t))
-                           prev-messages))
-                 (set-marker lui-output-marker (point-min))
-                 (lui-insert "(no more messages)\n")))
-             (slack-buffer-recover-lui-output-marker)
-             (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts))))))
-    (let* ((cur-point (point))
-           (msg-beg (next-single-property-change cur-point 'ts))
-           (ts (get-text-property msg-beg 'ts))
-           (line (thing-at-point 'line))
-           (oldest (ignore-errors (get-text-property 0 'oldest line)))
-           (current-team (slack-team-find slack-current-team-id))
-           (current-room (slack-room-find slack-current-room-id
-                                          current-team)))
-      (slack-room-history current-room
-                          current-team
-                          oldest
-                          #'(lambda () (render-prev-messages
-                                        current-room
-                                        current-team
-                                        cur-point oldest ts))))))
+  (let* ((cur-point (point))
+         (msg-beg (next-single-property-change cur-point 'ts))
+         (ts (get-text-property msg-beg 'ts))
+         (line (thing-at-point 'line))
+         (oldest (ignore-errors (get-text-property 0 'oldest line)))
+         (current-team (slack-team-find slack-current-team-id))
+         (current-room (slack-room-find slack-current-room-id
+                                        current-team)))
+    (slack-room-history current-room
+                        current-team
+                        oldest
+                        #'(lambda ()
+                            (slack-room-render-prev-messages current-room
+                                                             current-team
+                                                             oldest ts)))))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
@@ -237,12 +221,7 @@
   (with-slots (latest) room
     (if latest
         (oref latest ts)
-      "0"))
-  ;; (let ((sorted (slack-room-sorted-messages room)))
-  ;;   (if sorted
-  ;;       (oref (car (last sorted)) ts)
-  ;;     "0"))
-  )
+      "0")))
 
 (defmethod slack-room-name-with-team-name ((room slack-room))
   (with-slots (team-id name) room
@@ -252,11 +231,10 @@
 (defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
        ((sort-rooms (l)
-                    (nreverse (cl-sort l
-                                       #'string<
-                                       :key #'(lambda (r)
-                                                (slack-room-latest-ts
-                                                 (cdr r))))))
+                    (nreverse
+                     (cl-sort l #'string<
+                              :key #'(lambda (r)
+                                       (slack-room-latest-ts (cdr r))))))
         (build-label (room)
                      (concat (im-presence room)
                              (format "%s %s"
@@ -272,12 +250,7 @@
       (cl-loop for room in (if ,filter
                                (funcall ,filter ,rooms)
                              ,rooms)
-               collect (cons (build-label room) room))
-      ;; (mapcar #'build-cons
-      ;;         (if ,filter
-      ;;             (funcall ,filter ,rooms)
-      ;;           ,rooms))
-      )))
+               collect (cons (build-label room) room)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
@@ -294,23 +267,33 @@
                   messages)))
 
 (defun slack-room-sort-messages (messages)
-  (nreverse
-   (cl-sort (copy-sequence messages)
-            #'string<
-            :key #'(lambda (m) (oref m ts)))))
+  (cl-sort messages
+           #'string<
+           :key #'(lambda (m) (oref m ts))))
 
 (defmethod slack-room-sorted-messages ((room slack-room))
   (with-slots (messages) room
-    (slack-room-sort-messages messages)))
+    (slack-room-sort-messages (copy-sequence messages))))
+
+(defmethod slack-room-set-prev-messages ((room slack-room) prev-messages)
+  (slack-room-set-messages
+   room
+   (cl-delete-duplicates (append (oref room messages)
+                                 prev-messages)
+                         :test #'slack-message-equal)))
+
+(defmethod slack-room-set-messages ((room slack-room) m)
+  (let ((sorted (slack-room-sort-messages m)))
+    (oset room oldest (car sorted))
+    (oset room messages sorted)
+    (oset room latest (car (last sorted)))))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
     (cl-remove-if #'(lambda (m)
                       (or (string< from (oref m ts))
                           (string= from (oref m ts))))
-                  (cl-sort (copy-sequence messages)
-                           #'string<
-                           :key #'(lambda (m) (oref m ts))))))
+                  (slack-room-sort-messages messages))))
 
 (defmethod slack-room-update-mark ((room slack-room) team msg)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)

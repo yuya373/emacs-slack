@@ -26,7 +26,6 @@
 
 (require 'eieio)
 (require 'slack-util)
-(require 'slack-buffer)
 (require 'slack-reaction)
 
 (defvar slack-current-room-id)
@@ -89,20 +88,22 @@
 (defgeneric slack-message-to-alert (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
-(defgeneric slack-room-update-message (room))
+(defgeneric slack-room-update-message (room messages))
 
 (defun slack-room-find (id team)
-  (if id
-      (if (string= "slack-file" id)
-          (slack-file-room-obj team)
-        (cl-labels ((find-room (room)
-                               (string= id (oref room id))))
-          (if team
-              (with-slots (channels groups ims) team
-                (cond
-                 ((string-prefix-p "C" id) (cl-find-if #'find-room channels))
-                 ((string-prefix-p "G" id) (cl-find-if #'find-room groups))
-                 ((string-prefix-p "D" id) (cl-find-if #'find-room ims)))))))))
+  (if (and id team)
+      (cl-labels ((find-room (room)
+                             (string= id (oref room id))))
+        (cond
+         ((string-prefix-p "F" id) (slack-file-room-obj team))
+         ((string-prefix-p "C" id) (cl-find-if #'find-room
+                                               (oref team channels)))
+         ((string-prefix-p "G" id) (cl-find-if #'find-room
+                                               (oref team groups)))
+         ((string-prefix-p "D" id) (cl-find-if #'find-room
+                                               (oref team ims)))
+         ((string-prefix-p "Q" id) (cl-find-if #'find-room
+                                               (oref team search-results)))))))
 
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
@@ -172,7 +173,7 @@
           (slack-message-notify-alert m room team))))))
 
 (defun slack-message-edited (payload team)
-  (let* ((edited-message (plist-get payload :message))
+  (let* ((edited-message (slack-decode (plist-get payload :message)))
          (room (slack-room-find (plist-get payload :channel) team))
          (message (slack-room-find-message room
                                            (plist-get edited-message :ts)))

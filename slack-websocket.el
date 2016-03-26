@@ -79,25 +79,14 @@
       (cl-loop for msg in candidate
                do (sleep-for 1) (slack-ws-send msg team)))))
 
-(defun slack-ws-recursive-decode (payload)
-  (cl-labels ((decode (e) (if (stringp e)
-                              (decode-coding-string e 'utf-8-unix)
-                            e))
-              (recur (payload acc)
-                     (if (and payload (< 0 (length payload)))
-                         (let ((h (car payload)))
-                           (if (and (not (stringp h)) (or (arrayp h) (listp h)))
-                               (recur (cdr payload) (cons (recur (append h nil) ()) acc))
-                             (recur (cdr payload) (cons (decode h) acc))))
-                       (reverse acc))))
-    (recur payload ())))
 
 (defun slack-ws-on-message (_websocket frame team)
-  ;; (message "%s" (websocket-frame-payload frame))
+  ;; (message "%s" (slack-request-parse-payload
+  ;;                (websocket-frame-payload frame)))
   (when (websocket-frame-completep frame)
     (let* ((payload (slack-request-parse-payload
                      (websocket-frame-payload frame)))
-           (decoded-payload (slack-ws-recursive-decode payload))
+           (decoded-payload (slack-decode payload))
            (type (plist-get decoded-payload :type)))
       ;; (message "%s" decoded-payload)
       (cond

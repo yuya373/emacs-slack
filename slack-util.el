@@ -26,6 +26,15 @@
 
 (require 'eieio)
 
+(defun slack-seq-to-list (seq)
+  (if (listp seq) seq (append seq nil)))
+
+(defun slack-decode (seq)
+  (cl-loop for e in (slack-seq-to-list seq)
+           collect (if (stringp e)
+                       (decode-coding-string e 'utf-8)
+                     e)))
+
 (defun slack-class-have-slot-p (class slot)
   (and (symbolp slot)
        (let* ((stripped (substring (symbol-name slot) 1))
@@ -34,12 +43,15 @@
               (symbolized (intern replaced)))
          (slot-exists-p class symbolized))))
 
-(defun slack-collect-slots (class m)
-  (cl-mapcan #'(lambda (property)
-                 (if (and (slack-class-have-slot-p class property)
-                          (plist-member m property))
-                  (list property (plist-get m property))))
-          m))
+(defun slack-collect-slots (class seq)
+  (let ((plist (slack-seq-to-list seq)))
+    (cl-loop for p in plist
+             if (and (slack-class-have-slot-p class p)
+                     (plist-member plist p))
+             nconc (let ((value (plist-get plist p)))
+                     (list p (if (stringp value)
+                                 (decode-coding-string value 'utf-8)
+                               value))))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

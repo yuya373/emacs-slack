@@ -24,7 +24,6 @@
 ;;
 
 ;;; Code:
-
 (require 'cl-lib)
 (require 'oauth2)
 
@@ -38,6 +37,7 @@
 (require 'slack-message-reaction)
 (require 'slack-user-message)
 (require 'slack-bot-message)
+(require 'slack-search)
 
 (require 'slack-websocket)
 (require 'slack-request)

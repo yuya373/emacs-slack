@@ -31,10 +31,9 @@
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
 (defconst slack-file-delete-url "https://slack.com/api/files.delete")
 
-(defclass slack-file ()
+(defclass slack-file (slack-message)
   ((id :initarg :id)
    (created :initarg :created)
-   (ts :initarg :ts :type string)
    (name :initarg :name)
    (size :initarg :size)
    (public :initarg :public)
@@ -46,7 +45,6 @@
    (channels :initarg :channels :type list)
    (groups :initarg :groups :type list)
    (ims :initarg :ims :type list)
-   (reactions :initarg :reactions :type list)
    (username :initarg :username)))
 
 (defclass slack-file-room (slack-room) ())
@@ -57,7 +55,7 @@
         file-room
       (setq file-room (slack-file-room "file-room"
                                        :name "Files"
-                                       :id "slack-file"
+                                       :id "F"
                                        :team-id (oref team id)
                                        :created (format-time-string "%s")
                                        :is_open t
@@ -72,6 +70,7 @@
   (plist-put payload :groups (append (plist-get payload :groups) nil))
   (plist-put payload :ims (append (plist-get payload :ims) nil))
   (plist-put payload :reactions (append (plist-get payload :reactions) nil))
+  (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
   (let ((file (apply #'slack-file "file"
                      (slack-collect-slots 'slack-file payload))))
@@ -120,8 +119,7 @@
   (funcall slack-buffer-function
            (slack-buffer-create (slack-file-room-obj team)
                                 team
-                                #'slack-buffer-insert-messages
-                                'info)))
+                                :type 'info)))
 
 (defun slack-file-list ()
   (interactive)
@@ -144,16 +142,16 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-file-list")
-         (mapc #'(lambda (payload)
-                   (slack-file-pushnew (slack-file-create payload)
-                                       team))
-               (append (plist-get data :files) nil))
-         (unless oldest
-           (slack-room-update-last-read room
-                                        (slack-message "msg" :ts "0")))
+         (let ((files (cl-loop for e across (plist-get data :files)
+                               collect (slack-file-create e))))
+           (if oldest
+               (slack-room-set-prev-messages room files)
+             (slack-room-update-last-read room
+                                          (make-instance 'slack-message
+                                                         :ts "0"))
+             (slack-room-set-messages room files)))
          (if after-success
              (funcall after-success)))))
-
     (slack-request
      slack-file-list-url
      team
