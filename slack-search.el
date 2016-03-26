@@ -112,7 +112,7 @@
          (result-messages (cl-loop
                            for message in (plist-get plist :messages)
                            collect (slack-search-create-message message result))))
-    (oset result messages result-messages)
+    (slack-room-set-messages result result-messages)
     (with-slots (search-results) team
       (setq search-results
             (cl-remove-if #'(lambda (other)
@@ -309,11 +309,11 @@
 (defmethod slack-room-prev-messages ((room slack-search-result) param)
   (let* ((oldest (car param))
          (channel-id (cdr param))
-         (messages (oref room messages))
+         (messages (reverse (oref room messages)))
          (nth (slack-search-get-index room messages
                                       oldest channel-id)))
     (if nth
-        (nthcdr (1+ nth) messages))))
+        (nreverse (nthcdr (1+ nth) messages)))))
 
 (defmethod slack-room-render-prev-messages ((room slack-search-result)
                                             team oldest ts)
@@ -321,20 +321,33 @@
    room team
    :insert-func
    #'(lambda (room team)
-       (let* ((inhibit-read-only t)
-              (oldest-ts (car oldest))
-              (loading-message-end (slack-buffer-ts-eq (point-min)
-                                                       (point-max)
-                                                       oldest-ts)))
-         (delete-region (point-min) loading-message-end)
-         (slack-buffer-insert-prev-messages room team oldest-ts))
-       (slack-buffer-goto ts))
+       (slack-buffer-widen
+        (let* ((inhibit-read-only t)
+               (oldest-ts (car oldest))
+               (loading-message-end (slack-buffer-ts-eq (point-min)
+                                                        (point-max)
+                                                        oldest-ts)))
+          (delete-region (point-min) loading-message-end)
+          (slack-buffer-insert-prev-messages room team oldest))
+        (slack-buffer-goto ts)))
    :type 'info))
+
+(defmethod slack-buffer-insert-prev-messages ((room slack-search-result) team oldest)
+  (slack-buffer-widen
+   (let ((messages (slack-room-prev-messages room oldest)))
+     (if messages
+         (progn
+           (slack-buffer-insert-previous-link room)
+           (cl-loop for m in messages
+                    do (slack-buffer-insert m team t)))
+       (set-marker lui-output-marker (point-min))
+       (lui-insert "(no more messages)\n"))
+     (slack-buffer-recover-lui-output-marker))))
 
 (defmethod slack-room-prev-link-info ((room slack-search-result))
   (with-slots (oldest) room
     (with-slots (info ts) oldest
-      (cons ts (oldest info channel)))))
+      (cons ts (oref info channel-id)))))
 
 (defmethod slack-message-equal ((m slack-search-message) n)
   (with-slots ((m-info info) (m-ts ts)) m
@@ -366,6 +379,16 @@
         (slack-message-put-text-property body)
         (format "%s\n%s\n" header body)))))
 
+(defmethod slack-room-set-prev-messages ((room slack-search-result) prev)
+  (slack-room-set-messages room (nreverse
+                                 (nconc (nreverse prev) (oref room messages)))))
+
+(defmethod slack-room-set-messages ((room slack-search-result) messages)
+  (let ((msgs (nreverse messages)))
+    (oset room messages msgs)
+    (oset room latest (car (last msgs)))
+    (oset room oldest (car msgs))))
+
 (defmethod slack-room-history ((room slack-search-result) team
                                &optional
                                oldest after-success async)
@@ -374,28 +397,24 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-room-history")
-         (let* ((messages (cl-case (oref room type)
-                            ('message
-                             (plist-get data :messages))
-                            ('file
-                             (plist-get data :files))))
-                (prev (cl-loop
-                       for match across (plist-get messages :matches)
-                       collect (slack-search-create-message match room))))
+         (let* ((matches (cl-case (oref room type)
+                           ('message
+                            (plist-get data :messages))
+                           ('file
+                            (plist-get data :files))))
+                (messages (cl-loop
+                           for match across (plist-get matches :matches)
+                           collect (slack-search-create-message match room))))
            (oset room current-page
-                 (plist-get (plist-get messages :paging) :page))
+                 (plist-get (plist-get matches :paging) :page))
            (if oldest
-               (progn
-                 (oset room messages
-                       (nconc (oref room messages)
-                              (nreverse prev))))
-             (slack-room-update-last-read
-              room
-              (slack-search-message "ssm" :ts "0"
-                                    :info
-                                    (slack-search-message-info
-                                     "ssmi" :channel-id "")))
-             (oset room messages prev))
+               (slack-room-set-prev-messages room messages)
+             (let ((init-msg (make-instance 'slack-search-message
+                                            :ts "0" :info
+                                            (make-instance 'slack-search-message-info
+                                                           :channel-id ""))))
+               (slack-room-update-last-read room init-msg))
+             (slack-room-set-messages room messages))
            (if after-success
                (funcall after-success))))))
     (let* ((current-page (oref room current-page))

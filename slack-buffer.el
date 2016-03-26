@@ -116,12 +116,11 @@
                                      #'slack-buffer-insert-messages)
                                     (type 'message))
   (cl-labels
-      ((get-buffer (type buf-name)
+      ((get-buffer (type room)
                    (cl-ecase type
                      (message (slack-get-buffer-create room))
-                     (info (slack-get-info-buffer-create buf-name)))))
-    (let* ((buf-name (slack-room-buffer-name room))
-           (buffer (get-buffer type buf-name)))
+                     (info (slack-get-info-buffer-create room)))))
+    (let* ((buffer (get-buffer type room)))
       (with-current-buffer buffer
         (if insert-func
             (funcall insert-func room team))
@@ -220,12 +219,14 @@
 
                                    (length lui-prompt-string))))
 
-(defun slack-get-info-buffer-create (buf-name)
-  (let ((buffer (get-buffer buf-name)))
+(defun slack-get-info-buffer-create (room)
+  (let* ((buf-name (slack-room-buffer-name room))
+         (buffer (get-buffer buf-name)))
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
       (with-current-buffer buffer
         (slack-info-mode)
+        (slack-buffer-insert-previous-link room)
         (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
         (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
