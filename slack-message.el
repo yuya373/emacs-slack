@@ -88,7 +88,7 @@
 (defgeneric slack-message-to-alert (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
-(defgeneric slack-room-update-message (room))
+(defgeneric slack-room-update-message (room messages))
 
 (defun slack-room-find (id team)
   (if (and id team)
@@ -173,7 +173,7 @@
           (slack-message-notify-alert m room team))))))
 
 (defun slack-message-edited (payload team)
-  (let* ((edited-message (plist-get payload :message))
+  (let* ((edited-message (slack-decode (plist-get payload :message)))
          (room (slack-room-find (plist-get payload :channel) team))
          (message (slack-room-find-message room
                                            (plist-get edited-message :ts)))

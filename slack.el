@@ -24,7 +24,6 @@
 ;;
 
 ;;; Code:
-
 (require 'cl-lib)
 (require 'oauth2)
 

@@ -316,43 +316,25 @@
         (nthcdr (1+ nth) messages))))
 
 (defmethod slack-room-render-prev-messages ((room slack-search-result)
-                                            team _cur-point oldest ts)
+                                            team oldest ts)
   (slack-buffer-create
    room team
    :insert-func
    #'(lambda (room team)
        (let* ((inhibit-read-only t)
+              (oldest-ts (car oldest))
               (loading-message-end (slack-buffer-ts-eq (point-min)
                                                        (point-max)
-                                                       oldest))
-              (channel-id (get-text-property (point-min) 'channel-id))
-              (prev-messages
-               (slack-room-prev-messages room `(,oldest . ,channel-id))))
+                                                       oldest-ts)))
          (delete-region (point-min) loading-message-end)
-         (set-marker lui-output-marker (point-min))
-         (if prev-messages
-             (progn
-               (cl-loop for m in prev-messages
-                        do (slack-buffer-insert m team t))
-               (slack-buffer-insert-previous-link (cl-first prev-messages)))))
-       (slack-buffer-recover-lui-output-marker)
-       (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))
+         (slack-buffer-insert-prev-messages room team oldest-ts))
+       (slack-buffer-goto ts))
    :type 'info))
 
-(defmethod slack-buffer-insert-previous-link ((oldest slack-search-message))
-  (let ((inhibit-read-only t))
-    (goto-char (point-min))
-    (insert (concat (propertize "(load more message)"
-                                'face '(:underline t)
-                                'oldest (oref oldest ts)
-                                'channel-id (oref (oref oldest info)
-                                                  channel-id)
-                                'keymap (let ((map (make-sparse-keymap)))
-                                          (define-key map (kbd "RET")
-                                            #'slack-room-load-prev-messages)
-                                          map))
-                    "\n\n"))
-    (set-marker lui-output-marker (point))))
+(defmethod slack-room-prev-link-info ((room slack-search-result))
+  (with-slots (oldest) room
+    (with-slots (info ts) oldest
+      (cons ts (oldest info channel)))))
 
 (defmethod slack-message-equal ((m slack-search-message) n)
   (with-slots ((m-info info) (m-ts ts)) m
