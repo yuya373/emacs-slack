@@ -107,7 +107,7 @@
     (delete-window)
     (slack-room-make-buffer-with-room room team)))
 
-(defun slack-message-send-edited ()
+(defun slack-message-send-from-buffer ()
   (interactive)
   (let ((buf-string (buffer-substring (point-min) (point-max))))
     (cl-case slack-message-edit-buffer-type
