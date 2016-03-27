@@ -262,8 +262,8 @@
          (message (slack-room-find-message channel ts)))
     (oset message deleted-at deleted-ts)
     (alert "message deleted"
-           :title (format "%s: @%s"
-                          (slack-room-name channel)
+           :title (format "\\[%s] from %s"
+                          (slack-room-name-with-team-name channel)
                           (slack-user-name (oref message user)
                                            team))
            :category 'slack)
