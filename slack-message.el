@@ -165,10 +165,7 @@
     (let ((room (slack-room-find channel team)))
       (when room
         (slack-room-update-message room m)
-        (slack-buffer-update room
-                             m
-                             :replace replace
-                             :team team)
+        (slack-buffer-update room m team :replace replace)
         (unless no-notify
           (slack-message-notify-alert m room team))))))
 
