@@ -46,6 +46,11 @@
   "Face used to reactions."
   :group 'slack)
 
+(defface slack-message-deleted-face
+  '((t (:strike-through t)))
+  "Face used to deleted message."
+  :group 'slack)
+
 (defun slack-message-put-header-property (header)
   (put-text-property 0 (length header)
                      'face 'slack-message-output-header header))
@@ -60,6 +65,10 @@
 
 (defun slack-message-put-hard (text)
   (put-text-property 0 (length text) 'hard t text))
+
+(defun slack-message-put-deleted-property (text)
+  (put-text-property 0 (length text)
+                     'face 'slack-message-deleted-face text))
 
 (defmethod slack-message-propertize ((m slack-message) text)
   text)
@@ -92,13 +101,12 @@
         (slack-message-put-header-property header)
         (slack-message-put-text-property body)
         (slack-message-put-reactions-property reactions-str)
-        (slack-message-propertize m
-                                  (concat header "\n"
-                                          body "\n"
-                                          (if reactions-str
-                                              (concat "\n"
-                                                      reactions-str
-                                                      "\n"))))))))
+        (if (oref m deleted-at)
+            (slack-message-put-deleted-property body))
+        (let ((message-str (concat header "\n" body "\n"
+                                   (if reactions-str
+                                       (concat "\n" reactions-str "\n")))))
+          (slack-message-propertize m message-str))))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m
