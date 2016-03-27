@@ -32,6 +32,7 @@
 (defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
+(defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
@@ -44,7 +45,8 @@
    (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean)
    (pinned-to :initarg :pinned_to :type (or null list))
-   (edited-at :initarg :edited-at :initform nil)))
+   (edited-at :initarg :edited-at :initform nil)
+   (deleted-at :initarg :deleted-at :initform nil)))
 
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)
@@ -222,6 +224,48 @@
 
 (defun slack-message-time-stamp (message)
   (seconds-to-time (string-to-number (oref message ts))))
+
+(defun slack-message-delete ()
+  (interactive)
+  (unless (and (boundp 'slack-current-team-id)
+               (boundp 'slack-current-room-id))
+    (error "Call From Slack Room Buffer"))
+  (let* ((team (slack-team-find slack-current-team-id))
+         (channel (slack-room-find slack-current-room-id
+                                   team))
+         (ts (ignore-errors (get-text-property (point) 'ts))))
+    (unless ts
+      (error "Call With Cursor On Message"))
+    (let ((message (slack-room-find-message channel ts)))
+      (when message
+        (cl-labels
+            ((on-delete
+              (&key data &allow-other-keys)
+              (slack-request-handle-error
+               (data "slack-message-delete"))))
+          (slack-request
+           slack-message-delete-url
+           team
+           :type "POST"
+           :params (list (cons "ts" (oref message ts))
+                         (cons "channel" (oref channel id)))
+           :success #'on-delete
+           :sync nil))))))
+
+(defun slack-message-deleted (payload team)
+  (let* ((channel-id (plist-get payload :channel))
+         (ts (plist-get payload :deleted_ts))
+         (deleted-ts (plist-get payload :ts))
+         (channel (slack-room-find channel-id team))
+         (message (slack-room-find-message channel ts)))
+    (oset message deleted-at deleted-ts)
+    (alert "message deleted"
+           :title (format "%s: @%s"
+                          (slack-room-name channel)
+                          (slack-user-name (oref message user)
+                                           team))
+           :category 'slack)
+    (slack-buffer-update channel message team :replace t)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
