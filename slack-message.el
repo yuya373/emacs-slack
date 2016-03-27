@@ -264,8 +264,7 @@
     (alert "message deleted"
            :title (format "\\[%s] from %s"
                           (slack-room-name-with-team-name channel)
-                          (slack-user-name (oref message user)
-                                           team))
+                          (slack-message-sender-name message team))
            :category 'slack)
     (slack-buffer-update channel message team :replace t)))
 
