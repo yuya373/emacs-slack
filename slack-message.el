@@ -243,14 +243,16 @@
               (&key data &allow-other-keys)
               (slack-request-handle-error
                (data "slack-message-delete"))))
-          (slack-request
-           slack-message-delete-url
-           team
-           :type "POST"
-           :params (list (cons "ts" (oref message ts))
-                         (cons "channel" (oref channel id)))
-           :success #'on-delete
-           :sync nil))))))
+          (if (yes-or-no-p "Are you sure you want to delete this message?")
+              (slack-request
+               slack-message-delete-url
+               team
+               :type "POST"
+               :params (list (cons "ts" (oref message ts))
+                             (cons "channel" (oref channel id)))
+               :success #'on-delete
+               :sync nil)
+            (message "Canceled")))))))
 
 (defun slack-message-deleted (payload team)
   (let* ((channel-id (plist-get payload :channel))
