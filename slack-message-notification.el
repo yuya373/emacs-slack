@@ -49,7 +49,7 @@
                      (eq (aref text 0) ?\()))
             (setq text (concat "\\" text)))
         (alert text
-               :title (concat room-name ": @" user-name)
+               :title (format "\\[%s] from %s" room-name user-name)
                :category 'slack))))
 
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)

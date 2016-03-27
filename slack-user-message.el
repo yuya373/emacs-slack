@@ -16,14 +16,17 @@
   (string= (oref m user) sender-id))
 
 (defmethod slack-message-header ((m slack-user-message) team)
-  (with-slots (ts edited-at) m
+  (with-slots (ts edited-at deleted-at) m
     (let* ((name (slack-message-sender-name m team))
            (time (slack-message-time-to-string ts))
            (edited-at (slack-message-time-to-string edited-at))
+           (deleted-at (slack-message-time-to-string deleted-at))
            (header (format "%s" name)))
-      (if edited-at
-          (format "%s edited_at: %s" header edited-at)
-        header))))
+      (if deleted-at
+          (format "%s deleted_at: %s" header deleted-at)
+        (if edited-at
+            (format "%s edited_at: %s" header edited-at)
+          header)))))
 
 (defmethod slack-message-propertize ((m slack-user-message) text)
   (put-text-property 0 (length text) 'keymap slack-user-message-keymap text)

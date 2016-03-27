@@ -162,7 +162,7 @@
         (let ((latest-message (car (last sorted))))
           (slack-room-update-mark room team latest-message))))))
 
-(cl-defun slack-buffer-update (room msg &key replace team)
+(cl-defun slack-buffer-update (room msg team &key replace)
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (get-buffer buf-name))
          (win-buf-names (mapcar #'buffer-name

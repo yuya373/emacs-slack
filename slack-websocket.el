@@ -143,6 +143,8 @@
     (cond
      ((and subtype (string= subtype "message_changed"))
       (slack-message-edited payload team))
+     ((and subtype (string= subtype "message_deleted"))
+      (slack-message-deleted payload team))
      (t
       (let ((m (slack-message-create payload)))
         (when m
