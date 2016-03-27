@@ -39,7 +39,7 @@
    (subtype :initarg :subtype)
    (channel :initarg :channel :initform nil)
    (ts :initarg :ts :type string :initform "")
-   (text :initarg :text)
+   (text :initarg :text :type string :initform "")
    (item-type :initarg :item_type)
    (attachments :initarg :attachments :type (or null list))
    (reactions :initarg :reactions :type (or null list))
