@@ -41,7 +41,7 @@
    (ts :initarg :ts :type string :initform "")
    (text :initarg :text :type string :initform "")
    (item-type :initarg :item_type)
-   (attachments :initarg :attachments :type (or null list))
+   (attachments :initarg :attachments :type (or null list) :initform nil)
    (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean)
    (pinned-to :initarg :pinned_to :type (or null list))
