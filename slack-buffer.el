@@ -52,6 +52,12 @@
   "Show emoji with `emojify' if true."
   :group 'slack)
 
+(defmacro slack-buffer-widen (&rest body)
+  `(save-excursion
+     (save-restriction
+       (widen)
+       ,@body)))
+
 (defun slack-get-buffer-create (room)
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (get-buffer buf-name)))
@@ -188,12 +194,6 @@
            if (not (string= (get-text-property i 'ts)
                             ts))
            return i))
-
-(defmacro slack-buffer-widen (&rest body)
-  `(save-excursion
-     (save-restriction
-       (widen)
-       ,@body)))
 
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
