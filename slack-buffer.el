@@ -173,15 +173,15 @@
          (buffer (get-buffer buf-name))
          (win-buf-names (mapcar #'buffer-name
                                 (mapcar #'window-buffer (window-list)))))
-    (if (cl-member buf-name win-buf-names :test #'string=)
-        (progn
+    (when buffer
+      (if (cl-member (buffer-name buffer) win-buf-names :test #'string=)
+          (slack-room-update-mark room team msg)
+        (cl-incf (oref room unread-count-display)))
+      (if replace
+          (slack-buffer-replace buffer msg)
+        (with-current-buffer buffer
           (slack-room-update-last-read room msg)
-          (slack-room-update-mark room team msg))
-      (cl-incf (oref room unread-count-display)))
-    (if buffer
-        (if replace (slack-buffer-replace buffer msg)
-          (with-current-buffer buffer
-            (slack-buffer-insert msg team))))))
+          (slack-buffer-insert msg team))))))
 
 (defun slack-buffer-ts-eq (start end ts)
   (cl-loop for i from start to end
