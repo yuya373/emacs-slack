@@ -110,11 +110,11 @@ you can change current-team with `slack-change-current-team'"
       (if missing
           (error "Missing Keyword: %s" missing)))
     (let ((team (apply #'slack-team "team" (slack-collect-slots 'slack-team plist))))
-      (mapcan #'(lambda (other) (if (slack-team-equalp team other)
-                                    (progn
-                                      (slack-team-disconnect other)
-                                      (slack-start team))))
-              slack-teams)
+      (cl-mapcan #'(lambda (other) (if (slack-team-equalp team other)
+                                       (progn
+                                         (slack-team-disconnect other)
+                                         (slack-start team))))
+                 slack-teams)
       (setq slack-teams
             (cl-remove-if #'(lambda (other) (slack-team-equalp team other))
                           slack-teams))
