@@ -31,7 +31,7 @@
    (count :initarg :count :type integer)
    (users :initarg :users :initform ())))
 
-(defmethod join ((r slack-reaction) other)
+(defmethod slack-reaction-join ((r slack-reaction) other)
   (if (string= (oref r name) (oref other name))
       (progn
         (cl-incf (oref r count))
