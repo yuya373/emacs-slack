@@ -1,8 +1,7 @@
 # emacs-slack
 
 emacs client for Slack
-
-## [ScreenShot](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)
+### **[ScreenShot](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
 
 ## dependent
 - [websocket](https://github.com/ahyatt/emacs-websocket)
@@ -58,6 +57,7 @@ emacs client for Slack
     ",pr" 'slack-message-pins-remove
     ",mm" 'slack-message-write-another-buffer
     ",me" 'slack-message-edit
+    ",md" 'slack-message-delete
     ",u" 'slack-room-update-messages
     ",2" 'slack-message-embed-mention
     ",3" 'slack-message-embed-channel)
