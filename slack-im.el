@@ -36,9 +36,11 @@
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-im-list-url "https://slack.com/api/im.list")
+(defconst slack-im-close-url "https://slack.com/api/im.close")
 
 (defclass slack-im (slack-room)
-  ((user :initarg :user)))
+  ((user :initarg :user)
+   (open :initarg :open :initform t)))
 
 (defmethod slack-room-name-with-team-name ((room slack-im))
   (with-slots (team-id user) room
@@ -121,6 +123,32 @@
 
 (defmethod slack-room-history-url ((_room slack-im))
   slack-im-history-url)
+
+(defun slack-im-close ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (alist (cl-remove-if #'(lambda (im-names)
+                                  (not (oref (cdr im-names) open)))
+                              (slack-im-names team))))
+    (slack-select-from-list
+     (alist "Select User: ")
+     (cl-labels
+         ((on-success
+           (&key data &allow-other-keys)
+           (slack-request-handle-error
+            (data "slack-im-close")
+            (if (plist-get data :already_closed)
+                (let ((im (slack-room-find (oref selected id) team)))
+                  (oset im open nil)
+                  (message "Direct Message Channel with %s Already Closed"
+                           (slack-user-name (oref im user) team)))))))
+       (slack-request
+        slack-im-close-url
+        team
+        :type "POST"
+        :params (list (cons "channel" (oref selected id)))
+        :success #'on-success
+        :sync nil)))))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here
