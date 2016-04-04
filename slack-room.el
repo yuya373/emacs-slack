@@ -468,5 +468,8 @@
                              after-success
                              (if async nil t)))
 
+(defmethod slack-room-inc-unread-count ((room slack-room))
+  (cl-incf (oref room unread-count-display)))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
