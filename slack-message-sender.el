@@ -120,12 +120,12 @@
            (alist (append pre-defined (slack-user-names team))))
       (slack-select-from-list
        (alist "Select User: ")
-       (if (or (string= selected "here")
-               (string= selected "channel"))
-           (insert (concat "<!" selected "> "))
-         (let* ((user-id selected)
-                (user-name (slack-user-name user-id team)))
-           (insert (concat "<@" user-id "|" user-name "> "))))))))
+       (let ((user-id (plist-get selected :id)))
+         (if (or (string= user-id "here")
+                 (string= user-id "channel"))
+             (insert (concat "<!" selected "> "))
+           (let* ((user-name (slack-user-name user-id team)))
+             (insert (concat "<@" user-id "|" user-name "> ")))))))))
 
 
 (provide 'slack-message-sender)

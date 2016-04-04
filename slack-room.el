@@ -410,13 +410,14 @@
                             (message "Invited!")))))
      (let* ((team (slack-team-select))
             (room (slack-current-room-or-select
-                   #'(lambda () (funcall ,room-alist-func team
-                                         #'(lambda (rooms)
-                                             (cl-remove-if #'slack-room-archived-p
-                                                           rooms))))))
-            (users (slack-user-names team))
-            (user-id (slack-select-from-list
-                      (users "Select User: "))))
+                   #'(lambda ()
+                       (funcall ,room-alist-func team
+                                #'(lambda (rooms)
+                                    (cl-remove-if #'slack-room-archived-p
+                                                  rooms))))))
+            (user-id (plist-get (slack-select-from-list
+                                 ((slack-user-names team)
+                                  "Select User: ")) :id)))
        (slack-request
         ,url
         team

@@ -51,8 +51,7 @@
 
 (defun slack-user-names (team)
   (with-slots (users) team
-    (mapcar (lambda (u) (cons (plist-get u :name)
-                              (plist-get u :id)))
+    (mapcar (lambda (u) (cons (plist-get u :name) u))
             users)))
 
 (defun slack-user-presence-to-string (user)
