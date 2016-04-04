@@ -37,6 +37,8 @@
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-im-list-url "https://slack.com/api/im.list")
 (defconst slack-im-close-url "https://slack.com/api/im.close")
+(defconst slack-im-open-url "https://slack.com/api/im.open")
+(defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)
@@ -77,7 +79,8 @@
   (let ((team (slack-team-select)))
     (slack-room-select
      (cl-loop for team in (list team)
-              for ims = (oref team ims)
+              for ims = (cl-remove-if #'(lambda (im) (not (oref im open)))
+                                      (oref team ims))
               nconc ims))))
 
 (defun slack-user-equal-p (a b)
@@ -116,8 +119,6 @@
                                                            (slack-im-update-room-list users team)))))
      :sync nil)))
 
-(defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
-
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
 
@@ -147,6 +148,32 @@
         team
         :type "POST"
         :params (list (cons "channel" (oref selected id)))
+        :success #'on-success
+        :sync nil)))))
+
+(defun slack-im-open ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (alist (cl-remove-if #'(lambda (im-names)
+                                  (oref (cdr im-names) open))
+                              (slack-im-names team))))
+    (slack-select-from-list
+     (alist "Select User: ")
+     (cl-labels
+         ((on-success
+           (&key data &allow-other-keys)
+           (slack-request-handle-error
+            (data "slack-im-open")
+            (if (plist-get data :already_open)
+                (let ((im (slack-room-find (oref selected id) team)))
+                  (oset im open t)
+                  (message "Direct Message Channel with %s Already Open"
+                           (slack-user-name (oref im user) team)))))))
+       (slack-request
+        slack-im-open-url
+        team
+        :type "POST"
+        :params (list (cons "user" (oref selected user)))
         :success #'on-success
         :sync nil)))))
 
