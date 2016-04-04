@@ -88,20 +88,22 @@
   (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))
 
 (defmethod slack-buffer-insert-previous-link ((room slack-room))
-  (slack-buffer-widen
-   (let ((inhibit-read-only t))
-     (goto-char (point-min))
-     (insert
-      (concat
-       (propertize "(load more message)"
-                   'face '(:underline t)
-                   'oldest (slack-room-prev-link-info room)
-                   'keymap (let ((map (make-sparse-keymap)))
-                             (define-key map (kbd "RET")
-                               #'slack-room-load-prev-messages)
-                             map))
-       "\n\n"))
-     (set-marker lui-output-marker (point)))))
+  (let ((oldest (slack-room-prev-link-info room)))
+    (if oldest
+        (slack-buffer-widen
+         (let ((inhibit-read-only t))
+           (goto-char (point-min))
+           (insert
+            (concat
+             (propertize "(load more message)"
+                         'face '(:underline t)
+                         'oldest (slack-room-prev-link-info room)
+                         'keymap (let ((map (make-sparse-keymap)))
+                                   (define-key map (kbd "RET")
+                                     #'slack-room-load-prev-messages)
+                                   map))
+             "\n\n"))
+           (set-marker lui-output-marker (point)))))))
 
 (defmethod slack-buffer-insert-prev-messages ((room slack-room) team oldest-ts)
   (slack-buffer-widen

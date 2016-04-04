@@ -186,7 +186,8 @@
 
 (defmethod slack-room-prev-link-info ((room slack-room))
   (with-slots (oldest) room
-    (oref oldest ts)))
+    (if oldest
+        (oref oldest ts))))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
