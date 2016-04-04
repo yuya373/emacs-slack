@@ -136,7 +136,57 @@
        ((or (string= type "im_marked")
             (string= type "channel_marked")
             (string= type "group_marked"))
-        (slack-ws-handle-room-marked decoded-payload team))))))
+        (slack-ws-handle-room-marked decoded-payload team))
+       ((string= type "im_open")
+        (slack-ws-handle-im-open decoded-payload team))
+       ((string= type "im_close")
+        (slack-ws-handle-im-close decoded-payload team))
+       ((string= type "team_join")
+        (slack-ws-handle-team-join decoded-payload team))))))
+
+(defun slack-ws-handle-team-join (payload team)
+  (let ((user (slack-decode (plist-get payload :user))))
+    (with-slots (users) team
+      (setq users
+            (cons user
+                  (cl-remove-if #'(lambda (u)
+                                    (string= (plist-get u :id)
+                                             (plist-get user :id)))
+                                users))))
+    (message "User %s Joind Team: %s"
+             (plist-get (slack-user-find (plist-get user :id)
+                                         team)
+                        :name)
+             (slack-team-name team))))
+
+(defun slack-ws-handle-im-open (payload team)
+  (cl-labels
+      ((notify
+        (im)
+        (slack-room-history
+         im team nil
+         #'(lambda ()
+             (message "Direct Message Channel with %s is Open"
+                      (slack-user-name (oref im user) team)))
+         t)))
+    (let ((exist (slack-room-find (plist-get payload :channel) team)))
+      (if exist
+          (progn
+            (oset exist open t)
+            (notify exist))
+        (with-slots (ims) team
+          (let ((im (slack-room-create
+                     (list :id (plist-get payload :channel)
+                           :user (plist-get payload :user))
+                     team 'slack-im)))
+            (setq ims (cons im ims))
+            (notify im)))))))
+
+(defun slack-ws-handle-im-close (payload team)
+  (let ((im (slack-room-find (plist-get payload :channel) team)))
+    (oset im open nil)
+    (message "Direct Message Channel with %s is Closed"
+             (slack-user-name (oref im user) team))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
