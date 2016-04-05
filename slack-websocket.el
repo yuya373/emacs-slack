@@ -172,7 +172,7 @@
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
       (if exist
           (progn
-            (oset exist open t)
+            (oset exist is-open t)
             (notify exist))
         (with-slots (ims) team
           (let ((im (slack-room-create
@@ -184,7 +184,7 @@
 
 (defun slack-ws-handle-im-close (payload team)
   (let ((im (slack-room-find (plist-get payload :channel) team)))
-    (oset im open nil)
+    (oset im is-open nil)
     (message "Direct Message Channel with %s is Closed"
              (slack-user-name (oref im user) team))))
 

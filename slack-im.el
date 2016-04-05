@@ -42,7 +42,7 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)
-   (open :initarg :open :initform t)))
+   (is-open :initarg :is_open :initform nil)))
 
 (defmethod slack-room-name-with-team-name ((room slack-im))
   (with-slots (team-id user) room
@@ -79,7 +79,7 @@
   (let ((team (slack-team-select)))
     (slack-room-select
      (cl-loop for team in (list team)
-              for ims = (cl-remove-if #'(lambda (im) (not (oref im open)))
+              for ims = (cl-remove-if #'(lambda (im) (not (oref im is-open)))
                                       (oref team ims))
               nconc ims))))
 
@@ -129,7 +129,7 @@
   (interactive)
   (let* ((team (slack-team-select))
          (alist (cl-remove-if #'(lambda (im-names)
-                                  (not (oref (cdr im-names) open)))
+                                  (not (oref (cdr im-names) is-open)))
                               (slack-im-names team))))
     (slack-select-from-list
      (alist "Select User: ")
@@ -140,7 +140,7 @@
             (data "slack-im-close")
             (if (plist-get data :already_closed)
                 (let ((im (slack-room-find (oref selected id) team)))
-                  (oset im open nil)
+                  (oset im is-open nil)
                   (message "Direct Message Channel with %s Already Closed"
                            (slack-user-name (oref im user) team)))))))
        (slack-request
@@ -155,7 +155,7 @@
   (interactive)
   (let* ((team (slack-team-select))
          (alist (cl-remove-if #'(lambda (im-names)
-                                  (oref (cdr im-names) open))
+                                  (oref (cdr im-names) is-open))
                               (slack-im-names team))))
     (slack-select-from-list
      (alist "Select User: ")
@@ -166,7 +166,7 @@
             (data "slack-im-open")
             (if (plist-get data :already_open)
                 (let ((im (slack-room-find (oref selected id) team)))
-                  (oset im open t)
+                  (oset im is-open t)
                   (message "Direct Message Channel with %s Already Open"
                            (slack-user-name (oref im user) team)))))))
        (slack-request
