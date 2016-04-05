@@ -257,7 +257,7 @@
 (defun slack-ws-handle-room-unarchive (payload team)
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id team)))
-    (oset room is-archived :json-false)
+    (oset room is-archived nil)
     (message "Channel: %s is unarchived"
              (slack-room-name-with-team-name room))))
 
