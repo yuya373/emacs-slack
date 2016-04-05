@@ -170,27 +170,27 @@
         (let ((latest-message (car (last sorted))))
           (slack-room-update-mark room team latest-message))))))
 
+(defun slack-buffer-in-current-frame (buffer)
+  (if buffer
+      (cl-member (buffer-name buffer)
+                 (mapcar #'buffer-name
+                         (mapcar #'window-buffer (window-list)))
+                 :test #'string=)))
+
 (cl-defun slack-buffer-update (room msg team &key replace)
-  (cl-labels
-      ((in-current-frame (buffer)
-                         (cl-member (buffer-name buffer)
-                                    (mapcar #'buffer-name
-                                            (mapcar #'window-buffer
-                                                    (window-list)))
-                                    :test #'string=)))
-    (let* ((buf-name (slack-room-buffer-name room))
-           (buffer (get-buffer buf-name)))
-      (if buffer
-          (progn
-            (if (in-current-frame buffer)
-                (slack-room-update-mark room team msg)
-              (slack-room-inc-unread-count room))
-            (if replace
-                (slack-buffer-replace buffer msg)
-              (with-current-buffer buffer
-                (slack-room-update-last-read room msg)
-                (slack-buffer-insert msg team))))
-        (slack-room-inc-unread-count room)))))
+  (let* ((buf-name (slack-room-buffer-name room))
+         (buffer (get-buffer buf-name)))
+    (if buffer
+        (progn
+          (if (slack-buffer-in-current-frame buffer)
+              (slack-room-update-mark room team msg)
+            (slack-room-inc-unread-count room))
+          (if replace
+              (slack-buffer-replace buffer msg)
+            (with-current-buffer buffer
+              (slack-room-update-last-read room msg)
+              (slack-buffer-insert msg team))))
+      (slack-room-inc-unread-count room))))
 
 (defun slack-buffer-ts-eq (start end ts)
   (cl-loop for i from start to end
