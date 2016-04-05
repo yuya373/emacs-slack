@@ -124,7 +124,8 @@
                  #'(lambda (rs)
                      (cl-remove-if #'(lambda (r)
                                        (or (not (slack-room-member-p r))
-                                           (slack-room-archived-p r)))
+                                           (slack-room-archived-p r)
+                                           (not (slack-room-open-p r))))
                                    rs)))))
     (slack-select-from-list
      (alist "Select Channel: ")
@@ -431,6 +432,9 @@
 
 (defmethod slack-room-archived-p ((_room slack-room))
   nil)
+
+(defmethod slack-room-open-p ((_room slack-room))
+  t)
 
 (defmethod slack-room-equal-p ((room slack-room) other)
   (with-slots (id) room
