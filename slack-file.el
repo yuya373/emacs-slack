@@ -58,7 +58,6 @@
                                        :id "F"
                                        :team-id (oref team id)
                                        :created (format-time-string "%s")
-                                       :is_open t
                                        :last_read "0"
                                        :latest nil
                                        :unread_count 0
