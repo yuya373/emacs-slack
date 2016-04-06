@@ -38,7 +38,6 @@
    (id :initarg :id)
    (created :initarg :created)
    (has-pins :initarg :has_pins)
-   (is-open :initarg :is_open)
    (last-read :initarg :last_read :type string :initform "0")
    (latest :initarg :latest)
    (oldest :initarg :oldest)
@@ -125,7 +124,8 @@
                  #'(lambda (rs)
                      (cl-remove-if #'(lambda (r)
                                        (or (not (slack-room-member-p r))
-                                           (slack-room-archived-p r)))
+                                           (slack-room-archived-p r)
+                                           (not (slack-room-open-p r))))
                                    rs)))))
     (slack-select-from-list
      (alist "Select Channel: ")
@@ -186,7 +186,8 @@
 
 (defmethod slack-room-prev-link-info ((room slack-room))
   (with-slots (oldest) room
-    (oref oldest ts)))
+    (if oldest
+        (oref oldest ts))))
 
 (defun slack-room-load-prev-messages ()
   (interactive)
@@ -410,13 +411,14 @@
                             (message "Invited!")))))
      (let* ((team (slack-team-select))
             (room (slack-current-room-or-select
-                   #'(lambda () (funcall ,room-alist-func team
-                                         #'(lambda (rooms)
-                                             (cl-remove-if #'slack-room-archived-p
-                                                           rooms))))))
-            (users (slack-user-names team))
-            (user-id (slack-select-from-list
-                      (users "Select User: "))))
+                   #'(lambda ()
+                       (funcall ,room-alist-func team
+                                #'(lambda (rooms)
+                                    (cl-remove-if #'slack-room-archived-p
+                                                  rooms))))))
+            (user-id (plist-get (slack-select-from-list
+                                 ((slack-user-names team)
+                                  "Select User: ")) :id)))
        (slack-request
         ,url
         team
@@ -430,6 +432,9 @@
 
 (defmethod slack-room-archived-p ((_room slack-room))
   nil)
+
+(defmethod slack-room-open-p ((_room slack-room))
+  t)
 
 (defmethod slack-room-equal-p ((room slack-room) other)
   (with-slots (id) room
@@ -465,6 +470,9 @@
                              oldest
                              after-success
                              (if async nil t)))
+
+(defmethod slack-room-inc-unread-count ((room slack-room))
+  (cl-incf (oref room unread-count-display)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

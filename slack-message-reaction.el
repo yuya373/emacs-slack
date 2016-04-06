@@ -113,20 +113,23 @@
      ,@body))
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction)
-  (slack-message-find-reaction (m reaction)
-                               (if same-reaction
-                                   (join same-reaction reaction)
-                                 (push reaction (oref m reactions)))))
+  (slack-message-find-reaction
+   (m reaction)
+   (if same-reaction
+       (slack-reaction-join same-reaction reaction)
+     (push reaction (oref m reactions)))))
 
 (defmethod slack-message-pop-reaction ((m slack-message) reaction)
-  (slack-message-find-reaction (m reaction)
-                               (if same-reaction
-                                   (if (eq 1 (oref same-reaction count))
-                                       (oset m reactions
-                                             (cl-delete-if #'(lambda (r)
-                                                               (slack-reaction-equalp same-reaction r))
-                                                           (oref m reactions)))
-                                     (cl-decf (oref same-reaction count))))))
+  (slack-message-find-reaction
+   (m reaction)
+   (if same-reaction
+       (if (eq 1 (oref same-reaction count))
+           (with-slots (reactions) m
+             (setq reactions
+                   (cl-delete-if #'(lambda (r)
+                                     (slack-reaction-equalp same-reaction r))
+                                 reactions)))
+         (cl-decf (oref same-reaction count))))))
 
 (provide 'slack-message-reaction)
 ;;; slack-message-reaction.el ends here

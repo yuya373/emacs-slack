@@ -143,10 +143,7 @@
                                   #'on-group-leave))))
 
 (defmethod slack-room-archived-p ((room slack-group))
-  (with-slots (is-archived) room
-    (if (eq is-archived :json-false)
-        nil
-      t)))
+  (oref room is-archived))
 
 (defun slack-group-archive ()
   (interactive)
@@ -186,9 +183,7 @@
                                   #'on-group-unarchive))))
 
 (defmethod slack-mpim-p ((room slack-group))
-  (with-slots (is-mpim) room
-    (unless (eq is-mpim :json-false)
-      t)))
+  (oref room is-mpim))
 
 (defmethod slack-room-history-url ((_room slack-group))
   slack-group-history-url)

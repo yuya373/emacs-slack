@@ -58,9 +58,7 @@
     (slack-room-names channels filter)))
 
 (defmethod slack-room-member-p ((room slack-channel))
-  (if (eq (oref room is-member) :json-false)
-      nil
-    t))
+  (oref room is-member))
 
 (defun slack-channel-select ()
   (interactive)
@@ -125,7 +123,7 @@
         ((on-channel-leave (&key data &allow-other-keys)
                            (slack-request-handle-error
                             (data "slack-channel-leave")
-                            (oset channel is-member :json-false)
+                            (oset channel is-member nil)
                             (message "Left Channel: %s"
                                      (slack-room-name channel)))))
       (slack-room-request-with-id slack-channel-leave-url

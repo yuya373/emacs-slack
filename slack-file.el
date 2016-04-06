@@ -58,7 +58,6 @@
                                        :id "F"
                                        :team-id (oref team id)
                                        :created (format-time-string "%s")
-                                       :is_open t
                                        :last_read "0"
                                        :latest nil
                                        :unread_count 0
@@ -87,6 +86,11 @@
       (cl-pushnew f messages
                   :test #'slack-message-equal))))
 
+(defmethod slack-message-body ((file slack-file) team)
+  (with-slots (initial-comment) file
+    (let ((body (plist-get initial-comment :comment)))
+      (slack-message-unescape-string body team))))
+
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions)
       file
@@ -105,9 +109,7 @@
                                  (slack-user-name
                                   (plist-get initial-comment :user)
                                   team)
-                                 (slack-message-unescape-string
-                                  (plist-get initial-comment :comment)
-                                  team)))
+                                 (slack-message-body file team)))
                      (if reactions-str
                          (concat "\n" reactions-str "\n")))))
         (put-text-property 0 (length message) 'ts ts message)

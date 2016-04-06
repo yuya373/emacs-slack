@@ -51,7 +51,9 @@
              nconc (let ((value (plist-get plist p)))
                      (list p (if (stringp value)
                                  (decode-coding-string value 'utf-8)
-                               value))))))
+                               (if (eq :json-false value)
+                                   nil
+                                 value)))))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

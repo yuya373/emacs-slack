@@ -88,25 +88,27 @@
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
-    (with-slots (reactions attachments) m
-      (let* ((header (slack-message-header m team))
-             (attachment-string (mapconcat #'slack-attachment-to-string
-                                           attachments "\n"))
-             (body (slack-message-unescape-string
-                    (concat text (if (< 0 (length attachment-string))
-                                     (concat "\n" attachment-string)))
-                    team))
-             (reactions-str (slack-message-reactions-to-string
-                             reactions)))
-        (slack-message-put-header-property header)
-        (slack-message-put-text-property body)
-        (slack-message-put-reactions-property reactions-str)
-        (if (oref m deleted-at)
-            (slack-message-put-deleted-property body))
-        (let ((message-str (concat header "\n" body "\n"
-                                   (if reactions-str
-                                       (concat "\n" reactions-str "\n")))))
-          (slack-message-propertize m message-str))))))
+    (let* ((header (slack-message-header m team))
+           (body (slack-message-body m team))
+           (reactions-str
+            (slack-message-reactions-to-string (oref m reactions))))
+      (slack-message-put-header-property header)
+      (slack-message-put-text-property body)
+      (slack-message-put-reactions-property reactions-str)
+      (if (oref m deleted-at)
+          (slack-message-put-deleted-property body))
+      (let ((message-str (concat header "\n" body "\n"
+                                 (if reactions-str
+                                     (concat "\n" reactions-str "\n")))))
+        (slack-message-propertize m message-str)))))
+
+(defmethod slack-message-body ((m slack-message) team)
+  (with-slots (text attachments) m
+    (let* ((attachment-string (mapconcat #'slack-attachment-to-string
+                                         attachments "\n"))
+           (body (concat text (if (< 0 (length attachment-string))
+                                  (concat "\n" attachment-string)))))
+      (slack-message-unescape-string body team))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m
