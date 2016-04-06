@@ -81,6 +81,7 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defmethod slack-team-name ((team slack-team))
   (oref team name))
 
+;;;###autoload
 (defun slack-register-team (&rest plist)
   "PLIST must contain :name :client-id :client-secret with value.
 setting :token will reduce your configuration step.
@@ -109,16 +110,21 @@ you can change current-team with `slack-change-current-team'"
     (let ((missing (missing plist)))
       (if missing
           (error "Missing Keyword: %s" missing)))
-    (let ((team (apply #'slack-team "team" (slack-collect-slots 'slack-team plist))))
-      (cl-mapcan #'(lambda (other) (if (slack-team-equalp team other)
-                                       (progn
-                                         (slack-team-disconnect other)
-                                         (slack-start team))))
-                 slack-teams)
+    (let ((team (apply #'slack-team "team"
+                       (slack-collect-slots 'slack-team plist))))
+      (let ((same-team (cl-find-if
+                        #'(lambda (o) (slack-team-equalp team o))
+                        slack-teams)))
+        (if same-team
+            (progn
+              (slack-team-disconnect same-team)
+              (slack-start team))))
+
       (setq slack-teams
-            (cl-remove-if #'(lambda (other) (slack-team-equalp team other))
-                          slack-teams))
-      (push team slack-teams)
+            (cons team
+                  (cl-remove-if #'(lambda (other)
+                                    (slack-team-equalp team other))
+                                slack-teams)))
       (if (plist-get plist :default)
           (setq slack-current-team team)))))
 
