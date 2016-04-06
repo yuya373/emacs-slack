@@ -168,7 +168,7 @@ set this to save request to Slack if already have.")
       (if slack-teams
           (cl-loop for team in slack-teams
                    do (start team))
-        (slack-start (slack-register-team))))))
+        (slack-start (call-interactively #'slack-register-team))))))
 
 (provide 'slack)
 ;;; slack.el ends here
