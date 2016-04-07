@@ -65,7 +65,9 @@ use `slack-change-current-team' to change `slack-current-team'"
    (message-id :initform 0)
    (connected :initform nil)
    (subscribed-channels :initarg :subscribed-channels
-                        :type list :initform nil)))
+                        :type list :initform nil)
+   (typing :initform nil)
+   (typing-timer :initform nil)))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))

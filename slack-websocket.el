@@ -28,6 +28,15 @@
 (require 'slack-message)
 (require 'slack-reply)
 
+(defclass slack-typing ()
+  ((room :initarg :room :initform nil)
+   (limit :initarg :limit :initform nil)
+   (users :initarg :users :initform nil)))
+
+(defclass slack-typing-user ()
+  ((limit :initarg :limit :initform nil)
+   (user-name :initarg :user-name :initform nil)))
+
 (defun slack-ws-open (team)
   (with-slots (ws-url ws-conn) team
     (unless ws-conn
