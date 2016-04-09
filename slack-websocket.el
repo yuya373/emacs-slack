@@ -28,6 +28,15 @@
 (require 'slack-message)
 (require 'slack-reply)
 
+(defclass slack-typing ()
+  ((room :initarg :room :initform nil)
+   (limit :initarg :limit :initform nil)
+   (users :initarg :users :initform nil)))
+
+(defclass slack-typing-user ()
+  ((limit :initarg :limit :initform nil)
+   (user-name :initarg :user-name :initform nil)))
+
 (defun slack-ws-open (team)
   (with-slots (ws-url ws-conn) team
     (unless ws-conn
@@ -142,7 +151,62 @@
        ((string= type "im_close")
         (slack-ws-handle-im-close decoded-payload team))
        ((string= type "team_join")
-        (slack-ws-handle-team-join decoded-payload team))))))
+        (slack-ws-handle-team-join decoded-payload team))
+       ((string= type "user_typing")
+        (slack-ws-handle-user-typing decoded-payload team))))))
+
+(defun slack-user-typing (team)
+  (with-slots (typing typing-timer) team
+    (with-slots (limit users room) typing
+      (let ((current (float-time)))
+        (if (and typing-timer (timerp typing-timer)
+                 (< limit current))
+            (progn
+              (cancel-timer typing-timer)
+              (setq typing-timer nil)
+              (setq typing nil))
+          (if (slack-buffer-in-current-frame
+               (get-buffer (slack-room-buffer-name room)))
+              (let ((team-name (slack-team-name team))
+                    (room-name (slack-room-name room))
+                    (visible-users (cl-remove-if
+                                    #'(lambda (u) (< (oref u limit) current))
+                                    users)))
+                (message "Slack [%s - %s] %s is typing..."
+                         team-name room-name
+                         (mapconcat #'(lambda (u) (oref u user-name))
+                                    visible-users
+                                    ", ")))))))))
+
+(defun slack-ws-handle-user-typing (payload team)
+  (let* ((user (slack-user-name (plist-get payload :user) team))
+         (room (slack-room-find (plist-get payload :channel) team)))
+    (if (slack-buffer-in-current-frame
+         (get-buffer (slack-room-buffer-name room)))
+        (let ((limit (+ 3 (float-time))))
+          (with-slots (typing typing-timer) team
+            (if (and typing (equal room (oref typing room)))
+                (with-slots ((typing-limit limit)
+                             (typing-room room) users) typing
+                  (setq typing-limit limit)
+                  (let ((typing-user (make-instance 'slack-typing-user
+                                                    :limit limit
+                                                    :user-name user)))
+                    (setq users
+                          (cons typing-user
+                                (cl-remove-if #'(lambda (u)
+                                                  (string= (oref u user-name)
+                                                           user))
+                                              users))))))
+            (unless typing
+              (let ((new-typing (make-instance 'slack-typing
+                                               :room room :limit limit))
+                    (typing-user (make-instance 'slack-typing-user
+                                                :limit limit :user-name user)))
+                (oset new-typing users (list typing-user))
+                (setq typing new-typing))
+              (setq typing-timer
+                    (run-with-timer t 1 #'slack-user-typing team))))))))
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
