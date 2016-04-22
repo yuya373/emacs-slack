@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 
 (defvar slack-teams nil)
 (defvar slack-current-team nil)
