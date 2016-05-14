@@ -50,19 +50,25 @@
 (defun slack-ws-close (&optional team)
   (interactive)
   (unless team
-    (setq team (slack-team-select)))
-  (let ((team-name (oref team name)))
-    (with-slots (connected ws-conn last-pong) team
-      (if ws-conn
-          (progn
-            (websocket-close ws-conn)
-            (setq ws-conn nil)
-            (setq connected nil)
-            (slack-ws-cancel-ping-timer team)
-            (slack-ws-cancel-check-ping-timeout-timer team)
-            (slack-ws-cancel-reconnect-timer team)
-            (message "Slack Websocket Closed - %s" team-name))
-        (message "Slack Websocket is not open - %s" team-name)))))
+    (setq team slack-teams))
+  (cl-labels
+      ((close (team)
+              (let ((team-name (oref team name)))
+                (with-slots (connected ws-conn last-pong) team
+                  (if ws-conn
+                      (progn
+                        (websocket-close ws-conn)
+                        (setq ws-conn nil)
+                        (setq connected nil)
+                        (slack-ws-cancel-ping-timer team)
+                        (slack-ws-cancel-check-ping-timeout-timer team)
+                        (slack-ws-cancel-reconnect-timer team)
+                        (message "Slack Websocket Closed - %s" team-name))
+                    (message "Slack Websocket is not open - %s" team-name))))))
+    (if (listp team)
+        (mapc #'close team)
+      (close team))))
+
 
 (defun slack-ws-send (payload team)
   (cl-labels ((restart (team)
