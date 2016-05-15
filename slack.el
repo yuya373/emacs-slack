@@ -77,6 +77,14 @@ set this to save request to Slack if already have.")
 (make-obsolete-variable
  'slack-room-subscription slack-use-register-team-string
  "0.0.2")
+(defcustom slack-typing-visibility 'frame
+  "When to show typing indicator.
+frame means typing slack buffer is in the current frame, show typing indicator.
+buffer means typing slack buffer is the current buffer, show typing indicator.
+never means never show typing indicator."
+  :type '(choice (const frame)
+                 (const buffer)
+                 (const never)))
 
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
