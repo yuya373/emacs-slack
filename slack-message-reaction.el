@@ -74,8 +74,11 @@
      selected)))
 
 (defun slack-message-reaction-input ()
-  (let ((prompt "Emoji: "))
-    (read-from-minibuffer prompt)))
+  (let ((reaction (read-from-minibuffer "Emoji: ")))
+    (if (and (string-prefix-p ":" reaction)
+             (string-suffix-p ":" reaction))
+        (substring reaction 1 -1)
+      reaction)))
 
 (defun slack-message-reaction-add (reaction ts room team)
   (cl-labels ((on-reaction-add
