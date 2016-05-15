@@ -170,6 +170,17 @@
         (let ((latest-message (car (last sorted))))
           (slack-room-update-mark room team latest-message))))))
 
+(defun slack-buffer-show-typing-p (buffer)
+  (cl-case slack-typing-visibility
+    ('frame (slack-buffer-in-current-frame buffer))
+    ('buffer (slack-buffer-current-p buffer))
+    ('never nil)))
+
+(defun slack-buffer-current-p (buffer)
+  (if buffer
+      (string= (buffer-name buffer)
+               (buffer-name (current-buffer)))))
+
 (defun slack-buffer-in-current-frame (buffer)
   (if buffer
       (cl-member (buffer-name buffer)

@@ -171,7 +171,7 @@
               (cancel-timer typing-timer)
               (setq typing-timer nil)
               (setq typing nil))
-          (if (slack-buffer-in-current-frame
+          (if (slack-buffer-show-typing-p
                (get-buffer (slack-room-buffer-name room)))
               (let ((team-name (slack-team-name team))
                     (room-name (slack-room-name room))
@@ -187,7 +187,7 @@
 (defun slack-ws-handle-user-typing (payload team)
   (let* ((user (slack-user-name (plist-get payload :user) team))
          (room (slack-room-find (plist-get payload :channel) team)))
-    (if (slack-buffer-in-current-frame
+    (if (slack-buffer-show-typing-p
          (get-buffer (slack-room-buffer-name room)))
         (let ((limit (+ 3 (float-time))))
           (with-slots (typing typing-timer) team
