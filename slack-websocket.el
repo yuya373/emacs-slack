@@ -50,19 +50,25 @@
 (defun slack-ws-close (&optional team)
   (interactive)
   (unless team
-    (setq team (slack-team-select)))
-  (let ((team-name (oref team name)))
-    (with-slots (connected ws-conn last-pong) team
-      (if ws-conn
-          (progn
-            (websocket-close ws-conn)
-            (setq ws-conn nil)
-            (setq connected nil)
-            (slack-ws-cancel-ping-timer team)
-            (slack-ws-cancel-check-ping-timeout-timer team)
-            (slack-ws-cancel-reconnect-timer team)
-            (message "Slack Websocket Closed - %s" team-name))
-        (message "Slack Websocket is not open - %s" team-name)))))
+    (setq team slack-teams))
+  (cl-labels
+      ((close (team)
+              (let ((team-name (oref team name)))
+                (with-slots (connected ws-conn last-pong) team
+                  (if ws-conn
+                      (progn
+                        (websocket-close ws-conn)
+                        (setq ws-conn nil)
+                        (setq connected nil)
+                        (slack-ws-cancel-ping-timer team)
+                        (slack-ws-cancel-check-ping-timeout-timer team)
+                        (slack-ws-cancel-reconnect-timer team)
+                        (message "Slack Websocket Closed - %s" team-name))
+                    (message "Slack Websocket is not open - %s" team-name))))))
+    (if (listp team)
+        (mapc #'close team)
+      (close team))))
+
 
 (defun slack-ws-send (payload team)
   (cl-labels ((restart (team)
@@ -165,7 +171,7 @@
               (cancel-timer typing-timer)
               (setq typing-timer nil)
               (setq typing nil))
-          (if (slack-buffer-in-current-frame
+          (if (slack-buffer-show-typing-p
                (get-buffer (slack-room-buffer-name room)))
               (let ((team-name (slack-team-name team))
                     (room-name (slack-room-name room))
@@ -181,7 +187,7 @@
 (defun slack-ws-handle-user-typing (payload team)
   (let* ((user (slack-user-name (plist-get payload :user) team))
          (room (slack-room-find (plist-get payload :channel) team)))
-    (if (slack-buffer-in-current-frame
+    (if (slack-buffer-show-typing-p
          (get-buffer (slack-room-buffer-name room)))
         (let ((limit (+ 3 (float-time))))
           (with-slots (typing typing-timer) team
