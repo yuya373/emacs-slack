@@ -60,7 +60,9 @@ emacs client for Slack
     ",md" 'slack-message-delete
     ",u" 'slack-room-update-messages
     ",2" 'slack-message-embed-mention
-    ",3" 'slack-message-embed-channel)
+    ",3" 'slack-message-embed-channel
+    "\C-n" 'slack-buffer-goto-next-message
+    "\C-p" 'slack-buffer-goto-prev-message)
    (evil-define-key 'normal slack-edit-message-mode-map
     ",k" 'slack-message-cancel-edit
     ",s" 'slack-message-send-from-buffer
