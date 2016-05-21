@@ -287,20 +287,11 @@
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
     (slack-buffer-widen
-     (let* ((cur-point (point))
-            (ts (oref msg ts))
-            (beg (slack-buffer-ts-eq (point-min) (point-max) ts))
-            (end (slack-buffer-ts-not-eq beg (point-max) ts)))
-       (if (and beg end)
-           (let ((inhibit-read-only t)
-                 (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
-             (delete-region beg end)
-             (set-marker lui-output-marker beg)
-             (slack-buffer-insert msg
-                                  (slack-team-find slack-current-team-id))
-
-             (slack-buffer-recover-lui-output-marker)
-             (slack-buffer-goto ts)))))))
+     (let ((team (slack-team-find slack-current-team-id)))
+       (lui-replace (slack-message-to-string msg team)
+                    (lambda ()
+                      (equal (get-text-property (point) 'ts)
+                             (oref msg ts))))))))
 
 (defun slack-buffer-recover-lui-output-marker ()
   (set-marker lui-output-marker (- (marker-position
