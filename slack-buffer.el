@@ -118,7 +118,7 @@
                     do (slack-buffer-insert m team t)))
        (set-marker lui-output-marker (point-min))
        (lui-insert "(no more messages)\n"))
-     (slack-buffer-recover-lui-output-marker))))
+     (lui-recover-output-marker))))
 
 (cl-defun slack-buffer-create (room team
                                     &key
@@ -292,12 +292,6 @@
                     (lambda ()
                       (equal (get-text-property (point) 'ts)
                              (oref msg ts))))))))
-
-(defun slack-buffer-recover-lui-output-marker ()
-  (set-marker lui-output-marker (- (marker-position
-                                    lui-input-marker)
-
-                                   (length lui-prompt-string))))
 
 (defun slack-get-info-buffer-create (room)
   (let* ((buf-name (slack-room-buffer-name room))
