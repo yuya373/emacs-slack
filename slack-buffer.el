@@ -67,8 +67,6 @@
         (slack-mode)
         (slack-buffer-insert-previous-link room)
         (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
-        (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
-        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
     buffer))
 
@@ -154,24 +152,16 @@
                      'lui-button-function 'browse-url
                      'lui-button-arguments (list url))))))
 
-(defun slack-buffer-add-last-ts-property ()
-  (when slack-current-message
-    (add-text-properties
-     (point-min) (point-max)
-     `(slack-last-ts ,lui-time-stamp-last))))
-
-(defun slack-buffer-add-ts-property ()
-  (when slack-current-message
-    (add-text-properties
-     (point-min) (point-max)
-     `(ts ,(oref slack-current-message ts)))))
-
 (defun slack-buffer-insert (message team &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
         (beg lui-input-marker)
         (inhibit-read-only t))
     (let ((slack-current-message message))
-      (lui-insert (slack-message-to-string message team) not-tracked-p))))
+      (lui-insert-with-text-properties
+       (slack-message-to-string message team)
+       'not-tracked-p not-tracked-p
+       'ts (oref message ts)
+       'slack-last-ts lui-time-stamp-last))))
 
 (defun slack-buffer-insert-messages (room team)
   (let* ((sorted (slack-room-sorted-messages room))
@@ -301,9 +291,7 @@
       (with-current-buffer buffer
         (slack-info-mode)
         (slack-buffer-insert-previous-link room)
-        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
-        (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
-        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
+        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)))
     buffer))
 
 (defun slack-buffer-create-info (buf-name insert-func)
