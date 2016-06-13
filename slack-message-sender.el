@@ -45,9 +45,50 @@
         (setq message-id 1)
       (cl-incf message-id))))
 
+(defun slack-escape-message (message)
+  "Escape '<,' '>' & '&' in MESSAGE."
+  (replace-regexp-in-string
+   ">" "&gt;"
+   (replace-regexp-in-string
+    "<" "&lt;"
+    (replace-regexp-in-string "&" "&amp;" message))))
+
+(defun slack-link-users (message team)
+  "Add links to all references to valid users in MESSAGE."
+  (replace-regexp-in-string
+   "@\\<\\([A-Za-z0-9.-_]+\\)"
+   #'(lambda (text)
+       (let* ((username (match-string 1 text))
+              (id (slack-user-get-id username team)))
+         (if id
+             (format "<@%s|%s>" id username)
+           text)))
+   message t))
+
+(defun slack-link-channels (message team)
+  "Add links to all references to valid channels in MESSAGE."
+  (let ((channel-ids
+         (mapcar #'(lambda (x)
+                     (let ((channel (cdr x)))
+                       (cons (slack-room-name channel) (slot-value channel 'id))))
+                 (slack-channel-names team))))
+    (replace-regexp-in-string
+     "#\\<\\([A-Za-z0-9.-_]+\\)"
+     #'(lambda (text)
+         (let* ((channel (match-string 1 text))
+                (id (cdr (assoc channel channel-ids))))
+           (if id
+               (format "<#%s|%s>" id channel)
+             text)))
+
 (defun slack-message--send (message)
   (if slack-current-team-id
-      (let ((team (slack-team-find slack-current-team-id)))
+      (let* ((team (slack-team-find slack-current-team-id))
+             (message (slack-link-channels
+                       (slack-link-users
+                        (slack-escape-message message)
+                        team)
+                       team)))
         (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
           (let* ((m (list :id message-id
