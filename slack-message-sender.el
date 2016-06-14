@@ -80,6 +80,7 @@
            (if id
                (format "<#%s|%s>" id channel)
              text)))
+     message t)))
 
 (defun slack-message--send (message)
   (if slack-current-team-id
