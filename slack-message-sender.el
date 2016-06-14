@@ -154,9 +154,7 @@
     (let* ((alist (slack-channel-names team)))
       (slack-select-from-list
        (alist "Select Channel: ")
-       (let* ((room selected)
-              (room-name (slack-room-name room)))
-         (insert (concat "#" room-name)))))))
+       (insert (concat "#" (slack-room-name selected)))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
