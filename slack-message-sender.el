@@ -166,7 +166,5 @@
        (alist "Select User: ")
        (insert (concat "@" (plist-get selected :name)))))))
 
-(slack-user-names slack-current-team)
-
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here
