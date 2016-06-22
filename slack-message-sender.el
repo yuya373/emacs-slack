@@ -45,9 +45,55 @@
         (setq message-id 1)
       (cl-incf message-id))))
 
+(defun slack-escape-message (message)
+  "Escape '<,' '>' & '&' in MESSAGE."
+  (replace-regexp-in-string
+   ">" "&gt;"
+   (replace-regexp-in-string
+    "<" "&lt;"
+    (replace-regexp-in-string "&" "&amp;" message))))
+
+(defun slack-link-users (message team)
+  "Add links to all references to valid users in MESSAGE."
+  (replace-regexp-in-string
+   "@\\<\\([A-Za-z0-9.-_]+\\)"
+   #'(lambda (text)
+       (let* ((username (match-string 1 text))
+              (id (slack-user-get-id username team)))
+         (if id
+             (format "<@%s|%s>" id username)
+           (cond
+            ((string= username "here") "<!here|here>")
+            ((find username '("channel" "group") :test #'string=) "<!channel>")
+            ((string= username "everyone") "<!everyone>")
+            (t text)))))
+   message t))
+
+(defun slack-link-channels (message team)
+  "Add links to all references to valid channels in MESSAGE."
+  (let ((channel-ids
+         (mapcar #'(lambda (x)
+                     (let ((channel (cdr x)))
+                       (cons (slack-room-name channel) (slot-value channel 'id))))
+                 (slack-channel-names team))))
+    (replace-regexp-in-string
+     "#\\<\\([A-Za-z0-9.-_]+\\)"
+     #'(lambda (text)
+         (let* ((channel (match-string 1 text))
+                (id (cdr (assoc channel channel-ids))))
+           (if id
+               (format "<#%s|%s>" id channel)
+             text)))
+     message t)))
+
 (defun slack-message--send (message)
   (if slack-current-team-id
-      (let ((team (slack-team-find slack-current-team-id)))
+      (let* ((team (slack-team-find slack-current-team-id))
+             (message (slack-link-channels
+                       (slack-link-users
+                        (slack-escape-message message)
+                        team)
+                       team)))
         (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
           (let* ((m (list :id message-id
@@ -108,25 +154,17 @@
     (let* ((alist (slack-channel-names team)))
       (slack-select-from-list
        (alist "Select Channel: ")
-       (let* ((room selected)
-              (room-name (slack-room-name room)))
-         (insert (concat "<#" (oref room id) "|" room-name "> ")))))))
+       (insert (concat "#" (slack-room-name selected)))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
   (let ((team (slack-team-select)))
-    (let* ((pre-defined (list (cons "here" "here")
-                              (cons "channel" "channel")))
+    (let* ((pre-defined (list (list "here" :name "here")
+                              (list "channel" :name "channel")))
            (alist (append pre-defined (slack-user-names team))))
       (slack-select-from-list
        (alist "Select User: ")
-       (let ((user-id (plist-get selected :id)))
-         (if (or (string= user-id "here")
-                 (string= user-id "channel"))
-             (insert (concat "<!" selected "> "))
-           (let* ((user-name (slack-user-name user-id team)))
-             (insert (concat "<@" user-id "|" user-name "> ")))))))))
-
+       (insert (concat "@" (plist-get selected :name)))))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here

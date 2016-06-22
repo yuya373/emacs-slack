@@ -160,7 +160,7 @@
   (let ((channel-regexp "<#\\(C.*?\\)|\\(.*?\\)>"))
     (cl-labels ((unescape-channel
                  (text)
-                 (concat "@" (or (match-string 2 text)
+                 (concat "#" (or (match-string 2 text)
                                  (slack-room-find
                                   (match-string 1 text))
                                  (match-string 1 text)))))
