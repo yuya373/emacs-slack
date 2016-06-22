@@ -143,8 +143,6 @@
        ((or (string= type "bot_added")
             (string= type "bot_changed"))
         (slack-ws-handle-bot decoded-payload team))
-       ((string= type "file_shared")
-        (slack-ws-handle-file-shared decoded-payload team))
        ((or (string= type "file_deleted")
             (string= type "file_unshared"))
         (slack-ws-handle-file-deleted decoded-payload team))
@@ -261,6 +259,8 @@
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
     (cond
+     ((and subtype (string= subtype "file_share"))
+      (slack-ws-handle-file-share payload team))
      ((and subtype (string= subtype "message_changed"))
       (slack-message-edited payload team))
      ((and subtype (string= subtype "message_deleted"))
@@ -378,7 +378,7 @@
     (with-slots (bots) team
       (push bot bots))))
 
-(defun slack-ws-handle-file-shared (payload team)
+(defun slack-ws-handle-file-share (payload team)
   (let ((file (slack-file-create (plist-get payload :file))))
     (slack-file-pushnew file team)))
 
