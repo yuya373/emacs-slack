@@ -120,6 +120,7 @@
                               slack-target-ts
                               buf-string)))
       ('new (slack-message--send buf-string)))
+    (kill-buffer)
     (delete-window)))
 
 (defun slack-message--edit (channel team ts text)
