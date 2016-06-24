@@ -63,7 +63,9 @@
        (interactive (list 'interactive))
        (cl-case command
          (interactive (company-begin-backend 'company-slack-backend))
-         (prefix (when (and (eq major-mode 'slack-mode) (looking-back "\\W@\\(\\w*\\)")) (match-string 1)))
+         (prefix (when (and (find major-mode '(slack-mode slack-edit-message-mode))
+                            (looking-back "\\W@\\(\\w*\\)"))
+                   (match-string 1)))
          (candidates (remove-if-not
                       (lambda (x)
                         (s-starts-with-p arg x))
