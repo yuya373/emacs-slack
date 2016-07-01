@@ -68,13 +68,11 @@
                    (match-string 1)))
          (candidates (remove-if-not
                       (lambda (x)
-                        (s-starts-with-p arg x))
+                        (string-prefix-p arg x))
                       (mapcar #'first (slack-user-names slack-current-team))))
          (meta (format "%s%s"
                        (slack-user-presence-to-string (slack-user-find-by-name arg slack-current-team))
-                       arg))))
-
-     (add-to-list 'company-backends 'company-slack-backend)))
+                       arg))))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
