@@ -55,5 +55,24 @@
                                    nil
                                  value)))))))
 
+(eval-after-load "company"
+  '(progn
+     (defun company-slack-backend (command &optional arg &rest ignored)
+       "Completion backend for slack chats.  It currently understands
+@USER; adding #CHANNEL should be a simple matter of programming."
+       (interactive (list 'interactive))
+       (cl-case command
+         (interactive (company-begin-backend 'company-slack-backend))
+         (prefix (when (and (find major-mode '(slack-mode slack-edit-message-mode))
+                            (looking-back "\\W@\\(\\w*\\)"))
+                   (match-string 1)))
+         (candidates (remove-if-not
+                      (lambda (x)
+                        (string-prefix-p arg x))
+                      (mapcar #'first (slack-user-names slack-current-team))))
+         (meta (format "%s%s"
+                       (slack-user-presence-to-string (slack-user-find-by-name arg slack-current-team))
+                       arg))))))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here
