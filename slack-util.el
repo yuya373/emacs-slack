@@ -61,13 +61,14 @@
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'company-slack-backend))
-    (prefix (when (and (cl-find major-mode '(slack-mode slack-edit-message-mode))
+    (prefix (when (and (cl-find major-mode '(slack-mode
+                                             slack-edit-message-mode))
                        (looking-back "\\(\\W\\|^\\)@\\(\\w*\\)" (line-beginning-position)))
               (match-string 2)))
-    (candidates (remove-if-not
+    (candidates (cl-remove-if-not
                  (lambda (x)
                    (string-prefix-p arg x))
-                 (mapcar #'first (slack-user-names slack-current-team))))
+                 (mapcar #'cl-first (slack-user-names slack-current-team))))
     (meta (format "%s%s"
                   (slack-user-presence-to-string (slack-user-find-by-name arg slack-current-team))
                   arg))))
