@@ -59,19 +59,31 @@
   "Completion backend for slack chats.  It currently understands
 @USER; adding #CHANNEL should be a simple matter of programming."
   (interactive (list 'interactive))
-  (cl-case command
-    (interactive (company-begin-backend 'company-slack-backend))
-    (prefix (when (and (cl-find major-mode '(slack-mode
-                                             slack-edit-message-mode))
-                       (looking-back "\\(\\W\\|^\\)@\\(\\w*\\)" (line-beginning-position)))
-              (match-string 2)))
-    (candidates (cl-remove-if-not
-                 (lambda (x)
-                   (string-prefix-p arg x))
-                 (mapcar #'cl-first (slack-user-names slack-current-team))))
-    (meta (format "%s%s"
-                  (slack-user-presence-to-string (slack-user-find-by-name arg slack-current-team))
-                  arg))))
+  (cl-labels
+      ((prefix-type (str) (cond
+                           ((string-prefix-p "@" str) 'user)
+                           ((string-prefix-p "#" str) 'channel)))
+       (content (str) (substring str 1 nil)))
+    (cl-case command
+      (interactive (company-begin-backend 'company-slack-backend))
+      (prefix (when (and (cl-find major-mode '(slack-mode
+                                               slack-edit-message-mode))
+                         (looking-back "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
+                                       (line-beginning-position)))
+                (match-string 2)))
+      (candidates (let ((content (content arg)))
+                    (cl-case (prefix-type arg)
+                      (user
+                       (cl-loop for user in (oref slack-current-team users)
+                                if (string-prefix-p content
+                                                    (plist-get user :name))
+                                collect (concat "@" (plist-get user :name))))
+                      (channel
+                       (cl-loop for team in (oref slack-current-team channels)
+                                if (string-prefix-p content
+                                                    (oref team name))
+                                collect (concat "#" (oref team name)))))))
+      )))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
