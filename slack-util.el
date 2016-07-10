@@ -66,11 +66,10 @@
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
-      (prefix (when (and (cl-find major-mode '(slack-mode
-                                               slack-edit-message-mode))
-                         (looking-back "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
-                                       (line-beginning-position)))
-                (match-string 2)))
+      (prefix (when (cl-find major-mode '(slack-mode
+                                          slack-edit-message-mode))
+                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
+                                   2)))
       (candidates (let ((content (content arg)))
                     (cl-case (prefix-type arg)
                       (user
