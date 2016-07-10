@@ -53,22 +53,27 @@
 
 (defun slack-message-put-header-property (header)
   (put-text-property 0 (length header)
-                     'face 'slack-message-output-header header))
+                     'face 'slack-message-output-header header)
+  header)
 
 (defun slack-message-put-text-property (text)
   (put-text-property 0 (length text)
-                     'face 'slack-message-output-text text))
+                     'face 'slack-message-output-text text)
+  text)
 
 (defun slack-message-put-reactions-property (text)
   (put-text-property 0 (length text)
-                     'face 'slack-message-output-reaction text))
+                     'face 'slack-message-output-reaction text)
+  text)
 
 (defun slack-message-put-hard (text)
-  (put-text-property 0 (length text) 'hard t text))
+  (put-text-property 0 (length text) 'hard t text)
+  text)
 
 (defun slack-message-put-deleted-property (text)
   (put-text-property 0 (length text)
-                     'face 'slack-message-deleted-face text))
+                     'face 'slack-message-deleted-face text)
+  text)
 
 (defmethod slack-message-propertize ((m slack-message) text)
   text)
