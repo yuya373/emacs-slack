@@ -260,15 +260,19 @@
   (let ((subtype (plist-get payload :subtype)))
     (cond
      ((and subtype (string= subtype "file_share"))
-      (slack-ws-handle-file-share payload team))
+      (slack-ws-handle-file-share payload team)
+      (slack-ws-update-message payload team))
      ((and subtype (string= subtype "message_changed"))
       (slack-message-edited payload team))
      ((and subtype (string= subtype "message_deleted"))
       (slack-message-deleted payload team))
      (t
-      (let ((m (slack-message-create payload)))
-        (when m
-          (slack-message-update m team)))))))
+      (slack-ws-update-message payload team)))))
+
+(defun slack-ws-update-message (payload team)
+  (let ((m (slack-message-create payload)))
+    (when m
+      (slack-message-update m team))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
