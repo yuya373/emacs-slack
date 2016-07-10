@@ -253,16 +253,18 @@
            return i))
 
 (defun slack-buffer-ts-eq (start end ts)
-  (cl-loop for i from start to end
-           if (string= (get-text-property i 'ts)
-                       ts)
-           return i))
+  (if (and start end)
+      (cl-loop for i from start to end
+               if (string= (get-text-property i 'ts)
+                           ts)
+               return i)))
 
 (defun slack-buffer-ts-not-eq (start end ts)
-  (cl-loop for i from start to end
-           if (not (string= (get-text-property i 'ts)
-                            ts))
-           return i))
+  (if (and start end)
+      (cl-loop for i from start to end
+               if (not (string= (get-text-property i 'ts)
+                                ts))
+               return i)))
 
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
@@ -270,10 +272,10 @@
      (let* ((cur-point (point))
             (ts (oref msg ts))
             (beg (slack-buffer-ts-eq (point-min) (point-max) ts))
-            (end (slack-buffer-ts-not-eq beg (point-max) ts))
-            (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
+            (end (slack-buffer-ts-not-eq beg (point-max) ts)))
        (if (and beg end)
-           (let ((inhibit-read-only t))
+           (let ((inhibit-read-only t)
+                 (lui-time-stamp-last (get-text-property beg 'slack-last-ts)))
              (delete-region beg end)
              (set-marker lui-output-marker beg)
              (slack-buffer-insert msg
