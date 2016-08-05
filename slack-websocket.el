@@ -399,22 +399,26 @@
       (setq ping-timer
             (run-at-time t 10 #'(lambda () (slack-ws-ping team)))))))
 
+(defun slack-ws-current-time-str ()
+  (number-to-string (time-to-seconds (current-time))))
+
 (defun slack-ws-ping (team)
   (slack-message-inc-id team)
   (with-slots (message-id) team
-    (let* ((m (list :id message-id
+    (let* ((time (slack-ws-current-time-str))
+           (m (list :id message-id
                     :type "ping"
-                    :time (format-time-string "%s")))
+                    :time time))
            (json (json-encode m)))
+      (slack-ws-set-check-ping-timer team time)
       (slack-ws-send json team))))
 
-(defun slack-ws-set-check-ping-timer (team)
-  (with-slots
-      (check-ping-timeout-timer check-ping-timeout-sec) team
-    (unless check-ping-timeout-timer
-      (setq check-ping-timeout-timer
-            (run-at-time t check-ping-timeout-sec
-                         #'(lambda () (slack-ws-check-ping-timeout team)))))))
+(defun slack-ws-set-check-ping-timer (team time)
+  (with-slots (ping-check-timers check-ping-timeout-sec) team
+    (let ((team-id (oref team id)))
+      (puthash time (run-at-time check-ping-timeout-sec nil
+                                 #'(lambda () (slack-ws-ping-timeout team-id)))
+               ping-check-timers))))
 
 (defun slack-ws-check-ping-timeout (team)
   (with-slots (last-pong) team
@@ -424,26 +428,28 @@
           (when (> since-last-pong 20)
             (slack-ws-ping-timeout team))))))
 
-(defun slack-ws-ping-timeout (team)
-  (slack-ws-cancel-check-ping-timeout-timer team)
+(defun slack-ws-ping-timeout (team-id)
   (message "Slack Websocket PING Timeout.")
-  (slack-ws-close team)
-  (slack-ws-cancel-ping-timer team)
-  (if (oref team reconnect-auto)
-      (with-slots (reconnect-timer) team
-        (setq reconnect-timer
-              (run-at-time "1 sec" nil
-                           #'(lambda () (slack-ws-reconnect team)))))))
+  (let ((team (slack-team-find team-id)))
+    (slack-ws-cancel-ping-check-timers team)
+    (slack-ws-close team)
+    (slack-ws-cancel-ping-timer team)
+    (if (oref team reconnect-auto)
+        (with-slots (reconnect-timer reconnect-after-sec) team
+          (setq reconnect-timer
+                (run-at-time t reconnect-after-sec
+                             #'(lambda () (slack-ws-reconnect team))))))))
 
-(defun slack-ws-cancel-check-ping-timeout-timer (team)
-  (with-slots (check-ping-timeout-timer last-pong) team
-    (if (timerp check-ping-timeout-timer)
-        (cancel-timer check-ping-timeout-timer))
-    (setq check-ping-timeout-timer nil)
-    (setq last-pong nil)))
 (defun slack-ws-init-ping-check-timers ()
   (make-hash-table :test 'equal))
 
+(defun slack-ws-cancel-ping-check-timers (team)
+  (with-slots (ping-check-timers) team
+    (maphash #'(lambda (key value)
+                 (if (timerp value)
+                     (cancel-timer value)))
+             ping-check-timers)
+    (setq ping-check-timers (slack-ws-init-ping-check-timers))))
 
 (defun slack-ws-cancel-ping-timer (team)
   (with-slots (ping-timer) team
