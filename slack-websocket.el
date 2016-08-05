@@ -71,21 +71,18 @@
 
 
 (defun slack-ws-send (payload team)
-  (cl-labels ((restart (team)
-                       (message "Slack Websocket is Closed. Try to Reconnect - %s"
-                                (oref team name))
-                       (slack-start team)))
-    (with-slots (waiting-send ws-conn) team
-      (push payload waiting-send)
-      (if (websocket-openp ws-conn)
-          (condition-case _e
-              (progn
-                (websocket-send-text ws-conn payload)
-                (setq waiting-send
-                      (cl-remove-if #'(lambda (p) (string= payload p))
-                                    waiting-send)))
-            ('websocket-closed (restart team)))
-        (restart team)))))
+  (with-slots (waiting-send ws-conn) team
+    (push payload waiting-send)
+    (condition-case _e
+        (progn
+          (websocket-send-text ws-conn payload)
+          (setq waiting-send
+                (cl-remove-if #'(lambda (p) (string= payload p))
+                              waiting-send)))
+      (websocket-closed (slack-ws-reconnect team))
+      (websocket-illegal-frame (message "Sent illegal frame.")
+                               (slack-ws-close team))
+      (error (slack-ws-reconnect team)))))
 
 (defun slack-ws-resend (team)
   (with-slots (waiting-send) team
