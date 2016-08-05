@@ -52,28 +52,24 @@
   :group 'slack)
 
 (defun slack-message-put-header-property (header)
-  (put-text-property 0 (length header)
-                     'face 'slack-message-output-header header)
-  header)
+  (if header
+      (propertize header 'face 'slack-message-output-header)))
 
 (defun slack-message-put-text-property (text)
-  (put-text-property 0 (length text)
-                     'face 'slack-message-output-text text)
-  text)
+  (if text
+      (propertize text 'face 'slack-message-output-text)))
 
 (defun slack-message-put-reactions-property (text)
-  (put-text-property 0 (length text)
-                     'face 'slack-message-output-reaction text)
-  text)
+  (if text
+      (propertize text 'face 'slack-message-output-reaction)))
 
 (defun slack-message-put-hard (text)
-  (put-text-property 0 (length text) 'hard t text)
-  text)
+  (if text
+      (propertize text 'hard t)))
 
 (defun slack-message-put-deleted-property (text)
-  (put-text-property 0 (length text)
-                     'face 'slack-message-deleted-face text)
-  text)
+  (if text
+      (propertize text 'face 'slack-message-deleted-face)))
 
 (defmethod slack-message-propertize ((m slack-message) text)
   text)
@@ -93,19 +89,21 @@
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
-    (let* ((header (slack-message-header m team))
-           (body (slack-message-body m team))
+    (let* ((header (slack-message-put-header-property
+                    (slack-message-header m team)))
+           (row-body (slack-message-body m team))
+           (body (if (oref m deleted-at)
+                     (slack-message-put-deleted-property row-body)
+                   (slack-message-put-text-property row-body)))
            (reactions-str
-            (slack-message-reactions-to-string (oref m reactions))))
-      (slack-message-put-header-property header)
-      (slack-message-put-text-property body)
-      (slack-message-put-reactions-property reactions-str)
-      (if (oref m deleted-at)
-          (slack-message-put-deleted-property body))
-      (let ((message-str (concat header "\n" body "\n"
-                                 (if reactions-str
-                                     (concat "\n" reactions-str "\n")))))
-        (slack-message-propertize m message-str)))))
+            (slack-message-put-reactions-property
+             (slack-message-reactions-to-string (oref m reactions)))))
+
+      (slack-message-propertize m
+                                (concat header "\n" body "\n"
+                                        (if reactions-str
+                                            (concat "\n"
+                                                    reactions-str "\n")))))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text attachments) m
