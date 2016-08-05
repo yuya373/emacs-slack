@@ -85,7 +85,9 @@
         (emojify-mode t))))
 
 (defun slack-buffer-goto (ts)
-  (goto-char (slack-buffer-ts-eq (point-min) (point-max) ts)))
+  (let ((point (slack-buffer-ts-eq (point-min) (point-max) ts)))
+    (when point
+      (goto-char point))))
 
 (defmethod slack-buffer-insert-previous-link ((room slack-room))
   (let ((oldest (slack-room-prev-link-info room)))
