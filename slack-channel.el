@@ -133,27 +133,29 @@
 
 (defun slack-channel-join ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (channel (slack-current-room-or-select
-                   #'(lambda ()
-                       (slack-channel-names
-                        team
-                        #'(lambda (channels)
-                            (cl-remove-if
-                             #'(lambda (c)
-                                 (or (slack-room-member-p c)
-                                     (slack-room-archived-p c)))
-                             channels)))))))
-    (cl-labels
-        ((on-channel-join (&key data &allow-other-keys)
-                          (slack-request-handle-error
-                           (data "slack-channel-join"))))
-      (slack-request
-       slack-channel-join-url
-       team
-       :params (list (cons "name" (slack-room-name channel)))
-       :sync nil
-       :success #'on-channel-join))))
+  (cl-labels
+      ((filter-channel (channels)
+                       (cl-remove-if
+                        #'(lambda (c)
+                            (or (slack-room-member-p c)
+                                (slack-room-archived-p c)))
+                        channels)))
+    (let* ((team (slack-team-select))
+           (channel (slack-current-room-or-select
+                     #'(lambda ()
+                         (slack-channel-names team
+                          #'filter-channel)))))
+      (cl-labels
+          ((on-channel-join (&key data &allow-other-keys)
+                            (slack-request-handle-error
+                             (data "slack-channel-join"))))
+        (slack-request
+         slack-channel-join-url
+         team
+         :params (list (cons "name" (slack-room-name channel)))
+         :sync nil
+         :success #'on-channel-join))))
+  )
 
 (defun slack-channel-create-from-info (id team)
   (cl-labels
