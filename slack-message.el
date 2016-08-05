@@ -90,7 +90,6 @@
 (defgeneric slack-message-to-alert (slack-message))
 
 (defgeneric slack-room-buffer-name (room))
-(defgeneric slack-room-update-message (room messages))
 
 (defun slack-room-find (id team)
   (if (and id team)
@@ -159,17 +158,29 @@
           (slack-message-set-reactions message payload))))))
 
 (defmethod slack-message-equal ((m slack-message) n)
-  (and (string= (oref m ts) (oref n ts))
-       (string= (oref m text) (oref n text))))
+  (string= (oref m ts) (oref n ts)))
 
 (defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
-  (with-slots (channel) m
-    (let ((room (slack-room-find channel team)))
-      (when room
-        (slack-room-update-message room m)
-        (slack-buffer-update room m team :replace replace)
-        (unless no-notify
-          (slack-message-notify-alert m room team))))))
+  (cl-labels
+      ((push-message-to (room msg)
+                        (with-slots (messages) room
+                          (when (< 0 (length messages))
+                            (cl-pushnew msg messages
+                                        :test #'slack-message-equal))
+                          (update-latest room msg)))
+       (update-latest (room msg)
+                      (with-slots (latest) room
+                        (if (or (null latest)
+                                (string< (oref latest ts) (oref msg ts)))
+                            (setq latest msg)))))
+    (with-slots (channel) m
+      (let ((room (slack-room-find channel team)))
+        (when room
+          (push-message-to room m)
+          (slack-buffer-update room m team :replace replace)
+          (unless no-notify
+            (slack-message-notify-alert m room team)))))))
+
 
 (defun slack-message-edited (payload team)
   (let* ((edited-message (slack-decode (plist-get payload :message)))
