@@ -484,9 +484,13 @@
     (setq reconnect-timer nil)
     (setq reconnect-after-sec 1)))
 
-(defun slack-ws-handle-pong (_payload team)
-  (with-slots (last-pong) team
-    (setq last-pong (time-to-seconds (current-time)))))
+(defun slack-ws-handle-pong (payload team)
+  (let ((key (plist-get payload :time)))
+    (with-slots (ping-check-timers) team
+      (let ((timer (gethash key ping-check-timers)))
+        (when timer
+          (cancel-timer timer)
+          (remhash key ping-check-timers))))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (let ((room (slack-room-find (plist-get payload :channel)
