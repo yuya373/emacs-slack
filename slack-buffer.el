@@ -99,7 +99,7 @@
             (concat
              (propertize "(load more message)"
                          'face '(:underline t)
-                         'oldest (slack-room-prev-link-info room)
+                         'oldest oldest
                          'keymap (let ((map (make-sparse-keymap)))
                                    (define-key map (kbd "RET")
                                      #'slack-room-load-prev-messages)
