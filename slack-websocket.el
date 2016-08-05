@@ -61,7 +61,7 @@
                         (setq ws-conn nil)
                         (setq connected nil)
                         (slack-ws-cancel-ping-timer team)
-                        (slack-ws-cancel-check-ping-timeout-timer team)
+                        (slack-ws-cancel-ping-check-timers team)
                         (message "Slack Websocket Closed - %s" team-name))
                     (message "Slack Websocket is not open - %s" team-name))))))
     (if (listp team)
@@ -106,7 +106,6 @@
        ((string= type "hello")
         (slack-ws-cancel-reconnect-timer team)
         (slack-ws-set-ping-timer team)
-        (slack-ws-set-check-ping-timer team)
         (slack-ws-resend team)
         (message "Slack Websocket Is Ready! - %s"
                  (oref team name)))
