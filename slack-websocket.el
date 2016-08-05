@@ -441,6 +441,9 @@
         (cancel-timer check-ping-timeout-timer))
     (setq check-ping-timeout-timer nil)
     (setq last-pong nil)))
+(defun slack-ws-init-ping-check-timers ()
+  (make-hash-table :test 'equal))
+
 
 (defun slack-ws-cancel-ping-timer (team)
   (with-slots (ping-timer) team

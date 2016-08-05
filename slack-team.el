@@ -69,7 +69,8 @@ use `slack-change-current-team' to change `slack-current-team'"
                         :type list :initform nil)
    (typing :initform nil)
    (typing-timer :initform nil)
-   (reminders :initform nil :type list)))
+   (reminders :initform nil :type list)
+   (ping-check-timers :initform (slack-ws-init-ping-check-timers))))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
