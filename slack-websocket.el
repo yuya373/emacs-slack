@@ -419,14 +419,6 @@
                                  #'(lambda () (slack-ws-ping-timeout team-id)))
                ping-check-timers))))
 
-(defun slack-ws-check-ping-timeout (team)
-  (with-slots (last-pong) team
-    (if last-pong
-        (let* ((current (time-to-seconds (current-time)))
-               (since-last-pong (- current last-pong)))
-          (when (> since-last-pong 20)
-            (slack-ws-ping-timeout team))))))
-
 (defun slack-ws-ping-timeout (team-id)
   (message "Slack Websocket PING Timeout.")
   (let ((team (slack-team-find team-id)))
