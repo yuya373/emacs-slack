@@ -62,7 +62,6 @@
                         (setq connected nil)
                         (slack-ws-cancel-ping-timer team)
                         (slack-ws-cancel-check-ping-timeout-timer team)
-                        (slack-ws-cancel-reconnect-timer team)
                         (message "Slack Websocket Closed - %s" team-name))
                     (message "Slack Websocket is not open - %s" team-name))))))
     (if (listp team)
@@ -457,32 +456,28 @@
         (cancel-timer ping-timer))
     (setq ping-timer nil)))
 
-(defun slack-ws-reconnect (team)
+(defun slack-ws-reconnect (team &optional force)
   (message "Slack Websocket Try To Reconnect")
   (with-slots
-      ((last-reconnect reconnect-after-sec)
-       (reconnect-max reconnect-after-sec-max)) team
-    (let* ((after (if (> last-reconnect reconnect-max)
-                      1
-                    (* last-reconnect 2))))
-      (setq last-reconnect after)
+      (reconnect-count (reconnect-max reconnect-count-max)) team
+    (if (and (not force) reconnect-max (< reconnect-count reconnect-max))
+        (progn
+          (message "Reconnect Count Exceeded. Manually invoke `slack-start'.")
+          (slack-ws-cancel-reconnect-timer team))
+      (incf reconnect-count)
       (slack-ws-close team)
       (slack-authorize
        team
        (cl-function
         (lambda
           (&key error-thrown &allow-other-keys)
-          (message "Slack Reconnect Error: %s" error-thrown)
-          (oset team reconnect-timer
-                (run-at-time after nil
-                             #'(lambda () (slack-ws-reconnect team))))))))))
+          (message "Slack Reconnect Failed: %s" (cdr error-thrown))))))))
 
 (defun slack-ws-cancel-reconnect-timer (team)
-  (with-slots (reconnect-timer reconnect-after-sec) team
+  (with-slots (reconnect-timer) team
     (if (timerp reconnect-timer)
         (cancel-timer reconnect-timer))
-    (setq reconnect-timer nil)
-    (setq reconnect-after-sec 1)))
+    (setq reconnect-timer nil)))
 
 (defun slack-ws-handle-pong (payload team)
   (let ((key (plist-get payload :time)))
