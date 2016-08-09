@@ -60,7 +60,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (reconnect-timer :initform nil)
    (reconnect-after-sec :initform 10)
    (reconnect-count :initform 0)
-   (reconnect-count-max :initform nil)
+   (reconnect-count-max :initform 360)
    (last-pong :initform nil)
    (waiting-send :initform nil)
    (sent-message :initform (make-hash-table))
