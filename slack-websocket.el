@@ -38,14 +38,15 @@
    (user-name :initarg :user-name :initform nil)))
 
 (defun slack-ws-open (team)
-  (with-slots (ws-url ws-conn) team
+  (with-slots (ws-url ws-conn reconnect-count) team
     (unless ws-conn
       (setq ws-conn
             (websocket-open
              ws-url
              :on-message
              #'(lambda (websocket frame)
-                 (slack-ws-on-message websocket frame team)))))))
+                 (slack-ws-on-message websocket frame team))))
+      (setq reconnect-count 0))))
 
 (defun slack-ws-close (&optional team)
   (interactive)
