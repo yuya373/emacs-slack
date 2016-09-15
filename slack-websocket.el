@@ -106,6 +106,7 @@
         (slack-ws-handle-pong decoded-payload team))
        ((string= type "hello")
         (slack-ws-cancel-reconnect-timer team)
+        (slack-cancel-notify-adandon-reconnect)
         (slack-ws-set-ping-timer team)
         (slack-ws-resend team)
         (message "Slack Websocket Is Ready! - %s"
@@ -448,13 +449,29 @@
         (cancel-timer ping-timer))
     (setq ping-timer nil)))
 
+(defvar slack-disconnected-timer nil)
+(defun slack-notify-abandon-reconnect ()
+  (unless slack-disconnected-timer
+    (setq slack-disconnected-timer
+          (run-with-idle-timer 5 t
+                               #'(lambda ()
+                                   (message "Reconnect Count Exceeded. Manually invoke `slack-start'."))))))
+
+(defun slack-cancel-notify-adandon-reconnect ()
+  (if (and slack-disconnected-timer
+           (timerp slack-disconnected-timer))
+      (progn
+        (cancel-timer slack-disconnected-timer)
+        (setq slack-disconnected-timer nil))))
+
 (defun slack-ws-reconnect (team &optional force)
   (message "Slack Websocket Try To Reconnect")
   (with-slots
       (reconnect-count (reconnect-max reconnect-count-max)) team
-    (if (and (not force) reconnect-max (< reconnect-count reconnect-max))
+    (message "reconnect-max: %s reconnect-count: %s" reconnect-max reconnect-count)
+    (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
         (progn
-          (message "Reconnect Count Exceeded. Manually invoke `slack-start'.")
+          (slack-notify-abandon-reconnect)
           (slack-ws-cancel-reconnect-timer team))
       (incf reconnect-count)
       (slack-ws-close team)
