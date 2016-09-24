@@ -143,7 +143,9 @@ never means never show typing indicator."
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
        (cl-loop for room in (append groups ims channels)
-                do (slack-room-history room team nil nil t)))
+                do (let ((bufname (slack-room-buffer-name room)))
+                     (when (get-buffer bufname)
+                       (kill-buffer bufname)))))
      (slack-ws-open team))))
 
 (defun slack-on-authorize-e
