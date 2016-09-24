@@ -59,7 +59,7 @@
          (msg (slack-user-message "msg"
                                   :text (format "added reaction %s" reaction)
                                   :user user-id)))
-    (slack-message-notify-alert msg room team)))
+    (slack-message-notify msg room team)))
 
 (provide 'slack-reaction)
 ;;; slack-reaction.el ends here

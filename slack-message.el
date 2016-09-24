@@ -179,7 +179,7 @@
           (push-message-to room m)
           (slack-buffer-update room m team :replace replace)
           (unless no-notify
-            (slack-message-notify-alert m room team)))))))
+            (slack-message-notify m room team)))))))
 
 
 (defun slack-message-edited (payload team)
