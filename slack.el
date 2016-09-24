@@ -91,14 +91,20 @@ never means never show typing indicator."
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 
+(defvar slack-authorize-requests nil)
 (defun slack-authorize (team &optional error-callback)
-  (slack-request
-   slack-authorize-url
-   team
-   :success (cl-function (lambda (&key data &allow-other-keys)
-                           (slack-on-authorize data team)))
-   :sync nil
-   :error error-callback))
+  (cl-labels
+      ((abort-previous () (cl-loop for r in (reverse slack-authorize-requests)
+                                   do (request-abort r))))
+    (setq slack-authorize-requests nil)
+    (let ((request (slack-request
+                    slack-authorize-url
+                    team
+                    :success (cl-function (lambda (&key data &allow-other-keys)
+                                            (slack-on-authorize data team)))
+                    :sync nil
+                    :error error-callback)))
+      (push request slack-authorize-requests))))
 
 (defun slack-update-team (data team)
   (cl-labels
@@ -137,7 +143,9 @@ never means never show typing indicator."
    (let ((team (slack-update-team data team)))
      (with-slots (groups ims channels) team
        (cl-loop for room in (append groups ims channels)
-                do (slack-room-history room team nil nil t)))
+                do (let ((bufname (slack-room-buffer-name room)))
+                     (when (get-buffer bufname)
+                       (kill-buffer bufname)))))
      (slack-ws-open team))))
 
 (defun slack-on-authorize-e

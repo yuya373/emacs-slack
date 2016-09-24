@@ -27,6 +27,10 @@
 (require 'json)
 (require 'request)
 
+(defcustom slack-request-timeout 5
+  "Request Timeout in seconds."
+  :group 'slack)
+
 (defun slack-parse-to-hash ()
   (let ((json-object-type 'hash-table))
     (let ((res (json-read-from-string (buffer-string))))
@@ -48,7 +52,8 @@
                              (parser #'slack-parse-to-plist)
                              (sync t)
                              (files nil)
-                             (headers nil))
+                             (headers nil)
+                             (timeout slack-request-timeout))
   (request
    url
    :type type
@@ -59,7 +64,8 @@
    :headers headers
    :parser parser
    :success success
-   :error error))
+   :error error
+   :timeout timeout))
 
 (cl-defmacro slack-request-handle-error ((data req-name) &body body)
   "Bind error to e if present in DATA."
