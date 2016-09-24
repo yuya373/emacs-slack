@@ -33,29 +33,32 @@
 
 (defvar alert-default-style)
 
+(defcustom slack-message-custom-notifier nil
+  "Custom notification function.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :group 'slack)
+
 (defun slack-message-notify-alert (message room team)
-  (if (or (and (slack-im-p room)
-               (not (slack-message-minep message team)))
-          (and (slack-group-p room)
-               (slack-mpim-p room)
-               (not (slack-message-minep message team)))
-          (and (slack-room-subscribedp room team)
-               (not (slack-message-minep message team)))
-          (and (not (slack-message-minep message team))
-               (string-match (format "@%s" (plist-get (oref team self) :name))
-                             (slack-message-body message team))))
-      (let ((room-name (slack-room-name-with-team-name room))
-            (text (slack-message-to-alert message team))
-            (user-name (slack-message-sender-name message team)))
-        (if (and (eq alert-default-style 'notifier)
-                 (or (eq (aref text 0) ?\[)
-                     (eq (aref text 0) ?\{)
-                     (eq (aref text 0) ?\<)
-                     (eq (aref text 0) ?\()))
-            (setq text (concat "\\" text)))
-        (alert text
-               :title (format "\\[%s] from %s" room-name user-name)
-               :category 'slack))))
+  (if slack-message-custom-notifier
+      (funcall slack-message-custom-notifier message room team)
+
+    (if (and (not (slack-message-minep message team))
+             (or (slack-im-p room)
+                 (and (slack-group-p room) (slack-mpim-p room))
+                 (slack-room-subscribedp room team)
+                 (string-match (format "@%s" (plist-get (oref team self) :name))
+                               (slack-message-body message team))))
+        (let ((room-name (slack-room-name-with-team-name room))
+              (text (slack-message-to-alert message team))
+              (user-name (slack-message-sender-name message team)))
+          (if (and (eq alert-default-style 'notifier)
+                   (or (eq (aref text 0) ?\[)
+                       (eq (aref text 0) ?\{)
+                       (eq (aref text 0) ?\<)
+                       (eq (aref text 0) ?\()))
+              (setq text (concat "\\" text)))
+          (alert text
+                 :title (format "\\[%s] from %s" room-name user-name)
+                 :category 'slack)))))
 
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
