@@ -81,10 +81,17 @@
 
 (defun slack-message-reactions-to-string (reactions)
   (if reactions
-      (mapconcat #'slack-reaction-to-string reactions " ")))
+      (concat "\n" (mapconcat #'slack-reaction-to-string reactions " "))))
 
 (defmethod slack-message-header ((m slack-message) team)
   (slack-message-sender-name m team))
+
+(defun slack-format-message (header body attachment-body reactions)
+  (let ((messages (list header body attachment-body reactions)))
+    (concat (mapconcat #'identity
+               (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
+               "\n")
+            "\n")))
 
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text)
@@ -99,13 +106,8 @@
            (reactions-str
             (slack-message-put-reactions-property
              (slack-message-reactions-to-string (oref m reactions)))))
-
-      (slack-message-propertize m
-                                (concat header "\n" body "\n"
-                                        (if (< 0 (length attachment-body))
-                                            (concat "\n" attachment-body))
-                                        (if reactions-str
-                                            (concat "\n" reactions-str "\n")))))))
+      (slack-message-propertize
+       m (slack-format-message header body attachment-body reactions-str)))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
@@ -113,25 +115,26 @@
 
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (slack-message-unescape-string
-     (mapconcat #'slack-attachment-to-string attachments "\n")
-     team)))
+    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n")))
+      (if (< 0 (length body))
+          (concat "\n" (slack-message-unescape-string body team))))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m
     (slack-message-unescape-string text team)))
 
 (defun slack-message-unescape-string (text team)
-  (let* ((and-unescpaed
-          (replace-regexp-in-string "&amp;" "&" text))
-         (lt-unescaped
-          (replace-regexp-in-string "&lt;" "<" and-unescpaed))
-         (gt-unescaped
-          (replace-regexp-in-string "&gt;" ">" lt-unescaped)))
-    (slack-message-unescape-command
-     (slack-message-unescape-user-id
-      (slack-message-unescape-channel gt-unescaped)
-      team))))
+  (when text
+    (let* ((and-unescpaed
+            (replace-regexp-in-string "&amp;" "&" text))
+           (lt-unescaped
+            (replace-regexp-in-string "&lt;" "<" and-unescpaed))
+           (gt-unescaped
+            (replace-regexp-in-string "&gt;" ">" lt-unescaped)))
+      (slack-message-unescape-command
+       (slack-message-unescape-user-id
+        (slack-message-unescape-channel gt-unescaped)
+        team)))))
 
 (defun slack-message-unescape-user-id (text team)
   (let ((user-regexp "<@\\(U.*?\\)>"))
