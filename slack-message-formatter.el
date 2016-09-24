@@ -92,6 +92,7 @@
     (let* ((header (slack-message-put-header-property
                     (slack-message-header m team)))
            (row-body (slack-message-body m team))
+           (attachment-body (slack-message-attachment-body m team))
            (body (if (oref m deleted-at)
                      (slack-message-put-deleted-property row-body)
                    (slack-message-put-text-property row-body)))
@@ -101,17 +102,20 @@
 
       (slack-message-propertize m
                                 (concat header "\n" body "\n"
+                                        (if (< 0 (length attachment-body))
+                                            (concat "\n" attachment-body))
                                         (if reactions-str
-                                            (concat "\n"
-                                                    reactions-str "\n")))))))
+                                            (concat "\n" reactions-str "\n")))))))
 
 (defmethod slack-message-body ((m slack-message) team)
-  (with-slots (text attachments) m
-    (let* ((attachment-string (mapconcat #'slack-attachment-to-string
-                                         attachments "\n"))
-           (body (concat text (if (< 0 (length attachment-string))
-                                  (concat "\n" attachment-string)))))
-      (slack-message-unescape-string body team))))
+  (with-slots (text) m
+    (slack-message-unescape-string text team)))
+
+(defmethod slack-message-attachment-body ((m slack-message) team)
+  (with-slots (attachments) m
+    (slack-message-unescape-string
+     (mapconcat #'slack-attachment-to-string attachments "\n")
+     team)))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m

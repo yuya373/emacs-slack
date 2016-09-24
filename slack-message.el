@@ -83,7 +83,15 @@
    (author-icon :initarg :author_icon)
    (fields :initarg :fields :type (or null list))
    (image-url :initarg :image_url)
-   (thumb-url :initarg :thumb_url)))
+   (thumb-url :initarg :thumb_url)
+   (is-share :initarg :is_share :initform nil)))
+
+(defclass slack-shared-message (slack-attachment)
+  ((ts :initarg :ts :initform nil)
+   (color :initarg :color :initform nil)
+   (channel-id :initarg :channel_id :initform nil)
+   (channel-name :initarg :channel_name :initform nil)
+   (from-url :initarg :from_url :initform nil)))
 
 (defgeneric slack-message-sender-name  (slack-message team))
 (defgeneric slack-message-to-string (slack-message))
@@ -119,8 +127,11 @@
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (append (plist-get payload :fields) nil))
-  (apply #'slack-attachment "attachment"
-         (slack-collect-slots 'slack-attachment payload)))
+  (if (plist-get payload :is_share)
+      (apply #'slack-shared-message "shared-attachment"
+             (slack-collect-slots 'slack-shared-message payload))
+    (apply #'slack-attachment "attachment"
+           (slack-collect-slots 'slack-attachment payload))))
 
 (defmethod slack-message-set-attachments ((m slack-message) payload)
   (let ((attachments (plist-get payload :attachments)))
