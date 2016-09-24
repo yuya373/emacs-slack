@@ -458,5 +458,15 @@
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
 
+(defun slack-room-find-by-name (name team)
+  (cl-labels
+      ((find-by-name (rooms name)
+                     (cl-find-if #'(lambda (e) (string= name
+                                                        (slack-room-name e)))
+                                 rooms)))
+    (or (find-by-name (oref team groups) name)
+        (find-by-name (oref team channels) name)
+        (find-by-name (oref team ims) name))))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
