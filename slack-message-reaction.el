@@ -36,11 +36,16 @@
 (defcustom slack-invalid-emojis '("^:flag_" "tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
   "Invalid emoji regex. Slack server treated some emojis as Invalid."
   :group 'slack)
-(eval-after-load "emojify"
-  (setq slack-emojify-comp-list
-        (let ((invalid-regex (mapconcat #'identity slack-invalid-emojis "\\|")))
-          (cl-remove-if (lambda (s) (string-match invalid-regex s))
-                        (hash-table-keys emojify-emojis)))))
+
+(defun slack-message-reaction-load-emojify-comp-list ()
+  (if (and (bound-and-true-p emojify-emojis)
+           (not (bound-and-true-p slack-emojify-comp-list)))
+      (setq slack-emojify-comp-list
+            (let ((invalid-regex (mapconcat #'identity
+                                            slack-invalid-emojis
+                                            "\\|")))
+              (cl-remove-if (lambda (s) (string-match invalid-regex s))
+                            (hash-table-keys emojify-emojis))))))
 
 (defun slack-message-add-reaction ()
   (interactive)
@@ -83,6 +88,7 @@
      selected)))
 
 (defun slack-message-reaction-input ()
+  (slack-message-reaction-load-emojify-comp-list)
   (let ((reaction (if (bound-and-true-p slack-emojify-comp-list)
                       (completing-read "Select Emoji: " slack-emojify-comp-list)
                     (read-from-minibuffer "Emoji: "))))
