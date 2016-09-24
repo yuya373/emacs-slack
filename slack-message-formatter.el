@@ -117,7 +117,7 @@
   (with-slots (attachments) m
     (let ((body (mapconcat #'slack-attachment-to-string attachments "\n")))
       (if (< 0 (length body))
-          (concat "\n" (slack-message-unescape-string body team))))))
+          (slack-message-unescape-string body team)))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m
