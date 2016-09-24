@@ -468,7 +468,6 @@
   (message "Slack Websocket Try To Reconnect")
   (with-slots
       (reconnect-count (reconnect-max reconnect-count-max)) team
-    (message "reconnect-max: %s reconnect-count: %s" reconnect-max reconnect-count)
     (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
         (progn
           (slack-notify-abandon-reconnect)
