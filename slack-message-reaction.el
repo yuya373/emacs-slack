@@ -33,7 +33,7 @@
 (defvar slack-current-team-id)
 (defvar slack-current-room-id)
 (defvar slack-emojify-comp-list)
-(defcustom slack-invalid-emojis '("tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
+(defcustom slack-invalid-emojis '("^:flag_" "tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
   "Invalid emoji regex. Slack server treated some emojis as Invalid."
   :group 'slack)
 (eval-after-load "emojify"
