@@ -56,17 +56,20 @@
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
-    (mapconcat #'identity
-               (cl-remove-if #'null
-                             (list pretext title title-link text fallback))
-               "\n")))
+    (if (and pretext title text)
+        (mapconcat #'identity
+                   (cl-remove-if #'null (list pretext title title-link text))
+                   "\n")
+      fallback)))
 
 (defmethod slack-attachment-to-string((a slack-shared-message))
   (with-slots (fallback text author-name ts channel-name color from-url) a
-    (let* ((header-property '(:foreground ,color :weight bold))
-           (footer-property '(:foreground ,color :height 0.9))
-           (pad (propertize "|" 'face '(:foreground ,color :weight ultra-bold)))
-           (header (concat pad "\t" (propertize author-name 'face header-property)))
+    (let* ((header-property '(:weight bold))
+           (footer-property '(:height 0.8))
+           (pad-property '(:weight ultra-bold))
+           (pad (propertize "|" 'face pad-property))
+           (header (concat pad "\t"
+                           (propertize author-name 'face header-property)))
            (body (format "%s\t%s" pad (mapconcat #'identity
                                                  (split-string text "\n")
                                                  (format "\n\t%s\t" pad))))
@@ -74,7 +77,7 @@
                            (propertize
                             (format "%s %s" channel-name (slack-message-time-to-string ts))
                             'face footer-property))))
-      (format "\t%s\n \t%s\n \t%s\n"
+      (format "\t%s\n \t%s\n \t%s"
               header
               body
               footer))))
