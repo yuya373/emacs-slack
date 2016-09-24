@@ -32,6 +32,15 @@
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
 (defvar slack-current-team-id)
 (defvar slack-current-room-id)
+(defvar slack-emojify-comp-list)
+(defcustom slack-invalid-emojis '("tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
+  "Invalid emoji regex. Slack server treated some emojis as Invalid."
+  :group 'slack)
+(eval-after-load "emojify"
+  (setq slack-emojify-comp-list
+        (let ((invalid-regex (mapconcat #'identity slack-invalid-emojis "\\|")))
+          (cl-remove-if (lambda (s) (string-match invalid-regex s))
+                        (hash-table-keys emojify-emojis)))))
 
 (defun slack-message-add-reaction ()
   (interactive)
@@ -74,7 +83,9 @@
      selected)))
 
 (defun slack-message-reaction-input ()
-  (let ((reaction (read-from-minibuffer "Emoji: ")))
+  (let ((reaction (if (bound-and-true-p slack-emojify-comp-list)
+                      (completing-read "Select Emoji: " slack-emojify-comp-list)
+                    (read-from-minibuffer "Emoji: "))))
     (if (and (string-prefix-p ":" reaction)
              (string-suffix-p ":" reaction))
         (substring reaction 1 -1)
