@@ -54,6 +54,7 @@
             (text (slack-message-to-alert message team))
             (user-name (slack-message-sender-name message team)))
         (if (and (eq alert-default-style 'notifier)
+                 (slack-im-p room)
                  (or (eq (aref text 0) ?\[)
                      (eq (aref text 0) ?\{)
                      (eq (aref text 0) ?\<)
