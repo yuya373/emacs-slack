@@ -282,13 +282,14 @@
          (deleted-ts (plist-get payload :ts))
          (channel (slack-room-find channel-id team))
          (message (slack-room-find-message channel ts)))
-    (oset message deleted-at deleted-ts)
-    (alert "message deleted"
-           :title (format "\\[%s] from %s"
-                          (slack-room-name-with-team-name channel)
-                          (slack-message-sender-name message team))
-           :category 'slack)
-    (slack-buffer-update channel message team :replace t)))
+    (when message
+      (oset message deleted-at deleted-ts)
+      (alert "message deleted"
+             :title (format "\\[%s] from %s"
+                            (slack-room-name-with-team-name channel)
+                            (slack-message-sender-name message team))
+             :category 'slack)
+      (slack-buffer-update channel message team :replace t))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
