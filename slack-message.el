@@ -78,7 +78,7 @@
    (title-link :initarg :title_link :initform nil)
    (pretext :initarg :pretext :initform nil)
    (text :initarg :text :initform nil)
-   (author-name :initarg :author_name)
+   (author-name :initarg :author_name :initform "")
    (author-link :initarg :author_link)
    (author-icon :initarg :author_icon)
    (fields :initarg :fields :type (or null list))
