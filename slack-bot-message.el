@@ -56,10 +56,10 @@
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
-    (if (and pretext title text)
+    (if (and pretext text)
         (mapconcat #'identity
                    (cl-remove-if #'null (list pretext title title-link text))
-                   "\n")
+                   "\n\n")
       fallback)))
 
 (defmethod slack-attachment-to-string((a slack-shared-message))
