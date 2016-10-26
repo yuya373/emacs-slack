@@ -71,7 +71,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (typing :initform nil)
    (typing-timer :initform nil)
    (reminders :initform nil :type list)
-   (ping-check-timers :initform (slack-ws-init-ping-check-timers))))
+   (ping-check-timers)))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
@@ -197,6 +197,14 @@ you can change current-team with `slack-change-current-team'"
                               slack-teams))
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
+
+(defmethod slack-team-init-ping-check-timers ((team slack-team))
+  (oset team ping-check-timers (make-hash-table :test 'equal)))
+
+(defmethod slack-team-get-ping-check-timers ((team slack-team))
+  (if (not (slot-boundp team 'ping-check-timers))
+      (slack-team-init-ping-check-timers team))
+  (oref team ping-check-timers))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

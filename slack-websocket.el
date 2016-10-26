@@ -413,11 +413,11 @@
       (slack-ws-send json team))))
 
 (defun slack-ws-set-check-ping-timer (team time)
-  (with-slots (ping-check-timers check-ping-timeout-sec) team
+  (with-slots (check-ping-timeout-sec) team
     (let ((team-id (oref team id)))
       (puthash time (run-at-time check-ping-timeout-sec nil
                                  #'(lambda () (slack-ws-ping-timeout team-id)))
-               ping-check-timers))))
+               (slack-team-get-ping-check-timers team)))))
 
 (defun slack-ws-ping-timeout (team-id)
   (let ((team (slack-team-find team-id)))
@@ -431,16 +431,12 @@
                 (run-at-time t reconnect-after-sec
                              #'(lambda () (slack-ws-reconnect team))))))))
 
-(defun slack-ws-init-ping-check-timers ()
-  (make-hash-table :test 'equal))
-
 (defun slack-ws-cancel-ping-check-timers (team)
-  (with-slots (ping-check-timers) team
-    (maphash #'(lambda (key value)
-                 (if (timerp value)
-                     (cancel-timer value)))
-             ping-check-timers)
-    (setq ping-check-timers (slack-ws-init-ping-check-timers))))
+  (maphash #'(lambda (key value)
+               (if (timerp value)
+                   (cancel-timer value)))
+           (slack-team-get-ping-check-timers team))
+  (slack-team-init-ping-check-timers team))
 
 (defun slack-ws-cancel-ping-timer (team)
   (with-slots (ping-timer) team
@@ -490,12 +486,12 @@
     (setq reconnect-timer nil)))
 
 (defun slack-ws-handle-pong (payload team)
-  (let ((key (plist-get payload :time)))
-    (with-slots (ping-check-timers) team
-      (let ((timer (gethash key ping-check-timers)))
-        (when timer
-          (cancel-timer timer)
-          (remhash key ping-check-timers))))))
+  (let ((key (plist-get payload :time))
+        (timers (slack-team-get-ping-check-timers team)))
+    (let ((timer (gethash key timers)))
+      (when timer
+        (cancel-timer timer)
+        (remhash key timers)))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (let ((room (slack-room-find (plist-get payload :channel)
