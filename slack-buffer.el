@@ -68,7 +68,8 @@
         (slack-buffer-insert-previous-link room)
         (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-add-last-ts-property nil t)
-        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)))
+        (add-hook 'lui-post-output-hook 'slack-buffer-add-ts-property nil t)
+        (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
     buffer))
 
 (defmethod slack-buffer-set-current-room-id ((room slack-room))
@@ -137,6 +138,21 @@
         (slack-buffer-set-current-team-id team)
         (slack-buffer-enable-emojify))
       buffer)))
+
+(defun slack-buffer-buttonize-link ()
+  (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
+    (while (re-search-forward regex nil t)
+      (let ((url-begin (match-beginning 1))
+            (url (concat (match-string 1) (match-string 2)))
+            (replace (match-string 3)))
+        (replace-match replace nil)
+
+        (make-button (1- url-begin)
+                     (+ (1- url-begin) (length replace))
+                     'type 'lui-button
+                     'action 'lui-button-activate
+                     'lui-button-function 'browse-url
+                     'lui-button-arguments (list url))))))
 
 (defun slack-buffer-add-last-ts-property ()
   (when slack-current-message
