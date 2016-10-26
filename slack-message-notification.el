@@ -48,7 +48,7 @@
                (and (slack-group-p room) (slack-mpim-p room))
                (slack-room-subscribedp room team)
                (string-match (format "@%s" (plist-get (oref team self) :name))
-                             (slack-message-body message team))))
+                             (or (slack-message-body message team) ""))))
       (let ((team-name (oref team name))
             (room-name (slack-room-name room))
             (text (slack-message-to-alert message team))
