@@ -97,7 +97,7 @@ you can change current-team with `slack-change-current-team'"
   (interactive
    (let ((name (read-from-minibuffer "Team Name: "))
          (client-id (read-from-minibuffer "Client Id: "))
-         (client-secret (read-from-minibuffer "Cliend Secret: "))
+         (client-secret (read-from-minibuffer "Client Secret: "))
          (token (read-from-minibuffer "Token: ")))
      (list :name name :client-id client-id :client-secret client-secret
            :token token)))
