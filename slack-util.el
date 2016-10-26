@@ -55,6 +55,12 @@
                                    nil
                                  value)))))))
 
+(cl-defun slack-log (msg team &key (logger #'message))
+  (funcall logger (format "[%s] %s - %s"
+                          (format-time-string "%Y-%m-%d %H:%M:%S")
+                          msg
+                          (oref team name))))
+
 (defun company-slack-backend (command &optional arg &rest ignored)
   "Completion backend for slack chats.  It currently understands
 @USER; adding #CHANNEL should be a simple matter of programming."
