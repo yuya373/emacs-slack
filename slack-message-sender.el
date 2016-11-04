@@ -64,7 +64,7 @@
              (format "<@%s|%s>" id username)
            (cond
             ((string= username "here") "<!here|here>")
-            ((find username '("channel" "group") :test #'string=) "<!channel>")
+            ((cl-find username '("channel" "group") :test #'string=) "<!channel>")
             ((string= username "everyone") "<!everyone>")
             (t text)))))
    message t))
