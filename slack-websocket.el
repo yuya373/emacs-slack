@@ -469,7 +469,7 @@
         (progn
           (slack-notify-abandon-reconnect)
           (slack-ws-cancel-reconnect-timer team))
-      (incf reconnect-count)
+      (cl-incf reconnect-count)
       (slack-ws-close team)
       (slack-authorize
        team
