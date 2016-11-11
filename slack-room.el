@@ -105,6 +105,13 @@
     (funcall slack-buffer-function
              (slack-buffer-create room team))))
 
+(cl-defun slack-room-make-buffer-with-room-bg (room team)
+  (if (< (length (oref room messages)) 1)
+      (slack-room-history room team nil
+                          #'(slack-buffer-create room team)
+                          t)
+    (slack-buffer-create room team)))
+
 (cl-defmacro slack-select-from-list ((alist prompt) &body body)
   "Bind candidates from selected."
   (let ((key (cl-gensym)))

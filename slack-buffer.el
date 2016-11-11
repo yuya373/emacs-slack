@@ -223,7 +223,7 @@
               (slack-room-update-last-read room msg)
               (slack-buffer-insert msg team))))
       (slack-room-inc-unread-count room)
-      (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room room team)))))
+      (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room-bg room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
