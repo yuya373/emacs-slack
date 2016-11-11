@@ -40,6 +40,8 @@
 (defconst slack-group-leave-url "https://slack.com/api/groups.leave")
 (defconst slack-group-archive-url "https://slack.com/api/groups.archive")
 (defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
+(defconst slack-mpim-close-url "https://slack.com/api/mpim.close")
+(defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
 
 (defvar slack-buffer-function)
 
@@ -182,6 +184,75 @@
                                   team
                                   #'on-group-unarchive))))
 
+
+(defun slack-group-members-s (group)
+  (with-slots (members team-id) group
+    (mapconcat #'(lambda (user) (slack-user-name user
+                                                 (slack-team-find team-id)))
+               members ", ")))
+
+
+(defun slack-group-mpim-open ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (users (slack-user-names team)))
+    (cl-labels
+        ((select-users (users acc)
+                       (let ((selected (completing-read "Select User: "
+                                                        users nil t)))
+                         (if (< 0 (length selected))
+                             (select-users users
+                                           (push (cdr (cl-assoc selected users :test #'string=)) acc))
+                           acc)))
+         (on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-group-mpim-open")
+           (if (plist-get data :already_open)
+               (message "Direct Message Channel with %s Already Open"
+                        (slack-group-members-s (slack-room-find (oref selected id) team)))
+             (oset team groups
+                   (cons (slack-room-create (plist-get data :group) team 'slack-group)
+                         (oref team groups)))))))
+      (slack-request
+       slack-mpim-open-url
+       team
+       :type "POST"
+       :params (list (cons "users" (mapconcat (lambda (u) (plist-get u :id)) (select-users users '()) ",")))
+       :success #'on-success
+       :sync nil))))
+
+(defun slack-group-mpim-close ()
+  (interactive)
+  (let* ((team (slack-team-select)))
+    (slack-select-from-list
+     ((slack-group-names team #'(lambda (groups)
+                                  (cl-remove-if-not #'slack-mpim-p
+                                        groups)))
+      "Select MPIM: ")
+     (cl-labels
+         ((on-success
+           (&key data &allow-other-keys)
+           (slack-request-handle-error
+            (data "slack-group-mpim-close")
+            (let ((group (slack-room-find (oref selected id) team)))
+              (with-slots (groups) team
+                (setq groups
+                      (cl-delete-if #'(lambda (g)
+                                        (slack-room-equal-p group g))
+                                    groups)))
+              (if (plist-get data :already_closed)
+                  (message "Direct Message Channel with %s Already Closed" 
+                           (slack-group-members-s group)))))))
+       (slack-request
+        slack-mpim-close-url
+        team
+        :type "POST"
+        :params (list (cons "channel" (oref selected id)))
+        :success #'on-success
+        :sync nil)))))
+
+       
 (defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
 

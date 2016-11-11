@@ -104,6 +104,7 @@ never means never show typing indicator."
                     :success (cl-function (lambda (&key data &allow-other-keys)
                                             (slack-on-authorize data team)))
                     :sync nil
+                    :params (list (cons "mpim_aware" t))
                     :error error-callback)))
       (push request slack-authorize-requests))))
 
@@ -113,7 +114,14 @@ never means never show typing indicator."
         (datum team class)
         (mapcar #'(lambda (data)
                     (slack-room-create data team class))
-                (append datum nil))))
+                (append datum nil)))
+       (create-open-rooms
+        (datum team class)
+        (mapcar #'(lambda (data)
+                    (slack-room-create data team class))
+                (append
+                 (cl-remove-if #'(lambda (data) (plist-get data :is_open)) datum)
+                 nil))))
     (let ((self (plist-get data :self))
           (team-data (plist-get data :team)))
       (oset team id (plist-get team-data :id))
@@ -122,8 +130,10 @@ never means never show typing indicator."
             (create-rooms (plist-get data :channels)
                           team 'slack-channel))
       (oset team groups
-            (create-rooms (plist-get data :groups)
-                          team 'slack-group))
+            (append (create-rooms (plist-get data :groups)
+                                team 'slack-group)
+                  (create-open-rooms (plist-get data :mpims)
+                                     team 'slack-group)))
       (oset team ims
             (create-rooms (plist-get data :ims)
                           team 'slack-im))
