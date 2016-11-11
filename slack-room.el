@@ -211,38 +211,33 @@
     (let ((team (slack-team-find team-id)))
       (format "%s - %s" (oref team name) name))))
 
+(defmethod slack-room-label ((room slack-room))
+  (format "%s%s%s"
+          (if (object-of-class-p room 'slack-im)
+              (slack-im-user-presence room)
+            "  ") 
+          (slack-room-name-with-team-name room)
+          (with-slots (unread-count-display) room
+            (if (< 0 unread-count-display)
+                (concat " ("
+                        (number-to-string unread-count-display)
+                        ")")
+              ""))))
+
 (defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
        ((latest-ts (room)
                    (with-slots (latest) room
                      (if latest (oref latest ts) "0")))
-        (unread-count (room)
-                      (with-slots (unread-count-display) room
-                        (if (< 0 unread-count-display)
-                            (concat "("
-                                    (number-to-string unread-count-display)
-                                    ")")
-                          "")))
         (sort-rooms (rooms)
                     (nreverse
                      (cl-sort rooms #'string<
-                              :key #'(lambda (name-with-room) (latest-ts (cdr name-with-room))))))
-        (build-label (room)
-                     (concat (im-presence room)
-                             (format "%s %s"
-                                     (slack-room-name-with-team-name room)
-                                     (unread-count room))))
-        (im-presence (room)
-                     (if (object-of-class-p room 'slack-im)
-                         (slack-im-user-presence room)
-                       "  "))
-        (build-cons (room)
-                    (cons (build-label room) room)))
+                              :key #'(lambda (name-with-room) (latest-ts (cdr name-with-room)))))))
      (sort-rooms
       (cl-loop for room in (if ,filter
                                (funcall ,filter ,rooms)
                              ,rooms)
-               collect (cons (build-label room) room)))))
+               collect (cons (slack-room-label room) room)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
