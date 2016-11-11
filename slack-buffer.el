@@ -211,8 +211,7 @@
 
 (cl-defun slack-buffer-update (room msg team &key replace)
   (let* ((buf-name (slack-room-buffer-name room))
-         (buffer (or (get-buffer buf-name)
-                     (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room room team)))))
+         (buffer (get-buffer buf-name)))
     (if buffer
         (progn
           (if (slack-buffer-in-current-frame buffer)
@@ -223,7 +222,8 @@
             (with-current-buffer buffer
               (slack-room-update-last-read room msg)
               (slack-buffer-insert msg team))))
-      (slack-room-inc-unread-count room))))
+      (slack-room-inc-unread-count room)
+      (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
