@@ -51,6 +51,9 @@
 (defcustom slack-buffer-emojify nil
   "Show emoji with `emojify' if true."
   :group 'slack)
+(defcustom slack-buffer-create-on-notify nil
+  "Create a room buffer when notification received if it does not yet exist"
+  :group 'slack)
 
 (defmacro slack-buffer-widen (&rest body)
   `(save-excursion
@@ -209,7 +212,8 @@
             (with-current-buffer buffer
               (slack-room-update-last-read room msg)
               (slack-buffer-insert msg team))))
-      (slack-room-inc-unread-count room))))
+      (slack-room-inc-unread-count room)
+      (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room-bg room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
