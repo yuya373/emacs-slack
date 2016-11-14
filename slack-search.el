@@ -353,7 +353,7 @@
                     do (slack-buffer-insert m team t)))
        (set-marker lui-output-marker (point-min))
        (lui-insert "(no more messages)\n"))
-     (slack-buffer-recover-lui-output-marker))))
+     (lui-recover-output-marker))))
 
 (defmethod slack-room-prev-link-info ((room slack-file-search-result))
   (with-slots (oldest) room

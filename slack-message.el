@@ -289,7 +289,8 @@
                             (slack-room-name-with-team-name channel)
                             (slack-message-sender-name message team))
              :category 'slack)
-      (slack-buffer-update channel message team :replace t))))
+      (lui-delete (lambda () (equal (get-text-property (point) 'ts)
+                                    (oref message ts)))))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
