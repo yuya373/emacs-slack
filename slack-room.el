@@ -108,7 +108,7 @@
 (cl-defun slack-room-make-buffer-with-room-bg (room team)
   (if (< (length (oref room messages)) 1)
       (slack-room-history room team nil
-                          #'(slack-buffer-create room team)
+                          #'(lambda () (slack-buffer-create room team))
                           t)
     (slack-buffer-create room team)))
 
