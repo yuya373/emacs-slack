@@ -124,6 +124,13 @@
         (oset m reactions (mapcar #'slack-reaction-create reactions))))
   m)
 
+(defmethod slack-message-set-reactions ((m slack-file-message) payload)
+  (let* ((file (plist-get payload :file))
+         (reactions (plist-get file :reactions)))
+    (if (< 0 (length reactions))
+        (oset m reactions (mapcar #'slack-reaction-create reactions))))
+  m)
+
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (append (plist-get payload :fields) nil))
