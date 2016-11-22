@@ -106,11 +106,14 @@
              (slack-buffer-create room team))))
 
 (cl-defun slack-room-make-buffer-with-room-bg (room team)
-  (if (< (length (oref room messages)) 1)
-      (slack-room-history room team nil
-                          #'(lambda () (slack-buffer-create room team))
-                          t)
-    (slack-buffer-create room team)))
+  (cl-labels ((create-buffer ()
+                             (tracking-add-buffer (slack-buffer-create room team))
+                             ))
+    (if (< (length (oref room messages)) 1)
+        (slack-room-history room team nil
+                            #'(lambda () (create-buffer))
+                            t)
+      (create-buffer))))
 
 (cl-defmacro slack-select-from-list ((alist prompt) &body body)
   "Bind candidates from selected."
