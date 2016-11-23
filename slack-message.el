@@ -133,18 +133,15 @@
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
 
-(defmethod slack-message-set-reactions ((m slack-message) payload)
-  (let ((reactions (plist-get payload :reactions)))
-    (if (< 0 (length reactions))
-        (oset m reactions (mapcar #'slack-reaction-create reactions))))
+(defmethod slack-message-set-reactions ((m slack-message) reactions)
+  (oset m reactions reactions)
   m)
 
-(defmethod slack-message-set-reactions ((m slack-file-message) payload)
-  (let* ((file (plist-get payload :file))
-         (reactions (plist-get file :reactions)))
-    (if (< 0 (length reactions))
-        (oset m reactions (mapcar #'slack-reaction-create reactions))))
-  m)
+(defmethod slack-message-set-reactions ((m slack-file-message) rs)
+  (oset (oref m file) reactions rs))
+
+(defmethod slack-message-set-reactions ((m slack-file-comment-message) reactions)
+  (oset (oref m comment) reactions reactions))
 
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
@@ -188,7 +185,8 @@
       (let ((message (create payload)))
         (when message
           (slack-message-set-attachments message payload)
-          (slack-message-set-reactions message payload))))))
+          (oset message reactions
+                (mapcar #'slack-reaction-create (plist-get payload :reactions)))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (oref m ts) (oref n ts)))
