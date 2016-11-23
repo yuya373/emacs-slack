@@ -159,6 +159,33 @@
               (mapcar #'slack-attachment-create attachments))))
   m)
 
+(defmethod slack-message-set-file ((m slack-message) _payload)
+  m)
+
+(defmethod slack-message-set-file ((m slack-file-message) payload)
+  (let ((file (plist-get payload :file)))
+    (plist-put file :channels (append (plist-get file :channels) nil))
+    (plist-put file :groups (append (plist-get file :groups) nil))
+    (plist-put file :ims (append (plist-get file :ims) nil))
+    (plist-put file :reactions
+               (mapcar #'slack-reaction-create (plist-get file :reactions)))
+    (oset m file (apply #'slack-file (slack-collect-slots 'slack-file file)))
+    m))
+
+(defmethod slack-message-set-file-comment ((m slack-message) _payload)
+  m)
+
+(defmethod slack-message-set-file-comment ((m slack-file-comment-message) payload)
+  (let* ((comment (plist-get payload :comment))
+         (reactions (mapcar #'slack-reaction-create
+                            (plist-get comment :reactions)))
+         (file-comment (apply #'slack-file-comment
+                              (slack-collect-slots 'slack-file-comment
+                                                   comment))))
+    (oset file-comment reactions reactions)
+    (oset m comment file-comment)
+    m))
+
 (cl-defun slack-message-create (payload &key room)
   (when payload
     (plist-put payload :reactions (append (plist-get payload :reactions) nil))
@@ -166,27 +193,37 @@
     (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
     (if room
         (plist-put payload :channel (oref room id)))
-    (cl-labels ((create
-                 (m)
-                 (let ((subtype (plist-get m :subtype)))
-                   (cond
-                    ((plist-member m :reply_to)
-                     (apply #'slack-reply "reply"
-                            (slack-collect-slots 'slack-reply m)))
-                    ((and subtype (string-prefix-p "file" subtype))
-                     (apply #'slack-file-message "file-msg"
-                            (slack-collect-slots 'slack-file-message m)))
-                    ((plist-member m :user)
-                     (apply #'slack-user-message "user-msg"
-                            (slack-collect-slots 'slack-user-message m)))
-                    ((and subtype (string= "bot_message" subtype))
-                     (apply #'slack-bot-message "bot-msg"
-                            (slack-collect-slots 'slack-bot-message m)))))))
-      (let ((message (create payload)))
+    (cl-labels
+        ((create-message
+          (payload)
+          (let ((subtype (plist-get payload :subtype)))
+            (cond
+             ((plist-member payload :reply_to)
+              (apply #'slack-reply "reply"
+                     (slack-collect-slots 'slack-reply payload)))
+             ((and subtype (string-equal "file_share" subtype))
+              (apply #'slack-file-share-message
+                     (slack-collect-slots 'slack-file-share-message payload)))
+             ((and subtype (string-equal "file_comment" subtype))
+              (apply #'slack-file-comment-message
+                     (slack-collect-slots 'slack-file-comment-message payload)))
+             ((and subtype (string-equal "file_mention" subtype))
+              (apply #'slack-file-mention-message
+                     (slack-collect-slots 'slack-file-mention-message payload)))
+             ((plist-member payload :user)
+              (apply #'slack-user-message "user-msg"
+                     (slack-collect-slots 'slack-user-message payload)))
+             ((and subtype (string= "bot_message" subtype))
+              (apply #'slack-bot-message "bot-msg"
+                     (slack-collect-slots 'slack-bot-message payload)))))))
+
+      (let ((message (create-message payload)))
         (when message
           (slack-message-set-attachments message payload)
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
+          (slack-message-set-file message payload)
+          (slack-message-set-file-comment message payload))))))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (oref m ts) (oref n ts)))
