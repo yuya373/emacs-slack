@@ -49,12 +49,27 @@
    (deleted-at :initarg :deleted-at :initform nil)))
 
 (defclass slack-file-message (slack-message)
-  ((file :initarg :file)
-   ;; (bot-id :initarg :bot_id :type (or null string))
-   ;; (username :initarg :username)
-   ;; (display-as-bot :initarg :display_as_bot)
-   (upload :initarg :upload)
+  ((file :initarg :file)))
+
+(defclass slack-file-share-message (slack-file-message)
+  ((upload :initarg :upload)
    (user :initarg :user :initform nil)))
+
+(defclass slack-file-comment ()
+  ((id :initarg :id :type string)
+   (created :initarg :created)
+   (timestamp :initarg :timestamp)
+   (user :initarg :user)
+   (is-intro :initarg :is_intro)
+   (comment :initarg :comment)
+   (channel :initarg :channel)
+   (reactions :initarg :reactions type list)))
+
+(defclass slack-file-comment-message (slack-file-message)
+  ((comment :initarg :comment :initform nil)))
+
+(defclass slack-file-mention-message (slack-file-message)
+  ((user :initarg :user :initform nil)))
 
 (defclass slack-reply (slack-message)
   ((user :initarg :user :initform nil)
