@@ -254,21 +254,15 @@
 
 
 (defun slack-message-edited (payload team)
-  (let* ((edited-message (slack-decode (plist-get payload :message)))
-         (room (slack-room-find (plist-get payload :channel) team))
-         (message (slack-room-find-message room
-                                           (plist-get edited-message :ts)))
+  (let* ((room (slack-room-find (plist-get payload :channel) team))
+         (edited-message (slack-message-create
+                          (slack-decode (plist-get payload :message))
+                          :room room))
+         (message (slack-room-find-message
+                   room (oref edited-message ts)))
          (edited-info (plist-get edited-message :edited)))
     (if message
-        (progn
-          (with-slots (text edited-at attachments) message
-            (setq text (plist-get edited-message :text))
-            (setq edited-at (plist-get edited-info :ts))
-            (if (plist-get edited-message :attachments)
-                (setq attachments
-                      (mapcar #'slack-attachment-create
-                              (plist-get edited-message :attachments)))))
-          (slack-message-update message team t)))))
+        (slack-message-update edited-message team t))))
 
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
