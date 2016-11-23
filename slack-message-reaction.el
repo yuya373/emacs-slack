@@ -97,35 +97,48 @@
         (substring reaction 1 -1)
       reaction)))
 
+(defmethod slack-message-get-param-for-reaction ((m slack-message))
+  (cons "timestamp" (oref m ts)))
+
+(defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
+  (cons "file" (oref (oref m file) id)))
+
+(defmethod slack-message-get-param-for-reaction ((m slack-file-comment-message))
+  (cons "file_comment" (oref (oref m comment) id)))
+
 (defun slack-message-reaction-add (reaction ts room team)
-  (cl-labels ((on-reaction-add
-               (&key data &allow-other-keys)
-               (slack-request-handle-error
-                (data "slack-message-reaction-add"))))
-    (slack-request
-     slack-message-reaction-add-url
-     team
-     :type "POST"
-     :sync nil
-     :params (list (cons "channel" (oref room id))
-                   (cons "timestamp" ts)
-                   (cons "name" reaction))
-     :success #'on-reaction-add)))
+  (let ((message (slack-room-find-message room ts)))
+    (when message
+      (cl-labels ((on-reaction-add
+                   (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-message-reaction-add"))))
+        (slack-request
+         slack-message-reaction-add-url
+         team
+         :type "POST"
+         :sync nil
+         :params (list (cons "channel" (oref room id))
+                       (slack-message-get-param-for-reaction message)
+                       (cons "name" reaction))
+         :success #'on-reaction-add)))))
 
 (defun slack-message-reaction-remove (reaction ts room team)
-  (cl-labels ((on-reaction-remove
-               (&key data &allow-other-keys)
-               (slack-request-handle-error
-                (data "slack-message-reaction-remove"))))
-    (slack-request
-     slack-message-reaction-remove-url
-     team
-     :type "POST"
-     :sync nil
-     :params (list (cons "channel" (oref room id))
-                   (cons "timestamp" ts)
-                   (cons "name" reaction))
-     :success #'on-reaction-remove)))
+  (let ((message (slack-room-find-message room ts)))
+    (when message
+      (cl-labels ((on-reaction-remove
+                   (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-message-reaction-remove"))))
+        (slack-request
+         slack-message-reaction-remove-url
+         team
+         :type "POST"
+         :sync nil
+         :params (list (cons "channel" (oref room id))
+                       (slack-message-get-param-for-reaction message)
+                       (cons "name" reaction))
+         :success #'on-reaction-remove)))))
 
 (cl-defmacro slack-message-find-reaction ((m reaction) &body body)
   `(let ((same-reaction
