@@ -230,12 +230,15 @@
 
 (defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
   (cl-labels
-      ((push-message-to (room msg)
-                        (with-slots (messages) room
-                          (when (< 0 (length messages))
-                            (cl-pushnew msg messages
-                                        :test #'slack-message-equal))
-                          (update-latest room msg)))
+      ((push-message-to
+        (room msg)
+        (with-slots (messages) room
+          (when (< 0 (length messages))
+            (setq messages
+                  (cl-remove-if #'(lambda (n) (slack-message-equal msg n))
+                                messages))
+            (push msg messages))
+          (update-latest room msg)))
        (update-latest (room msg)
                       (with-slots (latest) room
                         (if (or (null latest)
