@@ -311,10 +311,11 @@
     buf))
 
 (defun slack-reset-room-last-read ()
-  (let ((room (slack-room-find slack-current-room-id
-                               (slack-team-find slack-current-team-id))))
-    (slack-room-update-last-read room
-                                 (slack-message "msg" :ts "0"))))
+  (when (bound-and-true-p slack-current-room-id)
+    (let ((room (slack-room-find slack-current-room-id
+                                 (slack-team-find slack-current-team-id))))
+      (slack-room-update-last-read room
+                                   (slack-message "msg" :ts "0")))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
