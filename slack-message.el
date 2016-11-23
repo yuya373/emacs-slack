@@ -352,5 +352,14 @@
       (lui-delete (lambda () (equal (get-text-property (point) 'ts)
                                     (oref message ts)))))))
 
+(defmethod slack-message-get-reactions ((m slack-message))
+  (oref m reactions))
+
+(defmethod slack-message-get-reactions ((m slack-file-message))
+  (oref (oref m file) reactions))
+
+(defmethod slack-message-get-reactions ((m slack-file-comment-message))
+  (oref (oref m comment) reactions))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

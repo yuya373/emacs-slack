@@ -105,7 +105,8 @@
                    (slack-message-put-text-property row-body)))
            (reactions-str
             (slack-message-put-reactions-property
-             (slack-message-reactions-to-string (oref m reactions)))))
+             (slack-message-reactions-to-string
+              (slack-message-get-reactions m)))))
       (slack-message-propertize
        m (slack-format-message header body attachment-body reactions-str)))))
 

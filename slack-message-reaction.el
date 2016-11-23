@@ -65,7 +65,7 @@
          (line (thing-at-point 'line))
          (ts (get-text-property 0 'ts line))
          (msg (slack-room-find-message room ts))
-         (reactions (oref msg reactions))
+         (reactions (slack-message-get-reactions msg))
          (reaction (slack-message-reaction-select reactions)))
     (slack-message-reaction-remove reaction ts room team)))
 
@@ -128,27 +128,32 @@
      :success #'on-reaction-remove)))
 
 (cl-defmacro slack-message-find-reaction ((m reaction) &body body)
-  `(let ((same-reaction (cl-find-if #'(lambda (r) (slack-reaction-equalp r ,reaction))
-                                    (oref ,m reactions))))
+  `(let ((same-reaction
+          (cl-find-if #'(lambda (r) (slack-reaction-equalp r ,reaction))
+                      (slack-message-get-reactions ,m))))
      ,@body))
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction)
-  (slack-message-find-reaction
-   (m reaction)
-   (if same-reaction
-       (slack-reaction-join same-reaction reaction)
-     (push reaction (oref m reactions)))))
+  (let ((reactions (slack-message-get-reactions m)))
+    (slack-message-find-reaction
+     (m reaction)
+     (if same-reaction
+         (slack-reaction-join same-reaction reaction)
+       (push reaction reactions)
+       (slack-message-set-reactions m reactions)))))
 
 (defmethod slack-message-pop-reaction ((m slack-message) reaction)
   (slack-message-find-reaction
    (m reaction)
    (if same-reaction
        (if (eq 1 (oref same-reaction count))
-           (with-slots (reactions) m
-             (setq reactions
-                   (cl-delete-if #'(lambda (r)
-                                     (slack-reaction-equalp same-reaction r))
-                                 reactions)))
+           (progn
+             (let ((reactions (slack-message-get-reactions m)))
+               (slack-message-set-reactions
+                m
+                (cl-delete-if
+                 #'(lambda (r) (slack-reaction-equalp same-reaction r))
+                 reactions))))
          (cl-decf (oref same-reaction count))))))
 
 (provide 'slack-message-reaction)
