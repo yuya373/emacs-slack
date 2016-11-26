@@ -164,12 +164,7 @@
 
 (defmethod slack-message-set-file ((m slack-file-message) payload)
   (let ((file (plist-get payload :file)))
-    (plist-put file :channels (append (plist-get file :channels) nil))
-    (plist-put file :groups (append (plist-get file :groups) nil))
-    (plist-put file :ims (append (plist-get file :ims) nil))
-    (plist-put file :reactions
-               (mapcar #'slack-reaction-create (plist-get file :reactions)))
-    (oset m file (apply #'slack-file (slack-collect-slots 'slack-file file)))
+    (oset m file (slack-file-create file))
     m))
 
 (defmethod slack-message-set-file-comment ((m slack-message) _payload)
