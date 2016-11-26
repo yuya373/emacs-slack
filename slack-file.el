@@ -94,14 +94,13 @@
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions)
       file
-    (let* ((header (slack-user-name user team))
-           (body (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-                         name size filetype permalink))
-           (reactions-str (slack-message-reactions-to-string
-                           reactions)))
-      (slack-message-put-header-property header)
-      (slack-message-put-text-property body)
-      (slack-message-put-reactions-property reactions-str)
+    (let* ((header (slack-message-put-header-property
+                    (slack-user-name user team)))
+           (body (slack-message-put-text-property
+                  (format "name: %s\nsize: %s\ntype: %s\n%s\n"
+                          name size filetype permalink)))
+           (reactions-str (slack-message-put-reactions-property
+                           (slack-message-reactions-to-string reactions))))
       (let ((message
              (concat header "\n" body
                      (if initial-comment
