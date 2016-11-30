@@ -69,6 +69,7 @@
       (with-current-buffer buffer
         (slack-mode)
         (slack-buffer-insert-previous-link room)
+        (goto-char lui-input-marker)
         (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
     buffer))
