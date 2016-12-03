@@ -57,6 +57,7 @@
 
 (defclass slack-file-comment ()
   ((id :initarg :id :type string)
+   (file-id :initarg :file_id :type string)
    (created :initarg :created)
    (timestamp :initarg :timestamp)
    (user :initarg :user)
@@ -172,12 +173,11 @@
   m)
 
 (defmethod slack-message-set-file-comment ((m slack-file-comment-message) payload)
-  (let* ((comment (plist-get payload :comment))
+  (let* ((file-id (plist-get (plist-get payload :file) :id))
+         (comment (plist-get payload :comment))
          (reactions (mapcar #'slack-reaction-create
                             (plist-get comment :reactions)))
-         (file-comment (apply #'slack-file-comment
-                              (slack-collect-slots 'slack-file-comment
-                                                   comment))))
+         (file-comment (slack-file-comment-create comment file-id)))
     (oset file-comment reactions reactions)
     (oset m comment file-comment)
     m))
