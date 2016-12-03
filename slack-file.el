@@ -48,6 +48,8 @@
    (username :initarg :username)
    (comments-count :initarg :comments_count)
    (comments :initarg :comments :initform nil)
+   (page :initarg :page :initform 1)
+   (pages :initarg :pages :initform nil)))
 
 (defclass slack-file-room (slack-room) ())
 
@@ -55,8 +57,7 @@
   (with-slots (file-room) team
     (if file-room
         file-room
-      (setq file-room (slack-file-room "file-room"
-                                       :name "Files"
+      (setq file-room (slack-file-room :name "Files"
                                        :id "F"
                                        :team-id (oref team id)
                                        :created (format-time-string "%s")
@@ -97,8 +98,12 @@
 (defmethod slack-file-pushnew ((f slack-file) team)
   (let ((room (slack-file-room-obj team)))
     (with-slots (messages) room
-      (cl-pushnew f messages
-                  :test #'slack-message-equal))))
+      (setq messages (cl-remove-if #'(lambda (n) (slack-message-equal f n))
+                                   messages))
+      (push f messages)
+      (setq messages (slack-room-sorted-messages room))
+      (oset room oldest (car messages))
+      (oset room latest (car (last messages))))))
 
 (defmethod slack-message-body ((file slack-file) team)
   (with-slots (initial-comment) file
@@ -129,6 +134,36 @@
                             (define-key map (kbd "RET")
                               #'slack-file-info)
                             map)))))
+
+(defconst slack-file-info-url "https://slack.com/api/files.info")
+
+(defun slack-file-info ()
+  (interactive)
+  (let* ((line (thing-at-point 'line))
+         (page (get-text-property 0 'page line))
+         (file (get-text-property 0 'file line))
+         (team (slack-team-find slack-current-team-id)))
+    (if page
+        (cl-labels
+            ((on-file-info (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-file-info"))
+                           (let ((paging (plist-get data :paging))
+                                 (comments (plist-get data :comments))
+                                 (file (slack-file-create (plist-get data :file))))
+                             (oset file comments (mapcar
+                                                  #'(lambda (c) (slack-file-comment-create c (oref file id)))
+                                                  comments))
+                             (slack-file-pushnew file team)
+                             (slack-message-update file team t))))
+          (slack-request
+           slack-file-info-url
+           team
+           :params (list (cons "file" file)
+                         (cons "page" (number-to-string page)))
+           :sync nil
+           :success #'on-file-info)))))
+
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
       file
