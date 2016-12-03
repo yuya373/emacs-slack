@@ -105,8 +105,32 @@
     (let ((body (plist-get initial-comment :comment)))
       (slack-message-unescape-string body team))))
 
+(defmethod slack-message-to-string ((comment slack-file-comment) team)
+  (let ((header (propertize (slack-user-name (oref comment user) team)
+                            'face 'slack-shared-message-header))
+        (body (slack-message-unescape-string (mapconcat #'identity
+                                                        (split-string (oref comment comment) "\n")
+                                                        "\n\t")
+                                             team))
+        (pad (propertize "|" 'face 'slack-shared-message-pad)))
+    (format "\t%s\n \t%s\n" header body)))
+
+(defun slack-file-more-comments-string (file)
+  (let ((count (oref file comments-count))
+        (page (oref file page))
+        (comments (oref file comments)))
+    (if (eq count (length comments))
+        ""
+      (propertize (format "%s more comments" count)
+                  'face '(:underline t)
+                  'page page
+                  'file (oref file id)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET")
+                              #'slack-file-info)
+                            map)))))
 (defmethod slack-message-to-string ((file slack-file) team)
-  (with-slots (ts name size filetype permalink user initial-comment reactions)
+  (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
       file
     (let* ((header (slack-message-put-header-property
                     (slack-user-name user team)))
@@ -118,13 +142,17 @@
       (let ((message
              (concat header "\n" body
                      (if initial-comment
-                         (format "comment: %s\n%s\n"
-                                 (slack-user-name
-                                  (plist-get initial-comment :user)
-                                  team)
-                                 (slack-message-body file team)))
+                         (format "comment:\n%s"
+                                 (slack-message-to-string initial-comment team)))
+                     (if (< 0 (length comments))
+                         (mapconcat #'(lambda (c) (slack-message-to-string c team))
+                                    comments
+                                    "\n"))
+                     (if (< 1 comments-count)
+                         (format "%s\n" (slack-file-more-comments-string file)))
+
                      (if reactions-str
-                         (concat "\n" reactions-str "\n")))))
+                         (concat reactions-str "\n")))))
         (put-text-property 0 (length message) 'ts ts message)
         message))))
 
