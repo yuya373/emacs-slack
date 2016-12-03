@@ -102,7 +102,7 @@
                           :user self-id
                           :text message))
                  (json (json-encode m))
-                 (obj (slack-message-create m)))
+                 (obj (slack-message-create m team)))
             (slack-ws-send json team)
             (puthash message-id obj sent-message))))
     (error "Call from Slack Buffer")))

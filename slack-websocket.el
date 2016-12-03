@@ -269,7 +269,7 @@
       (slack-ws-update-message payload team)))))
 
 (defun slack-ws-update-message (payload team)
-  (let ((m (slack-message-create payload)))
+  (let ((m (slack-message-create payload team)))
     (when m
       (slack-message-update m team))))
 
@@ -283,7 +283,7 @@
       (let ((message-id (plist-get payload :reply_to)))
         (if (integerp message-id)
             (slack-message-handle-reply
-             (slack-message-create payload)
+             (slack-message-create payload team)
              team))))))
 
 (cl-defmacro slack-ws-handle-reaction ((payload team) &body body)
