@@ -45,7 +45,9 @@
    (channels :initarg :channels :type list)
    (groups :initarg :groups :type list)
    (ims :initarg :ims :type list)
-   (username :initarg :username)))
+   (username :initarg :username)
+   (comments-count :initarg :comments_count)
+   (comments :initarg :comments :initform nil)
 
 (defclass slack-file-room (slack-room) ())
 

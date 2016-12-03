@@ -142,6 +142,10 @@
            ((or (string= type "file_deleted")
                 (string= type "file_unshared"))
             (slack-ws-handle-file-deleted decoded-payload team))
+           ((string= type "file_comment_added")
+            (slack-ws-handle-file-comment-added decoded-payload team))
+           ((string= type "file_comment_deleted")
+            (slack-ws-handle-file-comment-deleted decoded-payload team))
            ((or (string= type "im_marked")
                 (string= type "channel_marked")
                 (string= type "group_marked"))
@@ -499,6 +503,30 @@
         (new-unread-count-display (plist-get payload :unread_count_display)))
     (with-slots (unread-count-display) room
       (setq unread-count-display new-unread-count-display))))
+
+(defun slack-ws-handle-file-comment-added (payload team)
+  (let* ((file-id (plist-get payload :file_id))
+         (file (cl-find-if #'(lambda (f) (string= (oref f id) file-id))
+                           (oref (slack-file-room-obj team) messages)))
+         (comment (slack-file-comment-create (plist-get payload :comment)
+                                             file-id)))
+    (when file
+      (with-slots (comments comments-count) file
+        (push comment comments)
+        (cl-incf comments-count))
+      (slack-message-update file team t))))
+
+(defun slack-ws-handle-file-comment-deleted (payload team)
+  (let* ((file-id (plist-get payload :file_id))
+         (file (cl-find-if #'(lambda (f) (string= (oref f id) file-id))
+                           (oref (slack-file-room-obj team) messages)))
+         (comment-id (plist-get payload :comment)))
+    (when file
+      (with-slots (comments comments-count) file
+        (setq comments (cl-remove-if #'(lambda (c) (string= (oref c id) comment-id))
+                                     comments))
+        (cl-decf comments-count))
+      (slack-message-update file team t))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
