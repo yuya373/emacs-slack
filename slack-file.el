@@ -316,5 +316,110 @@
        :sync nil
        :success #'on-file-delete))))
 
+(defconst slack-file-comment-add-url "https://slack.com/api/files.comments.add")
+
+(defmethod slack-file-id ((m slack-file-message))
+  (slack-file-id (oref m file)))
+
+(defmethod slack-file-id ((file slack-file))
+  (oref file id))
+
+(defmethod slack-file-id ((m slack-file-comment-message))
+  (slack-file-id (oref m comment)))
+
+(defmethod slack-file-id ((file-comment slack-file-comment))
+  (oref file-comment file-id))
+
+(defmethod slack-file-channel ((m slack-file-message))
+  (oref m channel))
+
+(defmethod slack-file-channel ((_file slack-file))
+  nil)
+
+(defmethod slack-file-comment-id ((m slack-file-message))
+  (slack-file-comment-id (oref m comment)))
+
+(defmethod slack-file-comment-id ((file-comment))
+  (oref file-comment id))
+
+(cl-defmacro slack-get-message-metadata (&body body)
+  `(let* ((line (thing-at-point 'line))
+          (ts (get-text-property 0 'ts line))
+          (team (slack-team-find slack-current-team-id))
+          (room (slack-room-find slack-current-room-id
+                                 team)))
+     ,@body))
+
+(defun slack-file-comment-add ()
+  (interactive)
+  (slack-get-message-metadata
+   (if (and ts room)
+       (let ((message (slack-room-find-message room ts)))
+         (if (or (object-of-class-p message 'slack-file)
+                 (object-of-class-p message 'slack-file-message))
+             (cl-labels
+                 ((on-file-comment-add (&key data &allow-other-keys)
+                                       (slack-request-handle-error
+                                        (data "slack-file-comment-add"))))
+               (let ((id (slack-file-id message))
+                     (channel (slack-file-channel message))
+                     (comment (read-from-minibuffer "Write Comment: ")))
+                 (slack-request
+                  slack-file-comment-add-url
+                  team
+                  :params (list (cons "file" id)
+                                (cons "comment" comment)
+                                (if channel
+                                    (cons "channel" channel)))
+                  :sync nil
+                  :success #'on-file-comment-add
+                  )))
+           (error "Message is not a File")))
+     (error "Message can't fild"))))
+
+(defconst slack-file-comment-delete-url "https://slack.com/api/files.comments.delete")
+
+(defun slack-file-comment-delete ()
+  (interactive)
+  (slack-get-message-metadata
+   (if (and ts room)
+       (let ((message (slack-room-find-message room ts)))
+         (if (or (object-of-class-p message 'slack-file-comment)
+                 (object-of-class-p message 'slack-file-comment-message))
+             (cl-labels
+                 ((on-file-comment-delete (&key data &allow-other-keys)
+                                          (slack-request-handle-error
+                                           (data "slack-file-comment-delete"))))
+               (let ((id (slack-file-comment-id message))
+                     (file-id (slack-file-id message)))
+                 (slack-request
+                  slack-file-comment-delete-url
+                  team
+                  :params (list (cons "id" id)
+                                (cons "file" file-id))
+                  :sync nil
+                  :success #'on-file-comment-delete))))))))
+
+(defconst slack-file-comment-edit-url "https://slack.com/api/files.comments.edit")
+
+(defun slack-file-comment-edit (room-id team-id ts comment)
+  (let* ((team (slack-team-find team-id))
+         (room (slack-room-find room-id team))
+         (message (slack-room-find-message room ts))
+         (file-id (slack-file-id message))
+         (comment-id (slack-file-comment-id message)))
+    (cl-labels
+        ((on-file-comment-edit (&key data &allow-other-keys)
+                               (slack-request-handle-error
+                                (data "slack-file-comment-edit"))))
+      (slack-request
+       slack-file-comment-edit-url
+       team
+       :params (list (cons "id" comment-id)
+                     (cons "file" file-id)
+                     (cons "comment" comment))
+       :sync nil
+       :success #'on-file-comment-edit))))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
