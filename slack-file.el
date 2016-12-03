@@ -64,6 +64,13 @@
                                        :unread_count_display 0
                                        :messages '())))))
 
+(defun slack-file-comment-create (payload file-id)
+  (let ((comment (apply #'make-instance
+                        'slack-file-comment
+                        (slack-collect-slots 'slack-file-comment payload))))
+    (oset comment file-id file-id)
+    comment))
+
 (defun slack-file-create (payload)
   (plist-put payload :channels (append (plist-get payload :channels) nil))
   (plist-put payload :groups (append (plist-get payload :groups) nil))
@@ -71,10 +78,15 @@
   (plist-put payload :reactions (append (plist-get payload :reactions) nil))
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
-  (let ((file (apply #'slack-file "file"
-                     (slack-collect-slots 'slack-file payload))))
+  (plist-put payload :channel "F")
+  (let* ((file (apply #'slack-file (slack-collect-slots 'slack-file payload)))
+         (initial-comment (if (plist-get payload :initial_comment)
+                              (slack-file-comment-create (plist-get payload :initial_comment)
+                                                         (oref file id))
+                            nil)))
     (oset file reactions
           (mapcar #'slack-reaction-create (plist-get payload :reactions)))
+    (oset file initial-comment initial-comment)
     file))
 
 (defmethod slack-message-equal ((f slack-file) other)
