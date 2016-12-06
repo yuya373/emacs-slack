@@ -120,7 +120,7 @@ never means never show typing indicator."
         (mapcar #'(lambda (data)
                     (slack-room-create data team class))
                 (append
-                 (cl-remove-if-not #'(lambda (data) (plist-get data :is_open)) datum)
+                 (cl-remove-if #'(lambda (data) (eq (plist-get data :is_open) json-false)) datum)
                  nil))))
     (let ((self (plist-get data :self))
           (team-data (plist-get data :team)))
