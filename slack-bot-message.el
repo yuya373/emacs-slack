@@ -54,34 +54,6 @@
 (defmethod slack-message-sender-name ((m slack-bot-message) team)
   (slack-bot-name m team))
 
-(defmethod slack-attachment-to-string ((a slack-attachment))
-  (with-slots (fallback text pretext title title-link) a
-    (if (and pretext text)
-        (mapconcat #'identity
-                   (cl-remove-if #'null (list pretext title title-link text))
-                   "\n\n")
-      fallback)))
-
-(defmethod slack-attachment-to-string((a slack-shared-message))
-  (with-slots (fallback text author-name ts channel-name color from-url) a
-    (let* ((header-property '(:weight bold))
-           (footer-property '(:height 0.8))
-           (pad-property '(:weight ultra-bold))
-           (pad (propertize "|" 'face pad-property))
-           (header (concat pad "\t"
-                           (propertize author-name 'face header-property)))
-           (body (format "%s\t%s" pad (mapconcat #'identity
-                                                 (split-string text "\n")
-                                                 (format "\n\t%s\t" pad))))
-           (footer (concat pad "\t"
-                           (propertize
-                            (format "%s %s" channel-name (slack-message-time-to-string ts))
-                            'face footer-property))))
-      (format "\t%s\n \t%s\n \t%s"
-              header
-              body
-              footer))))
-
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
 

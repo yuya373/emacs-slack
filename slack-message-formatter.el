@@ -179,5 +179,45 @@
                                 #'unescape-channel
                                 text t))))
 
+(defmethod slack-attachment-to-string ((a slack-attachment))
+  (with-slots (fallback text pretext title title-link) a
+    (if (and pretext text)
+        (mapconcat #'identity
+                   (cl-remove-if #'null (list pretext title title-link text))
+                   "\n\n")
+      fallback)))
+
+(defface slack-shared-message-header
+  '((t (:weight bold)))
+  "Face used to shared message header."
+  :group 'slack)
+
+(defface slack-shared-message-footer
+  '((t (:height 0.8)))
+  "Face used to shared message footer."
+  :group 'slack)
+
+(defface slack-shared-message-pad
+  '((t (:weight ultra-bold)))
+  "Face used to shared message pad."
+  :group 'slack)
+
+(defmethod slack-attachment-to-string((a slack-shared-message))
+  (with-slots (fallback text author-name ts channel-name color from-url) a
+    (let* ((pad (propertize "|" 'face 'slack-shared-message-pad))
+           (header (concat pad "\t"
+                           (propertize author-name 'face 'slack-shared-message-header)))
+           (body (format "%s\t%s" pad (mapconcat #'identity
+                                                 (split-string text "\n")
+                                                 (format "\n\t%s\t" pad))))
+           (footer (concat pad "\t"
+                           (propertize
+                            (format "%s %s" channel-name (slack-message-time-to-string ts))
+                            'face 'slack-shared-message-footer))))
+      (format "\t%s\n \t%s\n \t%s"
+              header
+              body
+              footer))))
+
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here

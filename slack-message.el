@@ -57,6 +57,7 @@
 
 (defclass slack-file-comment ()
   ((id :initarg :id :type string)
+   (file-id :initarg :file_id :type string)
    (created :initarg :created)
    (timestamp :initarg :timestamp)
    (user :initarg :user)
@@ -159,29 +160,29 @@
               (mapcar #'slack-attachment-create attachments))))
   m)
 
-(defmethod slack-message-set-file ((m slack-message) _payload)
+(defmethod slack-message-set-file ((m slack-message) _payload _team)
   m)
 
-(defmethod slack-message-set-file ((m slack-file-message) payload)
-  (let ((file (plist-get payload :file)))
-    (oset m file (slack-file-create file))
+(defmethod slack-message-set-file ((m slack-file-message) payload team)
+  (let ((file (slack-file-create (plist-get payload :file))))
+    (oset m file file)
+    (slack-file-pushnew file team)
     m))
 
 (defmethod slack-message-set-file-comment ((m slack-message) _payload)
   m)
 
 (defmethod slack-message-set-file-comment ((m slack-file-comment-message) payload)
-  (let* ((comment (plist-get payload :comment))
+  (let* ((file-id (plist-get (plist-get payload :file) :id))
+         (comment (plist-get payload :comment))
          (reactions (mapcar #'slack-reaction-create
                             (plist-get comment :reactions)))
-         (file-comment (apply #'slack-file-comment
-                              (slack-collect-slots 'slack-file-comment
-                                                   comment))))
+         (file-comment (slack-file-comment-create comment file-id)))
     (oset file-comment reactions reactions)
     (oset m comment file-comment)
     m))
 
-(cl-defun slack-message-create (payload &key room)
+(cl-defun slack-message-create (payload team &key room)
   (when payload
     (plist-put payload :reactions (append (plist-get payload :reactions) nil))
     (plist-put payload :attachments (append (plist-get payload :attachments) nil))
@@ -217,7 +218,7 @@
           (slack-message-set-attachments message payload)
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
-          (slack-message-set-file message payload)
+          (slack-message-set-file message payload team)
           (slack-message-set-file-comment message payload))))))
 
 (defmethod slack-message-equal ((m slack-message) n)
@@ -252,7 +253,7 @@
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (edited-message (slack-message-create
                           (slack-decode (plist-get payload :message))
-                          :room room))
+                          team :room room))
          (message (slack-room-find-message
                    room (oref edited-message ts)))
          (edited-info (plist-get edited-message :edited)))

@@ -62,37 +62,55 @@
                                     :team team))
     (funcall slack-buffer-function buf)))
 
+(defmethod slack-message-get-user-id ((m slack-user-message))
+  (oref m user))
+
+(defmethod slack-message-get-user-id ((m slack-file-comment-message))
+  (oref (oref m comment) user))
+
 (defun slack-message-edit ()
   (interactive)
   (let* ((team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
                                 team))
-         (target (thing-at-point 'word))
+         (target (thing-at-point 'line))
          (ts (get-text-property 0 'ts target))
          (msg (slack-room-find-message room ts)))
     (unless msg
       (error "Can't find original message"))
-    (unless (string= (oref team self-id) (oref msg user))
+    (unless (string= (oref team self-id) (slack-message-get-user-id msg))
       (error "Cant't edit other user's message"))
     (slack-message-edit-text msg room)))
+
+(defmethod slack-message-edit-type ((_m slack-message))
+  'edit)
+
+(defmethod slack-message-edit-type ((_m slack-file-comment-message))
+  'edit-file-comment)
+
+(defmethod slack-message-get-text ((m slack-message))
+  (oref m text))
+
+(defmethod slack-message-get-text ((m slack-file-comment-message))
+  (oref (oref m comment) comment))
 
 (defun slack-message-edit-text (msg room)
   (let ((buf (get-buffer-create slack-message-edit-buffer-name))
         (team (slack-team-find slack-current-team-id)))
     (with-current-buffer buf
       (slack-edit-message-mode)
-      (slack-message-setup-edit-buf room 'edit
+      (slack-message-setup-edit-buf room
+                                    (slack-message-edit-type msg)
                                     :ts (oref msg ts)
                                     :team team)
-      (insert (oref msg text)))
+      (insert (slack-message-get-text msg)))
     (funcall slack-buffer-function buf)))
 
 (cl-defun slack-message-setup-edit-buf (room buf-type &key ts team)
   (slack-edit-message-mode)
   (setq buffer-read-only nil)
   (erase-buffer)
-  (if (and (eq buf-type 'edit) ts)
-      (set (make-local-variable 'slack-target-ts) ts))
+  (set (make-local-variable 'slack-target-ts) ts)
   (set (make-local-variable 'slack-message-edit-buffer-type) buf-type)
   (slack-buffer-set-current-room-id room)
   (slack-buffer-set-current-team-id team)
@@ -111,6 +129,11 @@
   (interactive)
   (let ((buf-string (buffer-substring (point-min) (point-max))))
     (cl-case slack-message-edit-buffer-type
+      ('edit-file-comment
+       (slack-file-comment-edit slack-current-room-id
+                                slack-current-team-id
+                                slack-target-ts
+                                buf-string))
       ('edit
        (let* ((team (slack-team-find slack-current-team-id))
               (room (slack-room-find slack-current-room-id
