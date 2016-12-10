@@ -37,6 +37,16 @@
   "Custom notification function.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
   :group 'slack)
 
+(defcustom slack-message-im-notification-title-format-function (apply-partially #'format "%s - %s")
+  "Function to format notification title for IM message.\ntake 2 Arguments.\n(lambda (TEAM-NAME ROOM-NAME) ...)."
+  :type 'function
+  :group 'slack)
+
+(defcustom slack-message-notification-title-format-function (apply-partially #'format "%s - #%s")
+  "Function to format notification title for non-IM message.\ntake 2 Arguments.\n(lambda (TEAM-NAME ROOM-NAME) ...)."
+  :type 'function
+  :group 'slack)
+
 (defun slack-message-notify (message room team)
   (if slack-message-custom-notifier
       (funcall slack-message-custom-notifier message room team)
@@ -62,8 +72,8 @@
             (setq text (concat "\\" text)))
         (alert (if (slack-im-p room) text (format "%s: %s" user-name text))
                :title (if (slack-im-p room)
-                          (format "%s - %s" team-name room-name)
-                        (format "%s - #%s" team-name room-name))
+                          (funcall slack-message-im-notification-title-format-function team-name room-name)
+                        (funcall slack-message-notification-title-format-function team-name room-name))
                :category 'slack))))
 
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
