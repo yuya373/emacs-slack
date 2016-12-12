@@ -198,13 +198,13 @@
               (apply #'slack-reply "reply"
                      (slack-collect-slots 'slack-reply payload)))
              ((and subtype (string-equal "file_share" subtype))
-              (apply #'slack-file-share-message
+              (apply #'slack-file-share-message "file-share"
                      (slack-collect-slots 'slack-file-share-message payload)))
              ((and subtype (string-equal "file_comment" subtype))
-              (apply #'slack-file-comment-message
+              (apply #'slack-file-comment-message "file-comment"
                      (slack-collect-slots 'slack-file-comment-message payload)))
              ((and subtype (string-equal "file_mention" subtype))
-              (apply #'slack-file-mention-message
+              (apply #'slack-file-mention-message "file-mention"
                      (slack-collect-slots 'slack-file-mention-message payload)))
              ((plist-member payload :user)
               (apply #'slack-user-message "user-msg"
