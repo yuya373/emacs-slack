@@ -188,8 +188,8 @@
 (defun slack-ws-handle-user-typing (payload team)
   (let* ((user (slack-user-name (plist-get payload :user) team))
          (room (slack-room-find (plist-get payload :channel) team)))
-    (if (slack-buffer-show-typing-p
-         (get-buffer (slack-room-buffer-name room)))
+    (if (and user room
+             (slack-buffer-show-typing-p (get-buffer (slack-room-buffer-name room))))
         (let ((limit (+ 3 (float-time))))
           (with-slots (typing typing-timer) team
             (if (and typing (equal room (oref typing room)))
@@ -501,8 +501,9 @@
   (let ((room (slack-room-find (plist-get payload :channel)
                                team))
         (new-unread-count-display (plist-get payload :unread_count_display)))
-    (with-slots (unread-count-display) room
-      (setq unread-count-display new-unread-count-display))))
+    (when room
+      (with-slots (unread-count-display) room
+        (setq unread-count-display new-unread-count-display)))))
 
 (defun slack-ws-handle-file-comment-added (payload team)
   (let* ((file-id (plist-get payload :file_id))
