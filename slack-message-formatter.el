@@ -181,11 +181,15 @@
 
 (defmethod slack-attachment-to-string ((a slack-attachment))
   (with-slots (fallback text pretext title title-link) a
-    (if (and pretext text)
-        (mapconcat #'identity
-                   (cl-remove-if #'null (list pretext title title-link text))
-                   "\n\n")
-      fallback)))
+    (let ((title (or (and title title-link (format "<%s|%s>" title-link title))
+                     title))
+          (body (or (and pretext text (format "%s\n%s" pretext text))
+                    pretext
+                    text)))
+      (or (and title body (format "%s\n\n%s" title body))
+          title
+          body
+          fallback))))
 
 (defface slack-shared-message-header
   '((t (:weight bold)))
