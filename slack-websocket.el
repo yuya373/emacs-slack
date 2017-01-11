@@ -501,8 +501,9 @@
   (let ((room (slack-room-find (plist-get payload :channel)
                                team))
         (new-unread-count-display (plist-get payload :unread_count_display)))
-    (with-slots (unread-count-display) room
-      (setq unread-count-display new-unread-count-display))))
+    (when room
+      (with-slots (unread-count-display) room
+        (setq unread-count-display new-unread-count-display)))))
 
 (defun slack-ws-handle-file-comment-added (payload team)
   (let* ((file-id (plist-get payload :file_id))
