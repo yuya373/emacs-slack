@@ -51,6 +51,21 @@
   "Face used to deleted message."
   :group 'slack)
 
+(defface slack-attachment-header
+  '((t (:weight bold)))
+  "Face used to shared message header."
+  :group 'slack)
+
+(defface slack-attachment-footer
+  '((t (:height 0.8)))
+  "Face used to shared message footer."
+  :group 'slack)
+
+(defface slack-attachment-pad
+  '((t (:weight ultra-bold)))
+  "Face used to shared message pad."
+  :group 'slack)
+
 (defface slack-attachment-field-title
   '((t (:weight bold :height 1.0)))
   "Face used to attachment field title."
@@ -184,49 +199,54 @@
                                 #'unescape-channel
                                 text t))))
 
-(defmethod slack-attachment-to-string ((a slack-attachment))
-  (with-slots (fallback text pretext title title-link) a
-    (let ((title (or (and title title-link (format "<%s|%s>" title-link title))
-                     title))
-          (body (or (and pretext text (format "%s\n%s" pretext text))
-                    pretext
-                    text)))
-      (or (and title body (format "%s\n\n%s" title body))
-          title
-          body
-          fallback))))
+(defmethod slack-attachment-header ((attachment slack-attachment))
+  (with-slots (title title-link author-name author-subname) attachment
+    (concat (or (and title title-link (slack-linkfy title title-link))
+                title
+                "")
+            (or author-name author-subname ""))))
 
-(defface slack-shared-message-header
-  '((t (:weight bold)))
-  "Face used to shared message header."
-  :group 'slack)
+(defmethod slack-attachment-to-string ((attachment slack-attachment))
+  (with-slots
+      (fallback text ts color from-url footer fields pretext) attachment
+    (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
+           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
+                    pad-raw))
+           (header-raw (slack-attachment-header attachment))
+           (header (and (not (slack-string-blankp header-raw))
+                        (format "%s\t%s" pad
+                                (propertize header-raw
+                                            'face 'slack-attachment-header))))
+           (pretext (and pretext (format "%s\t%s" pad pretext)))
+           (body (and text (format "%s\t%s" pad (mapconcat #'identity
+                                                           (split-string text "\n")
+                                                           (format "\n\t%s\t" pad)))))
+           (fields (if fields (mapconcat #'(lambda (field)
+                                             (slack-attachment-field-to-string field
+                                                                               (format "\t%s" pad)))
+                                         fields
+                                         (format "\n\t%s\n" pad))))
+           (footer (if (and footer ts)
+                       (format "%s\t%s"
+                               pad
+                               (propertize
+                                (format "%s|%s" footer
+                                        (slack-message-time-to-string ts))
+                                'face 'slack-attachment-footer)))))
+      (if (and (slack-string-blankp header)
+               (slack-string-blankp pretext)
+               (slack-string-blankp body)
+               (slack-string-blankp fields)
+               (slack-string-blankp footer))
+          fallback
+        (format "%s%s%s%s"
+                (or (and header (format "\t%s\n" header)) "")
+                (or (and pretext (format "\t%s\n" pretext)) "")
+                (or (and body (format "\t%s" body)) "")
+                (or (and fields fields) "")
+                (or (and footer (format "\t%s" footer)) ""))
+        ))))
 
-(defface slack-shared-message-footer
-  '((t (:height 0.8)))
-  "Face used to shared message footer."
-  :group 'slack)
-
-(defface slack-shared-message-pad
-  '((t (:weight ultra-bold)))
-  "Face used to shared message pad."
-  :group 'slack)
-
-(defmethod slack-attachment-to-string((a slack-shared-message))
-  (with-slots (fallback text author-name ts channel-name color from-url) a
-    (let* ((pad (propertize "|" 'face 'slack-shared-message-pad))
-           (header (concat pad "\t"
-                           (propertize author-name 'face 'slack-shared-message-header)))
-           (body (format "%s\t%s" pad (mapconcat #'identity
-                                                 (split-string text "\n")
-                                                 (format "\n\t%s\t" pad))))
-           (footer (concat pad "\t"
-                           (propertize
-                            (format "%s %s" channel-name (slack-message-time-to-string ts))
-                            'face 'slack-shared-message-footer))))
-      (format "\t%s\n \t%s\n \t%s"
-              header
-              body
-              footer))))
 (defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
   (unless pad (setq pad ""))
   (let ((title (propertize (or (oref field title) "") 'face 'slack-attachment-field-title))

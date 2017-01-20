@@ -93,5 +93,13 @@
 (defun slack-get-ts ()
   (get-text-property 0 'ts (thing-at-point 'line)))
 
+(defun slack-linkfy (text link)
+  (format "<%s|%s>" link text))
+
+(defun slack-string-blankp (str)
+  (if str
+      (> 1 (length str))
+    t))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here
