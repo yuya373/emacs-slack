@@ -51,6 +51,11 @@
   "Face used to deleted message."
   :group 'slack)
 
+(defface slack-attachment-field-title
+  '((t (:weight bold :height 1.0)))
+  "Face used to attachment field title."
+  :group 'slack)
+
 (defun slack-message-put-header-property (header)
   (if header
       (propertize header 'face 'slack-message-output-header)))
@@ -222,6 +227,13 @@
               header
               body
               footer))))
+(defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
+  (unless pad (setq pad ""))
+  (let ((title (propertize (or (oref field title) "") 'face 'slack-attachment-field-title))
+        (value (mapconcat #'(lambda (e) (format "\t%s" e))
+                          (split-string (or (oref field value) "") "\n")
+                          (format "\n%s\t" pad))))
+    (format "%s\t%s\n%s\t%s" pad title pad value)))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here

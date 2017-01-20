@@ -106,6 +106,11 @@
    (ts :initarg :ts :initform nil)
    (author-subname :initarg :author_subname :initform nil)))
 
+(defclass slack-attachment-field ()
+  ((title :initarg :title :initform nil)
+   (value :initarg :value :initform nil)
+   (short :initarg :short :initform nil)))
+
 (defclass slack-shared-message (slack-attachment)
   ((channel-id :initarg :channel_id :initform nil)
    (channel-name :initarg :channel_name :initform nil)
@@ -148,7 +153,9 @@
 
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
-             (append (plist-get payload :fields) nil))
+             (mapcar #'(lambda (field) (apply #'slack-attachment-field
+                                              (slack-collect-slots 'slack-attachment-field field)))
+                     (append (plist-get payload :fields) nil)))
   (if (plist-get payload :is_share)
       (apply #'slack-shared-message "shared-attachment"
              (slack-collect-slots 'slack-shared-message payload))
