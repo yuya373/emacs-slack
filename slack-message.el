@@ -290,8 +290,7 @@
   (let* ((team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
                                 team))
-         (word (thing-at-point 'word))
-         (ts (ignore-errors (get-text-property 0 'ts word))))
+         (ts (ignore-errors (slack-get-ts))))
     (unless ts
       (error "Call From Slack Room Buffer"))
     (cl-labels ((on-pins-add

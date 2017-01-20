@@ -116,8 +116,7 @@
   (let* ((team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
                                 team))
-         (target (thing-at-point 'line))
-         (ts (get-text-property 0 'ts target))
+         (ts (slack-get-ts))
          (msg (slack-room-find-message room ts)))
     (unless msg
       (error "Can't find original message"))

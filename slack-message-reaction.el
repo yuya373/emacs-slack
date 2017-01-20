@@ -49,8 +49,7 @@
 
 (defun slack-message-add-reaction ()
   (interactive)
-  (let* ((line (thing-at-point 'line))
-         (ts (get-text-property 0 'ts line))
+  (let* ((ts (slack-get-ts))
          (reaction (slack-message-reaction-input))
          (team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
@@ -62,8 +61,7 @@
   (let* ((team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
                                 team))
-         (line (thing-at-point 'line))
-         (ts (get-text-property 0 'ts line))
+         (ts (slack-get-ts))
          (msg (slack-room-find-message room ts))
          (reactions (slack-message-get-reactions msg))
          (reaction (slack-message-reaction-select reactions)))

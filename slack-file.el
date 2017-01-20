@@ -343,8 +343,7 @@
   (oref file-comment id))
 
 (cl-defmacro slack-get-message-metadata (&body body)
-  `(let* ((line (thing-at-point 'line))
-          (ts (get-text-property 0 'ts line))
+  `(let* ((ts (slack-get-ts))
           (team (slack-team-find slack-current-team-id))
           (room (slack-room-find slack-current-room-id
                                  team)))
