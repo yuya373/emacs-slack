@@ -69,8 +69,10 @@
 
 (defun slack-im-names (team)
   (with-slots (ims) team
-    (mapcar #'(lambda (im) (cons (slack-im-user-name im team) im))
-            ims)))
+    (slack-room-names ims
+                      #'(lambda (ims)
+                          (cl-remove-if #'(lambda (im) (not (oref im is-open)))
+                                        ims)))))
 
 (defmethod slack-room-buffer-name ((room slack-im))
   (concat slack-im-buffer-name

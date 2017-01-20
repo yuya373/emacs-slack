@@ -90,5 +90,8 @@
                                 collect (concat "#" (oref team name)))))))
       )))
 
+(defun slack-get-ts ()
+  (get-text-property 0 'ts (thing-at-point 'line)))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here

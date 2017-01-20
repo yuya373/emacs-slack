@@ -115,12 +115,12 @@
                             t)
       (create-buffer))))
 
-(cl-defmacro slack-select-from-list ((alist prompt) &body body)
+(cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."
   (let ((key (cl-gensym)))
     `(let* ((,key (let ((completion-ignore-case t))
                     (completing-read (format "%s" ,prompt)
-                                     ,alist nil t)))
+                                     ,alist nil t ,initial)))
             (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
        ,@body
        selected)))
