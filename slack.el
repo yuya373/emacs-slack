@@ -40,6 +40,7 @@
 (require 'slack-bot-message)
 (require 'slack-search)
 (require 'slack-reminder)
+(require 'slack-thread)
 
 (require 'slack-websocket)
 (require 'slack-request)
