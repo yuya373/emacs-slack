@@ -46,7 +46,11 @@
    (is-starred :initarg :is_starred :type boolean)
    (pinned-to :initarg :pinned_to :type (or null list))
    (edited-at :initarg :edited-at :initform nil)
-   (deleted-at :initarg :deleted-at :initform nil)))
+   (deleted-at :initarg :deleted-at :initform nil)
+   (thread :initarg :thread :initform nil)
+   (thread-ts :initarg :thread_ts :initform nil)
+   (hide :initarg :hide :initform nil)))
+
 
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
@@ -191,6 +195,10 @@
     (oset m comment file-comment)
     m))
 
+(defmethod slack-message-set-thread ((m slack-message))
+  (when (slack-message-thread-parentp m)
+    (oset m thread (slack-thread-create (oref m thread-ts)))))
+
 (cl-defun slack-message-create (payload team &key room)
   (when payload
     (plist-put payload :reactions (append (plist-get payload :reactions) nil))
@@ -228,7 +236,9 @@
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload team)
-          (slack-message-set-file-comment message payload))))))
+          (slack-message-set-file-comment message payload)
+          (slack-message-set-thread message)
+          message)))))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (oref m ts) (oref n ts)))
