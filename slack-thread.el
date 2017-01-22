@@ -48,6 +48,15 @@
       t
     nil))
 
+(defun slack-thread-start ()
+  (interactive)
+  (let* ((team (slack-team-find slack-current-team-id))
+         (room (and team(slack-room-find slack-current-room-id team)))
+         (ts (slack-get-ts))
+         (buf (and room ts (slack-thread-get-buffer-create room team ts))))
+    (unless buf (error "Can't create slack thread buffer"))
+    (funcall slack-buffer-function buf)))
+
 (defun slack-thread-message--send (message)
   (if slack-current-team-id
       (let* ((team (slack-team-find slack-current-team-id))
