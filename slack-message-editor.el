@@ -79,8 +79,7 @@
     (cl-labels
         ((on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
-                      (data "slack-message-share"))
-                     (message "data: %s" data)))
+                      (data "slack-message-share"))))
       (slack-request
        slack-share-url
        team
