@@ -157,5 +157,16 @@
 (defmethod slack-message-thread-parentp ((m slack-message))
   (and (oref m thread-ts) (string= (oref m ts) (oref m thread-ts))))
 
+(defun slack-thread-update-state (payload team)
+  (let* ((room (slack-room-find (plist-get payload :channel) team))
+         (message (and room (slack-room-find-message room (plist-get (plist-get payload :message) :ts))))
+         (state (plist-get payload :message))
+         (thread (and message (slack-message-get-thread message (plist-get state :thread_ts)))))
+    (when thread
+      (with-slots (replies reply-count) thread
+        (setq replies (append (plist-get state :replies) nil))
+        (setq reply-count (plist-get state :reply_count)))
+      (slack-message-update message team t t))))
+
 (provide 'slack-thread)
 ;;; slack-thread.el ends here

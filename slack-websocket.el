@@ -269,6 +269,8 @@
       (slack-message-edited payload team))
      ((and subtype (string= subtype "message_deleted"))
       (slack-message-deleted payload team))
+     ((and subtype (string= subtype "message_replied"))
+      (slack-thread-update-state payload team))
      (t
       (slack-ws-update-message payload team)))))
 
