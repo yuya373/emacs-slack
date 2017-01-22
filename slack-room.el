@@ -272,8 +272,46 @@
                                  prev-messages)
                          :test #'slack-message-equal)))
 
-(defmethod slack-room-set-messages ((room slack-room) m)
-  (let ((sorted (slack-room-sort-messages m)))
+(defun slack-room-gather-thread-messages (messages)
+  (cl-labels
+      ((groupby-thread-ts (messages acc)
+                          (cl-loop for m in messages
+                                   do (let ((thread-ts (oref m thread-ts)))
+                                        (when (and thread-ts (not (slack-message-thread-parentp m)))
+                                          (puthash thread-ts
+                                                   (cons m (gethash thread-ts acc))
+                                                   acc))))
+                          acc)
+       (make-threads (table acc)
+                     (cl-loop for key being the hash-keys in table using (hash-value value)
+                              do (let ((parent (cl-find-if #'(lambda (m)
+                                                               (string= key (oref m ts)))
+                                                           messages)))
+                                   (when parent
+                                     (slack-thread-set-messages (oref parent thread) value)
+                                     (push parent acc))))
+                     acc)
+       (remove-duplicates (threads messages)
+                          (let ((ret))
+                            (if (< 0 (length threads))
+                                (progn
+                                  (dolist (message messages)
+                                    (unless (oref message thread-ts)
+                                      (let ((thread (cl-find-if #'(lambda (m)
+                                                                    (slack-message-equal m message))
+                                                                threads)))
+                                        (unless thread (push message ret)))))
+                                  (setq ret (append ret threads)))
+                              (setq ret messages))
+                            ret)))
+    (let ((thread-messages (groupby-thread-ts messages (make-hash-table :test 'equal))))
+      (if (< 0 (length (hash-table-keys thread-messages)))
+          (remove-duplicates (make-threads thread-messages nil) messages)
+        messages))))
+
+(defmethod slack-room-set-messages ((room slack-room) messages)
+  (let ((sorted (slack-room-sort-messages
+                 (slack-room-gather-thread-messages messages))))
     (oset room oldest (car sorted))
     (oset room messages sorted)
     (oset room latest (car (last sorted)))))
