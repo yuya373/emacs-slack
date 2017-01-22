@@ -239,12 +239,12 @@
                (slack-string-blankp fields)
                (slack-string-blankp footer))
           fallback
-        (format "%s%s%s%s"
+        (format "%s%s%s%s%s"
                 (or (and header (format "\t%s\n" header)) "")
                 (or (and pretext (format "\t%s\n" pretext)) "")
                 (or (and body (format "\t%s" body)) "")
                 (or (and fields fields) "")
-                (or (and footer (format "\t%s" footer)) ""))
+                (or (and footer (format "\n\t%s" footer)) ""))
         ))))
 
 (defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
