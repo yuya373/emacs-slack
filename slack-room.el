@@ -55,12 +55,12 @@
       ((prepare (p)
                 (plist-put p :members
                            (append (plist-get p :members) nil))
-                (plist-put p :latest
-                           (slack-message-create (plist-get p :latest) team))
                 (plist-put p :team-id (oref team id))
                 p))
-    (let ((attributes (slack-collect-slots class (prepare payload))))
-      (apply #'make-instance class attributes))))
+    (let* ((attributes (slack-collect-slots class (prepare payload)))
+           (room (apply #'make-instance class attributes)))
+      (oset room latest (slack-message-create (plist-get payload :latest) team :room room))
+      room)))
 
 (defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
@@ -365,7 +365,7 @@
                            (concat "*Slack - Pinned Items*"
                                    " : "
                                    (slack-room-name-with-team-name room))))
-    (let* ((messages (mapcar #'(lambda (m) (slack-message-create m team))
+    (let* ((messages (mapcar #'(lambda (m) (slack-message-create m team :room room))
                              (mapcar #'(lambda (i)
                                          (plist-get i :message))
                                      items)))
