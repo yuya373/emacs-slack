@@ -42,7 +42,8 @@
    (reply-count :initarg :reply_count :initform 0)
    (replies :initarg :replies :initform '())
    (active :initarg :active :initform t)
-   ))
+   (root :initarg :root :type slack-message)))
+
 (defmethod slack-thread-messagep ((m slack-message))
   (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
       t
@@ -150,9 +151,13 @@
                                 map)))
       "")))
 
-(defun slack-thread-create (thread-ts)
-  (when thread-ts
-    (make-instance 'slack-thread :thread_ts thread-ts)))
+(defmethod slack-thread-create ((m slack-message) team)
+  (let ((thread (make-instance 'slack-thread
+                               :thread_ts (oref m ts)
+                               :root m)))
+    (with-slots (threads) team
+      (cl-pushnew thread (oref threads all) :test #'slack-thread-equal))
+    thread))
 
 (defmethod slack-thread-set-messages ((thread slack-thread) messages)
   (let ((count (length messages)))
@@ -172,14 +177,21 @@
 
 (defun slack-thread-update-state (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
-         (message (and room (slack-room-find-message room (plist-get (plist-get payload :message) :ts))))
          (state (plist-get payload :message))
-         (thread (and message (slack-message-get-thread message (plist-get state :thread_ts)))))
+         (message (and room (or (slack-room-find-message room (plist-get state :ts))
+                                (slack-message-create state team :room room))))
+         (thread (and message (slack-message-get-thread message team))))
     (when thread
       (with-slots (replies reply-count) thread
         (setq replies (append (plist-get state :replies) nil))
         (setq reply-count (plist-get state :reply_count)))
       (slack-message-update message team t t))))
+
+(defmethod slack-thread-equal ((thread slack-thread) other)
+  (and (string-equal (oref thread thread-ts)
+                     (oref other thread-ts))
+       (string-equal (oref (oref thread root) channel)
+                     (oref (oref other root) channel))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here

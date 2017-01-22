@@ -51,7 +51,6 @@
    (thread-ts :initarg :thread_ts :initform nil)
    (hide :initarg :hide :initform nil)))
 
-
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
 
@@ -198,9 +197,9 @@
     (oset m comment file-comment)
     m))
 
-(defmethod slack-message-set-thread ((m slack-message))
+(defmethod slack-message-set-thread ((m slack-message) team)
   (when (slack-message-thread-parentp m)
-    (oset m thread (slack-thread-create (oref m thread-ts)))))
+    (oset m thread (slack-thread-create m team))))
 
 (defun slack-reply-broadcast-message-create (payload)
   (let ((parent (cl-first (plist-get payload :attachments))))
@@ -248,17 +247,17 @@
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload team)
           (slack-message-set-file-comment message payload)
-          (slack-message-set-thread message)
+          (slack-message-set-thread message team)
           message)))))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (oref m ts) (oref n ts)))
 
-(defmethod slack-message-get-thread ((m slack-message) thread-ts)
-  (let ((thread (oref m thread)))
+(defmethod slack-message-get-thread ((parent slack-message) team)
+  (let ((thread (oref parent thread)))
     (unless thread
-      (setq thread (slack-thread-create thread-ts))
-      (oset m thread thread))
+      (setq thread (slack-thread-create parent team))
+      (oset parent thread thread))
     thread))
 
 (defmethod slack-message-update-thread ((m slack-message) team)
@@ -268,13 +267,13 @@
         (let* ((thread-ts (oref m thread-ts))
                (parent (slack-room-find-message room thread-ts)))
           (when parent
-            (let ((thread (slack-message-get-thread parent thread-ts)))
+            (let ((thread (slack-message-get-thread parent team)))
               (slack-thread-add-message thread m)
               (slack-buffer-update room parent team :replace t)
               (slack-thread-update-buffer thread m room team)
               ;; (unless no-notify
-                (slack-message-notify m room team)
-                ;; )
+              (slack-message-notify m room team)
+              ;; )
               )))))))
 
 (defmethod slack-message-update ((m slack-message) team &optional replace no-notify)

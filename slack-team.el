@@ -33,6 +33,13 @@
 use `slack-change-current-team' to change `slack-current-team'"
   :group 'slack)
 
+(defclass slack-team-threads ()
+  ((initializedp :initform nil)
+   (has-more :initform t)
+   (total-unread-replies :initform 0 :type number)
+   (new-threads-count :initform 0 :type number)
+   (all :initform nil :type list)))
+
 (defclass slack-team ()
   ((id :initarg :id)
    (token :initarg :token :initform nil)
@@ -71,7 +78,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (typing :initform nil)
    (typing-timer :initform nil)
    (reminders :initform nil :type list)
-   (ping-check-timers)))
+   (ping-check-timers)
+   (threads :type slack-team-threads :initform (make-instance 'slack-team-threads))))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
