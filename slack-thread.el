@@ -118,20 +118,18 @@
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
     (if thread
-        (progn
-          (propertize
-           (format "%s reply from %s"
-                   (oref thread reply-count)
-                   (mapconcat #'identity
-                              (cl-remove-duplicates
-                               (mapcar #'(lambda (reply)
-                                           (slack-user-name
-                                            (plist-get reply :user)
-                                            team))
-                                       (oref thread replies))
-                               :test #'string=)
-                              " "))
-           'face '(:underline t)))
+        (let* ((usernames (mapconcat #'identity
+                                     (cl-remove-duplicates
+                                      (mapcar #'(lambda (reply) (slack-user-name (plist-get reply :user) team))
+                                              (oref thread replies))
+                                      :test #'string=)
+                                     " "))
+               (text (format "\n%s reply from %s" (oref thread reply-count) usernames)))
+          (propertize text
+                      'face '(:underline t)
+                      'keymap (let ((map (make-sparse-keymap)))
+                                (define-key map (kbd "RET") #'slack-thread-show-messages)
+                                map)))
       "")))
 
 (defun slack-thread-create (thread-ts)
