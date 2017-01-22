@@ -107,7 +107,7 @@
   (slack-message-sender-name m team))
 
 (defun slack-format-message (header body attachment-body reactions thread)
-  (let ((messages (list header body attachment-body reactions thread)))
+  (let ((messages (list header body attachment-body thread reactions)))
     (concat (mapconcat #'identity
                        (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
                        "\n")
