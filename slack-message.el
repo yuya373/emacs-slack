@@ -307,8 +307,14 @@
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
 
+(defmethod slack-message-sender-id ((m slack-message))
+  (oref m user))
+
 (defmethod slack-message-sender-name ((m slack-file-comment-message) team)
   (slack-user-name (oref (oref m comment) user) team))
+
+(defmethod slack-message-sender-id ((m slack-file-comment-message))
+  (oref (oref m comment) user))
 
 (defun slack-message-pins-add ()
   (interactive)

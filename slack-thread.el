@@ -142,7 +142,7 @@
   (let ((count (length messages)))
     (oset thread messages messages)
     (oset thread reply-count count)
-    (oset thread replies (mapcar #'(lambda (m) (list :user (slack-message-get-user-id m)
+    (oset thread replies (mapcar #'(lambda (m) (list :user (slack-message-sender-id m)
                                                      :ts (oref m ts)))
                                  messages))))
 
