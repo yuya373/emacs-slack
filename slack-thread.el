@@ -29,6 +29,8 @@
 (require 'slack-message)
 
 (defvar lui-prompt-string "> ")
+(defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
+
 (define-derived-mode slack-thread-mode lui-mode "Slack - Thread"
   ""
   (lui-set-prompt lui-prompt-string)
@@ -110,7 +112,7 @@
         (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
     buf))
 
-(defun slack-thread-show-messages ()
+(defun slack-thread-show-or-create ()
   (interactive)
   (let* ((line (thing-at-point 'line))
          (team-id slack-current-team-id)
@@ -122,17 +124,17 @@
         (error "Can't find: %s" (or (and (not team) "team")
                                     (and (not room) "room")
                                     (and (not ts) "ts"))))
-    (let* ((thread (slack-room-find-thread room ts))
-           (buf (and thread
-                     (slack-thread-get-buffer-create room team (oref thread thread-ts)))))
-
+    (let* ((thread (slack-room-find-thread room ts)))
       (if thread
-          (progn
-            (with-current-buffer buf
-              (cl-loop for m in (slack-room-sort-messages (copy-sequence (oref thread messages)))
-                       do (slack-buffer-insert m team)))
-            (funcall slack-buffer-function buf))
+          (slack-thread-show-messages thread room team)
         (slack-thread-start)))))
+
+(defmethod slack-thread-show-messages ((thread slack-thread) room team)
+  (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts))))
+    (with-current-buffer buf
+      (cl-loop for m in (slack-room-sort-messages (copy-sequence (oref thread messages)))
+               do (slack-buffer-insert m team)))
+    (funcall slack-buffer-function buf)))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
@@ -192,6 +194,76 @@
                      (oref other thread-ts))
        (string-equal (oref (oref thread root) channel)
                      (oref (oref other root) channel))))
+
+(cl-defun slack-thread-get-all (&key (sync nil) (ts nil))
+  (let ((team (slack-team-select)))
+    (cl-labels
+        ((on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-thread-get-all")
+                      (slack-thread-create-all-buffer data team))))
+      (slack-request
+       all-threads-url
+       team
+       :type "POST"
+       :params (list (cons "limit" "10")
+                     (cons "current_ts" (or ts (format-time-string "%s"))))
+       :sync sync
+       :success #'on-success))))
+
+(defun slack-thread-create-all-buffer (data team)
+  (let ((threads-data (append (plist-get data :threads) nil))
+        (total-unread (plist-get data :total_unread_replies))
+        (more (if (eq :json-false (plist-get data :has_more)) nil t))
+        (new-count (plist-get data :new_threads_count)))
+    (with-slots (threads) team
+      (with-slots (initializedp total-unread-replies new-threads-count all has-more) threads
+        (setq has-more more)
+        (setq initializedp t)
+        (setq total-unread-replies total-unread)
+        (setq new-threads-count new-count)
+        (cl-loop for thread in threads-data
+                 do (slack-message-create (plist-get thread :root_msg) team))))))
+
+(defmethod slack-thread-title ((thread slack-thread) team)
+  (with-slots (root) thread
+    (let ((room (slack-room-find (oref root channel) team))
+          (body (slack-message-body root team)))
+      (when room
+        (format "%s - %s" (slack-room-name room) body)))))
+
+(defun slack-thread-select (&optional reload)
+  (interactive)
+  (cl-labels
+      ((load-threads (threads)
+                     (slack-thread-get-all :sync t
+                                           :ts (cl-first
+                                                (cl-sort
+                                                 (mapcar #'(lambda (thread) (oref thread thread-ts)) threads)
+                                                 #'string<))))
+       (select-thread (threads team has-more)
+                      (let* ((alist (cl-remove-if-not
+                                     #'(lambda (cons) (car cons))
+                                     (mapcar #'(lambda (thread)
+                                                 (let ((title (slack-thread-title thread team)))
+                                                   (and title (cons title thread))))
+                                             threads)))
+                             (maybe-has-more (if has-more
+                                                 (append alist (list (cons "(load more)" 'load-more))) alist))
+                             (selected (slack-select-from-list (maybe-has-more "Select Thread: "))))
+                        selected)))
+
+    (let* ((team (slack-team-select))
+           (threads (oref team threads)))
+      (with-slots (initializedp all has-more) threads
+        (unless (or (not initializedp) (not reload)) (load-threads all))
+        (let ((selected (select-thread all team has-more)))
+          (if (eq selected 'load-more)
+              (slack-thread-select t)
+            (slack-thread-show-messages selected
+                                        (slack-room-find (oref (oref selected root) channel) team)
+                                        team)))))))
+
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
