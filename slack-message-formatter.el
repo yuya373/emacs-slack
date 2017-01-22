@@ -135,9 +135,12 @@
   (with-slots (text) m
     (slack-message-unescape-string text team)))
 
+(defmethod slack-message-body ((_m slack-reply-broadcast-message) _team)
+  "Replied to a thread")
+
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n")))
+    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n\t-\n")))
       (if (< 0 (length body))
           (slack-message-unescape-string body team)))))
 

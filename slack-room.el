@@ -209,6 +209,14 @@
               (oref room messages)
               :from-end t))
 
+(defun slack-room-find-thread (room ts)
+  (let ((message (slack-room-find-message room ts)))
+    (when message
+      (if (object-of-class-p message 'slack-reply-broadcast-message)
+          (progn
+            (setq message (slack-room-find-message room (oref message broadcast-thread-ts)))))
+      (and message (oref message thread)))))
+
 (defmethod slack-room-name-with-team-name ((room slack-room))
   (with-slots (team-id name) room
     (let ((team (slack-team-find team-id)))
@@ -218,7 +226,7 @@
   (format "%s%s%s"
           (if (object-of-class-p room 'slack-im)
               (slack-im-user-presence room)
-            "  ") 
+            "  ")
           (slack-room-name-with-team-name room)
           (with-slots (unread-count-display) room
             (if (< 0 unread-count-display)

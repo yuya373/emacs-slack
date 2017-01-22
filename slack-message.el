@@ -87,6 +87,9 @@
    (id :initarg :id)
    (inviter :initarg :inviter)))
 
+(defclass slack-reply-broadcast-message (slack-user-message)
+  ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
+
 (defclass slack-bot-message (slack-message)
   ((bot-id :initarg :bot_id :type string)
    (username :initarg :username :type string :initform "")
@@ -199,6 +202,12 @@
   (when (slack-message-thread-parentp m)
     (oset m thread (slack-thread-create (oref m thread-ts)))))
 
+(defun slack-reply-broadcast-message-create (payload)
+  (let ((parent (cl-first (plist-get payload :attachments))))
+    (plist-put payload :broadcast_thread_ts (plist-get parent :ts))
+    (apply #'slack-reply-broadcast-message "reply-broadcast"
+           (slack-collect-slots 'slack-reply-broadcast-message payload))))
+
 (cl-defun slack-message-create (payload team &key room)
   (when payload
     (plist-put payload :reactions (append (plist-get payload :reactions) nil))
@@ -223,6 +232,8 @@
              ((and subtype (string-equal "file_mention" subtype))
               (apply #'slack-file-mention-message "file-mention"
                      (slack-collect-slots 'slack-file-mention-message payload)))
+             ((and subtype (string-equal "reply_broadcast" subtype))
+              (slack-reply-broadcast-message-create payload))
              ((plist-member payload :user)
               (apply #'slack-user-message "user-msg"
                      (slack-collect-slots 'slack-user-message payload)))

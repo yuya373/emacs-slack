@@ -53,8 +53,11 @@
   (let* ((team (slack-team-find slack-current-team-id))
          (room (and team(slack-room-find slack-current-room-id team)))
          (ts (slack-get-ts))
+         (message (slack-room-find-message room ts))
          (buf (and room ts (slack-thread-get-buffer-create room team ts))))
     (unless buf (error "Can't create slack thread buffer"))
+    (if (object-of-class-p message 'slack-reply-broadcast-message)
+        (error "Can't start thread from broadcasted message."))
     (funcall slack-buffer-function buf)))
 
 (defun slack-thread-message--send (message)
@@ -118,16 +121,17 @@
         (error "Can't find: %s" (or (and (not team) "team")
                                     (and (not room) "room")
                                     (and (not ts) "ts"))))
-    (let ((thread (oref (slack-room-find-message room ts) thread))
-          (buf (slack-thread-get-buffer-create room team ts)))
+    (let* ((thread (slack-room-find-thread room ts))
+           (buf (and thread
+                     (slack-thread-get-buffer-create room team (oref thread thread-ts)))))
 
-      (unless thread (error "Can't find thread"))
-
-      (with-current-buffer buf
-        (cl-loop for m in (slack-room-sort-messages (copy-sequence (oref thread messages)))
-                 do (slack-buffer-insert m team)))
-
-      (funcall slack-buffer-function buf))))
+      (if thread
+          (progn
+            (with-current-buffer buf
+              (cl-loop for m in (slack-room-sort-messages (copy-sequence (oref thread messages)))
+                       do (slack-buffer-insert m team)))
+            (funcall slack-buffer-function buf))
+        (slack-thread-start)))))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
