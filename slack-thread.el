@@ -43,6 +43,11 @@
    (replies :initarg :replies :initform '())
    (active :initarg :active :initform t)
    ))
+(defmethod slack-thread-messagep ((m slack-message))
+  (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
+      t
+    nil))
+
 (defun slack-thread-message--send (message)
   (if slack-current-team-id
       (let* ((team (slack-team-find slack-current-team-id))
