@@ -43,6 +43,33 @@
    (replies :initarg :replies :initform '())
    (active :initarg :active :initform t)
    ))
+(defun slack-thread-message--send (message)
+  (if slack-current-team-id
+      (let* ((team (slack-team-find slack-current-team-id))
+             (room (slack-room-find slack-current-room-id team))
+             (message (slack-message-prepare-links (slack-escape-message message) team))
+             (broadcast (y-or-n-p (format "Also send to %s ?" (slack-room-name room)))))
+
+        (slack-message-inc-id team)
+        (with-slots (message-id sent-message self-id) team
+          (let* ((payload (list :id message-id
+                                :channel (oref room id)
+                                :reply_broadcast broadcast
+                                :thread_ts thread-ts
+                                :type "message"
+                                :user self-id
+                                :text message))
+                 (json (json-encode payload))
+                 (obj (slack-message-create payload team :room room)))
+            (slack-ws-send json team)
+            (puthash message-id obj sent-message))))))
+
+(defmethod slack-thread-update-buffer ((thread slack-thread) message room team)
+  (let ((buf (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))))
+    (when buf
+      (with-current-buffer buf
+        (slack-buffer-insert message team)))))
+
 (defun slack-thread-buf-name (room thread-ts)
   (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))
 
@@ -123,6 +150,9 @@
   (with-slots (messages) thread
     (cl-pushnew msg messages :test #'slack-message-equal)
     (setq messages (slack-room-sort-messages (copy-sequence messages)))))
+
+(defmethod slack-message-thread-parentp ((m slack-message))
+  (and (oref m thread-ts) (string= (oref m ts) (oref m thread-ts))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here

@@ -243,29 +243,54 @@
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (oref m ts) (oref n ts)))
 
+(defmethod slack-message-get-thread ((m slack-message) thread-ts)
+  (let ((thread (oref m thread)))
+    (unless thread
+      (setq thread (slack-thread-create thread-ts))
+      (oset m thread thread))
+    thread))
+
+(defmethod slack-message-update-thread ((m slack-message) team)
+  (with-slots (channel) m
+    (let ((room (slack-room-find channel team)))
+      (when room
+        (let* ((thread-ts (oref m thread-ts))
+               (parent (slack-room-find-message room thread-ts)))
+          (when parent
+            (let ((thread (slack-message-get-thread parent thread-ts)))
+              (slack-thread-add-message thread m)
+              (slack-buffer-update room parent team :replace t)
+              (slack-thread-update-buffer thread m room team)
+              ;; (unless no-notify
+                (slack-message-notify m room team)
+                ;; )
+              )))))))
+
 (defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
-  (cl-labels
-      ((push-message-to
-        (room msg)
-        (with-slots (messages) room
-          (when (< 0 (length messages))
-            (setq messages
-                  (cl-remove-if #'(lambda (n) (slack-message-equal msg n))
-                                messages))
-            (push msg messages))
-          (update-latest room msg)))
-       (update-latest (room msg)
-                      (with-slots (latest) room
-                        (if (or (null latest)
-                                (string< (oref latest ts) (oref msg ts)))
-                            (setq latest msg)))))
-    (with-slots (channel) m
-      (let ((room (slack-room-find channel team)))
-        (when room
-          (push-message-to room m)
-          (slack-buffer-update room m team :replace replace)
-          (unless no-notify
-            (slack-message-notify m room team)))))))
+  (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
+      (slack-message-update-thread m team)
+    (cl-labels
+        ((push-message-to
+          (room msg)
+          (with-slots (messages) room
+            (when (< 0 (length messages))
+              (setq messages
+                    (cl-remove-if #'(lambda (n) (slack-message-equal msg n))
+                                  messages))
+              (push msg messages))
+            (update-latest room msg)))
+         (update-latest (room msg)
+                        (with-slots (latest) room
+                          (if (or (null latest)
+                                  (string< (oref latest ts) (oref msg ts)))
+                              (setq latest msg)))))
+      (with-slots (channel) m
+        (let ((room (slack-room-find channel team)))
+          (when room
+            (push-message-to room m)
+            (slack-buffer-update room m team :replace replace)
+            (unless no-notify
+              (slack-message-notify m room team))))))))
 
 
 (defun slack-message-edited (payload team)
