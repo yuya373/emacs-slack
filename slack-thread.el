@@ -61,6 +61,8 @@
     (unless buf (error "Can't create slack thread buffer"))
     (if (object-of-class-p message 'slack-reply-broadcast-message)
         (error "Can't start thread from broadcasted message"))
+    (with-current-buffer buf
+      (slack-thread-insert-as-root-message message team))
     (funcall slack-buffer-function buf)))
 
 (defun slack-thread-message--send (message)
@@ -129,13 +131,16 @@
           (slack-thread-show-messages thread room team)
         (slack-thread-start)))))
 
+(defun slack-thread-insert-as-root-message (message team)
+  (slack-buffer-insert message team)
+  (let ((lui-time-stamp-position nil))
+    (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t)))
+
 (defmethod slack-thread-show-messages ((thread slack-thread) room team)
   (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
          (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
     (with-current-buffer buf
-      (slack-buffer-insert (oref thread root) team)
-      (let ((lui-time-stamp-position nil))
-        (lui-insert (make-string lui-fill-column ?=) t))
+      (slack-thread-insert-as-root-message (oref thread root) team)
       (cl-loop for m in messages
                do (slack-buffer-insert m team)))
     (funcall slack-buffer-function buf)
