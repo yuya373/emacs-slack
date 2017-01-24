@@ -60,7 +60,7 @@
          (buf (and room ts (slack-thread-get-buffer-create room team ts))))
     (unless buf (error "Can't create slack thread buffer"))
     (if (object-of-class-p message 'slack-reply-broadcast-message)
-        (error "Can't start thread from broadcasted message."))
+        (error "Can't start thread from broadcasted message"))
     (funcall slack-buffer-function buf)))
 
 (defun slack-thread-message--send (message)
@@ -68,7 +68,7 @@
       (let* ((team (slack-team-find slack-current-team-id))
              (room (slack-room-find slack-current-room-id team))
              (message (slack-message-prepare-links (slack-escape-message message) team))
-             (broadcast (y-or-n-p (format "Also send to %s ?" (slack-room-name room)))))
+             (broadcast (y-or-n-p (format "Also send to %s ? " (slack-room-name room)))))
 
         (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
