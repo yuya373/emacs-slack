@@ -139,9 +139,11 @@
       (cl-loop for m in messages
                do (slack-buffer-insert m team)))
     (funcall slack-buffer-function buf)
-    (let ((msg (car (last messages))))
-      (when msg
-        (slack-room-update-mark (slack-room-find (oref msg channel) team) team msg)))))
+    (let* ((msg (car (last messages)))
+           (room (and msg (slack-room-find (oref msg channel) team))))
+      (when (and msg room (string< (oref room last-read) (oref msg ts)))
+        (slack-room-update-last-read room msg)
+        (slack-room-update-mark room team msg)))))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
