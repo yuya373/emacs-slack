@@ -130,11 +130,15 @@
         (slack-thread-start)))))
 
 (defmethod slack-thread-show-messages ((thread slack-thread) room team)
-  (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts))))
+  (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
+         (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
     (with-current-buffer buf
-      (cl-loop for m in (slack-room-sort-messages (copy-sequence (oref thread messages)))
+      (cl-loop for m in messages
                do (slack-buffer-insert m team)))
-    (funcall slack-buffer-function buf)))
+    (funcall slack-buffer-function buf)
+    (let ((msg (car (last messages))))
+      (when msg
+        (slack-room-update-mark (slack-room-find (oref msg channel) team) team msg)))))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
