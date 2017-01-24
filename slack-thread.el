@@ -133,6 +133,9 @@
   (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
          (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
     (with-current-buffer buf
+      (slack-buffer-insert (oref thread root) team)
+      (let ((lui-time-stamp-position nil))
+        (lui-insert (make-string lui-fill-column ?=) t))
       (cl-loop for m in messages
                do (slack-buffer-insert m team)))
     (funcall slack-buffer-function buf)
