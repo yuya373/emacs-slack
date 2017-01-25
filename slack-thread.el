@@ -274,7 +274,7 @@
     (let* ((team (slack-team-select))
            (threads (oref team threads)))
       (with-slots (initializedp all has-more) threads
-        (unless (or (not initializedp) (not reload)) (load-threads all))
+        (when (or (not initializedp) reload) (load-threads all))
         (let ((selected (select-thread all team has-more)))
           (if (eq selected 'load-more)
               (slack-thread-select t)
