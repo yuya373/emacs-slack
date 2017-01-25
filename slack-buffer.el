@@ -229,13 +229,15 @@
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-next-point cur-point (point-max) ts)
-   (slack-buffer-goto-first-message)))
+   (slack-buffer-goto-first-message))
+  (recenter))
 
 (defun slack-buffer-goto-prev-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-prev-point cur-point (point-min) ts)
-   (slack-buffer-goto-last-message)))
+   (slack-buffer-goto-last-message))
+  (recenter))
 
 (defun slack-buffer-goto-first-message ()
   (interactive)
