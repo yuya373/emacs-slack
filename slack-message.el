@@ -94,18 +94,25 @@
    (title-link :initarg :title_link :initform nil)
    (pretext :initarg :pretext :initform nil)
    (text :initarg :text :initform nil)
-   (author-name :initarg :author_name :initform "")
+   (author-name :initarg :author_name :initform nil)
    (author-link :initarg :author_link)
    (author-icon :initarg :author_icon)
-   (fields :initarg :fields :type (or null list))
+   (fields :initarg :fields :initform '())
    (image-url :initarg :image_url)
    (thumb-url :initarg :thumb_url)
-   (is-share :initarg :is_share :initform nil)))
+   (is-share :initarg :is_share :initform nil)
+   (footer :initarg :footer :initform nil)
+   (color :initarg :color :initform nil)
+   (ts :initarg :ts :initform nil)
+   (author-subname :initarg :author_subname :initform nil)))
+
+(defclass slack-attachment-field ()
+  ((title :initarg :title :initform nil)
+   (value :initarg :value :initform nil)
+   (short :initarg :short :initform nil)))
 
 (defclass slack-shared-message (slack-attachment)
-  ((ts :initarg :ts :initform nil)
-   (color :initarg :color :initform nil)
-   (channel-id :initarg :channel_id :initform nil)
+  ((channel-id :initarg :channel_id :initform nil)
    (channel-name :initarg :channel_name :initform nil)
    (from-url :initarg :from_url :initform nil)))
 
@@ -146,7 +153,9 @@
 
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
-             (append (plist-get payload :fields) nil))
+             (mapcar #'(lambda (field) (apply #'slack-attachment-field
+                                              (slack-collect-slots 'slack-attachment-field field)))
+                     (append (plist-get payload :fields) nil)))
   (if (plist-get payload :is_share)
       (apply #'slack-shared-message "shared-attachment"
              (slack-collect-slots 'slack-shared-message payload))
@@ -281,8 +290,7 @@
   (let* ((team (slack-team-find slack-current-team-id))
          (room (slack-room-find slack-current-room-id
                                 team))
-         (word (thing-at-point 'word))
-         (ts (ignore-errors (get-text-property 0 'ts word))))
+         (ts (ignore-errors (slack-get-ts))))
     (unless ts
       (error "Call From Slack Room Buffer"))
     (cl-labels ((on-pins-add
