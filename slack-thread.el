@@ -237,7 +237,11 @@
         (setq total-unread-replies total-unread)
         (setq new-threads-count new-count)
         (cl-loop for thread in threads-data
-                 do (slack-message-create (plist-get thread :root_msg) team))))))
+                 do (let* ((root (plist-get thread :root_msg))
+                           (parent (slack-message-create root team)))
+                      (with-slots (reply-count replies) (oref parent thread)
+                        (setq reply-count (plist-get root :reply_count))
+                        (setq replies (append (plist-get root :replies) nil)))))))))
 
 (defmethod slack-thread-title ((thread slack-thread) team)
   (with-slots (root) thread
