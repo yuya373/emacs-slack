@@ -93,15 +93,27 @@
 
 (defun slack-message-write-another-buffer ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
+  (let* ((cur-buf (current-buffer))
+         (cur-mode (with-current-buffer cur-buf major-mode))
+         (team (slack-team-find slack-current-team-id))
          (target-room (if (boundp 'slack-current-room-id)
                           (slack-room-find slack-current-room-id
                                            team)
                         (slack-message-read-room team)))
          (buf (get-buffer-create slack-message-write-buffer-name)))
-    (with-current-buffer buf
-      (slack-message-setup-edit-buf target-room 'new
-                                    :team team))
+    (cl-case cur-mode
+      ('slack-mode
+       (with-current-buffer buf
+         (slack-message-setup-edit-buf target-room 'new
+                                       :team team)))
+      ('slack-thread-mode
+       (let ((ts slack-target-ts))
+         (with-current-buffer buf
+           (slack-thread-setup-edit-buf ts
+                                        target-room
+                                        team
+                                        'thread-message-new)))))
+
     (funcall slack-buffer-function buf)))
 
 (defmethod slack-message-get-user-id ((m slack-user-message))
@@ -189,7 +201,8 @@
                                       (get-room team)
                                       slack-target-ts
                                       buf-string)))
-        ('new (slack-message--send buf-string)))
+        ('new (slack-message--send buf-string))
+        ('thread-message-new (slack-thread-message--send buf-string)))
       (kill-buffer)
       (delete-window))))
 

@@ -77,7 +77,7 @@
           (let* ((payload (list :id message-id
                                 :channel (oref room id)
                                 :reply_broadcast broadcast
-                                :thread_ts thread-ts
+                                :thread_ts slack-target-ts
                                 :type "message"
                                 :user self-id
                                 :text message))
@@ -107,7 +107,7 @@
         (slack-thread-mode)
         (slack-buffer-enable-emojify)
         (goto-char lui-input-marker)
-        (set (make-local-variable 'thread-ts) thread-ts)
+        (set (make-local-variable 'slack-target-ts) thread-ts)
         (set (make-local-variable 'slack-current-team-id) (oref team id))
         (set (make-local-variable 'slack-current-room-id) (oref room id))
         ;; (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
@@ -281,7 +281,8 @@
             (slack-thread-show-messages selected
                                         (slack-room-find (oref (oref selected root) channel) team)
                                         team)))))))
-
+(defun slack-thread-setup-edit-buf (thread-ts room team type)
+  (slack-message-setup-edit-buf room type :ts thread-ts :team team))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
