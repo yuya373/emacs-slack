@@ -169,7 +169,8 @@
 
 (defun slack-buffer-insert-messages (room team)
   (let* ((sorted (slack-room-sorted-messages room))
-         (messages (slack-room-latest-messages room sorted)))
+         (without-thread-message (slack-room-reject-thread-message sorted))
+         (messages (slack-room-latest-messages room without-thread-message)))
     (if messages
         (progn
           ;; (slack-buffer-insert-previous-link room)

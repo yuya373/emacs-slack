@@ -269,6 +269,11 @@
            #'string<
            :key #'(lambda (m) (oref m ts))))
 
+(defun slack-room-reject-thread-message (messages)
+  (cl-remove-if #'(lambda (m) (and (oref m thread-ts)
+                                   (not (slack-message-thread-parentp m))))
+                messages))
+
 (defmethod slack-room-sorted-messages ((room slack-room))
   (with-slots (messages) room
     (slack-room-sort-messages (copy-sequence messages))))
@@ -304,7 +309,9 @@
                             (if (< 0 (length threads))
                                 (progn
                                   (dolist (message messages)
-                                    (unless (oref message thread-ts)
+                                    (if (and (oref message thread-ts)
+                                             (not (slack-message-thread-parentp message)))
+                                        (push message ret)
                                       (let ((thread (cl-find-if #'(lambda (m)
                                                                     (slack-message-equal m message))
                                                                 threads)))
