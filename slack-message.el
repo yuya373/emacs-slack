@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-reaction)
+(require 'slack-message-delete)
 
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)
@@ -347,58 +348,6 @@
 
 (defun slack-message-time-stamp (message)
   (seconds-to-time (string-to-number (oref message ts))))
-
-(defun slack-message-delete ()
-  (interactive)
-  (unless (and (boundp 'slack-current-team-id)
-               (boundp 'slack-current-room-id))
-    (error "Call From Slack Room Buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (channel (slack-room-find slack-current-room-id
-                                   team))
-         (ts (ignore-errors (get-text-property (point) 'ts))))
-    (unless ts
-      (error "Call With Cursor On Message"))
-    (let ((message (slack-room-find-message channel ts)))
-      (when message
-        (cl-labels
-            ((on-delete
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-message-delete"))))
-          (if (yes-or-no-p "Are you sure you want to delete this message?")
-              (slack-request
-               slack-message-delete-url
-               team
-               :type "POST"
-               :params (list (cons "ts" (oref message ts))
-                             (cons "channel" (oref channel id)))
-               :success #'on-delete
-               :sync nil)
-            (message "Canceled")))))))
-
-(defun slack-message-deleted (payload team)
-  (let* ((channel-id (plist-get payload :channel))
-         (ts (plist-get payload :deleted_ts))
-         (deleted-ts (plist-get payload :deleted-ts))
-         (channel (slack-room-find channel-id team))
-         (message (slack-room-find-message channel ts))
-         (buf-name (slack-room-buffer-name channel))
-         (buf (get-buffer buf-name))
-         (thread-ts (plist-get (plist-get payload :previous_message) :thread_ts))
-         (parent (slack-room-find-message channel thread-ts)))
-
-    (if parent
-        (slack-thread-message-deleted parent ts deleted-ts channel team))
-
-    (when message
-      (oset message deleted-at deleted-ts)
-      (slack-buffer-delete-message buf (oref message ts))
-      (alert "message deleted"
-             :title (format "\\[%s] from %s"
-                            buf-name
-                            (slack-message-sender-name message team))
-             :category 'slack))))
 
 (defmethod slack-message-get-reactions ((m slack-message))
   (oref m reactions))

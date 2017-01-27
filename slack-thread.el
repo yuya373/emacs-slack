@@ -294,14 +294,5 @@
 (defun slack-thread-setup-edit-buf (thread-ts room team type)
   (slack-message-setup-edit-buf room type :ts thread-ts :team team))
 
-(defmethod slack-thread-message-deleted ((parent slack-message) ts deleted-ts room team)
-  (with-slots (thread) parent
-    (with-slots (messages) thread
-      (cl-labels ((ts-eq (message) (string= (oref message ts) ts)))
-        (setq messages (cl-remove-if #'ts-eq messages))))
-    (let* ((buf (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))))
-      (slack-buffer-delete-message buf ts)))
-  (slack-message-update parent team t))
-
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
