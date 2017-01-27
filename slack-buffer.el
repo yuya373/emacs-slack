@@ -321,5 +321,10 @@
       (slack-room-update-last-read room
                                    (slack-message "msg" :ts "0")))))
 
+(defun slack-buffer-delete-message (buf ts)
+  (and buf (with-current-buffer buf
+             (lui-delete (lambda () (equal (get-text-property (point) 'ts)
+                                           ts))))))
+
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

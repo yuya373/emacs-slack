@@ -297,10 +297,11 @@
                           (slack-decode (plist-get payload :message))
                           team :room room))
          (message (slack-room-find-message
-                   room (oref edited-message ts)))
-         (edited-info (plist-get edited-message :edited)))
-    (if message
-        (slack-message-update edited-message team t))))
+                   room (oref edited-message ts))))
+    (when message
+      (oset edited-message reactions (oref message reactions))
+      (slack-message-copy-thread-messages edited-message (oref message thread))
+      (slack-message-update edited-message team t))))
 
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
@@ -379,18 +380,25 @@
 (defun slack-message-deleted (payload team)
   (let* ((channel-id (plist-get payload :channel))
          (ts (plist-get payload :deleted_ts))
-         (deleted-ts (plist-get payload :ts))
+         (deleted-ts (plist-get payload :deleted-ts))
          (channel (slack-room-find channel-id team))
-         (message (slack-room-find-message channel ts)))
+         (message (slack-room-find-message channel ts))
+         (buf-name (slack-room-buffer-name channel))
+         (buf (get-buffer buf-name))
+         (thread-ts (plist-get (plist-get payload :previous_message) :thread_ts))
+         (parent (slack-room-find-message channel thread-ts)))
+
+    (if parent
+        (slack-thread-message-deleted parent ts deleted-ts channel team))
+
     (when message
       (oset message deleted-at deleted-ts)
+      (slack-buffer-delete-message buf (oref message ts))
       (alert "message deleted"
              :title (format "\\[%s] from %s"
-                            (slack-room-name-with-team-name channel)
+                            buf-name
                             (slack-message-sender-name message team))
-             :category 'slack)
-      (lui-delete (lambda () (equal (get-text-property (point) 'ts)
-                                    (oref message ts)))))))
+             :category 'slack))))
 
 (defmethod slack-message-get-reactions ((m slack-message))
   (oref m reactions))
@@ -400,6 +408,13 @@
 
 (defmethod slack-message-get-reactions ((m slack-file-comment-message))
   (oref (oref m comment) reactions))
+
+(defmethod slack-message-copy-thread-messages ((message slack-message) thread)
+  (if thread
+      (with-slots ((this thread)) message
+        (when this
+          (oset this messages (oref thread messages)))))
+  message)
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
