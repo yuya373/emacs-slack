@@ -31,7 +31,7 @@
 (defvar lui-prompt-string "> ")
 (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
 
-(define-derived-mode slack-thread-mode lui-mode "Slack - Thread"
+(define-derived-mode slack-thread-mode slack-mode "Slack - Thread"
   ""
   (lui-set-prompt lui-prompt-string)
   (setq lui-input-function 'slack-thread-message--send))
