@@ -324,6 +324,20 @@
           (remove-duplicates (make-threads thread-messages nil) messages)
         messages))))
 
+(defmethod slack-room-update-latest ((room slack-room) message)
+  (with-slots (latest) room
+    (if (or (null latest)
+            (string< (oref latest ts) (oref message ts)))
+        (setq latest message))))
+
+(defmethod slack-room-push-message ((room slack-room) message)
+  (with-slots (messages) room
+    (when (< 0 (length messages))
+      (setq messages
+            (cl-remove-if #'(lambda (n) (slack-message-equal message n))
+                          messages))
+      (push message messages))))
+
 (defmethod slack-room-set-messages ((room slack-room) messages)
   (let ((sorted (slack-room-sort-messages
                  (slack-room-gather-thread-messages messages))))

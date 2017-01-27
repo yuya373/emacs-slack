@@ -86,11 +86,13 @@
             (slack-ws-send json team)
             (puthash message-id obj sent-message))))))
 
-(defmethod slack-thread-update-buffer ((thread slack-thread) message room team)
+(defmethod slack-thread-update-buffer ((thread slack-thread) message room team &key replace)
   (let ((buf (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))))
     (when buf
-      (with-current-buffer buf
-        (slack-buffer-insert message team)))))
+      (if replace
+          (slack-buffer-replace buf message)
+        (with-current-buffer buf
+          (slack-buffer-insert message team))))))
 
 (defun slack-thread-buf-name (room thread-ts)
   (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))
