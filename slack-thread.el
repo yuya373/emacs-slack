@@ -169,12 +169,18 @@
                                 map)))
       "")))
 
-(defmethod slack-thread-create ((m slack-message) team)
-  (let ((thread (make-instance 'slack-thread
-                               :thread_ts (oref m ts)
-                               :root m)))
-    (with-slots (threads) team
-      (cl-pushnew thread (oref threads all) :test #'slack-thread-equal))
+(defmethod slack-thread-create ((m slack-message) team &optional payload)
+  (let* ((replies (and payload (append (plist-get payload :replies) nil)))
+         (reply-count (and payload (plist-get payload :reply_count)))
+         (thread (make-instance 'slack-thread
+                                :thread_ts (oref m ts)
+                                :root m
+                                :replies replies
+                                :reply_count (or reply-count 0))))
+
+    ;; (with-slots (threads) team
+    ;;   (cl-pushnew thread (oref threads all) :test #'slack-thread-equal))
+    ;; thread)
     thread))
 
 (defmethod slack-thread-set-messages ((thread slack-thread) messages)

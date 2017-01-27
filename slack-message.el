@@ -197,9 +197,9 @@
     (oset m comment file-comment)
     m))
 
-(defmethod slack-message-set-thread ((m slack-message) team)
+(defmethod slack-message-set-thread ((m slack-message) team payload)
   (when (slack-message-thread-parentp m)
-    (oset m thread (slack-thread-create m team))))
+    (oset m thread (slack-thread-create m team payload))))
 
 (defun slack-reply-broadcast-message-create (payload)
   (let ((parent (cl-first (plist-get payload :attachments))))
@@ -247,7 +247,7 @@
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload team)
           (slack-message-set-file-comment message payload)
-          (slack-message-set-thread message team)
+          (slack-message-set-thread message team payload)
           message)))))
 
 (defmethod slack-message-equal ((m slack-message) n)
