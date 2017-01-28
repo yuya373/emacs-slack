@@ -255,7 +255,8 @@
     (let ((room (slack-room-find (oref root channel) team))
           (body (slack-message-body root team)))
       (when room
-        (format "%s - %s" (slack-room-name room) body)))))
+        (format "%s - %s" (slack-room-name room)
+                (concat (substring body 0 (min 50 (length body))) "..."))))))
 
 (defun slack-thread-select (&optional reload)
   (interactive)
