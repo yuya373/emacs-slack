@@ -266,7 +266,7 @@
       (slack-ws-handle-file-share payload team)
       (slack-ws-update-message payload team))
      ((and subtype (string= subtype "message_changed"))
-      (slack-message-edited payload team))
+      (slack-message-changed payload team))
      ((and subtype (string= subtype "message_deleted"))
       (slack-message-deleted payload team))
      ((and subtype (string= subtype "message_replied"))

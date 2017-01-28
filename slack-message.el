@@ -260,18 +260,6 @@
       (oset parent thread thread))
     thread))
 
-(defun slack-message-edited (payload team)
-  (let* ((room (slack-room-find (plist-get payload :channel) team))
-         (edited-message (slack-message-create
-                          (slack-decode (plist-get payload :message))
-                          team :room room))
-         (message (slack-room-find-message
-                   room (oref edited-message ts))))
-    (when message
-      (oset edited-message reactions (oref message reactions))
-      (slack-message-copy-thread-messages edited-message (oref message thread))
-      (slack-message-update edited-message team t))))
-
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
 
@@ -325,13 +313,6 @@
 
 (defmethod slack-message-get-reactions ((m slack-file-comment-message))
   (oref (oref m comment) reactions))
-
-(defmethod slack-message-copy-thread-messages ((message slack-message) thread)
-  (if thread
-      (with-slots ((this thread)) message
-        (when this
-          (oset this messages (oref thread messages)))))
-  message)
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
