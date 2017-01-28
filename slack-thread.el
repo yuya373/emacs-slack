@@ -338,5 +338,10 @@
 (defun slack-thread-setup-edit-buf (thread-ts room team type)
   (slack-message-setup-edit-buf room type :ts thread-ts :team team))
 
+(defmethod slack-thread-delete-message ((thread slack-thread) message)
+  (with-slots (messages) thread
+    (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref message ts)))
+                                 messages))))
+
 (provide 'slack-thread)
 ;;; slack-thread.el ends here

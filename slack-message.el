@@ -33,7 +33,6 @@
 (defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
-(defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 
 (defclass slack-message ()
   ((type :initarg :type :type string)

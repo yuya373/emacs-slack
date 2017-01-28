@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 
 (defun slack-message-delete ()
   (interactive)
@@ -54,55 +55,52 @@
                :sync nil)
             (message "Canceled")))))))
 
-
-(defun slack-message-deleted (payload team)
-  (let* ((channel-id (plist-get payload :channel))
-         (ts (plist-get payload :deleted_ts))
-         (room (slack-room-find channel-id team))
-         (buf-name (slack-room-buffer-name room))
-         (buf (get-buffer buf-name))
-         (thread-ts (plist-get (plist-get payload :previous_message) :thread_ts))
-         (_delete (make-instance '_slack-message-delete
-                                 :team team
-                                 :room room
-                                 :message (slack-room-find-message room ts)
-                                 :parent (slack-room-find-message room thread-ts))))
-
-    (slack-thread-delete-message _delete)
-    (slack-buffer--delete-message _delete)
-    (slack-notify-delete _delete)))
-
 (defclass _slack-message-delete ()
   ((room :initarg :room)
    (message :initarg :message :initform nil)
-   (team :initarg :team)
-   (parent :initarg :parent :initform nil)))
+   (team :initarg :team)))
 
-(defmethod slack-notify-delete ((this _slack-message-delete))
+(defclass _slack-thread-message-delete (_slack-message-delete) ())
+
+(defun slack-message-deleted (payload team)
+  (let* ((room (slack-room-find (plist-get payload :channel) team))
+         (message (slack-room-find-message room (plist-get payload :deleted_ts)))
+         (class (or (and (slack-message-thread-messagep message)
+                         '_slack-thread-message-delete)
+                    '_slack-message-delete))
+         (delete (make-instance class
+                                :team team
+                                :room room
+                                :message message)))
+
+    (slack-message-delete--buffer delete)
+    (slack-message-delete--notify delete)))
+
+(defmethod slack-message-delete--notify ((this _slack-message-delete))
   (with-slots (message team room) this
     (when message
       (alert "message deleted"
              :title (format "\\[%s] from %s"
-                            (slack-room-buffer-name room)
+                            (slack-room-name-with-team-name room)
                             (slack-message-sender-name message team))
              :category 'slack))))
 
-(defmethod slack-buffer--delete-message ((this _slack-message-delete))
+(defmethod slack-message-delete--buffer ((this _slack-message-delete))
   (with-slots (message room) this
     (when message
       (slack-buffer-delete-message (slack-room-buffer-name room)
                                    (oref message ts)))))
 
-(defmethod slack-thread-delete-message ((this _slack-message-delete))
-  (with-slots (parent (deleted-message message) room team) this
-    (when parent
-      (with-slots (thread) parent
-        (with-slots (messages) thread
-          (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref deleted-message ts)))
-                                       messages)))
-        (let* ((buf (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))))
-          (slack-buffer-delete-message buf (oref deleted-message ts))))
-      (slack-message-update parent team t))))
+(defmethod slack-message-delete--buffer ((this _slack-thread-message-delete))
+  (with-slots (message room team) this
+    (let* ((parent (and message (slack-room-find-thread-parent room message)))
+           (thread (and parent (slack-message-get-thread parent team))))
+      (when thread
+        (slack-thread-delete-message thread message)
+        (slack-buffer-delete-message
+         (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))
+         (oref message ts))
+        (slack-message-update parent team t)))))
 
 (provide 'slack-message-delete)
 ;;; slack-message-delete.el ends here
