@@ -331,13 +331,21 @@
             (string< (oref latest ts) (oref message ts)))
         (setq latest message))))
 
+(defmethod slack-room-set-oldest ((room slack-room) sorted-messages)
+  (let ((oldest (and (slot-boundp room 'oldest) (oref room oldest)))
+        (maybe-oldest (car sorted-messages)))
+    (if oldest
+        (when (string< (oref maybe-oldest ts) (oref oldest ts))
+          (oset room oldest maybe-oldest))
+      (oset room oldest maybe-oldest))))
+
 (defmethod slack-room-push-message ((room slack-room) message)
   (with-slots (messages) room
-    (when (< 0 (length messages))
-      (setq messages
-            (cl-remove-if #'(lambda (n) (slack-message-equal message n))
-                          messages))
-      (push message messages))))
+    (slack-room-set-oldest room (list message))
+    (setq messages
+          (cl-remove-if #'(lambda (n) (slack-message-equal message n))
+                        messages))
+    (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
   (let ((sorted (slack-room-sort-messages
