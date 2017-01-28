@@ -56,6 +56,7 @@
                 (plist-put p :members
                            (append (plist-get p :members) nil))
                 (plist-put p :team-id (oref team id))
+                (plist-put p :last_read "0")
                 p))
     (let* ((attributes (slack-collect-slots class (prepare payload)))
            (room (apply #'make-instance class attributes)))
@@ -100,7 +101,7 @@
 
 (cl-defun slack-room-make-buffer-with-room (room team &key update)
   (with-slots (messages latest) room
-    (if (or update (< (length messages) 1))
+    (if (or update (< (length messages) 1) (string= "0" (oref room last-read)))
         (slack-room-history room team))
     (funcall slack-buffer-function
              (slack-buffer-create room team))))
