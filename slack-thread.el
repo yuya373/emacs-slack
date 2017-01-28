@@ -225,7 +225,22 @@
         ((on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-thread-get-all")
-                      (slack-thread-create-all-buffer data team))))
+                      (let ((threads-data (append (plist-get data :threads) nil))
+                            (total-unread (plist-get data :total_unread_replies))
+                            (more (if (eq :json-false (plist-get data :has_more)) nil t))
+                            (new-count (plist-get data :new_threads_count)))
+                        (with-slots (threads) team
+                          (with-slots
+                              (initializedp total-unread-replies new-threads-count has-more) threads
+                            (setq has-more more)
+                            (setq initializedp t)
+                            (setq total-unread-replies total-unread)
+                            (setq new-threads-count new-count)
+                            (let ((parents (cl-loop for thread in threads-data
+                                                    collect (slack-message-create
+                                                             (plist-get thread :root_msg) team))))
+                              (mapc #'(lambda (parent) (slack-message-update parent team nil t))
+                                    parents))))))))
       (slack-request
        all-threads-url
        team
@@ -234,24 +249,6 @@
                      (cons "current_ts" (or ts (format-time-string "%s"))))
        :sync sync
        :success #'on-success))))
-
-(defun slack-thread-create-all-buffer (data team)
-  (let ((threads-data (append (plist-get data :threads) nil))
-        (total-unread (plist-get data :total_unread_replies))
-        (more (if (eq :json-false (plist-get data :has_more)) nil t))
-        (new-count (plist-get data :new_threads_count)))
-    (with-slots (threads) team
-      (with-slots (initializedp total-unread-replies new-threads-count all has-more) threads
-        (setq has-more more)
-        (setq initializedp t)
-        (setq total-unread-replies total-unread)
-        (setq new-threads-count new-count)
-        (cl-loop for thread in threads-data
-                 do (let* ((root (plist-get thread :root_msg))
-                           (parent (slack-message-create root team)))
-                      (with-slots (reply-count replies) (oref parent thread)
-                        (setq reply-count (plist-get root :reply_count))
-                        (setq replies (append (plist-get root :replies) nil)))))))))
 
 (defmethod slack-thread-title ((thread slack-thread) team)
   (with-slots (root) thread
@@ -279,18 +276,28 @@
                              (maybe-has-more (if has-more
                                                  (append alist (list (cons "(load more)" 'load-more))) alist))
                              (selected (slack-select-from-list (maybe-has-more "Select Thread: "))))
-                        selected)))
+                        selected))
+       (collect-thread-parents (messages)
+                               (mapcar #'(lambda (m) (oref m thread))
+                                       (cl-remove-if #'(lambda (m) (not (slack-message-thread-parentp m)))
+                                                     messages)))
+       (collect-threads (team)
+                        (cl-loop for room in (with-slots (groups ims channels) team
+                                               (append ims groups channels))
+                                 append (collect-thread-parents (oref room messages)))))
 
-    (let* ((team (slack-team-select))
-           (threads (oref team threads)))
-      (with-slots (initializedp all has-more) threads
-        (when (or (not initializedp) reload) (load-threads all))
-        (let ((selected (select-thread all team has-more)))
-          (if (eq selected 'load-more)
-              (slack-thread-select t)
-            (slack-thread-show-messages selected
-                                        (slack-room-find (oref (oref selected root) channel) team)
-                                        team)))))))
+    (let* ((team (slack-team-select)))
+
+      (with-slots (initializedp has-more) (oref team threads)
+        (if (or (not initializedp) has-more) (load-threads (collect-threads team))))
+
+      (let ((selected (select-thread (collect-threads team) team nil)))
+        (if (eq selected 'load-more)
+            (slack-thread-select t)
+          (slack-thread-show-messages selected
+                                      (slack-room-find (oref (oref selected root) channel) team)
+                                      team))))))
+
 (defun slack-thread-setup-edit-buf (thread-ts room team type)
   (slack-message-setup-edit-buf room type :ts thread-ts :team team))
 
