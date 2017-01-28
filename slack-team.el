@@ -37,8 +37,7 @@ use `slack-change-current-team' to change `slack-current-team'"
   ((initializedp :initform nil)
    (has-more :initform t)
    (total-unread-replies :initform 0 :type number)
-   (new-threads-count :initform 0 :type number)
-   (all :initform nil :type list)))
+   (new-threads-count :initform 0 :type number)))
 
 (defclass slack-team ()
   ((id :initarg :id)
