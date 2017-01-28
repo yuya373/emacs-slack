@@ -41,6 +41,7 @@
 (require 'slack-search)
 (require 'slack-reminder)
 (require 'slack-thread)
+(require 'slack-message-update)
 
 (require 'slack-websocket)
 (require 'slack-request)

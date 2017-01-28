@@ -279,17 +279,6 @@
               ;; )
               )))))))
 
-(defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
-  (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
-      (slack-message-update-thread m team replace)
-    (with-slots (channel) m
-      (let ((room (slack-room-find channel team)))
-        (when room
-          (slack-room-push-message room m)
-          (slack-room-update-latest room m)
-          (slack-buffer-update room m team :replace replace)
-          (unless no-notify
-            (slack-message-notify m room team)))))))
 
 
 (defun slack-message-edited (payload team)

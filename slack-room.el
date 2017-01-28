@@ -210,6 +210,9 @@
               (oref room messages)
               :from-end t))
 
+(defun slack-room-find-thread-parent (room thread-message)
+  (slack-room-find-message room (oref thread-message thread-ts)))
+
 (defun slack-room-find-thread (room ts)
   (let ((message (slack-room-find-message room ts)))
     (when message
