@@ -24,7 +24,17 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'alert)
+(require 'slack-message)
+(require 'slack-team)
+(require 'slack-room)
+(require 'slack-thread)
+(require 'slack-buffer)
+(require 'slack-message-update)
+
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
+(defvar slack-current-room-id)
+(defvar slack-current-team-id)
 
 (defun slack-message-delete ()
   (interactive)

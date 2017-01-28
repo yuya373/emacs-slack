@@ -27,7 +27,6 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-reaction)
-(require 'slack-message-delete)
 
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)

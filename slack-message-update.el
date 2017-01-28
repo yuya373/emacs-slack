@@ -25,6 +25,9 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-message)
+(require 'slack-buffer)
+(require 'slack-thread)
+(require 'slack-message-notification)
 
 (defclass _slack-message-update ()
   ((message :initarg :message)
