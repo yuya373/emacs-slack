@@ -260,26 +260,6 @@
       (oset parent thread thread))
     thread))
 
-(defmethod slack-message-update-thread ((m slack-message) team replace)
-  (with-slots (channel) m
-    (let ((room (slack-room-find channel team)))
-      (when room
-        (let* ((thread-ts (oref m thread-ts))
-               (parent (slack-room-find-message room thread-ts)))
-          (when parent
-            (let ((thread (slack-message-get-thread parent team)))
-              (slack-room-push-message room m)
-              (slack-room-update-latest room m)
-              (slack-thread-add-message thread m)
-              (slack-buffer-update room parent team :replace t)
-              (slack-thread-update-buffer thread m room team :replace replace)
-              ;; (unless no-notify
-              (slack-message-notify m room team)
-              ;; )
-              )))))))
-
-
-
 (defun slack-message-edited (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (edited-message (slack-message-create
