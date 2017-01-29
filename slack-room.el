@@ -71,33 +71,6 @@
           " : "
           (slack-room-name-with-team-name room)))
 
-(cl-defmacro slack-room-request-update (room team url latest after-success sync)
-  `(cl-labels
-       ((on-request-update
-         (&key data &allow-other-keys)
-         (slack-request-handle-error
-          (data "slack-room-request-update")
-          (let* ((datum (plist-get data :messages))
-                 (messages
-                  (cl-loop for data across datum
-                           collect (slack-message-create data ,team :room ,room))))
-            (if ,latest
-                (slack-room-set-prev-messages ,room messages)
-              (slack-room-set-messages ,room messages)
-              (slack-room-update-last-read
-               room
-               (make-instance 'slack-message :ts "0")))
-            (if (and ,after-success
-                     (functionp ,after-success))
-                (funcall ,after-success))))))
-     (slack-request
-      ,url
-      ,team
-      :params (list (cons "channel" (oref ,room id))
-                    (if ,latest
-                        (cons "latest" ,latest)))
-      :success #'on-request-update
-      :sync (if ,sync t nil))))
 (defmacro slack-room-with-buffer (room team &rest body)
   (declare (indent 2) (debug t))
   `(let ((buf (slack-buffer-create ,room ,team)))
@@ -534,17 +507,29 @@
    :success success
    :sync nil))
 
-(defmethod slack-room-history ((room slack-room) team
-                               &optional
-                               oldest
-                               after-success
-                               async)
-  (slack-room-request-update room
-                             team
-                             (slack-room-history-url room)
-                             oldest
-                             after-success
-                             (if async nil t)))
+(defmethod slack-room-history ((room slack-room) team &optional oldest after-success async)
+  (cl-labels
+      ((on-request-update
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-room-request-update")
+         (let* ((datum (plist-get data :messages))
+                (messages
+                 (cl-loop for data across datum
+                          collect (slack-message-create data team :room room))))
+           (if oldest
+               (slack-room-set-prev-messages room messages)
+             (slack-room-set-messages room messages)
+             (slack-room-reset-last-read room))
+           (if (and after-success (functionp after-success))
+               (funcall after-success))))))
+    (slack-request
+     (slack-room-history-url room)
+     team
+     :params (list (cons "channel" (oref room id))
+                   (if oldest (cons "latest" oldest)))
+     :success #'on-request-update
+     :sync (not async))))
 
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
