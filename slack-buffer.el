@@ -66,12 +66,7 @@
          (buffer (get-buffer buf-name)))
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
-      (with-current-buffer buffer
-        (slack-mode)
-        (slack-buffer-insert-previous-link room)
-        (goto-char lui-input-marker)
-        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
-        (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
+      (slack-room-setup-buffer room buffer))
     buffer))
 
 (defmethod slack-buffer-set-current-room-id ((room slack-room))
@@ -132,7 +127,6 @@
                    (cl-ecase type
                      (message (slack-get-buffer-create room))
                      (info (slack-get-info-buffer-create room)))))
-    (let* ((buffer (get-buffer type room)))
       (with-current-buffer buffer
         (if insert-func
             (funcall insert-func room team))
@@ -140,6 +134,7 @@
         (slack-buffer-set-current-team-id team)
         (slack-buffer-enable-emojify))
       buffer)))
+  (let ((buffer (slack-get-buffer-create room)))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
@@ -295,11 +290,7 @@
   (let* ((buf-name (slack-room-buffer-name room))
          (buffer (get-buffer buf-name)))
     (unless buffer
-      (setq buffer (generate-new-buffer buf-name))
-      (with-current-buffer buffer
-        (slack-info-mode)
-        (slack-buffer-insert-previous-link room)
-        (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)))
+      (setq buffer (generate-new-buffer buf-name)))
     buffer))
 
 (defun slack-buffer-create-info (buf-name insert-func)
