@@ -79,7 +79,7 @@
        ,@body)
      buf))
 
-(cl-defun slack-room-make-buffer-with-room (room team &key update)
+(cl-defun slack-room-create-buffer (room team &key update)
   (with-slots (messages) room
     (if (or update (< (length messages) 1) (string= "0" (oref room last-read)))
         (slack-room-history-request room team)))
@@ -87,7 +87,7 @@
            (slack-room-with-buffer room team
              (slack-room-insert-messages room buf team))))
 
-(cl-defun slack-room-make-buffer-with-room-bg (room team)
+(cl-defun slack-room-create-buffer-bg (room team)
   (cl-labels
       ((create-buffer ()
                       (tracking-add-buffer
@@ -120,10 +120,8 @@
                                    rs)))))
     (slack-select-from-list
      (alist "Select Channel: ")
-     (slack-room-make-buffer-with-room
-      selected
-      (slack-team-find (oref selected team-id))
-      :update nil))))
+     (slack-room-create-buffer selected
+                               (slack-team-find (oref selected team-id))))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
