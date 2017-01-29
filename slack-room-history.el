@@ -157,7 +157,7 @@
 (defmethod slack-room-history-url ((_room slack-im))
   slack-im-history-url)
 
-(defmethod slack-room-history-request ((room slack-room) team &key oldest after-success async)
+(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest after-success async)
   (cl-labels
       ((on-request-update
         (&key data &allow-other-keys)
