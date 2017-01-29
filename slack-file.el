@@ -195,9 +195,8 @@
 
 (defun slack-file-create-buffer (team)
   (funcall slack-buffer-function
-           (slack-buffer-create (slack-file-room-obj team)
-                                team
-                                :type 'info)))
+           (slack-room-with-buffer (slack-file-room-obj team) team
+                                   (slack-room-insert-messages (slack-file-room-obj team) buf team))))
 
 (defun slack-file-list ()
   (interactive)
