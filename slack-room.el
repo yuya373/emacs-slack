@@ -98,18 +98,27 @@
                         (cons "latest" ,latest)))
       :success #'on-request-update
       :sync (if ,sync t nil))))
+(defmacro slack-room-with-buffer (room team &rest body)
+  (declare (indent 2) (debug t))
+  `(let ((buf (slack-buffer-create ,room ,team)))
+     (with-current-buffer buf
+       ,@body)
+     buf))
 
 (cl-defun slack-room-make-buffer-with-room (room team &key update)
-  (with-slots (messages latest) room
+  (with-slots (messages) room
     (if (or update (< (length messages) 1) (string= "0" (oref room last-read)))
-        (slack-room-history room team))
-    (funcall slack-buffer-function
-             (slack-buffer-create room team))))
+        (slack-room-history room team)))
+  (funcall slack-buffer-function
+           (slack-room-with-buffer room team
+             (slack-room-insert-messages room buf team))))
 
 (cl-defun slack-room-make-buffer-with-room-bg (room team)
-  (cl-labels ((create-buffer ()
-                             (tracking-add-buffer (slack-buffer-create room team))
-                             ))
+  (cl-labels
+      ((create-buffer ()
+                      (tracking-add-buffer
+                       (slack-room-with-buffer room team
+                         (slack-room-insert-messages room buf team)))))
     (if (< (length (oref room messages)) 1)
         (slack-room-history room team nil
                             #'(lambda () (create-buffer))
@@ -158,15 +167,6 @@
          (room (slack-room-find slack-current-room-id team))
          (cur-point (point)))
     (slack-room-history room team)
-    (slack-buffer-create
-     room team :insert-func
-     #'(lambda (room team)
-         (slack-buffer-widen
-          (let ((inhibit-read-only t))
-            (delete-region (point-min) (marker-position lui-output-marker))))
-         (slack-buffer-insert-previous-link room)
-         (slack-buffer-insert-messages room team)
-         (goto-char cur-point)))))
 
 (defmethod slack-room-render-prev-messages ((room slack-room) team
                                             oldest ts)
@@ -181,6 +181,13 @@
           (delete-region (point-min) loading-message-end)
           (slack-buffer-insert-prev-messages room team oldest)))
        (slack-buffer-goto ts))))
+    (slack-room-with-buffer room team
+      (slack-buffer-widen
+       (let ((inhibit-read-only t))
+         (delete-region (point-min) (marker-position lui-output-marker))))
+      (slack-room-insert-previous-link room buf)
+      (slack-room-insert-messages room buf team)
+      (goto-char cur-point))))
 
 (defmethod slack-room-prev-link-info ((room slack-room))
   (with-slots (oldest) room
@@ -559,5 +566,22 @@
     (goto-char lui-input-marker)
     (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
     (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
+
+(defmethod slack-room-insert-messages ((room slack-room) buf team)
+  (let* ((sorted (slack-room-sorted-messages room))
+         (thread-rejected (slack-room-reject-thread-message sorted))
+         (messages (slack-room-latest-messages room thread-rejected))
+         (latest-message (and (car (last sorted)))))
+    (if messages
+        (progn
+          (with-current-buffer buf
+            (cl-loop for m in messages
+                     do (slack-buffer-insert m team t)))
+          (slack-room-update-last-read room latest-message)
+          (slack-room-update-mark room team latest-message))
+      (unless (eq 0 (oref room unread-count-display))
+        (slack-room-update-mark room team latest-message)))))
+
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -117,24 +117,13 @@
        (lui-insert "(no more messages)\n"))
      (lui-recover-output-marker))))
 
-(cl-defun slack-buffer-create (room team
-                                    &key
-                                    (insert-func
-                                     #'slack-buffer-insert-messages)
-                                    (type 'message))
-  (cl-labels
-      ((get-buffer (type room)
-                   (cl-ecase type
-                     (message (slack-get-buffer-create room))
-                     (info (slack-get-info-buffer-create room)))))
-      (with-current-buffer buffer
-        (if insert-func
-            (funcall insert-func room team))
-        (slack-buffer-set-current-room-id room)
-        (slack-buffer-set-current-team-id team)
-        (slack-buffer-enable-emojify))
-      buffer)))
+(cl-defun slack-buffer-create (room team)
   (let ((buffer (slack-get-buffer-create room)))
+    (with-current-buffer buffer
+      (slack-buffer-set-current-room-id room)
+      (slack-buffer-set-current-team-id team)
+      (slack-buffer-enable-emojify))
+    buffer))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
@@ -161,22 +150,6 @@
        'not-tracked-p not-tracked-p
        'ts (oref message ts)
        'slack-last-ts lui-time-stamp-last))))
-
-(defun slack-buffer-insert-messages (room team)
-  (let* ((sorted (slack-room-sorted-messages room))
-         (without-thread-message (slack-room-reject-thread-message sorted))
-         (messages (slack-room-latest-messages room without-thread-message)))
-    (if messages
-        (progn
-          ;; (slack-buffer-insert-previous-link room)
-          (cl-loop for m in messages
-                   do (slack-buffer-insert m team t))
-          (let ((latest-message (car (last messages))))
-            (slack-room-update-last-read room latest-message)
-            (slack-room-update-mark room team latest-message)))
-      (unless (eq 0 (oref room unread-count-display))
-        (let ((latest-message (car (last sorted))))
-          (slack-room-update-mark room team latest-message))))))
 
 (defun slack-buffer-show-typing-p (buffer)
   (cl-case slack-typing-visibility

@@ -174,18 +174,15 @@
                     (search-result (slack-create-search-result params team 'message)))
                (slack-search-pushnew search-result team)
                (funcall slack-buffer-function
-                        (slack-buffer-create search-result
-                                             team :type 'info))))))
+                        (slack-room-with-buffer search-result team
+                          (slack-room-insert-messages search-result buf team)))))))
         (let ((same-search (slack-room-find (slack-search-result-id
                                              type query sort sort-dir)
                                             team)))
           (if same-search
               (progn
                 (message "Same Query Already Exist")
-                (funcall slack-buffer-function
-                         (slack-buffer-create same-search
-                                              team
-                                              :type 'info)))
+                (funcall slack-buffer-function (slack-buffer-create same-search team)))
             (slack-search-request-message team
                                           query
                                           sort
@@ -207,18 +204,15 @@
                     (search-result (slack-create-search-result params team 'file)))
                (slack-search-pushnew search-result team)
                (funcall slack-buffer-function
-                        (slack-buffer-create search-result
-                                             team :type 'info))))))
+                        (slack-room-with-buffer search-result team
+                          (slack-room-insert-messages search-result buf team)))))))
         (let ((same-search (slack-room-find (slack-search-result-id type query
                                                                     sort sort-dir)
                                             team)))
           (if same-search
               (progn
                 (message "Same Query Already Exist")
-                (funcall slack-buffer-function
-                         (slack-buffer-create same-search
-                                              team
-                                              :type 'info)))
+                (funcall slack-buffer-function (slack-buffer-create same-search team)))
             (slack-search-request-file team
                                        query
                                        sort
@@ -263,10 +257,7 @@
          (alist (slack-search-alist team)))
     (slack-select-from-list
      (alist "Select Search: ")
-     (funcall slack-buffer-function
-              (slack-buffer-create selected
-                                   team
-                                   :type 'info)))))
+     (funcall slack-buffer-function (slack-buffer-create selected team)))))
 
 ;; protocols
 (defmethod slack-room-update-mark ((_room slack-search-result) _team _msg))
