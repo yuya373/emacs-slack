@@ -91,36 +91,6 @@
     (when point
       (goto-char point))))
 
-(defmethod slack-buffer-insert-previous-link ((room slack-room))
-  (let ((oldest (slack-room-prev-link-info room)))
-    (if oldest
-        (slack-buffer-widen
-         (let ((inhibit-read-only t))
-           (goto-char (point-min))
-           (insert
-            (concat
-             (propertize "(load more message)"
-                         'face '(:underline t)
-                         'oldest oldest
-                         'keymap (let ((map (make-sparse-keymap)))
-                                   (define-key map (kbd "RET")
-                                     #'slack-room-load-prev-messages)
-                                   map))
-             "\n\n"))
-           (set-marker lui-output-marker (point)))))))
-
-(defmethod slack-buffer-insert-prev-messages ((room slack-room) team oldest-ts)
-  (slack-buffer-widen
-   (let ((messages (slack-room-prev-messages room oldest-ts)))
-     (if messages
-         (progn
-           (slack-buffer-insert-previous-link room)
-           (cl-loop for m in messages
-                    do (slack-buffer-insert m team t)))
-       (set-marker lui-output-marker (point-min))
-       (lui-insert "(no more messages)\n"))
-     (lui-recover-output-marker))))
-
 (cl-defun slack-buffer-create (room team)
   (let ((buffer (slack-get-buffer-create room)))
     (with-current-buffer buffer

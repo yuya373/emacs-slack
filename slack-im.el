@@ -32,7 +32,6 @@
 
 (defvar slack-buffer-function)
 
-(defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-im-list-url "https://slack.com/api/im.list")
@@ -126,9 +125,6 @@
 
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
-
-(defmethod slack-room-history-url ((_room slack-im))
-  slack-im-history-url)
 
 (defun slack-im-close ()
   (interactive)

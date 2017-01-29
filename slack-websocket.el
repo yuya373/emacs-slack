@@ -234,12 +234,12 @@
   (cl-labels
       ((notify
         (im)
-        (slack-room-history
-         im team nil
-         #'(lambda ()
-             (message "Direct Message Channel with %s is Open"
-                      (slack-user-name (oref im user) team)))
-         t)))
+        (slack-room-history-request
+         im team
+         :after-success #'(lambda ()
+                            (message "Direct Message Channel with %s is Open"
+                                     (slack-user-name (oref im user) team)))
+         :async t)))
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
       (if exist
           (progn

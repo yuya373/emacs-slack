@@ -30,7 +30,6 @@
 (require 'slack-buffer)
 
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
-(defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
@@ -242,7 +241,7 @@
                                         (slack-room-equal-p group g))
                                     groups)))
               (if (plist-get data :already_closed)
-                  (message "Direct Message Channel with %s Already Closed" 
+                  (message "Direct Message Channel with %s Already Closed"
                            (slack-group-members-s group)))))))
        (slack-request
         slack-mpim-close-url
@@ -252,12 +251,9 @@
         :success #'on-success
         :sync nil)))))
 
-       
+
 (defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
-
-(defmethod slack-room-history-url ((_room slack-group))
-  slack-group-history-url)
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

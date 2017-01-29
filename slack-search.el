@@ -315,35 +315,6 @@
     (if nth
         (nreverse (nthcdr (1+ nth) messages)))))
 
-(defmethod slack-room-render-prev-messages ((room slack-search-result)
-                                            team oldest ts)
-  (slack-buffer-create
-   room team
-   :insert-func
-   #'(lambda (room team)
-       (slack-buffer-widen
-        (let* ((inhibit-read-only t)
-               (oldest-ts (if (listp oldest) (car oldest) oldest))
-               (loading-message-end (slack-buffer-ts-eq (point-min)
-                                                        (point-max)
-                                                        oldest-ts)))
-          (delete-region (point-min) loading-message-end)
-          (slack-buffer-insert-prev-messages room team oldest)))
-       (slack-buffer-goto ts))
-   :type 'info))
-
-(defmethod slack-buffer-insert-prev-messages ((room slack-search-result) team oldest)
-  (slack-buffer-widen
-   (let ((messages (slack-room-prev-messages room oldest)))
-     (if messages
-         (progn
-           (slack-buffer-insert-previous-link room)
-           (cl-loop for m in messages
-                    do (slack-buffer-insert m team t)))
-       (set-marker lui-output-marker (point-min))
-       (lui-insert "(no more messages)\n"))
-     (lui-recover-output-marker))))
-
 (defmethod slack-room-prev-link-info ((room slack-file-search-result))
   (with-slots (oldest) room
     (oref oldest ts)))

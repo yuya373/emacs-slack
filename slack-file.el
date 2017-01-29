@@ -205,9 +205,8 @@
     (with-slots (messages) room
       (if messages
           (slack-file-create-buffer team)
-        (slack-room-history room team nil
-                            #'(lambda ()
-                                (slack-file-create-buffer team)))))))
+        (slack-room-history-request room team)
+        (slack-file-create-buffer team)))))
 
 (defmethod slack-room-history ((room slack-file-room) team
                                &optional
