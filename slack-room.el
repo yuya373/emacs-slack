@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'lui)
 (require 'slack-request)
 (require 'slack-message)
 
@@ -254,8 +255,7 @@
            :key #'(lambda (m) (oref m ts))))
 
 (defun slack-room-reject-thread-message (messages)
-  (cl-remove-if #'(lambda (m) (and (oref m thread-ts)
-                                   (not (slack-message-thread-parentp m))))
+  (cl-remove-if #'(lambda (m) (slack-message-thread-messagep m))
                 messages))
 
 (defmethod slack-room-sorted-messages ((room slack-room))
@@ -475,19 +475,14 @@
         :success #'on-group-invite
         :sync nil))))
 
-(defmethod slack-room-member-p ((_room slack-room))
-  t)
+(defmethod slack-room-member-p ((_room slack-room)) t)
 
-(defmethod slack-room-archived-p ((_room slack-room))
-  nil)
+(defmethod slack-room-archived-p ((_room slack-room)) nil)
 
-(defmethod slack-room-open-p ((_room slack-room))
-  t)
+(defmethod slack-room-open-p ((_room slack-room)) t)
 
 (defmethod slack-room-equal-p ((room slack-room) other)
-  (with-slots (id) room
-    (with-slots ((other-id id)) other
-      (string= id other-id))))
+  (string= (oref room id) (oref other id)))
 
 (defun slack-room-deleted (id team)
   (let ((room (slack-room-find id team)))
@@ -506,6 +501,9 @@
    :params (list (cons "channel" id))
    :success success
    :sync nil))
+
+(defmethod slack-room-reset-last-read ((room slack-room))
+  (slack-room-update-last-read room (make-instance 'slack-message :ts "0")))
 
 (defmethod slack-room-history ((room slack-room) team &optional oldest after-success async)
   (cl-labels

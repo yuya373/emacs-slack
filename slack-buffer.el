@@ -46,11 +46,15 @@
   (lui-set-prompt lui-prompt-string))
 
 (defvar slack-current-room-id)
+
 (defvar slack-current-team-id)
+
 (defvar slack-current-message nil)
+
 (defcustom slack-buffer-emojify nil
   "Show emoji with `emojify' if true."
   :group 'slack)
+
 (defcustom slack-buffer-create-on-notify nil
   "Create a room buffer when notification received if it does not yet exist"
   :group 'slack)
@@ -183,7 +187,8 @@
               (slack-room-update-last-read room msg)
               (slack-buffer-insert msg team))))
       (slack-room-inc-unread-count room)
-      (and slack-buffer-create-on-notify (slack-room-make-buffer-with-room-bg room team)))))
+      (and slack-buffer-create-on-notify
+           (slack-room-make-buffer-with-room-bg room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
@@ -243,13 +248,6 @@
                            ts)
                return i)))
 
-(defun slack-buffer-ts-not-eq (start end ts)
-  (if (and start end)
-      (cl-loop for i from start to end
-               if (not (string= (get-text-property i 'ts)
-                                ts))
-               return i)))
-
 (defun slack-buffer-replace (buffer msg)
   (with-current-buffer buffer
     (slack-buffer-widen
@@ -282,8 +280,7 @@
   (when (bound-and-true-p slack-current-room-id)
     (let ((room (slack-room-find slack-current-room-id
                                  (slack-team-find slack-current-team-id))))
-      (slack-room-update-last-read room
-                                   (slack-message "msg" :ts "0")))))
+      (slack-room-reset-last-read room))))
 
 (defun slack-buffer-delete-message (buf ts)
   (and buf (with-current-buffer buf

@@ -171,7 +171,7 @@
              (data "slack-search-from-messages")
              (let* ((params (slack-search-create-result-params
                              data team type sort sort-dir))
-                    (search-result (slack-create-search-result params team 'message)))
+                    (search-result (slack-create-search-result params team type)))
                (slack-search-pushnew search-result team)
                (funcall slack-buffer-function
                         (slack-room-with-buffer search-result team
