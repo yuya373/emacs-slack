@@ -140,9 +140,40 @@
   (let ((lui-time-stamp-position nil))
     (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t)))
 
+(defmethod slack-room-replies-url ((_room slack-channel))
+  "https://slack.com/api/channels.replies")
+
+(defmethod slack-room-replies-url ((_room slack-group))
+  "https://slack.com/api/groups.replies")
+
+(defmethod slack-room-replies-url ((_room slack-im))
+  "https://slack.com/api/im.replies")
+
+(defmethod slack-thread-request-messages ((thread slack-thread) room team)
+  (with-slots (thread-ts) thread
+    (with-slots (id) room
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-thread-request-messages")
+                        (let ((messages (mapcar #'(lambda (payload) (slack-message-create payload team :room room))
+                                                (plist-get data :messages))))
+                          (mapc #'(lambda (m) (slack-thread-add-message thread m))
+                                (cl-remove-if #'slack-message-thread-parentp messages))))))
+
+        (slack-request (slack-room-replies-url room)
+                       team
+                       :params (list (cons "thread_ts" thread-ts)
+                                     (cons "channel" id))
+                       :success #'on-success)))))
+
 (defmethod slack-thread-show-messages ((thread slack-thread) room team)
   (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
          (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
+    (if (< (length messages) (oref thread reply-count))
+        (progn
+          (slack-thread-request-messages thread room team)
+          (setq messages (oref thread messages))))
     (with-current-buffer buf
       (slack-thread-insert-as-root-message (oref thread root) team)
       (cl-loop for m in messages
