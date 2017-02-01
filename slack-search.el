@@ -40,11 +40,9 @@
 
 (defclass slack-file-search-result (slack-search-result) ())
 
-(defclass slack-search-message ()
+(defclass slack-search-message (slack-message)
   ((user-id :initarg :user-id :type string)
    (username :initarg :username :type string)
-   (ts :initarg :ts :type string)
-   (text :initarg :text :type string)
    (previous-2 :initarg :previous-2)
    (previous :initarg :previous)
    (next :initarg :next)
