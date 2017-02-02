@@ -73,7 +73,8 @@
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (cl-find major-mode '(slack-mode
-                                          slack-edit-message-mode))
+                                          slack-edit-message-mode
+                                          slack-thread-mode))
                 (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
                                    2)))
       (candidates (let ((content (content arg)))

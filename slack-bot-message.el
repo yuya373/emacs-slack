@@ -54,6 +54,9 @@
 (defmethod slack-message-sender-name ((m slack-bot-message) team)
   (slack-bot-name m team))
 
+(defmethod slack-message-sender-id ((m slack-bot-message))
+  (oref m bot-id))
+
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
 

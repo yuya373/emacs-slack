@@ -106,11 +106,11 @@
 (defmethod slack-message-header ((m slack-message) team)
   (slack-message-sender-name m team))
 
-(defun slack-format-message (header body attachment-body reactions)
-  (let ((messages (list header body attachment-body reactions)))
+(defun slack-format-message (header body attachment-body reactions thread)
+  (let ((messages (list header body attachment-body thread reactions)))
     (concat (mapconcat #'identity
-               (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
-               "\n")
+                       (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
+                       "\n")
             "\n")))
 
 (defmethod slack-message-to-string ((m slack-message) team)
@@ -126,17 +126,21 @@
            (reactions-str
             (slack-message-put-reactions-property
              (slack-message-reactions-to-string
-              (slack-message-get-reactions m)))))
+              (slack-message-get-reactions m))))
+           (thread (slack-thread-to-string m team)))
       (slack-message-propertize
-       m (slack-format-message header body attachment-body reactions-str)))))
+       m (slack-format-message header body attachment-body reactions-str thread)))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
     (slack-message-unescape-string text team)))
 
+(defmethod slack-message-body ((_m slack-reply-broadcast-message) _team)
+  "Replied to a thread")
+
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n")))
+    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n\t-\n")))
       (if (< 0 (length body))
           (slack-message-unescape-string body team)))))
 

@@ -37,13 +37,21 @@
   "Custom notification function.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
   :group 'slack)
 
-(defcustom slack-message-im-notification-title-format-function (apply-partially #'format "%s - %s")
-  "Function to format notification title for IM message.\ntake 2 Arguments.\n(lambda (TEAM-NAME ROOM-NAME) ...)."
+(defcustom slack-message-im-notification-title-format-function
+  #'(lambda (team-name room-name thread-messagep)
+      (format "%s - %s" team-name (if thread-messagep
+                                      (format "Thread in %s" room-name)
+                                    room-name)))
+  "Function to format notification title for IM message.\ntake 3 Arguments.\n(lambda (TEAM-NAME ROOM-NAME THREAD-MESSAGEP) ...)."
   :type 'function
   :group 'slack)
 
-(defcustom slack-message-notification-title-format-function (apply-partially #'format "%s - #%s")
-  "Function to format notification title for non-IM message.\ntake 2 Arguments.\n(lambda (TEAM-NAME ROOM-NAME) ...)."
+(defcustom slack-message-notification-title-format-function
+  #'(lambda (team-name room-name thread-messagep)
+      (format "%s - %s" team-name (if thread-messagep
+                                      (format "Thread in #%s" room-name)
+                                    (format "#%s" room-name))))
+  "Function to format notification title for non-IM message.\ntake 3 Arguments.\n(lambda (TEAM-NAME ROOM-NAME THREAD-MESSAGEP) ...)."
   :type 'function
   :group 'slack)
 
@@ -72,8 +80,10 @@
             (setq text (concat "\\" text)))
         (alert (if (slack-im-p room) text (format "%s: %s" user-name text))
                :title (if (slack-im-p room)
-                          (funcall slack-message-im-notification-title-format-function team-name room-name)
-                        (funcall slack-message-notification-title-format-function team-name room-name))
+                          (funcall slack-message-im-notification-title-format-function
+                                   team-name room-name (slack-thread-messagep message))
+                        (funcall slack-message-notification-title-format-function
+                                 team-name room-name (slack-thread-messagep message)))
                :category 'slack))))
 
 (defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)

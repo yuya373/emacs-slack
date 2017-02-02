@@ -163,16 +163,10 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-channel-create-from-info")
-         (let* ((c-data (plist-get data :channel))
-                (latest (plist-get c-data :latest)))
-           (if latest
-               (plist-put c-data :latest
-                          (slack-message-create latest team)))
+         (let* ((c-data (plist-get data :channel)))
            (if (plist-get c-data :is_channel)
-               (let ((channel
-                      (slack-room-create c-data team 'slack-channel)))
-                 (with-slots (channels) team
-                   (push channel channels))
+               (let ((channel (slack-room-create c-data team 'slack-channel)))
+                 (with-slots (channels) team (push channel channels))
                  (message "Channel: %s created"
                           (slack-room-name-with-team-name channel))))))))
     (slack-channel-fetch-info id team #'on-create-from-info)))

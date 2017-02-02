@@ -86,14 +86,13 @@
              text)))
      message t)))
 
+(defun slack-message-prepare-links (message team)
+  (slack-link-channels (slack-link-users message team) team))
+
 (defun slack-message--send (message)
   (if slack-current-team-id
       (let* ((team (slack-team-find slack-current-team-id))
-             (message (slack-link-channels
-                       (slack-link-users
-                        (slack-escape-message message)
-                        team)
-                       team)))
+             (message (slack-message-prepare-links (slack-escape-message message) team)))
         (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
           (let* ((m (list :id message-id

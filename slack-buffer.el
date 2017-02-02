@@ -169,7 +169,8 @@
 
 (defun slack-buffer-insert-messages (room team)
   (let* ((sorted (slack-room-sorted-messages room))
-         (messages (slack-room-latest-messages room sorted)))
+         (without-thread-message (slack-room-reject-thread-message sorted))
+         (messages (slack-room-latest-messages room without-thread-message)))
     (if messages
         (progn
           ;; (slack-buffer-insert-previous-link room)
@@ -319,6 +320,11 @@
                                  (slack-team-find slack-current-team-id))))
       (slack-room-update-last-read room
                                    (slack-message "msg" :ts "0")))))
+
+(defun slack-buffer-delete-message (buf ts)
+  (and buf (with-current-buffer buf
+             (lui-delete (lambda () (equal (get-text-property (point) 'ts)
+                                           ts))))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
