@@ -150,6 +150,8 @@
                 (string= type "channel_marked")
                 (string= type "group_marked"))
             (slack-ws-handle-room-marked decoded-payload team))
+           ((string= type "thread_marked")
+            (slack-ws-handle-thread-marked decoded-payload team))
            ((string= type "im_open")
             (slack-ws-handle-im-open decoded-payload team))
            ((string= type "im_close")
@@ -530,6 +532,15 @@
                                      comments))
         (cl-decf comments-count))
       (slack-message-update file team t))))
+
+(defun slack-ws-handle-thread-marked (payload team)
+  (let* ((subscription (plist-get payload :subscription))
+         (thread-ts (plist-get subscription :thread_ts))
+         (channel (plist-get subscription :channel))
+         (room (slack-room-find channel team))
+         (parent (and room (slack-room-find-message room thread-ts))))
+    (when (and parent (oref parent thread))
+      (slack-thread-marked (oref parent thread) subscription))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

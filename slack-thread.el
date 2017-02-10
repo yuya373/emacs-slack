@@ -373,6 +373,12 @@
            :sync nil
            :success #'on-success))))))
 
+(defmethod slack-thread-marked ((thread slack-thread) payload)
+  (let ((unread-count (plist-get payload :unread_count))
+        (last-read (plist-get payload :last_read)))
+    (oset thread unread-count unread-count)
+    (oset thread last-read last-read)))
+
 (defmethod slack-thread-update-last-read ((thread slack-thread) msg)
   (with-slots (ts) msg
     (oset thread last-read ts)))
