@@ -30,6 +30,7 @@
 
 (defvar lui-prompt-string "> ")
 (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
+(defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
 (define-derived-mode slack-thread-mode slack-mode "Slack - Thread"
   ""
@@ -350,6 +351,24 @@
   (with-slots (messages) thread
     (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref message ts)))
                                  messages))))
+
+(defmethod slack-thread-update-mark ((thread slack-thread) room msg team)
+  (with-slots (thread-ts) thread
+    (with-slots (id) room
+      (with-slots (ts) msg
+        (cl-labels
+            ((on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-thread-mark"))))
+
+          (slack-request
+           thread-mark-url
+           team
+           :params (list (cons "channel" id)
+                         (cons "thread_ts" thread-ts)
+                         (cons "ts" ts))
+           :sync nil
+           :success #'on-success))))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
