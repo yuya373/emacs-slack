@@ -230,7 +230,10 @@
     (setq messages (slack-room-sort-messages (copy-sequence messages)))))
 
 (defmethod slack-message-thread-parentp ((m slack-message))
-  (and (oref m thread-ts) (string= (oref m ts) (oref m thread-ts))))
+  (let* ((thread (oref m thread))
+         (thread-ts (or (and thread (oref thread thread-ts))
+                        (oref m thread-ts))))
+    (and thread-ts (string= (oref m ts) thread-ts))))
 
 (defun slack-thread-update-state (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
