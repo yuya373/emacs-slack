@@ -187,7 +187,10 @@
            (room (and msg (slack-room-find (oref msg channel) team))))
       (when (and msg room (string< (oref room last-read) (oref msg ts)))
         (slack-room-update-last-read room msg)
-        (slack-room-update-mark room team msg)))))
+        (slack-room-update-mark room team msg))
+      (when (and msg room (string< (oref thread last-read) (oref msg ts)))
+        (slack-thread-update-last-read thread msg)
+        (slack-thread-update-mark thread room msg team)))))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
