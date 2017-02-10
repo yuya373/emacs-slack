@@ -44,7 +44,9 @@
    (reply-count :initarg :reply_count :initform 0)
    (replies :initarg :replies :initform '())
    (active :initarg :active :initform t)
-   (root :initarg :root :type slack-message)))
+   (root :initarg :root :type slack-message)
+   (unread-count :initarg :unread_count :initform 0)
+   (last-read :initarg :last_read :initform "0")))
 
 (defmethod slack-thread-messagep ((m slack-message))
   (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
@@ -179,6 +181,7 @@
       (cl-loop for m in messages
                do (slack-buffer-insert m team)))
     (funcall slack-buffer-function buf)
+    (oset thread unread-count 0)
     (let* ((msg (car (last messages)))
            (room (and msg (slack-room-find (oref msg channel) team))))
       (when (and msg room (string< (oref room last-read) (oref msg ts)))
@@ -204,12 +207,17 @@
 
 (defmethod slack-thread-create ((m slack-message) team &optional payload)
   (let* ((replies (and payload (append (plist-get payload :replies) nil)))
-         (reply-count (and payload (plist-get payload :reply_count)))
+         (reply-count (and payload (plist-get payload :reply_count))
+                      )
+         (unread-count (and payload (plist-get payload :unread_count)))
+         (last-read (and payload (plist-get payload :last_read)))
          (thread (make-instance 'slack-thread
                                 :thread_ts (oref m ts)
                                 :root m
                                 :replies replies
-                                :reply_count (or reply-count 0))))
+                                :reply_count (or reply-count 0)
+                                :unread_count (or unread-count 1)
+                                :last_read last-read)))
 
     ;; (with-slots (threads) team
     ;;   (cl-pushnew thread (oref threads all) :test #'slack-thread-equal))
