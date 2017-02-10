@@ -370,5 +370,9 @@
            :sync nil
            :success #'on-success))))))
 
+(defmethod slack-thread-update-last-read ((thread slack-thread) msg)
+  (with-slots (ts) msg
+    (oset thread last-read ts)))
+
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
