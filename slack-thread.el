@@ -379,6 +379,28 @@
     (oset thread unread-count unread-count)
     (oset thread last-read last-read)))
 
+(defun slack-room-unread-threads ()
+  (interactive)
+  (if (or (not (boundp 'slack-current-team-id))
+          (not (boundp 'slack-current-room-id)))
+      (error "Call from Slack Buffer"))
+  (let* ((team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id team))
+
+         (threads (mapcar #'(lambda (m) (oref m thread))
+                          (cl-remove-if
+                           #'(lambda (m)
+                               (or (not (slack-message-thread-parentp m))
+                                   (not (< 0 (oref (oref m thread) unread-count)))))
+                           (oref room messages))))
+         (alist (mapcar #'(lambda (thread)
+                            (cons (slack-thread-title thread team)
+                                  thread))
+                        threads))
+         (selected (slack-select-from-list (alist "Select Thread: "))))
+
+    (slack-thread-show-messages selected room team)))
+
 (defmethod slack-thread-update-last-read ((thread slack-thread) msg)
   (with-slots (ts) msg
     (oset thread last-read ts)))
