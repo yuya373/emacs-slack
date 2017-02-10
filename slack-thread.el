@@ -238,8 +238,7 @@
 (defun slack-thread-update-state (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (state (plist-get payload :message))
-         (message (and room (or (slack-room-find-message room (plist-get state :ts))
-                                (slack-message-create state team :room room))))
+         (message (and room (slack-room-find-message room (plist-get state :ts))))
          (thread (and message (slack-message-get-thread message team))))
     (when thread
       (with-slots (replies reply-count) thread
