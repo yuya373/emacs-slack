@@ -195,9 +195,8 @@
 
 (defun slack-file-create-buffer (team)
   (funcall slack-buffer-function
-           (slack-buffer-create (slack-file-room-obj team)
-                                team
-                                :type 'info)))
+           (slack-room-with-buffer (slack-file-room-obj team) team
+             (slack-room-insert-messages (slack-file-room-obj team) buf team))))
 
 (defun slack-file-list ()
   (interactive)
@@ -206,9 +205,8 @@
     (with-slots (messages) room
       (if messages
           (slack-file-create-buffer team)
-        (slack-room-history room team nil
-                            #'(lambda ()
-                                (slack-file-create-buffer team)))))))
+        (slack-room-history-request room team)
+        (slack-file-create-buffer team)))))
 
 (defmethod slack-room-history ((room slack-file-room) team
                                &optional
@@ -419,6 +417,12 @@
                      (cons "comment" comment))
        :sync nil
        :success #'on-file-comment-edit))))
+
+(defmethod slack-room-setup-buffer ((room slack-file-room) buf)
+  (with-current-buffer buf
+    (slack-info-mode)
+    (slack-room-insert-previous-link room buf)
+    (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

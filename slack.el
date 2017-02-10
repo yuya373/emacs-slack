@@ -41,6 +41,10 @@
 (require 'slack-search)
 (require 'slack-reminder)
 (require 'slack-thread)
+(require 'slack-message-update)
+(require 'slack-message-changed)
+(require 'slack-message-delete)
+(require 'slack-room-history)
 
 (require 'slack-websocket)
 (require 'slack-request)

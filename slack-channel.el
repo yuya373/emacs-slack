@@ -31,7 +31,6 @@
 
 (defvar slack-buffer-function)
 
-(defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
@@ -216,9 +215,6 @@
                                   (oref channel id)
                                   team
                                   #'on-channel-unarchive))))
-
-(defmethod slack-room-history-url ((_room slack-channel))
-  slack-channel-history-url)
 
 (defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team

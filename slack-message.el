@@ -27,13 +27,11 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-reaction)
-(require 'slack-message-delete)
 
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
-(defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
@@ -261,49 +259,6 @@
       (oset parent thread thread))
     thread))
 
-(defmethod slack-message-update-thread ((m slack-message) team replace)
-  (with-slots (channel) m
-    (let ((room (slack-room-find channel team)))
-      (when room
-        (let* ((thread-ts (oref m thread-ts))
-               (parent (slack-room-find-message room thread-ts)))
-          (when parent
-            (let ((thread (slack-message-get-thread parent team)))
-              (slack-room-push-message room m)
-              (slack-room-update-latest room m)
-              (slack-thread-add-message thread m)
-              (slack-buffer-update room parent team :replace t)
-              (slack-thread-update-buffer thread m room team :replace replace)
-              ;; (unless no-notify
-              (slack-message-notify m room team)
-              ;; )
-              )))))))
-
-(defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
-  (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
-      (slack-message-update-thread m team replace)
-    (with-slots (channel) m
-      (let ((room (slack-room-find channel team)))
-        (when room
-          (slack-room-push-message room m)
-          (slack-room-update-latest room m)
-          (slack-buffer-update room m team :replace replace)
-          (unless no-notify
-            (slack-message-notify m room team)))))))
-
-
-(defun slack-message-edited (payload team)
-  (let* ((room (slack-room-find (plist-get payload :channel) team))
-         (edited-message (slack-message-create
-                          (slack-decode (plist-get payload :message))
-                          team :room room))
-         (message (slack-room-find-message
-                   room (oref edited-message ts))))
-    (when message
-      (oset edited-message reactions (oref message reactions))
-      (slack-message-copy-thread-messages edited-message (oref message thread))
-      (slack-message-update edited-message team t))))
-
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
 
@@ -357,13 +312,6 @@
 
 (defmethod slack-message-get-reactions ((m slack-file-comment-message))
   (oref (oref m comment) reactions))
-
-(defmethod slack-message-copy-thread-messages ((message slack-message) thread)
-  (if thread
-      (with-slots ((this thread)) message
-        (when this
-          (oset this messages (oref thread messages)))))
-  message)
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

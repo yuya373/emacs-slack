@@ -235,6 +235,9 @@
                         (oref m thread-ts))))
     (and thread-ts (string= (oref m ts) thread-ts))))
 
+(defmethod slack-message-thread-messagep ((m slack-message))
+  (and (oref m thread-ts) (not (slack-message-thread-parentp m))))
+
 (defun slack-thread-update-state (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (state (plist-get payload :message))
@@ -334,6 +337,11 @@
 
 (defun slack-thread-setup-edit-buf (thread-ts room team type)
   (slack-message-setup-edit-buf room type :ts thread-ts :team team))
+
+(defmethod slack-thread-delete-message ((thread slack-thread) message)
+  (with-slots (messages) thread
+    (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref message ts)))
+                                 messages))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here

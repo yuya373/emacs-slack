@@ -171,21 +171,18 @@
              (data "slack-search-from-messages")
              (let* ((params (slack-search-create-result-params
                              data team type sort sort-dir))
-                    (search-result (slack-create-search-result params team 'message)))
+                    (search-result (slack-create-search-result params team type)))
                (slack-search-pushnew search-result team)
                (funcall slack-buffer-function
-                        (slack-buffer-create search-result
-                                             team :type 'info))))))
+                        (slack-room-with-buffer search-result team
+                          (slack-room-insert-messages search-result buf team)))))))
         (let ((same-search (slack-room-find (slack-search-result-id
                                              type query sort sort-dir)
                                             team)))
           (if same-search
               (progn
                 (message "Same Query Already Exist")
-                (funcall slack-buffer-function
-                         (slack-buffer-create same-search
-                                              team
-                                              :type 'info)))
+                (funcall slack-buffer-function (slack-buffer-create same-search team)))
             (slack-search-request-message team
                                           query
                                           sort
@@ -207,18 +204,15 @@
                     (search-result (slack-create-search-result params team 'file)))
                (slack-search-pushnew search-result team)
                (funcall slack-buffer-function
-                        (slack-buffer-create search-result
-                                             team :type 'info))))))
+                        (slack-room-with-buffer search-result team
+                          (slack-room-insert-messages search-result buf team)))))))
         (let ((same-search (slack-room-find (slack-search-result-id type query
                                                                     sort sort-dir)
                                             team)))
           (if same-search
               (progn
                 (message "Same Query Already Exist")
-                (funcall slack-buffer-function
-                         (slack-buffer-create same-search
-                                              team
-                                              :type 'info)))
+                (funcall slack-buffer-function (slack-buffer-create same-search team)))
             (slack-search-request-file team
                                        query
                                        sort
@@ -263,10 +257,7 @@
          (alist (slack-search-alist team)))
     (slack-select-from-list
      (alist "Select Search: ")
-     (funcall slack-buffer-function
-              (slack-buffer-create selected
-                                   team
-                                   :type 'info)))))
+     (funcall slack-buffer-function (slack-buffer-create selected team)))))
 
 ;; protocols
 (defmethod slack-room-update-mark ((_room slack-search-result) _team _msg))
@@ -323,35 +314,6 @@
                                       oldest channel-id)))
     (if nth
         (nreverse (nthcdr (1+ nth) messages)))))
-
-(defmethod slack-room-render-prev-messages ((room slack-search-result)
-                                            team oldest ts)
-  (slack-buffer-create
-   room team
-   :insert-func
-   #'(lambda (room team)
-       (slack-buffer-widen
-        (let* ((inhibit-read-only t)
-               (oldest-ts (if (listp oldest) (car oldest) oldest))
-               (loading-message-end (slack-buffer-ts-eq (point-min)
-                                                        (point-max)
-                                                        oldest-ts)))
-          (delete-region (point-min) loading-message-end)
-          (slack-buffer-insert-prev-messages room team oldest)))
-       (slack-buffer-goto ts))
-   :type 'info))
-
-(defmethod slack-buffer-insert-prev-messages ((room slack-search-result) team oldest)
-  (slack-buffer-widen
-   (let ((messages (slack-room-prev-messages room oldest)))
-     (if messages
-         (progn
-           (slack-buffer-insert-previous-link room)
-           (cl-loop for m in messages
-                    do (slack-buffer-insert m team t)))
-       (set-marker lui-output-marker (point-min))
-       (lui-insert "(no more messages)\n"))
-     (lui-recover-output-marker))))
 
 (defmethod slack-room-prev-link-info ((room slack-file-search-result))
   (with-slots (oldest) room
@@ -452,6 +414,12 @@
                                       #'on-history
                                       next-page
                                       async)))))))
+
+(defmethod slack-room-setup-buffer ((room slack-search-result) buf)
+  (with-current-buffer buf
+    (slack-info-mode)
+    (slack-room-insert-previous-link room buf)
+    (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)))
 
 (provide 'slack-search)
 ;;; slack-search.el ends here
