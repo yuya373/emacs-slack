@@ -57,7 +57,8 @@
   (with-slots (file-room) team
     (if file-room
         file-room
-      (setq file-room (slack-file-room :name "Files"
+      (setq file-room (slack-file-room "file-room"
+                                       :name "Files"
                                        :id "F"
                                        :team-id (oref team id)
                                        :created (format-time-string "%s")
@@ -82,7 +83,7 @@
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
   (plist-put payload :channel "F")
-  (let* ((file (apply #'slack-file (slack-collect-slots 'slack-file payload)))
+  (let* ((file (apply #'slack-file "file" (slack-collect-slots 'slack-file payload)))
          (initial-comment (if (plist-get payload :initial_comment)
                               (slack-file-comment-create (plist-get payload :initial_comment)
                                                          (oref file id))
