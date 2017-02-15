@@ -393,12 +393,11 @@
                                (or (not (slack-message-thread-parentp m))
                                    (not (< 0 (oref (oref m thread) unread-count)))))
                            (oref room messages))))
-         (alist (mapcar #'(lambda (thread)
-                            (cons (slack-thread-title thread team)
-                                  thread))
-                        threads))
+         (alist (mapcar #'(lambda (thread) (cons (slack-thread-title thread team) thread))
+                        (cl-sort threads
+                                 #'string>
+                                 :key #'(lambda (thread) (oref thread thread-ts)))))
          (selected (slack-select-from-list (alist "Select Thread: "))))
-
     (slack-thread-show-messages selected room team)))
 
 (defmethod slack-thread-update-last-read ((thread slack-thread) msg)
