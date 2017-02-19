@@ -95,9 +95,11 @@
   text)
 
 (defun slack-message-time-to-string (ts)
-  (if ts
-      (format-time-string "%Y-%m-%d %H:%M:%S"
-                          (seconds-to-time (string-to-number ts)))))
+  (when ts
+    (when (stringp ts)
+      (setf ts (string-to-number ts)))
+    (format-time-string "%Y-%m-%d %H:%M:%S"
+                        (seconds-to-time ts))))
 
 (defun slack-message-reactions-to-string (reactions)
   (if reactions
