@@ -152,6 +152,8 @@
             (slack-ws-handle-room-marked decoded-payload team))
            ((string= type "thread_marked")
             (slack-ws-handle-thread-marked decoded-payload team))
+           ((string= type "thread_subscribed")
+            (slack-ws-handle-thread-subscribed decoded-payload team))
            ((string= type "im_open")
             (slack-ws-handle-im-open decoded-payload team))
            ((string= type "im_close")
@@ -541,6 +543,15 @@
          (parent (and room (slack-room-find-message room thread-ts))))
     (when (and parent (oref parent thread))
       (slack-thread-marked (oref parent thread) subscription))))
+
+(defun slack-ws-handle-thread-subscribed (payload team)
+  (let* ((thread-data (plist-get payload :subscription))
+         (room (slack-room-find (plist-get thread-data :channel) team))
+         (message (and (slack-room-find-message room (plist-get thread-data :thread_ts))))
+         (thread (and message (oref message thread))))
+    (when thread
+      (oset thread last-read (plist-get thread-data :last_read))
+      (oset thread unread-count (plist-get thread-data :unread_count)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
