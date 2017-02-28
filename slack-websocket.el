@@ -550,8 +550,7 @@
          (message (and (slack-room-find-message room (plist-get thread-data :thread_ts))))
          (thread (and message (oref message thread))))
     (when thread
-      (oset thread last-read (plist-get thread-data :last_read))
-      (oset thread unread-count (plist-get thread-data :unread_count)))))
+      (slack-thread-marked thread thread-data))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
