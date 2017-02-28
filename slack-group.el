@@ -93,6 +93,7 @@
                   (message "Slack Group List Updated"))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update
+                              team
                               :sync nil))))
 
 
