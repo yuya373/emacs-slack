@@ -16,9 +16,8 @@ emacs client for Slack
 
 
 ## configure
+[How To Get Token](#How-To-Get-Token)
 
-- get client-id and client-secret from https://api.slack.com/applications/new
-- get token from https://api.slack.com/web
 
 ```elisp
 ;; I'm using use-package and el-get and evil
@@ -77,23 +76,75 @@ emacs client for Slack
 ```
 
 
-## how to get client-id, client-secret and slack-token
+## How To Get Token
 
-### client-id and client-secret
+### 1. Get client-id and client-secret
 
-1. go to https://api.slack.com/applications/new
-2. fill in the blanks like this
-![create application](https://github.com/yuya373/emacs-slack/wiki/images/how_to_get_client_id_and_client_secret_1.png)
-3. press `Create Application` and it appears
-![appear client-id and client-secret](https://github.com/yuya373/emacs-slack/wiki/images/how_to_get_client_id_and_client_secret_2.png)
+1. go to https://api.slack.com/apps
+2. click "Create New App".
+3. fill "App Name" and "Development Slack Team" and click "Create App".
+4. "Client ID" and "Client Secret" is listed in "App Credentials" section.
 
+### 2. Configure scopes
 
-### token
+1. click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
+2. fill "Redirect URLs" like "http://localhost:8080".
+3. click "Save URLs".
+4. select permission scopes. this app needs [below scopes](#Scopes-needed).
+5. click "Save Changes".
 
-1. go to https://api.slack.com/web
-2. scroll down
-3. it is in the Authentication section.
-![slack-token](https://github.com/yuya373/emacs-slack/wiki/images/how_to_get_api_token.png)
+### 3. Get token
+
+1. call `slack-register-team` with above "Client ID" and "Client Secret".
+2. Emacs prompt "Enter the code your browser displayed: ".
+3. code appears in the browser's address bar like "http://localhost:8080?code=181818181818.1819919191&state=", enter this code to Emacs.
+4. once you activate emacs-slack, token appears in the https://api.slack.com/apps/{APPID}/oauth.
+5. save your token and pass `slack-register-team` function, to save 2, 3 steps.
+
+## Scopes needed
+I does not investigate which scopes are essential.
+For now, it seems working with these scopes.
+
+- channels
+  - history
+  - read
+  - write
+- chat:write:user
+- files
+  - read
+  - write:user
+- groups
+  - history
+  - read
+  - write
+- im
+  - history
+  - read
+  - write
+- links
+  - read
+  - write
+- mpim
+  - history
+  - read
+  - write
+- reactions
+  - read
+  - write
+- remminders
+  - read
+  - write
+- search
+  - read
+- team
+  - read
+- unread
+  - read
+- users.profile
+  - read
+- users
+  - read
+
 
 ## how to use
 
