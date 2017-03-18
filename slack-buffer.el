@@ -101,7 +101,7 @@
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
-    (while (re-search-forward regex nil t)
+    (ignore-errors (while (re-search-forward regex nil t)
       (let ((url-begin (match-beginning 1))
             (url (concat (match-string 1) (match-string 2)))
             (replace (match-string 3)))
@@ -112,7 +112,7 @@
                      'type 'lui-button
                      'action 'lui-button-activate
                      'lui-button-function 'browse-url
-                     'lui-button-arguments (list url))))))
+                     'lui-button-arguments (list url)))))))
 
 (defun slack-buffer-insert (message team &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
