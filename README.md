@@ -16,7 +16,7 @@ emacs client for Slack
 
 
 ## configure
-[How To Get Token](#How-To-Get-Token)
+[How To Get Token](#how-to-get-token)
 
 
 ```elisp
@@ -90,7 +90,7 @@ emacs client for Slack
 1. click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
 2. fill "Redirect URLs" like "http://localhost:8080".
 3. click "Save URLs".
-4. select permission scopes. this app needs [below scopes](#Scopes-needed).
+4. select permission scopes. this app needs [below scopes](#scopes-needed).
 5. click "Save Changes".
 
 ### 3. Get token
