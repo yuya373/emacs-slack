@@ -147,11 +147,6 @@
       (slack-room-insert-messages room buf team)
       (goto-char cur-point))))
 
-(defmethod slack-room-prev-link-info ((room slack-room))
-  (with-slots (oldest) room
-    (if oldest
-        (oref oldest ts))))
-
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
               (oref room messages)

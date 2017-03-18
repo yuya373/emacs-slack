@@ -315,15 +315,6 @@
     (if nth
         (nreverse (nthcdr (1+ nth) messages)))))
 
-(defmethod slack-room-prev-link-info ((room slack-file-search-result))
-  (with-slots (oldest) room
-    (oref oldest ts)))
-
-(defmethod slack-room-prev-link-info ((room slack-search-result))
-  (with-slots (oldest) room
-    (with-slots (info ts) oldest
-      (cons ts (oref info channel-id)))))
-
 (defmethod slack-message-equal ((m slack-search-message) n)
   (with-slots ((m-info info) (m-ts ts)) m
     (with-slots ((m-channel-id channel-id)) m-info

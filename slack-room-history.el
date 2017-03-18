@@ -47,38 +47,44 @@
 
 (defclass _slack-file-search-history (_slack-room-history) ())
 
+(defmethod slack-room-prev-link-info ((room slack-room))
+  (with-slots (oldest) room
+    (if oldest
+        (oref oldest ts))))
+
 (defmethod slack-room-propertize-load-more ((room slack-room) base-text)
   (propertize base-text
-              'oldest (oref (oref room oldest) ts)
+              'oldest (slack-room-prev-link-info room)
               'class '_slack-room-history))
 
 (defmethod slack-room-propertize-load-more ((room slack-search-result) base-text)
   (with-slots (oldest) room
-    (with-slots (info ts) oldest
+    (with-slots (info) oldest
       (propertize base-text
-                  'oldest ts
+                  'oldest (slack-room-prev-link-info room)
                   'channel-id (oref info channel-id)
                   'class '_slack-search-history))))
 
 (defmethod slack-room-propertize-load-more ((room slack-file-search-result) base-text)
   (propertize base-text
-              'oldest (oref (oref room oldest) ts)
+              'oldest (slack-room-prev-link-info room)
               'class '_slack-file-search-history))
 
 (defmethod slack-room-insert-previous-link ((room slack-room) buf)
-  (with-current-buffer buf
-    (slack-buffer-widen
-     (let* ((inhibit-read-only t)
-            (base (propertize "(load more message)"
-                              'face '(:underline t)
-                              'keymap (let ((map (make-sparse-keymap)))
-                                        (define-key map (kbd "RET")
-                                          #'slack-room-history-load)
-                                        map)))
-            (text (slack-room-propertize-load-more room base)))
-       (goto-char (point-min))
-       (insert (format "%s\n\n" text))
-       (set-marker lui-output-marker (point))))))
+  (when (slack-room-prev-link-info room)
+    (with-current-buffer buf
+      (slack-buffer-widen
+       (let* ((inhibit-read-only t)
+              (base (propertize "(load more message)"
+                                'face '(:underline t)
+                                'keymap (let ((map (make-sparse-keymap)))
+                                          (define-key map (kbd "RET")
+                                            #'slack-room-history-load)
+                                          map)))
+              (text (slack-room-propertize-load-more room base)))
+         (goto-char (point-min))
+         (insert (format "%s\n\n" text))
+         (set-marker lui-output-marker (point)))))))
 
 (defmethod slack-room-history--collect-meta ((this _slack-room-history))
   this)
