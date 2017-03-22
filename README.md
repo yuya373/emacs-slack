@@ -85,13 +85,11 @@ emacs client for Slack
 3. fill "App Name" and "Development Slack Team" and click "Create App".
 4. "Client ID" and "Client Secret" is listed in "App Credentials" section.
 
-### 2. Configure scopes
+### 2. Configure Redurect URL
 
 1. click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
 2. fill "Redirect URLs" like "http://localhost:8080".
 3. click "Save URLs".
-4. select permission scopes. this app needs [below scopes](#scopes-needed).
-5. click "Save Changes".
 
 ### 3. Get token
 
@@ -101,49 +99,12 @@ emacs client for Slack
 4. once you activate emacs-slack, token appears in the https://api.slack.com/apps/{APPID}/oauth.
 5. save your token and pass `slack-register-team` function, to save 2, 3 steps.
 
-## Scopes needed
-I does not investigate which scopes are essential.
-For now, it seems working with these scopes.
+#### Note
 
-- channels
-  - history
-  - read
-  - write
-- chat:write:user
-- files
-  - read
-  - write:user
-- groups
-  - history
-  - read
-  - write
-- im
-  - history
-  - read
-  - write
-- links
-  - read
-  - write
-- mpim
-  - history
-  - read
-  - write
-- reactions
-  - read
-  - write
-- remminders
-  - read
-  - write
-- search
-  - read
-- team
-  - read
-- unread
-  - read
-- users.profile
-  - read
-- users
-  - read
+emacs-slack use websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start).
+this request needs "client" scope when authorize and Slack does not yet have "client" scope in new OAuth scope.
+make sure `slack-oauth2-auth` requesting with "client" scope and prevent token migration.
+![token_migration](https://github.com/yuya373/emacs-slack/wiki/images/token_migration.png)
 
 
 ## how to use
