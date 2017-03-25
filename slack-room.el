@@ -174,17 +174,18 @@
                 room-name)
       room-name)))
 
+(defmethod slack-room-label-prefix ((_room slack-room))
+  "  ")
+
 (defmethod slack-room-label ((room slack-room))
   (format "%s%s%s"
-          (if (object-of-class-p room 'slack-im)
-              (slack-im-user-presence room)
-            "  ")
           (with-slots (unread-count-display) room
             (if (< 0 unread-count-display)
                 (concat " ("
                         (number-to-string unread-count-display)
                         ")")
               ""))))
+          (slack-room-label-prefix room)
           (slack-room-display-name room)
 
 (defmacro slack-room-names (rooms &optional filter)

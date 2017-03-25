@@ -172,5 +172,8 @@
         :success #'on-success
         :sync nil)))))
 
+(defmethod slack-room-label-prefix ((room slack-im))
+  (slack-im-user-presence room))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here
