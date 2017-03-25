@@ -97,6 +97,10 @@ never means never show typing indicator."
   "If nil, only display channel, im, group name."
   :group 'slack)
 
+(defcustom slack-completing-read-function #'completing-read
+  "Require same argument with `completing-read'."
+  :group 'slack)
+
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")

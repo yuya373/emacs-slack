@@ -198,7 +198,7 @@
          (users (slack-user-names team)))
     (cl-labels
         ((select-users (users acc)
-                       (let ((selected (completing-read "Select User: "
+                       (let ((selected (funcall slack-completing-read-function "Select User: "
                                                         users nil t)))
                          (if (< 0 (length selected))
                              (select-users users

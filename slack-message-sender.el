@@ -123,7 +123,7 @@
 
 (defun slack-message-read-room-list (prompt choices)
   (let ((completion-ignore-case t))
-    (completing-read (format "%s" prompt)
+    (funcall slack-completing-read-function (format "%s" prompt)
                      choices nil t nil nil choices)))
 
 (defun slack-message-room-list (team)

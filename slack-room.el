@@ -103,7 +103,7 @@
   "Bind candidates from selected."
   (let ((key (cl-gensym)))
     `(let* ((,key (let ((completion-ignore-case t))
-                    (completing-read (format "%s" ,prompt)
+                    (funcall slack-completing-read-function (format "%s" ,prompt)
                                      ,alist nil t ,initial)))
             (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
        ,@body

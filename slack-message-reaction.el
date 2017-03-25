@@ -88,7 +88,7 @@
 (defun slack-message-reaction-input ()
   (slack-message-reaction-load-emojify-comp-list)
   (let ((reaction (if (bound-and-true-p slack-emojify-comp-list)
-                      (completing-read "Select Emoji: " slack-emojify-comp-list)
+                      (funcall slack-completing-read-function "Select Emoji: " slack-emojify-comp-list)
                     (read-from-minibuffer "Emoji: "))))
     (if (and (string-prefix-p ":" reaction)
              (string-suffix-p ":" reaction))
