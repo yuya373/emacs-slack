@@ -70,7 +70,7 @@
 (defmethod slack-room-buffer-name ((room slack-room))
   (concat "*Slack*"
           " : "
-          (slack-room-name-with-team-name room)))
+          (slack-room-display-name room)))
 
 (defmacro slack-room-with-buffer (room team &rest body)
   (declare (indent 2) (debug t))
@@ -163,23 +163,33 @@
             (setq message (slack-room-find-message room (oref message broadcast-thread-ts)))))
       (and message (oref message thread)))))
 
-(defmethod slack-room-name-with-team-name ((room slack-room))
-  (with-slots (team-id name) room
-    (let ((team (slack-team-find team-id)))
-      (format "%s - %s" (oref team name) name))))
+(defmethod slack-room-team ((room slack-room))
+  (slack-team-find (oref room team-id)))
+
+(defmethod slack-room-display-name ((room slack-room))
+  (let ((room-name (slack-room-name room)))
+    (if slack-display-team-name
+        (format "%s - %s"
+                (oref (slack-room-team room) name)
+                room-name)
+      room-name)))
+
+(defmethod slack-room-label-prefix ((_room slack-room))
+  "  ")
+
+(defmethod slack-room-unread-count-str ((room slack-room))
+  (with-slots (unread-count-display) room
+    (if (< 0 unread-count-display)
+        (concat " ("
+                (number-to-string unread-count-display)
+                ")")
+      "")))
 
 (defmethod slack-room-label ((room slack-room))
   (format "%s%s%s"
-          (if (object-of-class-p room 'slack-im)
-              (slack-im-user-presence room)
-            "  ")
-          (slack-room-name-with-team-name room)
-          (with-slots (unread-count-display) room
-            (if (< 0 unread-count-display)
-                (concat " ("
-                        (number-to-string unread-count-display)
-                        ")")
-              ""))))
+          (slack-room-label-prefix room)
+          (slack-room-display-name room)
+          (slack-room-unread-count-str room)))
 
 (defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
@@ -346,7 +356,7 @@
   (cl-labels ((buffer-name (room)
                            (concat "*Slack - Pinned Items*"
                                    " : "
-                                   (slack-room-name-with-team-name room))))
+                                   (slack-room-display-name room))))
     (let* ((messages (mapcar #'(lambda (m) (slack-message-create m team :room room))
                              (mapcar #'(lambda (i)
                                          (plist-get i :message))
@@ -453,7 +463,7 @@
         (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
                                      channels)))
       (message "Channel: %s deleted"
-               (slack-room-name-with-team-name room))))))
+               (slack-room-display-name room))))))
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request

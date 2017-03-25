@@ -46,12 +46,6 @@
 (defmethod slack-room-open-p ((room slack-im))
   t)
 
-(defmethod slack-room-name-with-team-name ((room slack-im))
-  (with-slots (team-id user) room
-    (let* ((team (slack-team-find team-id))
-           (user-name (slack-user-name user team)))
-      (format "%s - %s" (oref team name) user-name))))
-
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots ((user-id user) team-id) room
     (let* ((team (slack-team-find team-id))
@@ -76,7 +70,7 @@
 (defmethod slack-room-buffer-name ((room slack-im))
   (concat slack-im-buffer-name
           " : "
-          (slack-room-name-with-team-name room)))
+          (slack-room-display-name room)))
 
 (defun slack-im-select ()
   (interactive)
@@ -177,6 +171,9 @@
         :params (list (cons "user" (oref selected user)))
         :success #'on-success
         :sync nil)))))
+
+(defmethod slack-room-label-prefix ((room slack-im))
+  (slack-im-user-presence room))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

@@ -93,6 +93,10 @@ never means never show typing indicator."
                  (const buffer)
                  (const never)))
 
+(defcustom slack-display-team-name t
+  "If nil, only display channel, im, group name."
+  :group 'slack)
+
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")

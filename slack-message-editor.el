@@ -68,7 +68,7 @@
 (defun slack-message-share--send (team room ts msg)
   (let* ((slack-room-list (or (and (object-of-class-p room 'slack-channel)
                                    (slack-message-room-list team))
-                              (list (cons (slack-room-name-with-team-name room)
+                              (list (cons (slack-room-display-name room)
                                           room))))
          (share-channel-id (oref (slack-select-from-list
                                   (slack-room-list

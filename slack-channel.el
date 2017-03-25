@@ -50,7 +50,7 @@
 (defmethod slack-room-buffer-name ((room slack-channel))
   (concat slack-channel-buffer-name
           " : "
-          (slack-room-name-with-team-name room)))
+          (slack-room-display-name room)))
 
 (defun slack-channel-names (team &optional filter)
   (with-slots (channels) team
@@ -167,7 +167,7 @@
                (let ((channel (slack-room-create c-data team 'slack-channel)))
                  (with-slots (channels) team (push channel channels))
                  (message "Channel: %s created"
-                          (slack-room-name-with-team-name channel))))))))
+                          (slack-room-display-name channel))))))))
     (slack-channel-fetch-info id team #'on-create-from-info)))
 
 (defun slack-channel-fetch-info (id team success)
