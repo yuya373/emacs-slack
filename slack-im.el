@@ -46,12 +46,6 @@
 (defmethod slack-room-open-p ((room slack-im))
   t)
 
-(defmethod slack-room-name-with-team-name ((room slack-im))
-  (with-slots (team-id user) room
-    (let* ((team (slack-team-find team-id))
-           (user-name (slack-user-name user team)))
-      (format "%s - %s" (oref team name) user-name))))
-
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots ((user-id user) team-id) room
     (let* ((team (slack-team-find team-id))

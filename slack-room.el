@@ -163,23 +163,29 @@
             (setq message (slack-room-find-message room (oref message broadcast-thread-ts)))))
       (and message (oref message thread)))))
 
-(defmethod slack-room-name-with-team-name ((room slack-room))
-  (with-slots (team-id name) room
-    (let ((team (slack-team-find team-id)))
-      (format "%s - %s" (oref team name) name))))
+(defmethod slack-room-team ((room slack-room))
+  (slack-team-find (oref room team-id)))
+
+(defmethod slack-room-display-name ((room slack-room))
+  (let ((room-name (slack-room-name room)))
+    (if slack-display-team-name
+        (format "%s - %s"
+                (oref (slack-room-team room) name)
+                room-name)
+      room-name)))
 
 (defmethod slack-room-label ((room slack-room))
   (format "%s%s%s"
           (if (object-of-class-p room 'slack-im)
               (slack-im-user-presence room)
             "  ")
-          (slack-room-name-with-team-name room)
           (with-slots (unread-count-display) room
             (if (< 0 unread-count-display)
                 (concat " ("
                         (number-to-string unread-count-display)
                         ")")
               ""))))
+          (slack-room-display-name room)
 
 (defmacro slack-room-names (rooms &optional filter)
   `(cl-labels
