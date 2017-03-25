@@ -244,7 +244,7 @@
                        (slack-request-handle-error
                         (data "slack-file-upload")))
        (select-channels (channels acc)
-                        (let ((selected (completing-read "Select Channel: "
+                        (let ((selected (funcall slack-completing-read-function "Select Channel: "
                                                          channels nil t)))
                           (if (< 0 (length selected))
                               (select-channels channels (push selected acc))
@@ -306,7 +306,7 @@
                                           (oref f name))
                                          f))
                                your-files))
-           (selected (completing-read "Select File: " candidates))
+           (selected (funcall slack-completing-read-function "Select File: " candidates))
            (deleting-file (cdr (cl-assoc selected candidates :test #'string=))))
       (slack-request
        slack-file-delete-url

@@ -149,7 +149,7 @@ you can change current-team with `slack-change-current-team'"
 (cl-defun slack-team-select (&optional no-default)
   (cl-labels ((select-team ()
                            (slack-team-find-by-name
-                            (completing-read
+                            (funcall slack-completing-read-function
                              "Select Team: "
                              (mapcar #'(lambda (team) (oref team name))
                                      (slack-team-connected-list))))))
@@ -178,7 +178,7 @@ you can change current-team with `slack-change-current-team'"
 (defun slack-change-current-team ()
   (interactive)
   (let ((team (slack-team-find-by-name
-               (completing-read
+               (funcall slack-completing-read-function
                 "Select Team: "
                 (mapcar #'(lambda (team) (oref team name))
                         slack-teams)))))
