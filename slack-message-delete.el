@@ -91,7 +91,7 @@
     (when message
       (alert "message deleted"
              :title (format "\\[%s] from %s"
-                            (slack-room-name-with-team-name room)
+                            (slack-room-display-name room)
                             (slack-message-sender-name message team))
              :category 'slack))))
 

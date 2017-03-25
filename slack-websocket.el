@@ -331,14 +331,14 @@
          (room (slack-room-find id team)))
     (oset room is-archived t)
     (message "Channel: %s is archived"
-             (slack-room-name-with-team-name room))))
+             (slack-room-display-name room))))
 
 (defun slack-ws-handle-room-unarchive (payload team)
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id team)))
     (oset room is-archived nil)
     (message "Channel: %s is unarchived"
-             (slack-room-name-with-team-name room))))
+             (slack-room-display-name room))))
 
 (defun slack-ws-handle-channel-deleted (payload team)
   (let ((id (plist-get payload :channel)))
@@ -368,13 +368,13 @@
               (setq channels
                     (replace-room channel channels)))
             (message "Joined channel %s"
-                     (slack-room-name-with-team-name channel)))
+                     (slack-room-display-name channel)))
         (let ((group (slack-room-create c team 'slack-group)))
           (with-slots (groups) team
             (setq groups
                   (replace-room group groups)))
           (message "Joined group %s"
-                   (slack-room-name-with-team-name group)))))))
+                   (slack-room-display-name group)))))))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))

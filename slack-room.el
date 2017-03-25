@@ -70,7 +70,7 @@
 (defmethod slack-room-buffer-name ((room slack-room))
   (concat "*Slack*"
           " : "
-          (slack-room-name-with-team-name room)))
+          (slack-room-display-name room)))
 
 (defmacro slack-room-with-buffer (room team &rest body)
   (declare (indent 2) (debug t))
@@ -346,7 +346,7 @@
   (cl-labels ((buffer-name (room)
                            (concat "*Slack - Pinned Items*"
                                    " : "
-                                   (slack-room-name-with-team-name room))))
+                                   (slack-room-display-name room))))
     (let* ((messages (mapcar #'(lambda (m) (slack-message-create m team :room room))
                              (mapcar #'(lambda (i)
                                          (plist-get i :message))
@@ -453,7 +453,7 @@
         (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
                                      channels)))
       (message "Channel: %s deleted"
-               (slack-room-name-with-team-name room))))))
+               (slack-room-display-name room))))))
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request

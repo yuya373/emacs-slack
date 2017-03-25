@@ -68,7 +68,7 @@
 (defmethod slack-room-buffer-name ((room slack-group))
   (concat slack-group-buffer-name
           " : "
-          (slack-room-name-with-team-name room)))
+          (slack-room-display-name room)))
 
 (defun slack-group-select ()
   (interactive)
@@ -138,7 +138,7 @@
                                      (slack-room-equal-p group g))
                                  groups)))
            (message "Left Group: %s"
-                    (slack-room-name-with-team-name group)))))
+                    (slack-room-display-name group)))))
       (slack-room-request-with-id slack-group-leave-url
                                   (oref group id)
                                   team
