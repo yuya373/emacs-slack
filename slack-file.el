@@ -223,9 +223,7 @@
                                collect (slack-file-create e))))
            (if oldest
                (slack-room-set-prev-messages room files)
-             (slack-room-update-last-read room
-                                          (make-instance 'slack-message
-                                                         :ts "0"))
+             (slack-room-reset-last-read room)
              (slack-room-set-messages room files)))
          (if after-success
              (funcall after-success)))))

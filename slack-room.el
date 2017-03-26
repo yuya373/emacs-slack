@@ -209,9 +209,12 @@
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
 
+(defmethod slack-room-update-last-read-p ((room slack-room) ts)
+  (not (string> (oref room last-read) ts)))
+
 (defmethod slack-room-update-last-read ((room slack-room) msg)
-  (with-slots (ts) msg
-    (oset room last-read ts)))
+  (if (slack-room-update-last-read-p room (oref msg ts))
+      (oset room last-read (oref msg ts))))
 
 (defmethod slack-room-latest-messages ((room slack-room) messages)
   (with-slots (last-read) room
@@ -316,19 +319,20 @@
                   (slack-room-sort-messages (copy-sequence messages)))))
 
 (defmethod slack-room-update-mark ((room slack-room) team msg)
-  (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                              (slack-request-handle-error
-                               (data "slack-room-update-mark"))))
-    (with-slots (ts) msg
-      (with-slots (id) room
-        (slack-request
-         (slack-room-update-mark-url room)
-         team
-         :type "POST"
-         :params (list (cons "channel"  id)
-                       (cons "ts"  ts))
-         :success #'on-update-mark
-         :sync nil)))))
+  (if (slack-room-update-last-read-p room (oref msg ts))
+      (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                                  (slack-request-handle-error
+                                   (data "slack-room-update-mark"))))
+        (with-slots (ts) msg
+          (with-slots (id) room
+            (slack-request
+             (slack-room-update-mark-url room)
+             team
+             :type "POST"
+             :params (list (cons "channel"  id)
+                           (cons "ts"  ts))
+             :success #'on-update-mark
+             :sync nil))))))
 
 (defun slack-room-pins-list ()
   (interactive)
@@ -474,7 +478,7 @@
    :sync nil))
 
 (defmethod slack-room-reset-last-read ((room slack-room))
-  (slack-room-update-last-read room (make-instance 'slack-message :ts "0")))
+  (oset room last-read "0"))
 
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))

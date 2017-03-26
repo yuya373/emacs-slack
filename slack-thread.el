@@ -185,7 +185,7 @@
     (oset thread unread-count 0)
     (let* ((msg (car (last messages)))
            (room (and msg (slack-room-find (oref msg channel) team))))
-      (when (and msg room (string< (oref room last-read) (oref msg ts)))
+      (when (and msg room)
         (slack-room-update-last-read room msg)
         (slack-room-update-mark room team msg))
       (when (and msg room (string< (oref thread last-read) (oref msg ts)))
