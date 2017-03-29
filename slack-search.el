@@ -271,7 +271,7 @@
         (oset room last-channel-id ""))
     (with-slots (ts info) msg
       (with-slots (channel-id) info
-        (when (string< (oref room last-read) ts)
+        (when (slack-room-update-last-read-p room ts)
           (oset room last-read ts)
           (oset room last-channel-id channel-id))))))
 
