@@ -271,8 +271,9 @@
         (oset room last-channel-id ""))
     (with-slots (ts info) msg
       (with-slots (channel-id) info
-        (oset room last-read ts)
-        (oset room last-channel-id channel-id)))))
+        (when (slack-room-update-last-read-p room ts)
+          (oset room last-read ts)
+          (oset room last-channel-id channel-id))))))
 
 (defmethod slack-search-get-index ((_search-result slack-file-search-result)
                                    messages last-read &optional _last-chanel-id)
@@ -374,11 +375,7 @@
                  (plist-get (plist-get matches :paging) :page))
            (if oldest
                (slack-room-set-prev-messages room messages)
-             (let ((init-msg (make-instance 'slack-search-message
-                                            :ts "0" :info
-                                            (make-instance 'slack-search-message-info
-                                                           :channel-id ""))))
-               (slack-room-update-last-read room init-msg))
+             (slack-room-reset-last-read room)
              (slack-room-set-messages room messages))
            (if after-success
                (funcall after-success))))))
