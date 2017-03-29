@@ -263,7 +263,8 @@
            (buf (find-file-noselect
                  (car (find-file-read-args
                        "Select File: "
-                       (confirm-nonexistent-file-or-buffer)))))
+                       (confirm-nonexistent-file-or-buffer)))
+                 t t))
            (filename (read-from-minibuffer "Filename: "
                                            (file-name-nondirectory
                                             (buffer-file-name buf))))
