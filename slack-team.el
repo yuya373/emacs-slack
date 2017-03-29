@@ -146,13 +146,15 @@ you can change current-team with `slack-change-current-team'"
       (cl-find-if #'(lambda (team) (string= name (oref team name)))
                   slack-teams)))
 
-(cl-defun slack-team-select (&optional no-default)
+(cl-defun slack-team-select (&optional no-default include-not-connected)
   (cl-labels ((select-team ()
                            (slack-team-find-by-name
                             (funcall slack-completing-read-function
-                             "Select Team: "
-                             (mapcar #'(lambda (team) (oref team name))
-                                     (slack-team-connected-list))))))
+                                     "Select Team: "
+                                     (mapcar #'(lambda (team) (oref team name))
+                                             (if include-not-connected
+                                                 slack-teams
+                                               (slack-team-connected-list)))))))
     (let ((team (if (and slack-prefer-current-team
                          slack-current-team
                          (not no-default))
@@ -194,7 +196,7 @@ you can change current-team with `slack-change-current-team'"
 
 (defun slack-team-delete ()
   (interactive)
-  (let ((selected (slack-team-select t)))
+  (let ((selected (slack-team-select t t)))
     (if (yes-or-no-p (format "Delete %s from `slack-teams'?"
                              (oref selected name)))
         (progn
@@ -212,6 +214,10 @@ you can change current-team with `slack-change-current-team'"
   (if (not (slot-boundp team 'ping-check-timers))
       (slack-team-init-ping-check-timers team))
   (oref team ping-check-timers))
+
+(defmethod slack-team-need-token-p ((team slack-team))
+  (with-slots (token) team
+    (or (not token) (< (length token) 1))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
