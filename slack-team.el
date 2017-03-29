@@ -213,5 +213,8 @@ you can change current-team with `slack-change-current-team'"
       (slack-team-init-ping-check-timers team))
   (oref team ping-check-timers))
 
+(defmethod slack-team-need-token-p ((team slack-team))
+  (< (length (oref team token)) 1))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here

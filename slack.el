@@ -198,10 +198,10 @@ never means never show typing indicator."
   (interactive)
   (cl-labels ((start
                (team)
-               (with-slots (ws-conn token) team
+               (with-slots (ws-conn) team
                  (if ws-conn
                      (slack-ws-close team))
-                 (unless token
+                 (when (slack-team-need-token-p team)
                    (slack-request-token team)))
                (slack-authorize team)))
     (if team
