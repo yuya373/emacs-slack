@@ -55,6 +55,11 @@
   :type 'function
   :group 'slack)
 
+(defcustom slack-alert-icon nil
+  "String passed as the :icon argument to `alert'."
+  :type '(choice file (const :tag "Stock alert icon" nil))
+  :group 'slack)
+
 (defun slack-message-notify (message room team)
   (if slack-message-custom-notifier
       (funcall slack-message-custom-notifier message room team)
@@ -79,6 +84,7 @@
                      (eq (aref text 0) ?\()))
             (setq text (concat "\\" text)))
         (alert (if (slack-im-p room) text (format "%s: %s" user-name text))
+               :icon slack-alert-icon
                :title (if (slack-im-p room)
                           (funcall slack-message-im-notification-title-format-function
                                    team-name room-name (slack-thread-messagep message))

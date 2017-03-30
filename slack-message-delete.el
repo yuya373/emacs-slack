@@ -90,6 +90,7 @@
   (with-slots (message team room) this
     (when message
       (alert "message deleted"
+             :icon slack-alert-icon
              :title (format "\\[%s] from %s"
                             (slack-room-display-name room)
                             (slack-message-sender-name message team))
