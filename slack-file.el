@@ -242,10 +242,14 @@
                        (slack-request-handle-error
                         (data "slack-file-upload")))
        (select-channels (channels acc)
-                        (let ((selected (funcall slack-completing-read-function "Select Channel: "
-                                                         channels nil t)))
+                        (let ((selected (apply slack-completing-read-function
+                                               (if acc
+                                                   (list "Select another channel (or leave empty): "
+                                                         (cons "" channels) nil t)
+                                                 (list "Select channel: " channels nil t)))))
                           (if (< 0 (length selected))
-                              (select-channels channels (push selected acc))
+                              (select-channels (remove-if (lambda (x) (equal selected (car-safe x))) channels)
+                                               (cons selected acc))
                             acc)))
        (channel-id (selected channels)
                    (oref (cdr (cl-assoc selected channels :test #'string=))
