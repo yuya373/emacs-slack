@@ -111,7 +111,7 @@
       (when thread
         (slack-thread-delete-message thread message)
         (slack-buffer-delete-message
-         (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))
+         (slack-thread-buf-name room (oref thread thread-ts))
          (oref message ts))
         (slack-message-update parent team t)))))
 

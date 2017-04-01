@@ -252,10 +252,12 @@
                                  (slack-team-find slack-current-team-id))))
       (slack-room-reset-last-read room))))
 
-(defun slack-buffer-delete-message (buf ts)
-  (and buf (with-current-buffer buf
-             (lui-delete (lambda () (equal (get-text-property (point) 'ts)
-                                           ts))))))
+(defun slack-buffer-delete-message (buf-name ts)
+  (let ((buf (get-buffer buf-name)))
+    (and buf
+         (with-current-buffer buf
+           (lui-delete (lambda () (equal (get-text-property (point) 'ts)
+                                         ts)))))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
