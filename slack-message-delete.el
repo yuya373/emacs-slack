@@ -75,16 +75,19 @@
 (defun slack-message-deleted (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (message (slack-room-find-message room (plist-get payload :deleted_ts)))
-         (class (or (and (slack-message-thread-messagep message)
-                         '_slack-thread-message-delete)
-                    '_slack-message-delete))
-         (delete (make-instance class
-                                :team team
-                                :room room
-                                :message message)))
+         (class (and message
+                     (or (and (slack-message-thread-messagep message)
+                              '_slack-thread-message-delete)
+                         '_slack-message-delete)))
+         (delete (and class
+                      (make-instance class
+                                     :team team
+                                     :room room
+                                     :message message))))
 
-    (slack-message-delete--buffer delete)
-    (slack-message-delete--notify delete)))
+    (when delete
+      (slack-message-delete--buffer delete)
+      (slack-message-delete--notify delete))))
 
 (defmethod slack-message-delete--notify ((this _slack-message-delete))
   (with-slots (message team room) this
