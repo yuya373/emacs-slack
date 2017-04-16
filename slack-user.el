@@ -49,6 +49,14 @@
     (if user
         (plist-get user :name))))
 
+(defun slack-user-status (id team)
+  (let* ((user (slack-user-find id team))
+         (profile (and user (plist-get user :profile)))
+         (emoji (and profile (plist-get profile :status_emoji)))
+         (text (and profile (plist-get profile :status_text))))
+    (when (and emoji text)
+      (format "%s %s" emoji text))))
+
 (defun slack-user-names (team)
   (with-slots (users) team
     (mapcar (lambda (u) (cons (plist-get u :name) u))
