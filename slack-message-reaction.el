@@ -85,11 +85,14 @@
      (list "Select Reaction: ")
      selected)))
 
-(defun slack-message-reaction-input ()
+(defun slack-select-emoji ()
   (slack-message-reaction-load-emojify-comp-list)
-  (let ((reaction (if (bound-and-true-p slack-emojify-comp-list)
-                      (funcall slack-completing-read-function "Select Emoji: " slack-emojify-comp-list)
-                    (read-from-minibuffer "Emoji: "))))
+  (if (bound-and-true-p slack-emojify-comp-list)
+      (funcall slack-completing-read-function "Select Emoji: " slack-emojify-comp-list)
+    (read-from-minibuffer "Emoji: ")))
+
+(defun slack-message-reaction-input ()
+  (let ((reaction (slack-select-emoji)))
     (if (and (string-prefix-p ":" reaction)
              (string-suffix-p ":" reaction))
         (substring reaction 1 -1)
