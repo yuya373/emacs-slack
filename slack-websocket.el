@@ -160,7 +160,9 @@
        ((string= type "team_join")
         (slack-ws-handle-team-join decoded-payload team))
        ((string= type "user_typing")
-        (slack-ws-handle-user-typing decoded-payload team))))))
+        (slack-ws-handle-user-typing decoded-payload team))
+       ((string= type "user_change")
+        (slack-ws-handle-user-change decoded-payload team))))))
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
@@ -547,6 +549,16 @@
          (thread (and message (oref message thread))))
     (when thread
       (slack-thread-marked thread thread-data))))
+
+(defun slack-ws-handle-user-change (payload team)
+  (let* ((user (plist-get payload :user))
+         (id (plist-get user :id)))
+    (with-slots (users) team
+      (setq users
+            (cons user
+                  (cl-remove-if #'(lambda (u)
+                                    (string= id (plist-get u :id)))
+                                users))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
