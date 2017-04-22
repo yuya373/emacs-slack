@@ -118,11 +118,14 @@
   (add-to-list 'global-mode-string '(:eval slack-modeline) t))
 
 (defun slack-update-modeline ()
-  (setq slack-modeline
-        (funcall slack-modeline-formatter
-                 (mapcar #'(lambda (e) (cons (or (oref e modeline-name) (slack-team-name e))
-                                             (slack-team-get-unread-messages e)))
-                         (cl-remove-if-not #'slack-team-modeline-enabledp slack-teams)))))
+  (let ((teams (cl-remove-if-not #'slack-team-modeline-enabledp slack-teams)))
+    (when (< 0 (length teams))
+      (setq slack-modeline
+            (funcall slack-modeline-formatter
+                     (mapcar #'(lambda (e) (cons (or (oref e modeline-name) (slack-team-name e))
+                                                 (slack-team-get-unread-messages e)))
+                             teams)))
+      (force-mode-line-update))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
