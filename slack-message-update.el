@@ -77,7 +77,8 @@
                                  :notify (not no-notify))))
       (slack-message-update--room update)
       (slack-message-update--buffer update)
-      (slack-message-update--notify update))))
+      (slack-message-update--notify update)
+      (slack-update-modeline))))
 
 (provide 'slack-message-update)
 ;;; slack-message-update.el ends here
