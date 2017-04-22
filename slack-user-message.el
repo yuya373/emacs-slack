@@ -18,10 +18,13 @@
 (defmethod slack-message-header ((m slack-user-message) team)
   (with-slots (ts edited-at deleted-at) m
     (let* ((name (slack-message-sender-name m team))
+           (status (slack-user-status (slack-message-sender-id m) team))
            (time (slack-message-time-to-string ts))
            (edited-at (slack-message-time-to-string edited-at))
            (deleted-at (slack-message-time-to-string deleted-at))
-           (header (format "%s" name)))
+           (header (or (and status (< 0 (length status))
+                            (format "%s %s" name status))
+                       (format "%s" name))))
       (if deleted-at
           (format "%s deleted_at: %s" header deleted-at)
         (if edited-at

@@ -27,6 +27,8 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
+
 (defun slack-user-find (id team)
   (with-slots (users) team
     (cl-find-if (lambda (user)
@@ -49,6 +51,14 @@
     (if user
         (plist-get user :name))))
 
+(defun slack-user-status (id team)
+  (let* ((user (slack-user-find id team))
+         (profile (and user (plist-get user :profile)))
+         (emoji (and profile (plist-get profile :status_emoji)))
+         (text (and profile (plist-get profile :status_text))))
+    (when (and emoji text)
+      (format "%s %s" emoji text))))
+
 (defun slack-user-names (team)
   (with-slots (users) team
     (mapcar (lambda (u) (cons (plist-get u :name) u))
@@ -58,6 +68,28 @@
   (if (string= (plist-get user :presence) "active")
       "* "
     "  "))
+
+(defun slack-user-set-status ()
+  (interactive)
+  (let ((team (slack-team-select))
+        (emoji (slack-select-emoji))
+        (text (read-from-minibuffer "Text: ")))
+    (slack-user-set-status-request  team emoji text)))
+
+(defun slack-user-set-status-request (team emoji text)
+  (cl-labels ((on-success
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-user-set-status-request"))))
+    (slack-request
+     slack-user-profile-set-url
+     team
+     :type "POST"
+     :data (list (cons "id" (oref team self-id))
+                 (cons "profile"
+                       (json-encode (list (cons "status_text" text)
+                                          (cons "status_emoji" emoji)))))
+     :success #'on-success)))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

@@ -56,6 +56,21 @@
   (with-slots (user team-id) room
     (slack-user-name user (slack-team-find team-id))))
 
+(defmethod slack-room-display-name ((room slack-im))
+  "To Display emoji in minibuffer configure `emojify-inhibit-in-buffer-functions'"
+  (let* ((team (slack-team-find (oref room team-id)))
+         (status (slack-user-status (oref room user) team))
+         (room-name (or (and status
+                             (format "%s %s"
+                                     (slack-room-name room)
+                                     status))
+                        (slack-room-name room))))
+    (if slack-display-team-name
+        (format "%s - %s"
+                (oref (slack-room-team room) name)
+                room-name)
+      room-name)))
+
 (defun slack-im-user-name (im team)
   (with-slots (user) im
     (slack-user-name user team)))

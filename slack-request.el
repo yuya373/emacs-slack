@@ -49,6 +49,7 @@
                              (success)
                              (error nil)
                              (params nil)
+                             (data nil)
                              (parser #'slack-parse-to-plist)
                              (sync t)
                              (files nil)
@@ -60,6 +61,7 @@
    :sync sync
    :params (cons (cons "token" (oref team token))
                  params)
+   :data data
    :files files
    :headers headers
    :parser parser
