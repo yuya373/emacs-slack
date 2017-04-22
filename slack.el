@@ -157,6 +157,7 @@ never means never show typing indicator."
       (oset team bots (append (plist-get data :bots) nil))
       (oset team ws-url (plist-get data :url))
       (oset team connected t)
+      (slack-update-modeline)
       team)))
 
 (cl-defun slack-on-authorize (data team)
