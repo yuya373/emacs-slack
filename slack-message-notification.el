@@ -60,6 +60,10 @@
   :type '(choice file (const :tag "Stock alert icon" nil))
   :group 'slack)
 
+(defcustom slack-modeline-formatter #'slack-default-modeline-formatter
+  "Format modeline with Arg '((team-name . unread-count))."
+  :group 'slack)
+
 (defun slack-message-notify (message room team)
   (if slack-message-custom-notifier
       (funcall slack-message-custom-notifier message room team)
@@ -100,6 +104,13 @@
       (with-slots (self-id) team
         (slack-message-sender-equalp m self-id))
     (slack-message-sender-equalp m (oref team self-id))))
+
+(defun slack-default-modeline-formatter (alist)
+  "Arg is alist of '((team-name . unread-count))"
+  (if (= 1 (length alist))
+      (format "[ %s: %s ]" (caar alist) (cdar alist))
+    (mapconcat #'(lambda (e) (format "[ %s: %s ]" (car e) (cdr e)))
+               alist " ")))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
