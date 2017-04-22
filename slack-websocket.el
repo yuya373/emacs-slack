@@ -507,7 +507,8 @@
         (new-unread-count-display (plist-get payload :unread_count_display)))
     (when room
       (with-slots (unread-count-display) room
-        (setq unread-count-display new-unread-count-display)))))
+        (setq unread-count-display new-unread-count-display))
+      (slack-update-modeline))))
 
 (defun slack-ws-handle-file-comment-added (payload team)
   (let* ((file-id (plist-get payload :file_id))
