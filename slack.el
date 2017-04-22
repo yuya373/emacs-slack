@@ -210,7 +210,9 @@ never means never show typing indicator."
       (if slack-teams
           (cl-loop for team in slack-teams
                    do (start team))
-        (slack-start (call-interactively #'slack-register-team))))))
+        (slack-start (call-interactively #'slack-register-team))))
+    (slack-enable-modeline)))
+
 
 (provide 'slack)
 ;;; slack.el ends here
