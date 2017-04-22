@@ -33,6 +33,10 @@
 use `slack-change-current-team' to change `slack-current-team'"
   :group 'slack)
 
+(defcustom slack-modeline-count-only-subscribed-channel t
+  "Count unread only subscribed channel."
+  :group 'slack)
+
 (defclass slack-team-threads ()
   ((initializedp :initform nil)
    (has-more :initform t)
@@ -220,8 +224,20 @@ you can change current-team with `slack-change-current-team'"
   (with-slots (token) team
     (or (not token) (< (length token) 1))))
 
+(defun slack-team-get-unread-messages (team)
+  (cl-labels
+      ((count-unread (rooms)
+                     (cl-reduce #'(lambda (a e) (+ a (oref e unread-count-display)))
+                                rooms :initial-value 0)))
+    (with-slots (ims channels groups) team
+      (let ((rooms (append ims channels groups)))
+        (+ (count-unread (if slack-modeline-count-only-subscribed-channel
+                             (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
+                                               rooms)
+                           rooms)))))))
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here
