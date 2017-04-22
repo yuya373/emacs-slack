@@ -60,6 +60,8 @@
   :type '(choice file (const :tag "Stock alert icon" nil))
   :group 'slack)
 
+(defvar slack-modeline nil)
+
 (defcustom slack-modeline-formatter #'slack-default-modeline-formatter
   "Format modeline with Arg '((team-name . unread-count))."
   :group 'slack)
@@ -111,6 +113,16 @@
       (format "[ %s: %s ]" (caar alist) (cdar alist))
     (mapconcat #'(lambda (e) (format "[ %s: %s ]" (car e) (cdr e)))
                alist " ")))
+
+(defun slack-enable-modeline ()
+  (add-to-list 'global-mode-string '(:eval slack-modeline) t))
+
+(defun slack-update-modeline ()
+  (setq slack-modeline
+        (funcall slack-modeline-formatter
+                 (mapcar #'(lambda (e) (cons (or (oref e modeline-name) (slack-team-name e))
+                                             (slack-team-get-unread-messages e)))
+                         (cl-remove-if-not #'slack-team-modeline-enabledp slack-teams)))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
