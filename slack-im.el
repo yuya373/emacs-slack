@@ -44,7 +44,7 @@
    (is-open :initarg :is_open :initform nil)))
 
 (defmethod slack-room-open-p ((room slack-im))
-  t)
+  (oref room is-open))
 
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots ((user-id user) team-id) room
