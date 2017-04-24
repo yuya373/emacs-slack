@@ -156,9 +156,9 @@
               (if (slack-buffer-in-current-frame buffer)
                   (slack-room-update-last-read room msg))
               (slack-buffer-insert msg team)))
-          (slack-room-inc-unread-count room)
           (and slack-buffer-create-on-notify
-               (slack-room-create-buffer-bg room team))))))
+               (slack-room-create-buffer-bg room team)))
+      (slack-room-inc-unread-count room))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
