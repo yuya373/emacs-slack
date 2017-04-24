@@ -257,9 +257,10 @@
 
 (defun slack-ws-handle-im-close (payload team)
   (let ((im (slack-room-find (plist-get payload :channel) team)))
-    (oset im is-open nil)
-    (message "Direct Message Channel with %s is Closed"
-             (slack-user-name (oref im user) team))))
+    (when im
+      (oset im is-open nil)
+      (message "Direct Message Channel with %s is Closed"
+               (slack-user-name (oref im user) team)))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
