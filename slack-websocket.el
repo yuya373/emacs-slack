@@ -45,7 +45,10 @@
              ws-url
              :on-message
              #'(lambda (websocket frame)
-                 (slack-ws-on-message websocket frame team))))
+                 (slack-ws-on-message websocket frame team))
+             :on-open
+             #'(lambda (_websocket) (oset team connected t))
+             ))
       (setq reconnect-count 0))))
 
 (defun slack-ws-close (&optional team)
