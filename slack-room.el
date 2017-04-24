@@ -109,15 +109,14 @@
        ,@body
        selected)))
 
+(defun slack-room-hiddenp (room)
+  (or (not (slack-room-member-p room))
+      (slack-room-archived-p room)
+      (not (slack-room-open-p room))))
+
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
-                 rooms
-                 #'(lambda (rs)
-                     (cl-remove-if #'(lambda (r)
-                                       (or (not (slack-room-member-p r))
-                                           (slack-room-archived-p r)
-                                           (not (slack-room-open-p r))))
-                                   rs)))))
+                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
     (slack-select-from-list
      (alist "Select Channel: ")
      (slack-room-create-buffer selected
