@@ -27,7 +27,7 @@
 (require 'json)
 (require 'request)
 
-(defcustom slack-request-timeout 5
+(defcustom slack-request-timeout 10
   "Request Timeout in seconds."
   :group 'slack)
 
