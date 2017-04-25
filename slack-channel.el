@@ -68,9 +68,9 @@
               for channels = (oref team channels)
               nconc channels))))
 
-(defun slack-channel-list-update ()
+(defun slack-channel-list-update (&optional team after-success)
   (interactive)
-  (let ((team (slack-team-select)))
+  (let ((team (or team (slack-team-select))))
     (cl-labels ((on-list-update
                  (&key data &allow-other-keys)
                  (slack-request-handle-error
@@ -79,6 +79,8 @@
                         (mapcar #'(lambda (d)
                                     (slack-room-create d team 'slack-channel))
                                 (plist-get data :channels)))
+                  (if after-success
+                      (funcall after-success team))
                   (message "Slack Channel List Updated"))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update

@@ -103,7 +103,7 @@
   (with-slots (users) team
     (cl-pushnew user users :test #'slack-user-equal-p)))
 
-(defun slack-im-update-room-list (users team)
+(defun slack-im-update-room-list (users team &optional after-success)
   (cl-labels ((on-update-room-list
                (&key data &allow-other-keys)
                (slack-request-handle-error
@@ -114,23 +114,34 @@
                       (mapcar #'(lambda (d)
                                   (slack-room-create d team 'slack-im))
                               (plist-get data :ims)))
+                (if after-success
+                    (funcall after-success team))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             team
                             :sync nil)))
 
-(defun slack-im-list-update ()
+(defun slack-im-list-update (&optional team after-success)
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-request
-     slack-user-list-url
-     team
-     :success (cl-function (lambda (&key data &allow-other-keys)
-                             (slack-request-handle-error (data "slack-im-list-update")
-                                                         (let ((users (plist-get data :members)))
-                                                           (slack-im-update-room-list users team)))))
-     :sync nil)))
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-list-update
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-im-list-update")
+           (let* ((members (plist-get data :members))
+                  (users (cl-remove-if #'(lambda (e) (eq t (plist-get e :is_bot)))
+                                       members)))
+             (slack-im-update-room-list users team after-success)
+             (oset team bots (cl-remove-if #'(lambda (e)
+                                               (eq :json-false (plist-get e :is_bot)))
+                                           members))))))
+      (slack-request
+       slack-user-list-url
+       team
+       :success #'on-list-update
+       :sync nil))))
 
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)

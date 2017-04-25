@@ -79,9 +79,9 @@
               for groups = (oref team groups)
               nconc groups))))
 
-(defun slack-group-list-update ()
+(defun slack-group-list-update (&optional team after-success)
   (interactive)
-  (let ((team (slack-team-select)))
+  (let ((team (or team (slack-team-select))))
     (cl-labels ((on-list-update
                  (&key data &allow-other-keys)
                  (slack-request-handle-error
@@ -91,6 +91,8 @@
                           (mapcar #'(lambda (g)
                                       (slack-room-create g team 'slack-group))
                                   (plist-get data :groups))))
+                  (if after-success
+                      (funcall after-success team))
                   (message "Slack Group List Updated"))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update
