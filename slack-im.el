@@ -41,7 +41,7 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)
-   (is-open :initarg :is_open :initform nil)))
+   (is-open :initarg :is_open :initform t)))
 
 (defmethod slack-room-open-p ((room slack-im))
   (oref room is-open))

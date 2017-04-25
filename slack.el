@@ -147,17 +147,41 @@ never means never show typing indicator."
       team)))
 
 (cl-defun slack-on-authorize (data team)
-  (slack-request-handle-error
-   (data "slack-authorize")
-   (message "Slack Authorization Finished - %s"
-            (oref team name))
-   (let ((team (slack-update-team data team)))
-     (with-slots (groups ims channels) team
-       (cl-loop for room in (append groups ims channels)
-                do (let ((bufname (slack-room-buffer-name room)))
-                     (when (get-buffer bufname)
-                       (kill-buffer bufname)))))
-     (slack-ws-open team))))
+  (cl-labels
+      ((update-room-info
+        (team rooms)
+        (mapc #'(lambda (room)
+                  (unless (slack-room-hiddenp room)
+                    (slack-room-info-request room team)))
+              rooms))
+       (delete-existing-buffer
+        (rooms)
+        (mapc #'(lambda (room)
+                  (let ((bufname (slack-room-buffer-name room)))
+                    (when (get-buffer bufname)
+                      (kill-buffer bufname))))
+              rooms)))
+    (slack-request-handle-error
+     (data "slack-authorize")
+     (message "Slack Authorization Finished - %s" (oref team name))
+     (let ((team (slack-update-team data team)))
+       (slack-channel-list-update
+        team #'(lambda (team)
+                 (let ((channels (oref team channels)))
+                   (update-room-info team channels)
+                   (delete-existing-buffer channels))))
+       (slack-group-list-update
+        team #'(lambda (team)
+                 (let ((groups (oref team groups)))
+                   (update-room-info team groups)
+                   (delete-existing-buffer groups))))
+       (slack-im-list-update
+        team #'(lambda (team)
+                 (let ((ims (oref team ims)))
+                   (update-room-info team ims)
+                   (delete-existing-buffer ims))))
+       (slack-update-modeline)
+       (slack-ws-open team)))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)
