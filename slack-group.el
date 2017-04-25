@@ -41,6 +41,7 @@
 (defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
 (defconst slack-mpim-close-url "https://slack.com/api/mpim.close")
 (defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
+(defconst slack-group-info-url "https://slack.com/api/groups.info")
 
 (defvar slack-buffer-function)
 
@@ -255,6 +256,21 @@
 
 (defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
+
+(defmethod slack-room-get-info-url ((_room slack-group))
+  slack-group-info-url)
+
+(defmethod slack-room-update-info ((room slack-group) data team)
+  (let ((new-room (slack-room-create (plist-get data :group)
+                                     team
+                                     'slack-group)))
+
+    (oset new-room messages (oref room messages))
+    (oset team groups
+          (cons new-room
+                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
+                              (oref team groups))))
+    ))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

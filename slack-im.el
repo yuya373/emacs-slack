@@ -190,5 +190,23 @@
 (defmethod slack-room-label-prefix ((room slack-im))
   (slack-im-user-presence room))
 
+(defmethod slack-room-get-info-url ((_room slack-im))
+  slack-im-open-url)
+
+(defmethod slack-room-update-info ((room slack-im) data team)
+  (let ((new-room (slack-room-create (plist-get data :channel)
+                                     team
+                                     'slack-im)))
+
+    (oset new-room messages (oref room messages))
+    (oset team ims
+          (cons new-room
+                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
+                              (oref team ims))))))
+
+(defmethod slack-room-info-request-params ((room slack-im))
+  (list (cons "user" (oref room user))
+        (cons "return_im" "true")))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

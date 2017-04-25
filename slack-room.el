@@ -515,6 +515,25 @@
       (unless (eq 0 (oref room unread-count-display))
         (slack-room-update-mark room team latest-message)))))
 
+(defmethod slack-room-info-request-params ((room slack-room))
+  (list (cons "channel" (oref room id))))
+
+(defmethod slack-room-info-request ((room slack-room) team)
+  (cl-labels
+      ((on-success
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-room-info-request"
+               #'(lambda (e)
+                   (if (not (string= e "user_disabled"))
+                       (message "Failed to request slack-room-info-request: %s" e))))
+         (slack-room-update-info room data team))))
+    (slack-request
+     (slack-room-get-info-url room)
+     team
+     :params (slack-room-info-request-params room)
+     :sync nil
+     :success #'on-success)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
