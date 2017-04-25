@@ -104,6 +104,7 @@ never means never show typing indicator."
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
+(defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
 
 (defvar slack-authorize-requests nil)
 (defun slack-authorize (team &optional error-callback)
@@ -112,7 +113,7 @@ never means never show typing indicator."
                                    do (request-abort r))))
     (setq slack-authorize-requests nil)
     (let ((request (slack-request
-                    slack-authorize-url
+                    slack-rtm-connect-url
                     team
                     :success (cl-function (lambda (&key data &allow-other-keys)
                                             (slack-on-authorize data team)))
@@ -139,24 +140,10 @@ never means never show typing indicator."
           (team-data (plist-get data :team)))
       (oset team id (plist-get team-data :id))
       (oset team name (plist-get team-data :name))
-      (oset team channels
-            (create-rooms (plist-get data :channels)
-                          team 'slack-channel))
-      (oset team groups
-            (append (create-rooms (plist-get data :groups)
-                                team 'slack-group)
-                  (create-open-rooms (plist-get data :mpims)
-                                     team 'slack-group)))
-      (oset team ims
-            (create-rooms (plist-get data :ims)
-                          team 'slack-im))
       (oset team self self)
       (oset team self-id (plist-get self :id))
       (oset team self-name (plist-get self :name))
-      (oset team users (append (plist-get data :users) nil))
-      (oset team bots (append (plist-get data :bots) nil))
       (oset team ws-url (plist-get data :url))
-      (slack-update-modeline)
       team)))
 
 (cl-defun slack-on-authorize (data team)
