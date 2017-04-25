@@ -67,18 +67,20 @@
       (slack-room-update-latest room message))))
 
 (defmethod slack-message-update ((m slack-message) team &optional replace no-notify)
-  (let ((class (or (and (slack-message-thread-messagep m) '_slack-thread-message-update)
+  (let ((room (slack-room-find (oref m channel) team))
+        (class (or (and (slack-message-thread-messagep m) '_slack-thread-message-update)
                    '_slack-message-update)))
-    (let ((update (make-instance class
-                                 :message m
-                                 :room (slack-room-find (oref m channel) team)
-                                 :team team
-                                 :replace replace
-                                 :notify (not no-notify))))
-      (slack-message-update--room update)
-      (slack-message-update--buffer update)
-      (slack-message-update--notify update)
-      (slack-update-modeline))))
+    (when room
+      (let ((update (make-instance class
+                                   :message m
+                                   :room room
+                                   :team team
+                                   :replace replace
+                                   :notify (not no-notify))))
+        (slack-message-update--room update)
+        (slack-message-update--buffer update)
+        (slack-message-update--notify update)
+        (slack-update-modeline)))))
 
 (provide 'slack-message-update)
 ;;; slack-message-update.el ends here
