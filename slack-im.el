@@ -130,7 +130,7 @@
           (&key data &allow-other-keys)
           (slack-request-handle-error
            (data "slack-im-list-update")
-           (let* ((members (plist-get data :members))
+           (let* ((members (append (plist-get data :members) nil))
                   (users (cl-remove-if #'(lambda (e) (eq t (plist-get e :is_bot)))
                                        members)))
              (slack-im-update-room-list users team after-success)
