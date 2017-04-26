@@ -281,9 +281,12 @@
       (slack-ws-update-message payload team)))))
 
 (defun slack-ws-update-message (payload team)
-  (let ((m (slack-message-create payload team)))
+  (let ((m (slack-message-create payload team))
+        (bot_id (plist-get payload :bot_id)))
     (when m
-      (slack-message-update m team))))
+      (if (and bot_id (not (slack-find-bot bot_id team)))
+          (slack-bot-info-request bot_id team #'(lambda (team) (slack-message-update m team)))
+        (slack-message-update m team)))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
