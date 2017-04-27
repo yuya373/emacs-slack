@@ -180,6 +180,7 @@ never means never show typing indicator."
                  (let ((ims (oref team ims)))
                    (update-room-info team ims)
                    (delete-existing-buffer ims))))
+       (slack-bot-list-update team)
        (slack-update-modeline)
        (slack-ws-open team)))))
 

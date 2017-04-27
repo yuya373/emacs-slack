@@ -29,6 +29,7 @@
 
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
+(defconst slack-bot-list-url "https://slack.com/api/bots.list")
 
 (defun slack-user-find (id team)
   (with-slots (users) team
@@ -105,6 +106,20 @@
      team
      :params (list (cons "bot" bot_id))
      :success #'on-success)))
+
+(defun slack-bot-list-update (&optional team)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-bot-list-update")
+           (oset team bots (append (plist-get data :bots) nil)))))
+      (slack-request
+       slack-bot-list-url
+       team
+       :success #'on-success))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
