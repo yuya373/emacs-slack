@@ -105,7 +105,8 @@
      slack-bot-info-url
      team
      :params (list (cons "bot" bot_id))
-     :success #'on-success)))
+     :success #'on-success
+     :sync nil)))
 
 (defun slack-bot-list-update (&optional team)
   (interactive)
@@ -119,7 +120,8 @@
       (slack-request
        slack-bot-list-url
        team
-       :success #'on-success))))
+       :success #'on-success
+       :sync nil))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
