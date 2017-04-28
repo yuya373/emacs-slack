@@ -41,10 +41,10 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user)
-   (is-open :initarg :is_open :initform nil)))
+   (is-open :initarg :is_open :initform t)))
 
 (defmethod slack-room-open-p ((room slack-im))
-  t)
+  (oref room is-open))
 
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots ((user-id user) team-id) room
@@ -103,7 +103,7 @@
   (with-slots (users) team
     (cl-pushnew user users :test #'slack-user-equal-p)))
 
-(defun slack-im-update-room-list (users team)
+(defun slack-im-update-room-list (users team &optional after-success)
   (cl-labels ((on-update-room-list
                (&key data &allow-other-keys)
                (slack-request-handle-error
@@ -114,23 +114,29 @@
                       (mapcar #'(lambda (d)
                                   (slack-room-create d team 'slack-im))
                               (plist-get data :ims)))
+                (if after-success
+                    (funcall after-success team))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             team
                             :sync nil)))
 
-(defun slack-im-list-update ()
+(defun slack-im-list-update (&optional team after-success)
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-request
-     slack-user-list-url
-     team
-     :success (cl-function (lambda (&key data &allow-other-keys)
-                             (slack-request-handle-error (data "slack-im-list-update")
-                                                         (let ((users (plist-get data :members)))
-                                                           (slack-im-update-room-list users team)))))
-     :sync nil)))
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-list-update
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-im-list-update")
+           (let* ((members (append (plist-get data :members) nil)))
+             (slack-im-update-room-list members team after-success)))))
+      (slack-request
+       slack-user-list-url
+       team
+       :success #'on-list-update
+       :sync nil))))
 
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
@@ -189,6 +195,24 @@
 
 (defmethod slack-room-label-prefix ((room slack-im))
   (slack-im-user-presence room))
+
+(defmethod slack-room-get-info-url ((_room slack-im))
+  slack-im-open-url)
+
+(defmethod slack-room-update-info ((room slack-im) data team)
+  (let ((new-room (slack-room-create (plist-get data :channel)
+                                     team
+                                     'slack-im)))
+
+    (oset new-room messages (oref room messages))
+    (oset team ims
+          (cons new-room
+                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
+                              (oref team ims))))))
+
+(defmethod slack-room-info-request-params ((room slack-im))
+  (list (cons "user" (oref room user))
+        (cons "return_im" "true")))
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

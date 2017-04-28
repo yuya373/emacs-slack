@@ -28,6 +28,8 @@
 (require 'slack-room)
 
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
+(defconst slack-bot-info-url "https://slack.com/api/bots.info")
+(defconst slack-bot-list-url "https://slack.com/api/bots.list")
 
 (defun slack-user-find (id team)
   (with-slots (users) team
@@ -90,6 +92,36 @@
                        (json-encode (list (cons "status_text" text)
                                           (cons "status_emoji" emoji)))))
      :success #'on-success)))
+
+(defun slack-bot-info-request (bot_id team &optional after-success)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-bot-info-request")
+                    (push (plist-get data :bot) (oref team bots))
+                    (if after-success
+                        (funcall after-success team)))))
+    (slack-request
+     slack-bot-info-url
+     team
+     :params (list (cons "bot" bot_id))
+     :success #'on-success
+     :sync nil)))
+
+(defun slack-bot-list-update (&optional team)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-bot-list-update")
+           (oset team bots (append (plist-get data :bots) nil)))))
+      (slack-request
+       slack-bot-list-url
+       team
+       :success #'on-success
+       :sync nil))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

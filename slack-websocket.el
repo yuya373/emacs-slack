@@ -45,7 +45,10 @@
              ws-url
              :on-message
              #'(lambda (websocket frame)
-                 (slack-ws-on-message websocket frame team))))
+                 (slack-ws-on-message websocket frame team))
+             :on-open
+             #'(lambda (_websocket) (oset team connected t))
+             ))
       (setq reconnect-count 0))))
 
 (defun slack-ws-close (&optional team)
@@ -257,9 +260,10 @@
 
 (defun slack-ws-handle-im-close (payload team)
   (let ((im (slack-room-find (plist-get payload :channel) team)))
-    (oset im is-open nil)
-    (message "Direct Message Channel with %s is Closed"
-             (slack-user-name (oref im user) team))))
+    (when im
+      (oset im is-open nil)
+      (message "Direct Message Channel with %s is Closed"
+               (slack-user-name (oref im user) team)))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
@@ -277,9 +281,12 @@
       (slack-ws-update-message payload team)))))
 
 (defun slack-ws-update-message (payload team)
-  (let ((m (slack-message-create payload team)))
+  (let ((m (slack-message-create payload team))
+        (bot_id (plist-get payload :bot_id)))
     (when m
-      (slack-message-update m team))))
+      (if (and bot_id (not (slack-find-bot bot_id team)))
+          (slack-bot-info-request bot_id team #'(lambda (team) (slack-message-update m team)))
+        (slack-message-update m team)))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))

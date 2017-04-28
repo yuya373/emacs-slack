@@ -42,6 +42,7 @@
 (defconst slack-channel-info-url "https://slack.com/api/channels.info")
 (defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
 (defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
+(defconst slack-channel-info-url "https://slack.com/api/channels.info")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member)
@@ -67,9 +68,9 @@
               for channels = (oref team channels)
               nconc channels))))
 
-(defun slack-channel-list-update ()
+(defun slack-channel-list-update (&optional team after-success)
   (interactive)
-  (let ((team (slack-team-select)))
+  (let ((team (or team (slack-team-select))))
     (cl-labels ((on-list-update
                  (&key data &allow-other-keys)
                  (slack-request-handle-error
@@ -78,6 +79,8 @@
                         (mapcar #'(lambda (d)
                                     (slack-room-create d team 'slack-channel))
                                 (plist-get data :channels)))
+                  (if after-success
+                      (funcall after-success team))
                   (message "Slack Channel List Updated"))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
@@ -221,6 +224,20 @@
     (let ((name (slack-room-name room)))
       (and name
            (memq (intern name) subscribed-channels)))))
+
+(defmethod slack-room-get-info-url ((_room slack-channel))
+  slack-channel-info-url)
+
+(defmethod slack-room-update-info ((room slack-channel) data team)
+  (let ((new-room (slack-room-create (plist-get data :channel)
+                                     team
+                                     'slack-channel)))
+
+    (oset new-room messages (oref room messages))
+    (oset team channels
+          (cons new-room
+                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
+                              (oref team channels))))))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

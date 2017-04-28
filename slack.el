@@ -104,6 +104,7 @@ never means never show typing indicator."
 (defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
 (defconst slack-oauth2-access "https://slack.com/api/oauth.access")
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
+(defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
 
 (defvar slack-authorize-requests nil)
 (defun slack-authorize (team &optional error-callback)
@@ -112,7 +113,7 @@ never means never show typing indicator."
                                    do (request-abort r))))
     (setq slack-authorize-requests nil)
     (let ((request (slack-request
-                    slack-authorize-url
+                    slack-rtm-connect-url
                     team
                     :success (cl-function (lambda (&key data &allow-other-keys)
                                             (slack-on-authorize data team)))
@@ -139,39 +140,49 @@ never means never show typing indicator."
           (team-data (plist-get data :team)))
       (oset team id (plist-get team-data :id))
       (oset team name (plist-get team-data :name))
-      (oset team channels
-            (create-rooms (plist-get data :channels)
-                          team 'slack-channel))
-      (oset team groups
-            (append (create-rooms (plist-get data :groups)
-                                team 'slack-group)
-                  (create-open-rooms (plist-get data :mpims)
-                                     team 'slack-group)))
-      (oset team ims
-            (create-rooms (plist-get data :ims)
-                          team 'slack-im))
       (oset team self self)
       (oset team self-id (plist-get self :id))
       (oset team self-name (plist-get self :name))
-      (oset team users (append (plist-get data :users) nil))
-      (oset team bots (append (plist-get data :bots) nil))
       (oset team ws-url (plist-get data :url))
-      (oset team connected t)
-      (slack-update-modeline)
       team)))
 
 (cl-defun slack-on-authorize (data team)
-  (slack-request-handle-error
-   (data "slack-authorize")
-   (message "Slack Authorization Finished - %s"
-            (oref team name))
-   (let ((team (slack-update-team data team)))
-     (with-slots (groups ims channels) team
-       (cl-loop for room in (append groups ims channels)
-                do (let ((bufname (slack-room-buffer-name room)))
-                     (when (get-buffer bufname)
-                       (kill-buffer bufname)))))
-     (slack-ws-open team))))
+  (cl-labels
+      ((update-room-info
+        (team rooms)
+        (mapc #'(lambda (room)
+                  (unless (slack-room-hiddenp room)
+                    (slack-room-info-request room team)))
+              rooms))
+       (delete-existing-buffer
+        (rooms)
+        (mapc #'(lambda (room)
+                  (let ((bufname (slack-room-buffer-name room)))
+                    (when (get-buffer bufname)
+                      (kill-buffer bufname))))
+              rooms)))
+    (slack-request-handle-error
+     (data "slack-authorize")
+     (message "Slack Authorization Finished - %s" (oref team name))
+     (let ((team (slack-update-team data team)))
+       (slack-channel-list-update
+        team #'(lambda (team)
+                 (let ((channels (oref team channels)))
+                   (update-room-info team channels)
+                   (delete-existing-buffer channels))))
+       (slack-group-list-update
+        team #'(lambda (team)
+                 (let ((groups (oref team groups)))
+                   (update-room-info team groups)
+                   (delete-existing-buffer groups))))
+       (slack-im-list-update
+        team #'(lambda (team)
+                 (let ((ims (oref team ims)))
+                   (update-room-info team ims)
+                   (delete-existing-buffer ims))))
+       (slack-bot-list-update team)
+       (slack-update-modeline)
+       (slack-ws-open team)))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)

@@ -27,7 +27,7 @@
 (require 'json)
 (require 'request)
 
-(defcustom slack-request-timeout 5
+(defcustom slack-request-timeout 10
   "Request Timeout in seconds."
   :group 'slack)
 
@@ -69,12 +69,14 @@
    :error error
    :timeout timeout))
 
-(cl-defmacro slack-request-handle-error ((data req-name) &body body)
+(cl-defmacro slack-request-handle-error ((data req-name &optional handler) &body body)
   "Bind error to e if present in DATA."
   `(if (eq (plist-get ,data :ok) :json-false)
-       (message "Failed to request %s: %s"
-                ,req-name
-                (plist-get ,data :error))
+       (if ,handler
+           (funcall ,handler (plist-get ,data :error))
+         (message "Failed to request %s: %s"
+                  ,req-name
+                  (plist-get ,data :error)))
      (progn
        ,@body)))
 
