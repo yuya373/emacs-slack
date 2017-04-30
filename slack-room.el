@@ -58,7 +58,6 @@
                 (plist-put p :members
                            (append (plist-get p :members) nil))
                 (plist-put p :team-id (oref team id))
-                (plist-put p :last_read "0")
                 p))
     (let* ((attributes (slack-collect-slots class (prepare payload)))
            (room (apply #'make-instance class attributes)))
@@ -82,7 +81,7 @@
 
 (cl-defun slack-room-create-buffer (room team &key update)
   (with-slots (messages) room
-    (if (or update (< (length messages) 1) (string= "0" (oref room last-read)))
+    (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
         (slack-room-history-request room team)))
   (funcall slack-buffer-function
            (slack-room-with-buffer room team
@@ -509,10 +508,16 @@
 
 (defmethod slack-room-set-buffer ((room slack-room) buf)
   (oset room buffer buf))
+
+(defmethod slack-room-has-buffer-p ((room slack-room))
+  (oref room buffer))
+
 (defmethod slack-room-insert-messages ((room slack-room) buf team)
   (let* ((sorted (slack-room-sorted-messages room))
          (thread-rejected (slack-room-reject-thread-message sorted))
-         (messages (slack-room-latest-messages room thread-rejected))
+         (messages (if (slack-room-has-buffer-p room)
+                       (slack-room-latest-messages room thread-rejected)
+                     thread-rejected))
          (latest-message (and (car (last sorted)))))
     (if messages
         (progn
