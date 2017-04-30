@@ -45,7 +45,8 @@
    (unread-count :initarg :unread_count)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
-   (team-id :initarg :team-id)))
+   (team-id :initarg :team-id)
+   (buffer :initform nil)))
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
@@ -57,7 +58,6 @@
                 (plist-put p :members
                            (append (plist-get p :members) nil))
                 (plist-put p :team-id (oref team id))
-                (plist-put p :last_read "0")
                 p))
     (let* ((attributes (slack-collect-slots class (prepare payload)))
            (room (apply #'make-instance class attributes)))
@@ -81,7 +81,7 @@
 
 (cl-defun slack-room-create-buffer (room team &key update)
   (with-slots (messages) room
-    (if (or update (< (length messages) 1) (string= "0" (oref room last-read)))
+    (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
         (slack-room-history-request room team)))
   (funcall slack-buffer-function
            (slack-room-with-buffer room team
@@ -497,13 +497,27 @@
     (slack-mode)
     (slack-room-insert-previous-link room buf)
     (goto-char lui-input-marker)
-    (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
+    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)
     (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
+
+(defun slack-room-kill-buffer ()
+  (when (bound-and-true-p slack-current-room-id)
+    (let ((room (slack-room-find slack-current-room-id
+                                 (slack-team-find slack-current-team-id))))
+      (oset room buffer nil))))
+
+(defmethod slack-room-set-buffer ((room slack-room) buf)
+  (oset room buffer buf))
+
+(defmethod slack-room-has-buffer-p ((room slack-room))
+  (oref room buffer))
 
 (defmethod slack-room-insert-messages ((room slack-room) buf team)
   (let* ((sorted (slack-room-sorted-messages room))
          (thread-rejected (slack-room-reject-thread-message sorted))
-         (messages (slack-room-latest-messages room thread-rejected))
+         (messages (if (slack-room-has-buffer-p room)
+                       (slack-room-latest-messages room thread-rejected)
+                     thread-rejected))
          (latest-message (and (car (last sorted)))))
     (if messages
         (progn

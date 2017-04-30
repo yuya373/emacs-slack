@@ -70,7 +70,8 @@
          (buffer (get-buffer buf-name)))
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
-      (slack-room-setup-buffer room buffer))
+      (slack-room-setup-buffer room buffer)
+      (slack-room-set-buffer room buffer))
     buffer))
 
 (defmethod slack-buffer-set-current-room-id ((room slack-room))
@@ -246,12 +247,6 @@
       (setq buffer-read-only t)
       (slack-buffer-enable-emojify))
     buf))
-
-(defun slack-reset-room-last-read ()
-  (when (bound-and-true-p slack-current-room-id)
-    (let ((room (slack-room-find slack-current-room-id
-                                 (slack-team-find slack-current-team-id))))
-      (slack-room-reset-last-read room))))
 
 (defun slack-buffer-delete-message (buf-name ts)
   (let ((buf (get-buffer buf-name)))

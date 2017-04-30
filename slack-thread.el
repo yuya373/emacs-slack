@@ -115,7 +115,6 @@
         (set (make-local-variable 'slack-target-ts) thread-ts)
         (set (make-local-variable 'slack-current-team-id) (oref team id))
         (set (make-local-variable 'slack-current-room-id) (oref room id))
-        ;; (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
         (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
     buf))
 

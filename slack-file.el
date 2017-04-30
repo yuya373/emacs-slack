@@ -426,7 +426,7 @@
   (with-current-buffer buf
     (slack-info-mode)
     (slack-room-insert-previous-link room buf)
-    (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)))
+    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
