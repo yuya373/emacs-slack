@@ -498,9 +498,14 @@
     (slack-mode)
     (slack-room-insert-previous-link room buf)
     (goto-char lui-input-marker)
-    (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
+    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)
     (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
 
+(defun slack-room-kill-buffer ()
+  (when (bound-and-true-p slack-current-room-id)
+    (let ((room (slack-room-find slack-current-room-id
+                                 (slack-team-find slack-current-team-id))))
+      (oset room buffer nil))))
 
 (defmethod slack-room-set-buffer ((room slack-room) buf)
   (oset room buffer buf))
