@@ -161,6 +161,9 @@
              (mapcar #'(lambda (field) (apply #'slack-attachment-field
                                               (slack-collect-slots 'slack-attachment-field field)))
                      (append (plist-get payload :fields) nil)))
+  (if (numberp (plist-get payload :ts))
+      (plist-put payload :ts (number-to-string (plist-get payload :ts))))
+
   (if (plist-get payload :is_share)
       (apply #'slack-shared-message "shared-attachment"
              (slack-collect-slots 'slack-shared-message payload))
