@@ -501,6 +501,9 @@
     (add-hook 'kill-buffer-hook 'slack-reset-room-last-read nil t)
     (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
 
+
+(defmethod slack-room-set-buffer ((room slack-room) buf)
+  (oset room buffer buf))
 (defmethod slack-room-insert-messages ((room slack-room) buf team)
   (let* ((sorted (slack-room-sorted-messages room))
          (thread-rejected (slack-room-reject-thread-message sorted))

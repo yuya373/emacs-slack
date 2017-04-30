@@ -70,7 +70,8 @@
          (buffer (get-buffer buf-name)))
     (unless buffer
       (setq buffer (generate-new-buffer buf-name))
-      (slack-room-setup-buffer room buffer))
+      (slack-room-setup-buffer room buffer)
+      (slack-room-set-buffer room buffer))
     buffer))
 
 (defmethod slack-buffer-set-current-room-id ((room slack-room))
