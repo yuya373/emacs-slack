@@ -42,6 +42,7 @@
 
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
+  (setq-local default-directory slack-default-directory)
   (lui-set-prompt lui-prompt-string)
   (setq lui-input-function 'slack-message--send))
 
