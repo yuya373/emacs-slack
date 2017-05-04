@@ -36,13 +36,19 @@
     ;; (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
     map))
 
+(defcustom slack-default-directory
+  (expand-file-name (concat (or (getenv "HOME") "~") "/"))
+  "default directory at Slack Buffer.")
+
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
+  (setq-local default-directory slack-default-directory)
   (lui-set-prompt lui-prompt-string)
   (setq lui-input-function 'slack-message--send))
 
 (define-derived-mode slack-info-mode lui-mode "Slack Info"
   ""
+  (setq-local default-directory slack-default-directory)
   (lui-set-prompt lui-prompt-string))
 
 (defvar slack-current-room-id)
