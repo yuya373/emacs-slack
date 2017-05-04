@@ -48,6 +48,7 @@
 
 (define-derived-mode slack-info-mode lui-mode "Slack Info"
   ""
+  (setq-local default-directory slack-default-directory)
   (lui-set-prompt lui-prompt-string))
 
 (defvar slack-current-room-id)
