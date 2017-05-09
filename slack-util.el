@@ -33,7 +33,9 @@
   (cl-loop for e in (slack-seq-to-list seq)
            collect (if (stringp e)
                        (decode-coding-string e 'utf-8)
-                     e)))
+                     (if (listp e)
+                         (slack-decode e)
+                       e))))
 
 (defun slack-class-have-slot-p (class slot)
   (and (symbolp slot)
