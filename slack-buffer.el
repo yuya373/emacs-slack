@@ -155,10 +155,9 @@
          (buffer (get-buffer buf-name)))
     (if buffer
         (progn
+          (slack-room-update-last-read room msg)
           (if (slack-buffer-in-current-frame buffer)
-              (progn
-                (slack-room-update-last-read room msg)
-                (slack-room-update-mark room team msg))
+              (slack-room-update-mark room team msg)
             (slack-room-inc-unread-count room))
 
           (if replace (slack-buffer-replace buffer msg)
