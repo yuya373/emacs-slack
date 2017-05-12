@@ -36,6 +36,10 @@
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)
 
+(defcustom slack-message-custom-delete-notifier nil
+  "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :group 'slack)
+
 (defun slack-message-delete ()
   (interactive)
   (unless (and (boundp 'slack-current-team-id)
