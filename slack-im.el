@@ -217,5 +217,9 @@
 (defmethod slack-room-get-members ((room slack-im))
   (list (oref room user)))
 
+(defun slack-im-find-by-user-id (user-id team)
+  (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
+              (oref team ims)))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here
