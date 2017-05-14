@@ -168,11 +168,12 @@
 
 (defun slack-user-timezone (user)
   (let ((offset (/ (plist-get user :tz_offset) (* 60 60))))
-    (format "%s - %s"
-            (plist-get user :tz)
+    (format "%s, %s"
+            (or (plist-get user :tz)
+                (plist-get user :tz_label))
             (if (<= 0 offset)
                 (format "+%s hour" offset)
-              (format "-%s hour" offset)))))
+              (format "%s hour" offset)))))
 
 (defun slack-user-property-to-str (value title)
   (and value (< 0 (length value))
