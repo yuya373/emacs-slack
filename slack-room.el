@@ -552,5 +552,21 @@
 (defmethod slack-room-get-members ((room slack-room))
   (oref room members))
 
+(defun slack-room-member-list ()
+  (interactive)
+  (let* ((team (and (bound-and-true-p slack-current-team-id)
+                    (slack-team-find slack-current-team-id)))
+         (room (and team (bound-and-true-p slack-current-room-id)
+                    (slack-room-find slack-current-room-id team))))
+    (if (and team room)
+        (let* ((members (cl-remove-if #'(lambda (e) (string= (oref team self-id) e))
+                                      (slack-room-get-members room)))
+               (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
+                                   members))
+               (user-id (if (eq 1 (length members))
+                            (car members)
+                          (slack-select-from-list (user-alist "Select User: ")))))
+          (slack-user-display-profile user-id team)))))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
