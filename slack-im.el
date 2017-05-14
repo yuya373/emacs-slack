@@ -214,5 +214,8 @@
   (list (cons "user" (oref room user))
         (cons "return_im" "true")))
 
+(defmethod slack-room-get-members ((room slack-im))
+  (list (oref room user)))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

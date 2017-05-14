@@ -549,5 +549,8 @@
      :sync nil
      :success #'on-success)))
 
+(defmethod slack-room-get-members ((room slack-room))
+  (oref room members))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
