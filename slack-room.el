@@ -101,10 +101,11 @@
 
 (cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."
+  (declare (indent 2) (debug t))
   (let ((key (cl-gensym)))
     `(let* ((,key (let ((completion-ignore-case t))
                     (funcall slack-completing-read-function (format "%s" ,prompt)
-                                     ,alist nil t ,initial)))
+                             ,alist nil t ,initial)))
             (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
        ,@body
        selected)))
@@ -566,7 +567,7 @@
                (user-id (if (eq 1 (length members))
                             (car members)
                           (slack-select-from-list (user-alist "Select User: ")))))
-          (slack-user-display-profile user-id team)))))
+          (slack-user--display-profile user-id team)))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

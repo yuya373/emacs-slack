@@ -218,7 +218,7 @@
           (with-current-buffer buffer (slack-user-profile-mode))
           buffer))))
 
-(defun slack-user-display-profile (id team)
+(defun slack-user--display-profile (id team)
   (let* ((user (slack-user-find id team))
          (buf (slack-user-profile-get-buffer-create user team)))
     (with-current-buffer buf
@@ -233,6 +233,28 @@
         (slack-buffer-enable-emojify)
         (goto-char (point-min))))
     (funcall slack-buffer-function buf)))
+
+(defun slack-user-self-p (user-id team)
+  (string= user-id (oref team self-id)))
+
+(defun slack-user-name-alist (team &key filter)
+  (let ((users (oref team users)))
+    (mapcar #'(lambda (e) (cons (slack-user-name (plist-get e :id) team) e))
+            (if filter (funcall filter users)
+              users))))
+
+(defun slack-user-hidden-p (user)
+  (not (eq (plist-get user :deleted) :json-false)))
+
+(defun slack-user-display-profile ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (alist (slack-user-name-alist
+                 team
+                 :filter #'(lambda (users)
+                             (cl-remove-if #'slack-user-hidden-p users)))))
+    (slack-select-from-list (alist "Select User: ")
+        (slack-user--display-profile (plist-get selected :id) team))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
