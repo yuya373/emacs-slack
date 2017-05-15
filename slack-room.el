@@ -553,7 +553,7 @@
 (defmethod slack-room-get-members ((room slack-room))
   (oref room members))
 
-(defun slack-room-member-list ()
+(defun slack-room-user-select ()
   (interactive)
   (let* ((team (and (bound-and-true-p slack-current-team-id)
                     (slack-team-find slack-current-team-id)))

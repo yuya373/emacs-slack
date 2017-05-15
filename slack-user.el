@@ -247,7 +247,7 @@
 (defun slack-user-hidden-p (user)
   (not (eq (plist-get user :deleted) :json-false)))
 
-(defun slack-user-display-profile ()
+(defun slack-user-select ()
   (interactive)
   (let* ((team (slack-team-select))
          (alist (slack-user-name-alist
