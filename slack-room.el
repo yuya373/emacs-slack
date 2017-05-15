@@ -101,10 +101,11 @@
 
 (cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."
+  (declare (indent 2) (debug t))
   (let ((key (cl-gensym)))
     `(let* ((,key (let ((completion-ignore-case t))
                     (funcall slack-completing-read-function (format "%s" ,prompt)
-                                     ,alist nil t ,initial)))
+                             ,alist nil t ,initial)))
             (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
        ,@body
        selected)))
@@ -548,6 +549,26 @@
      :params (slack-room-info-request-params room)
      :sync nil
      :success #'on-success)))
+
+(defmethod slack-room-get-members ((room slack-room))
+  (oref room members))
+
+(defun slack-room-user-select ()
+  (interactive)
+  (let* ((team (and (bound-and-true-p slack-current-team-id)
+                    (slack-team-find slack-current-team-id)))
+         (room (and team (bound-and-true-p slack-current-room-id)
+                    (slack-room-find slack-current-room-id team))))
+    (if (and team room)
+        (let* ((members (cl-remove-if #'(lambda (e) (or (slack-user-self-p e team)
+                                                        (slack-user-hidden-p (slack-user-find e team))))
+                                      (slack-room-get-members room)))
+               (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
+                                   members))
+               (user-id (if (eq 1 (length members))
+                            (car members)
+                          (slack-select-from-list (user-alist "Select User: ")))))
+          (slack-user--display-profile user-id team)))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
