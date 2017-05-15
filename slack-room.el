@@ -570,5 +570,13 @@
                           (slack-select-from-list (user-alist "Select User: ")))))
           (slack-user--display-profile user-id team)))))
 
+(defun slack-select-unread-rooms ()
+  (interactive)
+  (let ((team (slack-team-select)))
+    (slack-room-select
+     (cl-loop for team in (list team)
+              append (with-slots (groups ims channels) team
+                       (cl-remove-if #'(lambda (room) (not (< 0 (oref room unread-count-display))))
+                                     (append ims groups channels)))))))
 (provide 'slack-room)
 ;;; slack-room.el ends here
