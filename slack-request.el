@@ -42,7 +42,9 @@
 
 (defun slack-request-parse-payload (payload)
   (let ((json-object-type 'plist))
-    (json-read-from-string payload)))
+    (condition-case err-var
+        (json-read-from-string payload)
+      (json-end-of-file nil))))
 
 (cl-defun slack-request (url team &key
                              (type "GET")
