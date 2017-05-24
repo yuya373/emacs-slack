@@ -224,18 +224,14 @@
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
-    (with-slots (users) team
-      (setq users
-            (cons user
-                  (cl-remove-if #'(lambda (u)
-                                    (string= (plist-get u :id)
-                                             (plist-get user :id)))
-                                users))))
-    (message "User %s Joind Team: %s"
-             (plist-get (slack-user-find (plist-get user :id)
-                                         team)
-                        :name)
-             (slack-team-name team))))
+    (slack-user-info-request
+     (plist-get user :id) team
+     :after-success #'(lambda ()
+                        (message "User %s Joind Team: %s"
+                                 (plist-get (slack-user-find (plist-get user :id)
+                                                             team)
+                                            :name)
+                                 (slack-team-name team))))))
 
 (defun slack-ws-handle-im-open (payload team)
   (cl-labels
