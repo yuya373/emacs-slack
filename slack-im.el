@@ -167,31 +167,31 @@
         :success #'on-success
         :sync nil)))))
 
-(defun slack-im-open ()
+(defun slack-im-open (&optional user)
   (interactive)
   (let* ((team (slack-team-select))
-         (alist (cl-remove-if #'(lambda (im-names)
-                                  (oref (cdr im-names) is-open))
-                              (slack-im-names team))))
-    (slack-select-from-list
-     (alist "Select User: ")
-     (cl-labels
-         ((on-success
-           (&key data &allow-other-keys)
-           (slack-request-handle-error
-            (data "slack-im-open")
-            (if (plist-get data :already_open)
-                (let ((im (slack-room-find (oref selected id) team)))
-                  (oset im is-open t)
-                  (message "Direct Message Channel with %s Already Open"
-                           (slack-user-name (oref im user) team)))))))
-       (slack-request
-        slack-im-open-url
-        team
-        :type "POST"
-        :params (list (cons "user" (oref selected user)))
-        :success #'on-success
-        :sync nil)))))
+         (user (or user (slack-select-from-list
+                            ((slack-user-name-alist
+                              team
+                              :filter #'(lambda (users) (cl-remove-if #'slack-user-hidden-p users)))
+                             "Select User: ")))))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-im-open")
+           (if (plist-get data :already_open)
+               (let ((im (slack-room-find (plist-get (plist-get data :channel) :id) team)))
+                 (oset im is-open t)
+                 (message "Direct Message Channel with %s Already Open"
+                          (slack-user-name (oref im user) team)))))))
+      (slack-request
+       slack-im-open-url
+       team
+       :type "POST"
+       :params (list (cons "user" (plist-get user :id)))
+       :success #'on-success
+       :sync nil))))
 
 (defmethod slack-room-label-prefix ((room slack-im))
   (slack-im-user-presence room))
