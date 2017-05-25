@@ -119,5 +119,14 @@
                         payload))
         (setq buffer-read-only t)))))
 
+(defun slack-log-open-event-buffer ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (bufname (slack-event-log-buffer-name team))
+         (buf (get-buffer bufname)))
+    (if buf
+        (funcall slack-buffer-function buf)
+      (error "No Event Log Buffer"))))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here
