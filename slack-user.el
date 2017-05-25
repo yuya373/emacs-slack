@@ -27,6 +27,7 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defconst slack-bot-list-url "https://slack.com/api/bots.list")
@@ -256,6 +257,25 @@
                              (cl-remove-if #'slack-user-hidden-p users)))))
     (slack-select-from-list (alist "Select User: ")
         (slack-user--display-profile (plist-get selected :id) team))))
+
+(cl-defun slack-user-info-request (user-id team &key after-success)
+  (cl-labels
+      ((on-success
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-user-info-request")
+         (oset team users (cons (plist-get data :user)
+                                (cl-remove-if #'(lambda (user)
+                                                  (string= (plist-get user :id) user-id))
+                                              (oref team users))))
+         (slack-im-open (plist-get data :user))
+         (when after-success (funcall after-success)))))
+    (slack-request
+     slack-user-info-url
+     team
+     :params (list (cons "user" user-id))
+     :sync nil
+     :success #'on-success)))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

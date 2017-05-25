@@ -169,7 +169,11 @@
          ((string= type "user_typing")
           (slack-ws-handle-user-typing decoded-payload team))
          ((string= type "user_change")
-          (slack-ws-handle-user-change decoded-payload team)))))))
+          (slack-ws-handle-user-change decoded-payload team))
+         ((string= type "member_joined_channel")
+          (slack-ws-handle-member-joined-channel decoded-payload team))
+         ((string= type "member_left_channel")
+          (slack-ws-handle-member-left_channel decoded-payload team)))))))
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
@@ -226,18 +230,14 @@
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
-    (with-slots (users) team
-      (setq users
-            (cons user
-                  (cl-remove-if #'(lambda (u)
-                                    (string= (plist-get u :id)
-                                             (plist-get user :id)))
-                                users))))
-    (message "User %s Joind Team: %s"
-             (plist-get (slack-user-find (plist-get user :id)
-                                         team)
-                        :name)
-             (slack-team-name team))))
+    (slack-user-info-request
+     (plist-get user :id) team
+     :after-success #'(lambda ()
+                        (message "User %s Joind Team: %s"
+                                 (plist-get (slack-user-find (plist-get user :id)
+                                                             team)
+                                            :name)
+                                 (slack-team-name team))))))
 
 (defun slack-ws-handle-im-open (payload team)
   (cl-labels
@@ -571,6 +571,21 @@
                   (cl-remove-if #'(lambda (u)
                                     (string= id (plist-get u :id)))
                                 users))))))
+
+(defun slack-ws-handle-member-joined-channel (payload team)
+  (let ((user (plist-get payload :user))
+        (channel (slack-room-find (plist-get payload :channel) team)))
+    (when channel
+      (cl-pushnew user (oref channel members)
+                  :test #'string=))))
+
+(defun slack-ws-handle-member-left_channel (payload team)
+  (let ((user (plist-get payload :user))
+        (channel (slack-room-find (plist-get payload :channel) team)))
+    (when channel
+      (oset channel members
+            (cl-remove-if #'(lambda (e) (string= e user))
+                          (oref channel members))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
