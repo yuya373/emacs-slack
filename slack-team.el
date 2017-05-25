@@ -84,7 +84,9 @@ use `slack-change-current-team' to change `slack-current-team'"
    (ping-check-timers)
    (threads :type slack-team-threads :initform (make-instance 'slack-team-threads))
    (modeline-enabled :initarg :modeline-enabled :initform nil)
-   (modeline-name :initarg :modeline-name :initform nil)))
+   (modeline-name :initarg :modeline-name :initform nil)
+   (websocket-event-log-enabled :initarg :websocket-event-log-enabled :initform nil)
+   ))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
@@ -239,6 +241,9 @@ you can change current-team with `slack-change-current-team'"
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
+
+(defmethod slack-team-event-log-enabledp (team)
+  (oref team websocket-event-log-enabled))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
