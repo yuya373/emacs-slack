@@ -104,5 +104,29 @@
       (> 1 (length str))
     t))
 
+(defun slack-event-log-buffer-name (team)
+  (format "*Slack Event Log - %s*" (slack-team-name team)))
+
+(defun slack-log-websocket-payload (payload team)
+  (let* ((bufname (slack-event-log-buffer-name team))
+         (buf (get-buffer-create bufname)))
+    (when buf
+      (with-current-buffer buf
+        (setq buffer-read-only nil)
+        (goto-char (point-max))
+        (insert (format "[%s] %s\n"
+                        (format-time-string "%Y-%m-%d %H:%M:%S")
+                        payload))
+        (setq buffer-read-only t)))))
+
+(defun slack-log-open-event-buffer ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (bufname (slack-event-log-buffer-name team))
+         (buf (get-buffer bufname)))
+    (if buf
+        (funcall slack-buffer-function buf)
+      (error "No Event Log Buffer"))))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here

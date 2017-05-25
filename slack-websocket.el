@@ -104,6 +104,8 @@
            (type (and decoded-payload
                       (plist-get decoded-payload :type))))
       ;; (message "%s" decoded-payload)
+      (when (slack-team-event-log-enabledp team)
+        (slack-log-websocket-payload decoded-payload team))
       (when decoded-payload
         (cond
          ((string= type "pong")
