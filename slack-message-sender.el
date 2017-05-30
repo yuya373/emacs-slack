@@ -56,7 +56,7 @@
 (defun slack-link-users (message team)
   "Add links to all references to valid users in MESSAGE."
   (replace-regexp-in-string
-   "@\\<\\([A-Za-z0-9.-_]+\\)"
+   "@\\<\\([A-Za-z0-9._]+\\)\\>"
    #'(lambda (text)
        (let* ((username (match-string 1 text))
               (id (slack-user-get-id username team)))
