@@ -1,23 +1,20 @@
 # emacs-slack
 
-emacs client for Slack
+Emacs client for [Slack](https://slack.com/)
 ### **[ScreenShot](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
 
-## dependent
+## Dependent
 - [websocket](https://github.com/ahyatt/emacs-websocket)
 - [request](https://github.com/tkf/emacs-request)
-- oauth2
+- [Oauth2](https://github.com/emacsmirror/oauth2/blob/master/oauth2.el)
   - do `package install`
-- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise
-  User Interface library).
-- [alert](https://github.com/jwiegley/alert)
-- [emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
-  - required if you want to show emoji
+- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise User Interface library).
+- [Alert](https://github.com/jwiegley/alert)
+- [Emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
+  - Required if you want to show emoji.
 
-
-## configure
-[How To Get Token](#how-to-get-token)
-
+## Configure
+[How to get token](#how-to-get-token)
 
 ```elisp
 ;; I'm using use-package and el-get and evil
@@ -75,45 +72,44 @@ emacs client for Slack
 
 ```
 
-
-## How To Get Token
+## How to get token
 
 ### 1. Get client-id and client-secret
 
-1. go to https://api.slack.com/apps
-2. click "Create New App".
-3. fill "App Name" and "Development Slack Team" and click "Create App".
-4. "Client ID" and "Client Secret" is listed in "App Credentials" section.
+1. Go to "https://api.slack.com/apps".
+2. Click "Create New App".
+3. Fill "App Name" and "Development Slack Team" and click "Create App".
+4. "Client ID" and "Client Secret" are listed in the "App Credentials" section.
 
 ### 2. Configure Redurect URL
 
-1. click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
-2. fill "Redirect URLs" like "http://localhost:8080".
+1. Click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
+2. Fill in the "Redirect URLs" section (slack-emacs defaults to: "http://localhost:8080").
 3. click "Save URLs".
 
 ### 3. Get token
 
-1. call `slack-register-team` with above "Client ID" and "Client Secret".
-2. Emacs prompt "Enter the code your browser displayed: ".
-3. code appears in the browser's address bar like "http://localhost:8080?code=181818181818.1819919191&state=", enter this code to Emacs.
-4. once you activate emacs-slack, token appears in the https://api.slack.com/apps/{APPID}/oauth.
-5. save your token and pass `slack-register-team` function, to save 2, 3 steps.
+1. Call `slack-register-team` with above "Client ID" and "Client Secret" (ignore the "Token" prompt [e.i., just hit enter.]).
+2. Emacs' prompt will display: "Enter the code your browser displayed: ".
+3. Code appears in the browser's address bar like "http://localhost:8080?code=181818181818.1819919191&state=", enter this code in the previous Emacs' prompt.
+4. Once you activate `emacs-slack`, token appears in the URL like: "https://api.slack.com/apps/{APPID}/oauth".
+5. Save your token and pass it to the `slack-register-team` function along with the "Client ID" and "Client Secret".
 
 #### Note
 
-emacs-slack use websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start).
+emacs-slack use websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start) (you can also test your settings in that page's "Tester" tab to make sure things have been configured correctly).
 this request needs "client" scope when authorize and Slack does not yet have "client" scope in new OAuth scope.
 make sure `slack-oauth2-auth` requesting with "client" scope and prevent token migration.
 ![token_migration](https://github.com/yuya373/emacs-slack/wiki/images/token_migration.png)
 
 
-## how to use
+## How to use
 
 I recommend to chat with slackbot for tutorial using `slack-im-select`.
 
 - `slack-register-team`
   - set team configuration and create team.
-  - :name, :client-id, :client-secret is needed for argumens
+  - :name, :client-id, :client-secret is needed for arguments
 - `slack-change-current-team`
   - change `slack-current-team` var
 - `slack-start`
@@ -131,14 +127,12 @@ I recommend to chat with slackbot for tutorial using `slack-im-select`.
 - `slack-im-list-update`
   - update direct message list
 - `slack-channel-list-update`
-  - update chennel list
+  - update channel list
 - `slack-message-embed-mention`
   - use to mention to user
 - `slack-message-embed-channel`
   - use to mention to channel
 
+## Notification
 
-
-## notification
-
-see [alert](https://github.com/jwiegley/alert).
+See [alert](https://github.com/jwiegley/alert).
