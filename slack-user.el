@@ -277,5 +277,50 @@
      :sync nil
      :success #'on-success)))
 
+(defun slack-user-image-url-24 (user)
+  (plist-get (slack-user-profile user) :image_24))
+
+(defun slack-user-image-url-32 (user)
+  (plist-get (slack-user-profile user) :image_32))
+
+(defun slack-user-image-url-48 (user)
+  (plist-get (slack-user-profile user) :image_48))
+
+(defun slack-user-image-url-72 (user)
+  (plist-get (slack-user-profile user) :image_72))
+
+(defun slack-user-image-url (user size)
+  (cond
+   ((eq size 24) (slack-user-image-url-24 user))
+   ((eq size 32) (slack-user-image-url-32 user))
+   ((eq size 48) (slack-user-image-url-48 user))
+   ((eq size 72) (slack-user-image-url-72 user))
+   (t (slack-user-image-url-32 user))))
+
+(defun slack-user-image-path (image-url team)
+  (expand-file-name
+   (concat (md5 (concat (slack-team-name team) "-" image-url))
+           "."
+           (file-name-extension image-url))
+   temporary-file-directory))
+
+(defun slack-user-fetch-image (user size team)
+  (let* ((image-url (slack-user-image-url user size))
+         (file-path (and image-url (slack-user-image-path image-url team))))
+    (when file-path
+      (if (file-exists-p file-path) file-path
+        (url-copy-file image-url file-path)))
+    file-path))
+
+(cl-defun slack-user-image (user team &optional (size 32))
+  (when user
+    (let ((image (slack-user-fetch-image user size team)))
+      (when image
+        (create-image image
+                      nil nil
+                      ;; :margin (cons 0 (/ size 2))
+                      :ascent 100
+                      )))))
+
 (provide 'slack-user)
 ;;; slack-user.el ends here
