@@ -77,7 +77,7 @@
                        (cons (slack-room-name channel) (slot-value channel 'id))))
                  (slack-channel-names team))))
     (replace-regexp-in-string
-     "#\\<\\([A-Za-z0-9.-_]+\\)"
+     "#\\<\\([A-Za-z0-9_\-]+\\)\\>"
      #'(lambda (text)
          (let* ((channel (match-string 1 text))
                 (id (cdr (assoc channel channel-ids))))
