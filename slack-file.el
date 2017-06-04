@@ -168,8 +168,10 @@
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
       file
-    (let* ((header (slack-message-put-header-property
-                    (slack-user-name user team)))
+    (let* ((header (let ((header (slack-message-put-header-property (slack-user-name user team))))
+                     (if (slack-team-display-profile-image team)
+                         (slack-message-header-with-image file header team)
+                       header)))
            (body (slack-message-put-text-property
                   (format "name: %s\nsize: %s\ntype: %s\n%s\n"
                           name size filetype permalink)))
