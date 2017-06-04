@@ -83,8 +83,13 @@
       (when image
         (create-image image nil nil :ascent 100)))))
 
+(defmethod slack-bot-find ((m slack-bot-message) team)
+  (or (and (slot-boundp m 'bot-id)
+           (slack-find-bot (slack-message-sender-id m) team))
+      (slack-user-find-by-name (oref m username) team)))
+
 (defmethod slack-message-profile-image ((m slack-bot-message) team)
-  (let ((bot (slack-find-bot (slack-message-sender-id m) team)))
+  (let ((bot (slack-bot-find m team)))
     (slack-bot-image bot team)))
 
 (provide 'slack-bot-message)
