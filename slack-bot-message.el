@@ -81,7 +81,7 @@
   (when bot
     (let ((image (slack-bot-fetch-image bot size team)))
       (when image
-        (create-image image nil nil :ascent 100)))))
+        (create-image image nil nil :ascent 80)))))
 
 (defmethod slack-bot-find ((m slack-bot-message) team)
   (or (and (slot-boundp m 'bot-id)

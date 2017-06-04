@@ -310,11 +310,7 @@
   (when user
     (let ((image (slack-user-fetch-image user size team)))
       (when image
-        (create-image image
-                      nil nil
-                      ;; :margin (cons 0 (/ size 2))
-                      :ascent 100
-                      )))))
+        (create-image image nil nil :ascent 80)))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
