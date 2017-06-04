@@ -121,7 +121,10 @@
 (defmethod slack-message-header-with-image ((m slack-message) header team)
   (let ((image (slack-message-profile-image m team)))
     (if image
-        (format "%s %s" (propertize "image" 'display image) header)
+        (format "%s %s" (propertize "image"
+                                    'display image
+                                    'face '(:background "#fff"))
+                header)
       header)))
 
 (defmethod slack-message-to-string ((m slack-message) team)
