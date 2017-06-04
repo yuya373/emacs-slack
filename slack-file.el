@@ -168,8 +168,10 @@
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
       file
-    (let* ((header (slack-message-put-header-property
-                    (slack-user-name user team)))
+    (let* ((header (let ((header (slack-message-put-header-property (slack-user-name user team))))
+                     (if (slack-team-display-profile-image team)
+                         (slack-message-header-with-image file header team)
+                       header)))
            (body (slack-message-put-text-property
                   (format "name: %s\nsize: %s\ntype: %s\n%s\n"
                           name size filetype permalink)))
@@ -203,17 +205,13 @@
   (interactive)
   (let* ((team (slack-team-select))
          (room (slack-file-room-obj team)))
-    (with-slots (messages) room
-      (if messages
+    (with-slots (buffer) room
+      (if buffer
           (slack-file-create-buffer team)
         (slack-room-history-request room team)
         (slack-file-create-buffer team)))))
 
-(defmethod slack-room-history ((room slack-file-room) team
-                               &optional
-                               oldest
-                               after-success
-                               async)
+(cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success async)
   (cl-labels
       ((on-file-list
         (&key data &allow-other-keys)

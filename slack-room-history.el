@@ -35,12 +35,13 @@
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-im-history-url "https://slack.com/api/im.history")
+(defconst slack-file-history-url "https://slack.com/api/files.list")
 
 (defclass _slack-room-history ()
   ((room :initarg :room)
    (team :initarg :team)
    (oldest :initarg :oldest)
-   (current-ts :initarg :current-ts)))
+   (current-ts :initarg :current-ts :initform nil)))
 
 (defclass _slack-search-history (_slack-room-history)
   ((channel-id :initarg :channel-id)))
@@ -98,9 +99,11 @@
       (slack-buffer-widen
        (let ((inhibit-read-only t)
              (loading-message-end (slack-buffer-ts-eq (point-min) (point-max) oldest))
-             (messages (slack-room-history--collect-message this)))
+             (messages (slack-room-history--collect-message this))
+             (cur-point (point)))
          (goto-char (point-min))
-         (delete-region (point-min) loading-message-end)
+         (when loading-message-end
+           (delete-region (point-min) loading-message-end))
 
          (if (and messages (< 0 (length messages)))
              (slack-room-insert-previous-link room buf)
@@ -108,10 +111,12 @@
            (lui-insert "(no more messages)\n"))
 
          (cl-loop for m in messages
-                  do (slack-buffer-insert m team t))))
-
+                  do (slack-buffer-insert m team t))
+         (unless current-ts
+           (goto-char cur-point))))
       (lui-recover-output-marker)
-      (slack-buffer-goto current-ts))))
+      (when current-ts
+        (slack-buffer-goto current-ts)))))
 
 (defmethod slack-room-history--request ((this _slack-room-history))
   (with-slots (team room oldest) this
@@ -147,9 +152,9 @@
                                        :room (slack-room-find slack-current-room-id team)
                                        :team team
                                        :oldest (get-text-property 0 'oldest (thing-at-point 'line))
-                                       :current-ts (get-text-property (next-single-property-change cur-point
-                                                                                                   'ts)
-                                                                      'ts))))
+                                       :current-ts (let ((change (next-single-property-change cur-point 'ts)))
+                                                     (when change
+                                                       (get-text-property change 'ts))))))
     (slack-room-history--collect-meta prev-messages)
     (slack-room-history--request prev-messages)
     (slack-room-history--insert prev-messages)))

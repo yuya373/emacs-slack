@@ -86,6 +86,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (modeline-enabled :initarg :modeline-enabled :initform nil)
    (modeline-name :initarg :modeline-name :initform nil)
    (websocket-event-log-enabled :initarg :websocket-event-log-enabled :initform nil)
+   (display-profile-image :initarg :display-profile-image :initform nil)
    ))
 
 (defun slack-team-find (id)
@@ -244,6 +245,9 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
+
+(defmethod slack-team-display-profile-image ((team slack-team))
+  (oref team display-profile-image))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
