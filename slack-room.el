@@ -119,9 +119,9 @@
   (let* ((alist (slack-room-names
                  rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
     (slack-select-from-list
-     (alist "Select Channel: ")
-     (slack-room-create-buffer selected
-                               (slack-team-find (oref selected team-id))))))
+        (alist "Select Channel: ")
+        (slack-room-create-buffer selected
+                                  (slack-team-find (oref selected team-id))))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
@@ -405,7 +405,7 @@
     (let* ((team (slack-team-select))
            (room-alist (funcall room-alist-func team))
            (room (slack-select-from-list
-                  (room-alist "Select Channel: ")))
+                     (room-alist "Select Channel: ")))
            (name (read-from-minibuffer "New Name: ")))
       (slack-request
        url
@@ -422,7 +422,7 @@
                         (slack-team-find slack-current-team-id))
      (let* ((room-alist (funcall ,room-alist-func)))
        (slack-select-from-list
-        (room-alist "Select Channel: ")))))
+           (room-alist "Select Channel: ")))))
 
 (defmacro slack-room-invite (url room-alist-func)
   `(cl-labels
@@ -440,8 +440,8 @@
                                     (cl-remove-if #'slack-room-archived-p
                                                   rooms))))))
             (user-id (plist-get (slack-select-from-list
-                                 ((slack-user-names team)
-                                  "Select User: ")) :id)))
+                                    ((slack-user-names team)
+                                     "Select User: ")) :id)))
        (slack-request
         ,url
         team
@@ -560,9 +560,12 @@
          (room (and team (bound-and-true-p slack-current-room-id)
                     (slack-room-find slack-current-room-id team))))
     (if (and team room)
-        (let* ((members (cl-remove-if #'(lambda (e) (or (slack-user-self-p e team)
-                                                        (slack-user-hidden-p (slack-user-find e team))))
-                                      (slack-room-get-members room)))
+        (let* ((members (cl-remove-if
+                         #'(lambda (e)
+                             (or (slack-user-self-p e team)
+                                 (slack-user-hidden-p
+                                  (slack-user--find e team))))
+                         (slack-room-get-members room)))
                (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
                                    members))
                (user-id (if (eq 1 (length members))
