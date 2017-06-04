@@ -115,11 +115,18 @@
                        "\n")
             "\n")))
 
+(defmethod slack-message-profile-image ((m slack-message) team)
+  (slack-user-image (slack-user-find (slack-message-sender-id m) team) team))
+
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
-    (let* ((header (slack-message-put-header-property
-                    (slack-message-header m team)))
+    (let* ((image (and (slack-team-display-profile-image team)
+                       (slack-message-profile-image m team)))
+           (header (let ((h (slack-message-put-header-property
+                             (slack-message-header m team))))
+                     (if image (format "%s %s" (propertize "image" 'display image) h)
+                       h)))
            (row-body (slack-message-body m team))
            (attachment-body (slack-message-attachment-body m team))
            (body (if (oref m deleted-at)

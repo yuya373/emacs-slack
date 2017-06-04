@@ -82,5 +82,9 @@
       (when image
         (create-image image nil nil :ascent 100)))))
 
+(defmethod slack-message-profile-image ((m slack-bot-message) team)
+  (let ((bot (slack-find-bot (slack-message-sender-id m) team)))
+    (slack-bot-image bot team)))
+
 (provide 'slack-bot-message)
 ;;; slack-bot-message.el ends here
