@@ -203,17 +203,13 @@
   (interactive)
   (let* ((team (slack-team-select))
          (room (slack-file-room-obj team)))
-    (with-slots (messages) room
-      (if messages
+    (with-slots (buffer) room
+      (if buffer
           (slack-file-create-buffer team)
         (slack-room-history-request room team)
         (slack-file-create-buffer team)))))
 
-(defmethod slack-room-history ((room slack-file-room) team
-                               &optional
-                               oldest
-                               after-success
-                               async)
+(cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success async)
   (cl-labels
       ((on-file-list
         (&key data &allow-other-keys)
