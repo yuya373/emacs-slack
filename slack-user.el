@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
 
@@ -297,16 +298,9 @@
    ((eq size 72) (slack-user-image-url-72 user))
    (t (slack-user-image-url-32 user))))
 
-(defun slack-user-image-path (image-url team)
-  (expand-file-name
-   (concat (md5 (concat (slack-team-name team) "-" image-url))
-           "."
-           (file-name-extension image-url))
-   temporary-file-directory))
-
 (defun slack-user-fetch-image (user size team)
   (let* ((image-url (slack-user-image-url user size))
-         (file-path (and image-url (slack-user-image-path image-url team))))
+         (file-path (and image-url (slack-profile-image-path image-url team))))
     (when file-path
       (if (file-exists-p file-path) file-path
         (url-copy-file image-url file-path)))

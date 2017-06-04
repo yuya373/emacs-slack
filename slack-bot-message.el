@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-message)
 (require 'slack-message-formatter)
+(require 'slack-util)
 
 (defun slack-find-bot (id team)
   (with-slots (bots) team
@@ -70,7 +71,7 @@
 
 (defun slack-bot-fetch-image (bot size team)
   (let* ((image-url (slack-bot-image-url bot size))
-         (file-path (and image-url (slack-user-image-path image-url team))))
+         (file-path (and image-url (slack-profile-image-path image-url team))))
     (when file-path
       (if (file-exists-p file-path) file-path
         (url-copy-file image-url file-path))

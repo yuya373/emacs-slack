@@ -26,6 +26,10 @@
 
 (require 'eieio)
 
+(defcustom slack-profile-image-file-directory temporary-file-directory
+  "Default directory for slack profile images."
+  :group 'slack)
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
@@ -127,6 +131,13 @@
     (if buf
         (funcall slack-buffer-function buf)
       (error "No Event Log Buffer"))))
+
+(defun slack-profile-image-path (image-url team)
+  (expand-file-name
+   (concat (md5 (concat (slack-team-name team) "-" image-url))
+           "."
+           (file-name-extension image-url))
+   slack-profile-image-file-directory))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
