@@ -204,7 +204,7 @@
         ('new (slack-message--send buf-string))
         ('thread-message-new (slack-thread-message--send buf-string)))
       (kill-buffer)
-      (if (> (count-windows) 1) delete-window))))
+      (if (> (count-windows) 1) (delete-window)))))
 
 (defun slack-message--edit (channel team ts text)
   (cl-labels ((on-edit (&key data &allow-other-keys)
