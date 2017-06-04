@@ -47,10 +47,10 @@
    (complete-ts :initarg :complete_ts :type integer)))
 
 (defmethod slack-reminder-user ((r slack-reminder-base) team)
-  (slack-user-find (oref r user) team))
+  (slack-user-find r team))
 
 (defmethod slack-reminder-creator ((r slack-reminder-base) team)
-  (slack-user-find (oref r creator) team))
+  (slack-user--find (oref r creator) team))
 
 (defmethod slack-team-add-reminder ((team slack-team) reminder)
   (with-slots (reminders) team
@@ -259,6 +259,9 @@
        :sync nil
        :params (list (cons "reminder" (oref reminder id)))
        :success #'on-reminder-complete))))
+
+(defmethod slack-user-find ((r slack-reminder-base) team)
+  (slack-user--find (oref r user) team))
 
 (provide 'slack-reminder)
 ;;; slack-reminder.el ends here

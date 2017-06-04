@@ -578,5 +578,9 @@
               append (with-slots (groups ims channels) team
                        (cl-remove-if #'(lambda (room) (not (< 0 (oref room unread-count-display))))
                                      (append ims groups channels)))))))
+
+(defmethod slack-user-find ((room slack-room) team)
+  (slack-user--find (oref room user) team))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

@@ -34,7 +34,7 @@
 (defconst slack-bot-list-url "https://slack.com/api/bots.list")
 (defvar slack-current-user-id nil)
 
-(defun slack-user-find (id team)
+(defun slack-user--find (id team)
   (with-slots (users) team
     (cl-find-if (lambda (user)
                   (string= id (plist-get user :id)))
@@ -52,12 +52,12 @@
         (plist-get user :id))))
 
 (defun slack-user-name (id team)
-  (let ((user (slack-user-find id team)))
+  (let ((user (slack-user--find id team)))
     (if user
         (plist-get user :name))))
 
 (defun slack-user-status (id team)
-  (let* ((user (slack-user-find id team))
+  (let* ((user (slack-user--find id team))
          (profile (and user (plist-get user :profile)))
          (emoji (and profile (plist-get profile :status_emoji)))
          (text (and profile (plist-get profile :status_text))))
@@ -184,7 +184,7 @@
                value)))
 
 (defun slack-user-profile-to-string (id team)
-  (let* ((user (slack-user-find id team))
+  (let* ((user (slack-user--find id team))
          (profile (slack-user-profile user))
          (header (propertize (slack-user-header user)
                              'face 'slack-user-profile-header-face))
@@ -222,7 +222,7 @@
           buffer))))
 
 (defun slack-user--display-profile (id team)
-  (let* ((user (slack-user-find id team))
+  (let* ((user (slack-user--find id team))
          (buf (slack-user-profile-get-buffer-create user team)))
     (with-current-buffer buf
       (let ((inhibit-read-only t))

@@ -316,5 +316,8 @@
 (defmethod slack-message-get-reactions ((m slack-file-comment-message))
   (oref (oref m comment) reactions))
 
+(defmethod slack-user-find ((m slack-message) team)
+  (slack-user--find (slack-message-sender-id m) team))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

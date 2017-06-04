@@ -116,7 +116,7 @@
             "\n")))
 
 (defmethod slack-message-profile-image ((m slack-message) team)
-  (slack-user-image (slack-user-find (slack-message-sender-id m) team) team))
+  (slack-user-image (slack-user-find m team) team))
 
 (defmethod slack-message-header-with-image ((m slack-message) header team)
   (let ((image (slack-message-profile-image m team)))

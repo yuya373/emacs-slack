@@ -234,7 +234,7 @@
      (plist-get user :id) team
      :after-success #'(lambda ()
                         (message "User %s Joind Team: %s"
-                                 (plist-get (slack-user-find (plist-get user :id)
+                                 (plist-get (slack-user--find (plist-get user :id)
                                                              team)
                                             :name)
                                  (slack-team-name team))))))
@@ -391,7 +391,7 @@
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
-         (user (slack-user-find id team))
+         (user (slack-user--find id team))
          (presence (plist-get payload :presence)))
     (plist-put user :presence presence)))
 
