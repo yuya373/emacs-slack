@@ -60,5 +60,27 @@
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
 
+(defun slack-bot-image-url (bot size)
+  (let ((icons (plist-get bot :icons)))
+    (cond
+     ((eq size 36) (plist-get icons :image_36))
+     ((eq size 48) (plist-get icons :image_48))
+     ((eq size 72) (plist-get icons :image_72))
+     (t (plist-get icons :image_36)))))
+
+(defun slack-bot-fetch-image (bot size team)
+  (let* ((image-url (slack-bot-image-url bot size))
+         (file-path (and image-url (slack-user-image-path image-url team))))
+    (when file-path
+      (if (file-exists-p file-path) file-path
+        (url-copy-file image-url file-path))
+      file-path)))
+
+(cl-defun slack-bot-image (bot team &optional (size 36))
+  (when bot
+    (let ((image (slack-bot-fetch-image bot size team)))
+      (when image
+        (create-image image nil nil :ascent 100)))))
+
 (provide 'slack-bot-message)
 ;;; slack-bot-message.el ends here
