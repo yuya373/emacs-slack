@@ -242,7 +242,7 @@ you can change current-team with `slack-change-current-team'"
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
-(defmethod slack-team-event-log-enabledp (team)
+(defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
 
 (provide 'slack-team)
