@@ -59,6 +59,7 @@
 (defmethod slack-message-changed--copy ((this _slack-message-changed))
   (with-slots ((base base-message) (edited edited-message)) this
     (oset base text (oref edited text))
+    (oset base attachments (oref edited attachments))
     (oset base edited-at (oref edited edited-at))))
 
 (defmethod slack-message-changed--update ((this _slack-message-changed))
