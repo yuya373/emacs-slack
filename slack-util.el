@@ -30,6 +30,10 @@
   "Default directory for slack profile images."
   :group 'slack)
 
+(defcustom slack-image-file-directory temporary-file-directory
+  "Default directory for slack images."
+  :group 'slack)
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
@@ -138,6 +142,13 @@
            "."
            (file-name-extension image-url))
    slack-profile-image-file-directory))
+
+(defun slack-image-path (image-url)
+  (expand-file-name
+   (concat (md5 image-url)
+           "."
+           (file-name-extension image-url))
+   slack-image-file-directory))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
