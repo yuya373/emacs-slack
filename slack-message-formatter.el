@@ -226,7 +226,6 @@
                 "")
             (or author-name author-subname ""))))
 
-
 (defmethod slack-image-create ((attachment slack-attachment))
   (with-slots (image-url image-height image-width) attachment
     (when image-url
@@ -234,7 +233,10 @@
         (when path
           (if (file-exists-p path) path
             (url-copy-file image-url path))
-          (create-image path nil nil)
+          (if (image-type-available-p 'imagemagick)
+              (create-image path 'imagemagick nil :height image-height :width image-width)
+            (create-image path nil nil))
+
           ;; (if nil;; image-height
           ;;     (let ((lines (ceiling (/ image-height 10.0))))
           ;;       (cl-loop for i from 1 to lines
