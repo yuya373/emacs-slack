@@ -226,6 +226,24 @@
                 "")
             (or author-name author-subname ""))))
 
+
+(defmethod slack-image-create ((attachment slack-attachment))
+  (with-slots (image-url image-height image-width) attachment
+    (when image-url
+      (let ((path (slack-image-path image-url)))
+        (when path
+          (if (file-exists-p path) path
+            (url-copy-file image-url path))
+          (create-image path nil nil)
+          ;; (if nil;; image-height
+          ;;     (let ((lines (ceiling (/ image-height 10.0))))
+          ;;       (cl-loop for i from 1 to lines
+          ;;                collect (cons (list 'slice 0 0 1.0 (* i (/ 1.0 lines)))
+          ;;                              (create-image path nil nil))
+          ;;                ))
+          ;;   (list (create-image path nil nil)))
+          )))))
+
 (defmethod slack-attachment-to-string ((attachment slack-attachment))
   (with-slots
       (fallback text ts color from-url footer fields pretext) attachment
@@ -252,19 +270,25 @@
                                (propertize
                                 (format "%s|%s" footer
                                         (slack-message-time-to-string ts))
-                                'face 'slack-attachment-footer)))))
+                                'face 'slack-attachment-footer))))
+           (image (let ((image (slack-image-create attachment)))
+                    (when image
+                      (propertize "image"
+                                  'display image
+                                  'face '(:background "#fff"))))))
       (if (and (slack-string-blankp header)
                (slack-string-blankp pretext)
                (slack-string-blankp body)
                (slack-string-blankp fields)
                (slack-string-blankp footer))
           fallback
-        (format "%s%s%s%s%s"
+        (format "%s%s%s%s%s%s"
                 (or (and header (format "\t%s\n" header)) "")
                 (or (and pretext (format "\t%s\n" pretext)) "")
                 (or (and body (format "\t%s" body)) "")
                 (or (and fields fields) "")
-                (or (and footer (format "\n\t%s" footer)) ""))
+                (or (and footer (format "\n\t%s" footer)) "")
+                (or (and image (format "\n%s" image)) ""))
         ))))
 
 (defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
