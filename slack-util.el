@@ -158,7 +158,8 @@
 (defun slack-image-slice (image)
   (when image
     (let* ((line-height 50.0)
-           (height (cdr (image-size image t)))
+           (height (or (plist-get (cdr image) :height)
+                       (cdr (image-size image t))))
            (line-count (/ height line-height))
            (line (/ 1.0 line-count)))
       (cl-loop for i from 0 to (- line-count 1)
