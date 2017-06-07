@@ -274,11 +274,9 @@
                                         (slack-message-time-to-string ts))
                                 'face 'slack-attachment-footer))))
            (image (and display-imagep
-                       (let ((image (slack-image-create attachment)))
-                         (when image
-                           (propertize "image"
-                                       'display image
-                                       'face 'slack-profile-image-face))))))
+                       (slack-mapconcat-images
+                        (slack-image-slice
+                         (slack-image-create attachment))))))
       (if (and (slack-string-blankp header)
                (slack-string-blankp pretext)
                (slack-string-blankp body)

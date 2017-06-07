@@ -182,6 +182,13 @@
         (create-image (or file data) 'imagemagick data :height h :width w))
     image))
 
+(defun slack-mapconcat-images (images)
+  (when images
+    (mapconcat #'(lambda (image)
+                   (propertize "image"
+                               'display image
+                               'face 'slack-profile-image-face))
+               images "\n")))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
