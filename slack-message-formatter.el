@@ -160,12 +160,23 @@
   "Replied to a thread")
 
 (defmethod slack-message-attachment-body ((m slack-message) team)
-  (with-slots (attachments) m
-    (let* ((display-image (slack-team-display-attachment-imagep team))
-           (body (mapconcat #'(lambda (e) (slack-attachment-to-string e display-image))
-                            attachments "\n\t-\n")))
-      (if (< 0 (length body))
-          (slack-message-unescape-string body team)))))
+  (let ((room (slack-room-find (oref m channel) team)))
+    (cl-labels
+        ((attachment-to-string (attachment)
+                               (slack-attachment-to-string attachment #'image-renderer))
+         (image-renderer (attachment)
+                         (and (slack-team-display-attachment-imagep team)
+                              (slack-mapconcat-images
+                               (slack-image-slice
+                                (slack-image-create attachment
+                                                    :success #'redisplay
+                                                    :error #'redisplay)))))
+         (redisplay () (slack-message-redisplay m room)))
+      (with-slots (attachments) m
+        (let* ((body (mapconcat #'attachment-to-string
+                                attachments "\n\t-\n")))
+          (if (< 0 (length body))
+              (slack-message-unescape-string body team)))))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m
@@ -233,20 +244,27 @@
                 "")
             (or author-name author-subname ""))))
 
-(defmethod slack-image-create ((attachment slack-attachment))
+(cl-defmethod slack-image-create ((attachment slack-attachment) &key success error)
   (with-slots (image-url image-height image-width) attachment
     (when image-url
       (let ((path (slack-image-path image-url)))
         (when path
-          (if (file-exists-p path) path
-            (url-copy-file image-url path))
-          (if (image-type-available-p 'imagemagick)
-              (slack-image-shrink (create-image path 'imagemagick nil
-                                                :height image-height
-                                                :width image-width))
-            (create-image path)))))))
+          (if (file-exists-p path)
+              (if (image-type-available-p 'imagemagick)
+                  (slack-image-shrink (create-image path 'imagemagick nil
+                                                    :height image-height
+                                                    :width image-width))
+                (create-image path))
+            (progn
+              (slack-url-copy-file image-url path
+                                   :success success
+                                   :error #'(lambda ()
+                                              (url-copy-file image-url path)
+                                              (when (functionp error)
+                                                (funcall error))))
+              nil)))))))
 
-(defmethod slack-attachment-to-string ((attachment slack-attachment) display-imagep)
+(defmethod slack-attachment-to-string ((attachment slack-attachment) image-renderer)
   (with-slots
       (fallback text ts color from-url footer fields pretext) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
@@ -273,10 +291,8 @@
                                 (format "%s|%s" footer
                                         (slack-message-time-to-string ts))
                                 'face 'slack-attachment-footer))))
-           (image (and display-imagep
-                       (slack-mapconcat-images
-                        (slack-image-slice
-                         (slack-image-create attachment))))))
+           (image (when (functionp image-renderer)
+                    (funcall image-renderer attachment))))
       (if (and (slack-string-blankp header)
                (slack-string-blankp pretext)
                (slack-string-blankp body)

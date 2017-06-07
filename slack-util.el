@@ -125,10 +125,11 @@
     (when buf
       (with-current-buffer buf
         (setq buffer-read-only nil)
-        (goto-char (point-max))
-        (insert (format "[%s] %s\n"
-                        (format-time-string "%Y-%m-%d %H:%M:%S")
-                        payload))
+        (save-excursion
+          (goto-char (point-max))
+          (insert (format "[%s] %s\n"
+                          (format-time-string "%Y-%m-%d %H:%M:%S")
+                          payload)))
         (setq buffer-read-only t)))))
 
 (defun slack-log-open-event-buffer ()
@@ -184,11 +185,28 @@
 
 (defun slack-mapconcat-images (images)
   (when images
-    (mapconcat #'(lambda (image)
-                   (propertize "image"
-                               'display image
-                               'face 'slack-profile-image-face))
-               images "\n")))
+    (cl-labels ((sort-image (images)
+                            (cl-sort images #'> :key #'(lambda (image) (caddr (car image)))))
+                (propertize-image (image)
+                                  (propertize "image"
+                                              'display image
+                                              'face 'slack-profile-image-face)))
+      (mapconcat #'propertize-image (sort-image images) "\n"))))
+
+(cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil))
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (when (functionp success) (funcall success)))
+       (on-error (url &allow-other-keys)
+                 (when (functionp error) (funcall error)))
+       (parser () (mm-write-region (point-min) (point-max)
+                                   newname nil nil nil 'binary t)))
+    (request
+     url
+     :success #'on-success
+     :error #'on-error
+     :parser #'parser
+     :sync sync)))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
