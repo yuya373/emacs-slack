@@ -28,6 +28,11 @@
 (require 'slack-user)
 (require 'slack-room)
 
+(defface slack-profile-image-face
+  '((t (:background "#fff")))
+  "Face used to profile image."
+  :group 'slack)
+
 (defface slack-message-output-text
   '((t (:weight normal :height 0.9)))
   "Face used to text message."
@@ -123,7 +128,7 @@
     (if image
         (format "%s %s" (propertize "image"
                                     'display image
-                                    'face '(:background "#fff"))
+                                    'face 'slack-profile-image-face)
                 header)
       header)))
 
