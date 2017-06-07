@@ -161,7 +161,9 @@
 
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (let ((body (mapconcat #'slack-attachment-to-string attachments "\n\t-\n")))
+    (let* ((display-image (slack-team-display-attachment-imagep team))
+           (body (mapconcat #'(lambda (e) (slack-attachment-to-string e display-image))
+                            attachments "\n\t-\n")))
       (if (< 0 (length body))
           (slack-message-unescape-string body team)))))
 
@@ -251,7 +253,7 @@
           ;;   (list (create-image path nil nil)))
           )))))
 
-(defmethod slack-attachment-to-string ((attachment slack-attachment))
+(defmethod slack-attachment-to-string ((attachment slack-attachment) display-imagep)
   (with-slots
       (fallback text ts color from-url footer fields pretext) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
@@ -278,11 +280,12 @@
                                 (format "%s|%s" footer
                                         (slack-message-time-to-string ts))
                                 'face 'slack-attachment-footer))))
-           (image (let ((image (slack-image-create attachment)))
-                    (when image
-                      (propertize "image"
-                                  'display image
-                                  'face '(:background "#fff"))))))
+           (image (and display-imagep
+                       (let ((image (slack-image-create attachment)))
+                         (when image
+                           (propertize "image"
+                                       'display image
+                                       'face 'slack-profile-image-face))))))
       (if (and (slack-string-blankp header)
                (slack-string-blankp pretext)
                (slack-string-blankp body)
