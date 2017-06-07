@@ -169,7 +169,7 @@
   (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
       file
     (let* ((header (let ((header (slack-message-put-header-property (slack-user-name user team))))
-                     (if (slack-team-display-profile-image team)
+                     (if (slack-team-display-profile-imagep team)
                          (slack-message-header-with-image file header team)
                        header)))
            (body (slack-message-put-text-property

@@ -246,7 +246,7 @@ you can change current-team with `slack-change-current-team'"
 (defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
 
-(defmethod slack-team-display-profile-image ((team slack-team))
+(defmethod slack-team-display-profile-imagep ((team slack-team))
   (oref team display-profile-image))
 
 (provide 'slack-team)

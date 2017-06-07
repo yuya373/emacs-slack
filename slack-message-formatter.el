@@ -131,7 +131,7 @@
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
     (let* ((header (let ((header (slack-message-put-header-property (slack-message-header m team))))
-                     (if (slack-team-display-profile-image team)
+                     (if (slack-team-display-profile-imagep team)
                          (slack-message-header-with-image m header team)
                        header)))
            (row-body (slack-message-body m team))
