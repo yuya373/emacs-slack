@@ -34,8 +34,8 @@
   "Default directory for slack images."
   :group 'slack)
 
-(defcustom slack-attachment-image-max-height 300
-  "Max Height of attachment image.  nil is unlimited.  integer."
+(defcustom slack-image-max-height 300
+  "Max Height of image.  nil is unlimited.  integer."
   :group 'slack)
 
 (defun slack-seq-to-list (seq)
@@ -164,20 +164,24 @@
                collect (list (list 'slice 0 (* line i) 1.0 line)
                              image)))))
 
-(defun slack-image-shrink (image-path)
+(defun slack-image-shrink (image)
   (unless (image-type-available-p 'imagemagick)
     (error "Need Imagemagick"))
-  (let* ((size (image-size (create-image image-path) t))
-         (height (cdr size))
-         (width (car size))
-         (h (min height slack-attachment-image-max-height))
-         (w (if (and slack-attachment-image-max-height
-                     (< slack-attachment-image-max-height height))
-                (ceiling
-                 (* (/ (float slack-attachment-image-max-height) height)
-                    width))
-              width)))
-    (create-image image-path 'imagemagick nil :height h :width w)))
+  (if slack-image-max-height
+      (let* ((data (plist-get (cdr image) :data))
+             (file (plist-get (cdr image) :file))
+             (size (image-size image t))
+             (height (cdr size))
+             (width (car size))
+             (h (min height slack-image-max-height))
+             (w (if (< slack-image-max-height height)
+                    (ceiling
+                     (* (/ (float slack-image-max-height) height)
+                        width))
+                  width)))
+        (create-image (or file data) 'imagemagick data :height h :width w))
+    image))
+
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

@@ -241,7 +241,9 @@
           (if (file-exists-p path) path
             (url-copy-file image-url path))
           (if (image-type-available-p 'imagemagick)
-              (slack-image-shrink path)
+              (slack-image-shrink (create-image path 'imagemagick nil
+                                                :height image-height
+                                                :width image-width))
             (create-image path)))))))
 
 (defmethod slack-attachment-to-string ((attachment slack-attachment) display-imagep)
