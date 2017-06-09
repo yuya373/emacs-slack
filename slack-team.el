@@ -81,7 +81,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (typing :initform nil)
    (typing-timer :initform nil)
    (reminders :initform nil :type list)
-   (ping-check-timers)
+   (ping-check-timers :initform (make-hash-table :test 'equal))
    (threads :type slack-team-threads :initform (make-instance 'slack-team-threads))
    (modeline-enabled :initarg :modeline-enabled :initform nil)
    (modeline-name :initarg :modeline-name :initform nil)
