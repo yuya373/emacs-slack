@@ -106,15 +106,11 @@
     (format-time-string "%Y-%m-%d %H:%M:%S"
                         (seconds-to-time ts))))
 
-(defun slack-message-reactions-to-string (reactions)
-  (if reactions
-      (concat "\n" (mapconcat #'slack-reaction-to-string reactions " "))))
-
 (defmethod slack-message-header ((m slack-message) team)
   (slack-message-sender-name m team))
 
-(defun slack-format-message (header body attachment-body reactions thread)
-  (let ((messages (list header body attachment-body thread reactions)))
+(defun slack-format-message (&rest args)
+  (let ((messages args))
     (concat (mapconcat #'identity
                        (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
                        "\n")
@@ -132,25 +128,51 @@
                 header)
       header)))
 
+(defmethod slack-message-header-to-string ((m slack-message) team)
+  (let ((header (slack-message-put-header-property (slack-message-header m team))))
+    (if (slack-team-display-profile-imagep team)
+        (slack-message-header-with-image m header team)
+      header)))
+
+(defmethod slack-message-body-to-string ((m slack-message) team)
+  (let ((raw-body (slack-message-body m team)))
+    (if (oref m deleted-at)
+        (slack-message-put-deleted-property raw-body)
+      (slack-message-put-text-property raw-body))))
+
+(defmethod slack-message-reaction-to-string ((m slack-message))
+  (let ((reactions (slack-message-get-reactions m)))
+    (when reactions
+      (slack-message-put-reactions-property
+       (concat "\n"
+               (mapconcat #'slack-reaction-to-string
+                          reactions " "))))))
+
 (defmethod slack-message-to-string ((m slack-message) team)
-  (let ((text (if (slot-boundp m 'text)
-                  (oref m text))))
-    (let* ((header (let ((header (slack-message-put-header-property (slack-message-header m team))))
-                     (if (slack-team-display-profile-imagep team)
-                         (slack-message-header-with-image m header team)
-                       header)))
-           (row-body (slack-message-body m team))
+  (let ((text (if (slot-boundp m 'text) (oref m text))))
+    (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
-           (body (if (oref m deleted-at)
-                     (slack-message-put-deleted-property row-body)
-                   (slack-message-put-text-property row-body)))
-           (reactions-str
-            (slack-message-put-reactions-property
-             (slack-message-reactions-to-string
-              (slack-message-get-reactions m))))
+           (body (slack-message-body-to-string m team))
+           (reactions (slack-message-reaction-to-string m))
            (thread (slack-thread-to-string m team)))
       (slack-message-propertize
-       m (slack-format-message header body attachment-body reactions-str thread)))))
+       m (slack-format-message header body attachment-body reactions thread)))))
+
+(defmethod slack-message-to-string ((m slack-file-share-message) team)
+  (cl-labels
+      ((redisplay () (slack-message-redisplay m (slack-room-find (oref m channel) team))))
+    (let* ((header (slack-message-header-to-string m team))
+           (attachment-body (slack-message-attachment-body m team))
+           (body (slack-message-body-to-string m team))
+           (thumb (and (slack-team-display-file-imagep team)
+                       (slack-mapconcat-images
+                        (slack-image-slice
+                         (slack-image-create (oref m file)
+                                             :success #'redisplay :error #'redisplay
+                                             :token (oref team token))))))
+           (reactions (slack-message-reaction-to-string m))
+           (thread (slack-thread-to-string m team)))
+      (slack-format-message header body attachment-body thumb reactions thread))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
@@ -250,18 +272,11 @@
       (let ((path (slack-image-path image-url)))
         (when path
           (if (file-exists-p path)
-              (if (image-type-available-p 'imagemagick)
-                  (slack-image-shrink (create-image path 'imagemagick nil
-                                                    :height image-height
-                                                    :width image-width))
-                (create-image path))
+              (slack-image--create path :height image-height :width image-width)
             (progn
               (slack-url-copy-file image-url path
                                    :success success
-                                   :error #'(lambda ()
-                                              (url-copy-file image-url path)
-                                              (when (functionp error)
-                                                (funcall error))))
+                                   :error error)
               nil)))))))
 
 (defmethod slack-attachment-to-string ((attachment slack-attachment) image-renderer)

@@ -148,6 +148,11 @@
            (file-name-extension image-url))
    slack-profile-image-file-directory))
 
+(cl-defun slack-image--create (path &key (width nil) (height nil))
+  (if (image-type-available-p 'imagemagick)
+      (slack-image-shrink (create-image path 'imagemagick nil :height height :width width))
+    (create-image path)))
+
 (defun slack-image-path (image-url)
   (expand-file-name
    (concat (md5 image-url)
@@ -194,11 +199,12 @@
                                               'face 'slack-profile-image-face)))
       (mapconcat #'propertize-image (sort-image images) "\n"))))
 
-(cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil))
+(cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
   (cl-labels
       ((on-success (&key data &allow-other-keys)
                    (when (functionp success) (funcall success)))
        (on-error (url &allow-other-keys)
+                 (url-copy-file url newname)
                  (when (functionp error) (funcall error)))
        (parser () (mm-write-region (point-min) (point-max)
                                    newname nil nil nil 'binary t)))
@@ -207,7 +213,9 @@
      :success #'on-success
      :error #'on-error
      :parser #'parser
-     :sync sync)))
+     :sync sync
+     :headers (when (and token (string-prefix-p "https" url))
+                (list (cons "Authorization" (format "Bearer %s" token)))))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

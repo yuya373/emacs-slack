@@ -30,6 +30,7 @@
 (defconst slack-file-list-url "https://slack.com/api/files.list")
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
 (defconst slack-file-delete-url "https://slack.com/api/files.delete")
+(defconst slack-file-comment-delete-url "https://slack.com/api/files.comments.delete")
 
 (defclass slack-file (slack-message)
   ((id :initarg :id)
@@ -49,7 +50,16 @@
    (comments-count :initarg :comments_count)
    (comments :initarg :comments :initform nil)
    (page :initarg :page :initform 1)
-   (pages :initarg :pages :initform nil)))
+   (pages :initarg :pages :initform nil)
+   (thumb-64 :initarg :thumb_64 :initform nil)
+   (thumb-80 :initarg :thumb_80 :initform nil)
+   (thumb-360 :initarg :thumb_360 :initform nil)
+   (thumb-360-w :initarg :thumb_360_w :initform nil)
+   (thumb-360-h :initarg :thumb_360_h :initform nil)
+   (thumb-160 :initarg :thumb_160 :initform nil)
+   (original-w :initarg :original_w :initform nil)
+   (original-h :initarg :original_h :initform nil)
+   ))
 
 (defclass slack-file-room (slack-room) ())
 
@@ -165,34 +175,55 @@
            :sync nil
            :success #'on-file-info)))))
 
-(defmethod slack-message-to-string ((file slack-file) team)
-  (with-slots (ts name size filetype permalink user initial-comment reactions comments comments-count)
-      file
-    (let* ((header (let ((header (slack-message-put-header-property (slack-user-name user team))))
-                     (if (slack-team-display-profile-imagep team)
-                         (slack-message-header-with-image file header team)
-                       header)))
-           (body (slack-message-put-text-property
-                  (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-                          name size filetype permalink)))
-           (reactions-str (slack-message-put-reactions-property
-                           (slack-message-reactions-to-string reactions))))
-      (let ((message
-             (concat header "\n" body
-                     (if initial-comment
-                         (format "comment:\n%s"
-                                 (slack-message-to-string initial-comment team)))
-                     (if (< 0 (length comments))
-                         (mapconcat #'(lambda (c) (slack-message-to-string c team))
-                                    comments
-                                    "\n"))
-                     (if (< 1 comments-count)
-                         (format "%s\n" (slack-file-more-comments-string file)))
+(defmethod slack-message-body-to-string ((file slack-file) team)
+  (with-slots (name size filetype permalink) file
+    (slack-message-put-text-property
+     (format "name: %s\nsize: %s\ntype: %s\n%s\n"
+             name size filetype permalink))))
 
-                     (if reactions-str
-                         (concat reactions-str "\n")))))
-        (put-text-property 0 (length message) 'ts ts message)
-        message))))
+(defmethod slack-file-comments-to-string ((file slack-file) team)
+  (with-slots (comments) file
+    (and (< 0 (length comments))
+         (mapconcat #'(lambda (e)
+                        (slack-message-to-string e team))
+                    comments "\n"))))
+
+(defmethod slack-file-initial-comment-to-string ((file slack-file) team)
+  (with-slots (initial-comment) file
+    (and initial-comment
+         (format "comment:\n%s"
+                 (slack-message-to-string initial-comment team )))))
+
+(defmethod slack-file-comments-count-to-string ((file slack-file))
+  (with-slots (comments-count) file
+    (and (< 1 comments-count)
+         (slack-file-more-comments-string file))))
+
+(defmethod slack-message-to-string ((file slack-file) team)
+  (cl-labels
+      ((redisplay () (slack-message-redisplay file team)))
+    (let* ((header (slack-message-header-to-string file team))
+           (body (slack-message-body-to-string file team))
+           (thumb (and (slack-team-display-file-imagep team)
+                       (slack-mapconcat-images
+                        (slack-image-slice
+                         (slack-image-create
+                          file
+                          :success #'redisplay
+                          :error #'redisplay
+                          :token (oref team token))))))
+           (reactions (slack-message-reaction-to-string file))
+           (initial-comment
+            (slack-file-initial-comment-to-string file team))
+           (comments (slack-file-comments-to-string file team))
+           (comments-count
+            (slack-file-comments-count-to-string file)))
+      (propertize
+       (slack-format-message header body reactions
+                             thumb
+                             initial-comment comments
+                             comments-count)
+       'ts (oref file ts)))))
 
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
@@ -376,8 +407,6 @@
            (error "Message is not a File")))
      (error "Message can't fild"))))
 
-(defconst slack-file-comment-delete-url "https://slack.com/api/files.comments.delete")
-
 (defun slack-file-comment-delete ()
   (interactive)
   (slack-get-message-metadata
@@ -425,6 +454,20 @@
     (slack-info-mode)
     (slack-room-insert-previous-link room buf)
     (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)))
+
+(cl-defmethod slack-image-create ((file slack-file) &key success error token)
+  (with-slots (thumb-360 thumb-360-w thumb-360-h) file
+    (when thumb-360
+      (let ((path (slack-image-path thumb-360)))
+        (when path
+          (if (file-exists-p path)
+              (slack-image--create path :width thumb-360-w :height thumb-360-h)
+            (progn
+              (slack-url-copy-file thumb-360 path
+                                   :success success
+                                   :error error
+                                   :token token)
+              nil)))))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
