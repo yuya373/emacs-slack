@@ -204,14 +204,14 @@
 
 (defmethod slack-message-image-to-string ((file slack-file) team)
   (if (slack-team-display-image-inlinep file team)
-      (cl-labels
-          ((redisplay () (slack-message-redisplay file
-                                                  (slack-room-find (oref file channel) team))))
-        (slack-mapconcat-images
-         (slack-image-slice
-          (slack-image-create file
-                              :success #'redisplay :error #'redisplay
-                              :token (oref team token)))))
+      (let ((room (slack-room-find (oref file channel) team)))
+        (cl-labels
+            ((redisplay (_image) (slack-message-redisplay file room)))
+          (slack-mapconcat-images
+           (slack-image-slice
+            (slack-image-create file
+                                :success #'redisplay :error #'redisplay
+                                :token (oref team token))))))
     (and (slack-message-has-imagep file)
          (cl-labels
              ((open-image () (interactive)
