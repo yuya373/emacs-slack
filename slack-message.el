@@ -293,7 +293,7 @@
   (slack-user--find (slack-message-sender-id m) team))
 
 (defmethod slack-message-redisplay ((message slack-message) room)
-  (let* ((buf (get-buffer (slack-room-buffer-name room))))
+  (let ((buf (get-buffer (slack-room-buffer-name room))))
     (when buf
       (slack-buffer-replace buf message))))
 
