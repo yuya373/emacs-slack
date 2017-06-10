@@ -33,8 +33,21 @@
 
 
 (defmethod slack-message-image-to-string ((m slack-file-share-message) team)
-  (let ((file (oref m file)))
-    (slack-message-image-to-string file team)))
+  (if (slack-team-display-image-inlinep m team)
+      (slack-message-render-image m team)
+    (slack-message-view-image-to-string m team)))
+
+(cl-defmethod slack-image-create ((m slack-file-share-message) &key success error token)
+  (slack-image-create (oref m file) :success success :error error :token token))
+
+(defmethod slack-team-display-image-inlinep ((m slack-file-share-message) team)
+  (slack-team-display-image-inlinep (oref m file) team))
+
+(defmethod slack-message-has-imagep ((m slack-file-share-message))
+  (slack-message-has-imagep (oref m file)))
+
+(defmethod slack-open-image ((m slack-file-share-message) team)
+  (slack-open-image (oref m file) team))
 
 (defmethod slack-message-to-string ((m slack-file-share-message) team)
   (cl-labels

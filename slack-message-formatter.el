@@ -96,9 +96,6 @@
   (if text
       (propertize text 'face 'slack-message-deleted-face)))
 
-(defmethod slack-message-propertize ((m slack-message) text)
-  text)
-
 (defun slack-message-time-to-string (ts)
   (when ts
     (when (stringp ts)
@@ -155,8 +152,7 @@
            (body (slack-message-body-to-string m team))
            (reactions (slack-message-reaction-to-string m))
            (thread (slack-thread-to-string m team)))
-      (slack-message-propertize
-       m (slack-format-message header body attachment-body reactions thread)))))
+      (slack-format-message header body attachment-body reactions thread))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
@@ -165,24 +161,32 @@
 (defmethod slack-message-body ((_m slack-reply-broadcast-message) _team)
   "Replied to a thread")
 
-(defmethod slack-message-attachment-body ((m slack-message) team)
-  (let ((room (slack-room-find (oref m channel) team)))
+(defmethod slack-team-display-image-inlinep ((_m slack-message) team)
+  (slack-team-display-attachment-image-inlinep team))
+
+(defmethod slack-message-image-to-string ((m slack-message) team)
+  (if (slack-team-display-image-inlinep m team)
+      (let ((room (slack-room-find (oref m channel) team)))
+        (cl-labels
+            ((redisplay (_image) (slack-message-redisplay m room))
+             (render-image (attachment)
+                           (slack-mapconcat-images
+                            (slack-image-slice
+                             (slack-image-create attachment :success #'redisplay :error #'redisplay)))))
+          #'render-image))
     (cl-labels
-        ((attachment-to-string (attachment)
-                               (slack-message-to-string attachment #'image-renderer))
-         (image-renderer (attachment)
-                         (and (slack-team-display-attachment-imagep team)
-                              (slack-mapconcat-images
-                               (slack-image-slice
-                                (slack-image-create attachment
-                                                    :success #'redisplay
-                                                    :error #'redisplay)))))
-         (redisplay () (slack-message-redisplay m room)))
-      (with-slots (attachments) m
-        (let* ((body (mapconcat #'attachment-to-string
-                                attachments "\n\t-\n")))
-          (if (< 0 (length body))
-              (slack-message-unescape-string body team)))))))
+        ((render-button (attachment) (slack-message-view-image-to-string attachment team)))
+      #'render-button)))
+
+(defmethod slack-message-attachment-body ((m slack-message) team)
+  (cl-labels
+      ((attachment-to-string (attachment)
+                             (slack-message-to-string attachment
+                                                      (slack-message-image-to-string m team))))
+    (with-slots (attachments) m
+      (let ((body (mapconcat #'attachment-to-string attachments "\n\t-\n")))
+        (if (< 0 (length body))
+            (slack-message-unescape-string (format "\n%s" body) team))))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m

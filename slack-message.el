@@ -297,5 +297,26 @@
     (when buf
       (slack-buffer-replace buf message))))
 
+(cl-defmethod slack-message-render-image ((message slack-message) team)
+  (let ((room (slack-room-find (oref message channel) team)))
+    (cl-labels
+        ((redisplay (_image) (slack-message-redisplay message room)))
+      (slack-mapconcat-images
+       (slack-image-slice
+        (slack-image-create message
+                            :success #'redisplay :error #'redisplay
+                            :token (oref team token)))))))
+
+(defmethod slack-message-view-image-to-string ((message slack-message) team)
+  (and (slack-message-has-imagep message)
+       (cl-labels
+           ((open-image () (interactive)
+                        (slack-open-image message team)))
+         (propertize "[View Image]"
+                     'face '(:underline t)
+                     'keymap (let ((map (make-sparse-keymap)))
+                               (define-key map (kbd "RET") #'open-image)
+                               map)))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

@@ -204,23 +204,8 @@
 
 (defmethod slack-message-image-to-string ((file slack-file) team)
   (if (slack-team-display-image-inlinep file team)
-      (let ((room (slack-room-find (oref file channel) team)))
-        (cl-labels
-            ((redisplay (_image) (slack-message-redisplay file room)))
-          (slack-mapconcat-images
-           (slack-image-slice
-            (slack-image-create file
-                                :success #'redisplay :error #'redisplay
-                                :token (oref team token))))))
-    (and (slack-message-has-imagep file)
-         (cl-labels
-             ((open-image () (interactive)
-                          (slack-open-image file team)))
-           (propertize "[View Image]"
-                       'face '(:underline t)
-                       'keymap (let ((map (make-sparse-keymap)))
-                                 (define-key map (kbd "RET") #'open-image)
-                                 map))))))
+      (slack-message-render-image file team)
+    (slack-message-view-image-to-string file team)))
 
 (defmethod slack-message-to-string ((file slack-file) team)
   (let* ((header (slack-message-header-to-string file team))

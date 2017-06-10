@@ -94,18 +94,24 @@
                 (or (and image (format "\n%s" image)) ""))
         ))))
 
+(defmethod slack-message-has-imagep ((attachment slack-attachment))
+  (oref attachment image-url))
+
 (cl-defmethod slack-image-create ((attachment slack-attachment) &key success error)
   (with-slots (image-url image-height image-width) attachment
     (when image-url
       (let ((path (slack-image-path image-url)))
         (when path
-          (if (file-exists-p path)
-              (slack-image--create path :height image-height :width image-width)
-            (progn
-              (slack-url-copy-file image-url path
-                                   :success success
-                                   :error error)
-              nil)))))))
+          (cl-labels
+              ((create-image () (slack-image--create path :height image-height :width image-width))
+               (on-success () (funcall success (create-image)))
+               (on-error () (funcall error (create-image))))
+            (if (file-exists-p path) (create-image)
+              (progn
+                (slack-url-copy-file image-url path
+                                     :success #'on-success
+                                     :error #'on-error)
+                nil))))))))
 
 (defmethod slack-attachment-header ((attachment slack-attachment))
   (with-slots (title title-link author-name author-subname) attachment
@@ -124,6 +130,25 @@
 
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
+
+(defmethod slack-open-image ((attachment slack-attachment) team)
+  (cl-labels
+      ((render (image)
+               (funcall slack-buffer-function
+                        (slack-render-image image team))))
+    (render (slack-image-create attachment
+                                :success #'render
+                                :error #'render))))
+
+(defmethod slack-message-view-image-to-string ((attachment slack-attachment) team)
+  (and (slack-message-has-imagep attachment)
+       (cl-labels
+           ((open-image () (interactive) (slack-open-image attachment team)))
+         (propertize "[View Image]"
+                     'face '(:underline t)
+                     'keymap (let ((keymap (make-sparse-keymap)))
+                               (define-key keymap (kbd "RET") #'open-image)
+                               keymap)))))
 
 (provide 'slack-attachment)
 ;;; slack-attachment.el ends here
