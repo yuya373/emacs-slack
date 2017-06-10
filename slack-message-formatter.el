@@ -158,22 +158,6 @@
       (slack-message-propertize
        m (slack-format-message header body attachment-body reactions thread)))))
 
-(defmethod slack-message-to-string ((m slack-file-share-message) team)
-  (cl-labels
-      ((redisplay () (slack-message-redisplay m (slack-room-find (oref m channel) team))))
-    (let* ((header (slack-message-header-to-string m team))
-           (attachment-body (slack-message-attachment-body m team))
-           (body (slack-message-body-to-string m team))
-           (thumb (and (slack-team-display-file-imagep team)
-                       (slack-mapconcat-images
-                        (slack-image-slice
-                         (slack-image-create (oref m file)
-                                             :success #'redisplay :error #'redisplay
-                                             :token (oref team token))))))
-           (reactions (slack-message-reaction-to-string m))
-           (thread (slack-thread-to-string m team)))
-      (slack-format-message header body attachment-body thumb reactions thread))))
-
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
     (slack-message-unescape-string text team)))

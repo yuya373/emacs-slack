@@ -53,10 +53,6 @@
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
 
-(defclass slack-file-share-message (slack-file-message)
-  ((upload :initarg :upload)
-   (user :initarg :user :initform nil)))
-
 (defclass slack-file-comment ()
   ((id :initarg :id :type string)
    (file-id :initarg :file_id :type string)
