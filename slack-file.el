@@ -199,11 +199,11 @@
     (and (< 1 comments-count)
          (slack-file-more-comments-string file))))
 
-(defmethod slack-team-display-imagep ((_file slack-file) team)
-  (slack-team-display-file-imagep team))
+(defmethod slack-team-display-image-inlinep ((_file slack-file) team)
+  (slack-team-display-file-image-inlinep team))
 
 (defmethod slack-message-image-to-string ((file slack-file) team)
-  (if (slack-team-display-imagep file team)
+  (if (slack-team-display-image-inlinep file team)
       (cl-labels
           ((redisplay () (slack-message-redisplay file
                                                   (slack-room-find (oref file channel) team))))
