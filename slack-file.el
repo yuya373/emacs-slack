@@ -199,31 +199,45 @@
     (and (< 1 comments-count)
          (slack-file-more-comments-string file))))
 
+(defmethod slack-team-display-imagep ((_file slack-file) team)
+  (slack-team-display-file-imagep team))
+
+(defmethod slack-message-image-to-string ((file slack-file) team)
+  (if (slack-team-display-imagep file team)
+      (cl-labels
+          ((redisplay () (slack-message-redisplay file
+                                                  (slack-room-find (oref file channel) team))))
+        (slack-mapconcat-images
+         (slack-image-slice
+          (slack-image-create file
+                              :success #'redisplay :error #'redisplay
+                              :token (oref team token)))))
+    (and (slack-message-has-imagep file)
+         (cl-labels
+             ((open-image () (interactive)
+                          (slack-open-image file team)))
+           (propertize "[View Image]"
+                       'face '(:underline t)
+                       'keymap (let ((map (make-sparse-keymap)))
+                                 (define-key map (kbd "RET") #'open-image)
+                                 map))))))
+
 (defmethod slack-message-to-string ((file slack-file) team)
-  (cl-labels
-      ((redisplay () (slack-message-redisplay file team)))
-    (let* ((header (slack-message-header-to-string file team))
-           (body (slack-message-body-to-string file team))
-           (thumb (and (slack-team-display-file-imagep team)
-                       (slack-mapconcat-images
-                        (slack-image-slice
-                         (slack-image-create
-                          file
-                          :success #'redisplay
-                          :error #'redisplay
-                          :token (oref team token))))))
-           (reactions (slack-message-reaction-to-string file))
-           (initial-comment
-            (slack-file-initial-comment-to-string file team))
-           (comments (slack-file-comments-to-string file team))
-           (comments-count
-            (slack-file-comments-count-to-string file)))
-      (propertize
-       (slack-format-message header body reactions
-                             thumb
-                             initial-comment comments
-                             comments-count)
-       'ts (oref file ts)))))
+  (let* ((header (slack-message-header-to-string file team))
+         (body (slack-message-body-to-string file team))
+         (thumb (slack-message-image-to-string file team))
+         (reactions (slack-message-reaction-to-string file))
+         (initial-comment
+          (slack-file-initial-comment-to-string file team))
+         (comments (slack-file-comments-to-string file team))
+         (comments-count
+          (slack-file-comments-count-to-string file)))
+    (propertize
+     (slack-format-message header body reactions
+                           thumb
+                           initial-comment comments
+                           comments-count)
+     'ts (oref file ts))))
 
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
@@ -455,19 +469,46 @@
     (slack-room-insert-previous-link room buf)
     (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)))
 
+
+(defmethod slack-file-image-spec ((file slack-file))
+  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64) file
+    (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
+        (and thumb-160 (list thumb-160 nil nil))
+        (and thumb-80 (list thumb-80 nil nil))
+        (and thumb-64 (list thumb-64 nil nil))
+        (list nil nil nil))))
+
+(defmethod slack-message-has-imagep ((file slack-file))
+  (cl-destructuring-bind (url _width _height) (slack-file-image-spec file)
+    url))
+
 (cl-defmethod slack-image-create ((file slack-file) &key success error token)
-  (with-slots (thumb-360 thumb-360-w thumb-360-h) file
-    (when thumb-360
-      (let ((path (slack-image-path thumb-360)))
+  (cl-destructuring-bind (url width height) (slack-file-image-spec file)
+    (when url
+      (let ((path (slack-image-path url)))
         (when path
-          (if (file-exists-p path)
-              (slack-image--create path :width thumb-360-w :height thumb-360-h)
-            (progn
-              (slack-url-copy-file thumb-360 path
-                                   :success success
-                                   :error error
-                                   :token token)
-              nil)))))))
+          (cl-labels
+              ((create-image () (slack-image--create path :width width :height height))
+               (on-success () (funcall success (create-image)))
+               (on-error () (funcall error (create-image))))
+            (if (file-exists-p path)
+                (create-image)
+              (progn
+                (slack-url-copy-file url path
+                                     :success #'on-success
+                                     :error #'on-error
+                                     :token token)
+                nil))))))))
+
+(defmethod slack-open-image ((file slack-file) team)
+  (cl-labels
+      ((render (image)
+               (funcall slack-buffer-function
+                        (slack-render-image image team))))
+    (render (slack-image-create file
+                                :success #'render
+                                :error #'render
+                                :token (oref team token)))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

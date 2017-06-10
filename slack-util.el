@@ -221,5 +221,19 @@
      :headers (when (and token (string-prefix-p "https" url))
                 (list (cons "Authorization" (format "Bearer %s" token)))))))
 
+(defun slack-render-image (image team)
+  (let ((buf (get-buffer-create
+              (format "*Slack - %s Image*" (slack-team-name team)))))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (if image
+          (insert (slack-mapconcat-images (slack-image-slice image)))
+        (insert "Loading Image..."))
+      (setq buffer-read-only t)
+      (goto-char (point-min)))
+
+    buf))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here
