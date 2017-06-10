@@ -46,6 +46,7 @@
 (require 'slack-message-delete)
 (require 'slack-room-history)
 (require 'slack-file-share-message)
+(require 'slack-attachment)
 
 (require 'slack-websocket)
 (require 'slack-request)

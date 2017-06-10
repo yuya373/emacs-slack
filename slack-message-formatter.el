@@ -169,7 +169,7 @@
   (let ((room (slack-room-find (oref m channel) team)))
     (cl-labels
         ((attachment-to-string (attachment)
-                               (slack-attachment-to-string attachment #'image-renderer))
+                               (slack-message-to-string attachment #'image-renderer))
          (image-renderer (attachment)
                          (and (slack-team-display-attachment-imagep team)
                               (slack-mapconcat-images
@@ -242,78 +242,6 @@
       (replace-regexp-in-string channel-regexp
                                 #'unescape-channel
                                 text t))))
-
-(defmethod slack-attachment-header ((attachment slack-attachment))
-  (with-slots (title title-link author-name author-subname) attachment
-    (concat (or (and title title-link (slack-linkfy title title-link))
-                title
-                "")
-            (or author-name author-subname ""))))
-
-(cl-defmethod slack-image-create ((attachment slack-attachment) &key success error)
-  (with-slots (image-url image-height image-width) attachment
-    (when image-url
-      (let ((path (slack-image-path image-url)))
-        (when path
-          (if (file-exists-p path)
-              (slack-image--create path :height image-height :width image-width)
-            (progn
-              (slack-url-copy-file image-url path
-                                   :success success
-                                   :error error)
-              nil)))))))
-
-(defmethod slack-attachment-to-string ((attachment slack-attachment) image-renderer)
-  (with-slots
-      (fallback text ts color from-url footer fields pretext) attachment
-    (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
-           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
-                    pad-raw))
-           (header-raw (slack-attachment-header attachment))
-           (header (and (not (slack-string-blankp header-raw))
-                        (format "%s\t%s" pad
-                                (propertize header-raw
-                                            'face 'slack-attachment-header))))
-           (pretext (and pretext (format "%s\t%s" pad pretext)))
-           (body (and text (format "%s\t%s" pad (mapconcat #'identity
-                                                           (split-string text "\n")
-                                                           (format "\n\t%s\t" pad)))))
-           (fields (if fields (mapconcat #'(lambda (field)
-                                             (slack-attachment-field-to-string field
-                                                                               (format "\t%s" pad)))
-                                         fields
-                                         (format "\n\t%s\n" pad))))
-           (footer (if (and footer ts)
-                       (format "%s\t%s"
-                               pad
-                               (propertize
-                                (format "%s|%s" footer
-                                        (slack-message-time-to-string ts))
-                                'face 'slack-attachment-footer))))
-           (image (when (functionp image-renderer)
-                    (funcall image-renderer attachment))))
-      (if (and (slack-string-blankp header)
-               (slack-string-blankp pretext)
-               (slack-string-blankp body)
-               (slack-string-blankp fields)
-               (slack-string-blankp footer))
-          fallback
-        (format "%s%s%s%s%s%s"
-                (or (and header (format "\t%s\n" header)) "")
-                (or (and pretext (format "\t%s\n" pretext)) "")
-                (or (and body (format "\t%s" body)) "")
-                (or (and fields fields) "")
-                (or (and footer (format "\n\t%s" footer)) "")
-                (or (and image (format "\n%s" image)) ""))
-        ))))
-
-(defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
-  (unless pad (setq pad ""))
-  (let ((title (propertize (or (oref field title) "") 'face 'slack-attachment-field-title))
-        (value (mapconcat #'(lambda (e) (format "\t%s" e))
-                          (split-string (or (oref field value) "") "\n")
-                          (format "\n%s\t" pad))))
-    (format "%s\t%s\n%s\t%s" pad title pad value)))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here
