@@ -89,9 +89,6 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (oref m ts)))
 
-(defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
-  (cons "file" (oref (oref m file) id)))
-
 (defmethod slack-message-get-param-for-reaction ((m slack-file-comment-message))
   (cons "file_comment" (oref (oref m comment) id)))
 

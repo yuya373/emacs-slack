@@ -30,6 +30,14 @@
   "Default directory for slack profile images."
   :group 'slack)
 
+(defcustom slack-image-file-directory temporary-file-directory
+  "Default directory for slack images."
+  :group 'slack)
+
+(defcustom slack-image-max-height 300
+  "Max Height of image.  nil is unlimited.  integer."
+  :group 'slack)
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
@@ -117,10 +125,11 @@
     (when buf
       (with-current-buffer buf
         (setq buffer-read-only nil)
-        (goto-char (point-max))
-        (insert (format "[%s] %s\n"
-                        (format-time-string "%Y-%m-%d %H:%M:%S")
-                        payload))
+        (save-excursion
+          (goto-char (point-max))
+          (insert (format "[%s] %s\n"
+                          (format-time-string "%Y-%m-%d %H:%M:%S")
+                          payload)))
         (setq buffer-read-only t)))))
 
 (defun slack-log-open-event-buffer ()
@@ -138,6 +147,93 @@
            "."
            (file-name-extension image-url))
    slack-profile-image-file-directory))
+
+(cl-defun slack-image--create (path &key (width nil) (height nil))
+  (if (image-type-available-p 'imagemagick)
+      (slack-image-shrink (apply #'create-image (append (list path 'imagemagick nil)
+                                                        (if height (list :height height))
+                                                        (if width (list :width width)))))
+    (create-image path)))
+
+(defun slack-image-path (image-url)
+  (expand-file-name
+   (concat (md5 image-url)
+           "."
+           (file-name-extension image-url))
+   slack-image-file-directory))
+
+(defun slack-image-slice (image)
+  (when image
+    (let* ((line-height 50.0)
+           (height (or (plist-get (cdr image) :height)
+                       (cdr (image-size image t))))
+           (line-count (/ height line-height))
+           (line (/ 1.0 line-count)))
+      (if (< line-height height)
+          (cl-loop for i from 0 to (- line-count 1)
+                   collect (list (list 'slice 0 (* line i) 1.0 line)
+                                 image))
+        (list image)))))
+
+(defun slack-image-shrink (image)
+  (unless (image-type-available-p 'imagemagick)
+    (error "Need Imagemagick"))
+  (if slack-image-max-height
+      (let* ((data (plist-get (cdr image) :data))
+             (file (plist-get (cdr image) :file))
+             (size (image-size image t))
+             (height (cdr size))
+             (width (car size))
+             (h (min height slack-image-max-height))
+             (w (if (< slack-image-max-height height)
+                    (ceiling
+                     (* (/ (float slack-image-max-height) height)
+                        width))
+                  width)))
+        (create-image (or file data) 'imagemagick data :height h :width w))
+    image))
+
+(defun slack-mapconcat-images (images)
+  (when images
+    (cl-labels ((sort-image (images)
+                            (cl-sort images #'> :key #'(lambda (image) (caddr (car image)))))
+                (propertize-image (image)
+                                  (propertize "image"
+                                              'display image
+                                              'face 'slack-profile-image-face)))
+      (mapconcat #'propertize-image (sort-image images) "\n"))))
+
+(cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (when (functionp success) (funcall success)))
+       (on-error (url &allow-other-keys)
+                 (url-copy-file url newname)
+                 (when (functionp error) (funcall error)))
+       (parser () (mm-write-region (point-min) (point-max)
+                                   newname nil nil nil 'binary t)))
+    (request
+     url
+     :success #'on-success
+     :error #'on-error
+     :parser #'parser
+     :sync sync
+     :headers (when (and token (string-prefix-p "https" url))
+                (list (cons "Authorization" (format "Bearer %s" token)))))))
+
+(defun slack-render-image (image team)
+  (let ((buf (get-buffer-create
+              (format "*Slack - %s Image*" (slack-team-name team)))))
+    (with-current-buffer buf
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (if image
+          (insert (slack-mapconcat-images (slack-image-slice image)))
+        (insert "Loading Image..."))
+      (setq buffer-read-only t)
+      (goto-char (point-min)))
+
+    buf))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

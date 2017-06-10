@@ -53,10 +53,6 @@
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
 
-(defclass slack-file-share-message (slack-file-message)
-  ((upload :initarg :upload)
-   (user :initarg :user :initform nil)))
-
 (defclass slack-file-comment ()
   ((id :initarg :id :type string)
    (file-id :initarg :file_id :type string)
@@ -93,33 +89,10 @@
    (username :initarg :username :type string :initform "")
    (icons :initarg :icons)))
 
-(defclass slack-attachment ()
-  ((fallback :initarg :fallback :initform nil)
-   (title :initarg :title :initform nil)
-   (title-link :initarg :title_link :initform nil)
-   (pretext :initarg :pretext :initform nil)
-   (text :initarg :text :initform nil)
-   (author-name :initarg :author_name :initform nil)
-   (author-link :initarg :author_link)
-   (author-icon :initarg :author_icon)
-   (fields :initarg :fields :initform '())
-   (image-url :initarg :image_url)
-   (thumb-url :initarg :thumb_url)
-   (is-share :initarg :is_share :initform nil)
-   (footer :initarg :footer :initform nil)
-   (color :initarg :color :initform nil)
-   (ts :initarg :ts :initform nil)
-   (author-subname :initarg :author_subname :initform nil)))
-
 (defclass slack-attachment-field ()
   ((title :initarg :title :initform nil)
    (value :initarg :value :initform nil)
    (short :initarg :short :initform nil)))
-
-(defclass slack-shared-message (slack-attachment)
-  ((channel-id :initarg :channel_id :initform nil)
-   (channel-name :initarg :channel_name :initform nil)
-   (from-url :initarg :from_url :initform nil)))
 
 (defgeneric slack-message-sender-name  (slack-message team))
 (defgeneric slack-message-to-string (slack-message))
@@ -318,6 +291,32 @@
 
 (defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
+
+(defmethod slack-message-redisplay ((message slack-message) room)
+  (let ((buf (get-buffer (slack-room-buffer-name room))))
+    (when buf
+      (slack-buffer-replace buf message))))
+
+(cl-defmethod slack-message-render-image ((message slack-message) team)
+  (let ((room (slack-room-find (oref message channel) team)))
+    (cl-labels
+        ((redisplay (_image) (slack-message-redisplay message room)))
+      (slack-mapconcat-images
+       (slack-image-slice
+        (slack-image-create message
+                            :success #'redisplay :error #'redisplay
+                            :token (oref team token)))))))
+
+(defmethod slack-message-view-image-to-string ((message slack-message) team)
+  (and (slack-message-has-imagep message)
+       (cl-labels
+           ((open-image () (interactive)
+                        (slack-open-image message team)))
+         (propertize "[View Image]"
+                     'face '(:underline t)
+                     'keymap (let ((map (make-sparse-keymap)))
+                               (define-key map (kbd "RET") #'open-image)
+                               map)))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

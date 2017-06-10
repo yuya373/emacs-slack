@@ -58,9 +58,6 @@
 (defmethod slack-message-sender-id ((m slack-bot-message))
   (oref m bot-id))
 
-(defmethod slack-attachment-to-alert ((a slack-attachment))
-  (oref a fallback))
-
 (defun slack-bot-image-url (bot size)
   (let ((icons (plist-get bot :icons)))
     (cond

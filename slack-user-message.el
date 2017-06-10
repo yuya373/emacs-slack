@@ -31,9 +31,5 @@
             (format "%s edited_at: %s" header edited-at)
           header)))))
 
-(defmethod slack-message-propertize ((m slack-user-message) text)
-  (put-text-property 0 (length text) 'keymap slack-user-message-keymap text)
-  text)
-
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

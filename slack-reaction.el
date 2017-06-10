@@ -48,8 +48,7 @@
 
 (defmethod slack-reaction-to-string ((r slack-reaction))
   (let ((text (format ":%s:: %d" (oref r name) (oref r count))))
-    (put-text-property 0 (length text) 'reaction r text)
-    text))
+    (propertize text 'reaction r)))
 
 (defun slack-reaction-notify (payload team)
   (let* ((user-id (plist-get payload :user))

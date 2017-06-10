@@ -45,6 +45,8 @@
 (require 'slack-message-changed)
 (require 'slack-message-delete)
 (require 'slack-room-history)
+(require 'slack-file-share-message)
+(require 'slack-attachment)
 
 (require 'slack-websocket)
 (require 'slack-request)
@@ -223,6 +225,14 @@ never means never show typing indicator."
                    do (start team))
         (slack-start (call-interactively #'slack-register-team))))
     (slack-enable-modeline)))
+
+(defun slack-redisplay-message ()
+  (interactive)
+  (let* ((ts (slack-get-ts))
+         (team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id team))
+         (message (slack-room-find-message room ts)))
+    (slack-message-redisplay message room)))
 
 
 (provide 'slack)
