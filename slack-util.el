@@ -150,7 +150,9 @@
 
 (cl-defun slack-image--create (path &key (width nil) (height nil))
   (if (image-type-available-p 'imagemagick)
-      (slack-image-shrink (create-image path 'imagemagick nil :height height :width width))
+      (slack-image-shrink (apply #'create-image (append (list path 'imagemagick nil)
+                                                        (if height (list :height height))
+                                                        (if width (list :width width)))))
     (create-image path)))
 
 (defun slack-image-path (image-url)
