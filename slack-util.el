@@ -196,12 +196,19 @@
 (defun slack-mapconcat-images (images)
   (when images
     (cl-labels ((sort-image (images)
-                            (cl-sort images #'> :key #'(lambda (image) (caddr (car image)))))
+                            (cl-sort images #'< :key #'(lambda (image) (caddr (car image)))))
                 (propertize-image (image)
                                   (propertize "image"
                                               'display image
-                                              'face 'slack-profile-image-face)))
-      (mapconcat #'propertize-image (sort-image images) "\n"))))
+                                              'face 'slack-profile-image-face))
+                (join (fn images separator)
+                      (let ((ret ""))
+                        (if (< 0 (length images))
+                            (dolist (image images)
+                              (setq ret (format "%s%s%s" ret (funcall fn image) separator)))
+                          (setq ret (format "%s" (funcall fn (car images)))))
+                        ret)))
+      (join #'propertize-image (sort-image images) "\n"))))
 
 (cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
   (cl-labels
