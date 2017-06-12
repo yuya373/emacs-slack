@@ -195,13 +195,16 @@
 
 (defun slack-mapconcat-images (images)
   (when images
-    (cl-labels ((sort-image (images)
-                            (cl-sort images #'> :key #'(lambda (image) (caddr (car image)))))
+    (cl-labels ((sort-images (images)
+                             (let ((compare (if (< emacs-major-version 26)
+                                                #'>
+                                              #'<)))
+                               (cl-sort images compare :key #'(lambda (image) (caddr (car image))))))
                 (propertize-image (image)
                                   (propertize "image"
                                               'display image
                                               'face 'slack-profile-image-face)))
-      (mapconcat #'propertize-image (sort-image images) "\n"))))
+      (mapconcat #'propertize-image (sort-images images) "\n"))))
 
 (cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
   (cl-labels
