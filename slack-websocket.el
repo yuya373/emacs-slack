@@ -83,7 +83,7 @@
                 (cl-remove-if #'(lambda (p) (string= payload p))
                               waiting-send)))
       (websocket-closed (slack-ws-reconnect team))
-      (websocket-illegal-frame (message "Sent illegal frame.")
+      (websocket-illegal-frame (slack-log "Sent illegal frame." team)
                                (slack-ws-close team))
       (error (slack-ws-reconnect team)))))
 
@@ -193,11 +193,13 @@
                     (visible-users (cl-remove-if
                                     #'(lambda (u) (< (oref u limit) current))
                                     users)))
-                (message "Slack [%s - %s] %s is typing..."
+                (slack-log
+                 (format "Slack [%s - %s] %s is typing..."
                          team-name room-name
                          (mapconcat #'(lambda (u) (oref u user-name))
                                     visible-users
-                                    ", ")))))))))
+                                    ", "))
+                 team))))))))
 
 (defun slack-ws-handle-user-typing (payload team)
   (let* ((user (slack-user-name (plist-get payload :user) team))
@@ -234,11 +236,12 @@
     (slack-user-info-request
      (plist-get user :id) team
      :after-success #'(lambda ()
-                        (message "User %s Joind Team: %s"
-                                 (plist-get (slack-user--find (plist-get user :id)
-                                                              team)
-                                            :name)
-                                 (slack-team-name team))))))
+                        (slack-log (format "User %s Joind Team: %s"
+                                           (plist-get (slack-user--find (plist-get user :id)
+                                                                        team)
+                                                      :name)
+                                           (slack-team-name team))
+                                   team)))))
 
 (defun slack-ws-handle-im-open (payload team)
   (cl-labels
@@ -247,8 +250,9 @@
         (slack-room-history-request
          im team
          :after-success #'(lambda ()
-                            (message "Direct Message Channel with %s is Open"
-                                     (slack-user-name (oref im user) team)))
+                            (slack-log (format "Direct Message Channel with %s is Open"
+                                               (slack-user-name (oref im user) team))
+                                       team))
          :async t)))
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
       (if exist
@@ -267,8 +271,9 @@
   (let ((im (slack-room-find (plist-get payload :channel) team)))
     (when im
       (oset im is-open nil)
-      (message "Direct Message Channel with %s is Closed"
-               (slack-user-name (oref im user) team)))))
+      (slack-log (format "Direct Message Channel with %s is Closed"
+                         (slack-user-name (oref im user) team))
+                 team))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
@@ -297,9 +302,10 @@
   (let ((ok (plist-get payload :ok)))
     (if (eq ok :json-false)
         (let ((err (plist-get payload :error)))
-          (message "Error code: %s msg: %s"
-                   (plist-get err :code)
-                   (plist-get err :msg)))
+          (slack-log (format "Error code: %s msg: %s"
+                             (plist-get err :code)
+                             (plist-get err :msg))
+                     team))
       (let ((message-id (plist-get payload :reply_to)))
         (if (integerp message-id)
             (slack-message-handle-reply
@@ -344,15 +350,17 @@
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id team)))
     (oset room is-archived t)
-    (message "Channel: %s is archived"
-             (slack-room-display-name room))))
+    (slack-log (format "Channel: %s is archived"
+                       (slack-room-display-name room))
+               team)))
 
 (defun slack-ws-handle-room-unarchive (payload team)
   (let* ((id (plist-get payload :channel))
          (room (slack-room-find id team)))
     (oset room is-archived nil)
-    (message "Channel: %s is unarchived"
-             (slack-room-display-name room))))
+    (slack-log (format "Channel: %s is unarchived"
+                       (slack-room-display-name room))
+               team)))
 
 (defun slack-ws-handle-channel-deleted (payload team)
   (let ((id (plist-get payload :channel)))
@@ -364,9 +372,10 @@
          (old-name (slack-room-name room))
          (new-name (plist-get c :name)))
     (oset room name new-name)
-    (message "Renamed channel from %s to %s"
-             old-name
-             new-name)))
+    (slack-log (format "Renamed channel from %s to %s"
+                       old-name
+                       new-name)
+               team)))
 
 (defun slack-ws-handle-room-joined (payload team)
   (cl-labels
@@ -381,14 +390,16 @@
             (with-slots (channels) team
               (setq channels
                     (replace-room channel channels)))
-            (message "Joined channel %s"
-                     (slack-room-display-name channel)))
+            (slack-log (format "Joined channel %s"
+                               (slack-room-display-name channel))
+                       team))
         (let ((group (slack-room-create c team 'slack-group)))
           (with-slots (groups) team
             (setq groups
                   (replace-room group groups)))
-          (message "Joined group %s"
-                   (slack-room-display-name group)))))))
+          (slack-log (format "Joined group %s"
+                             (slack-room-display-name group))
+                     team))))))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
@@ -468,7 +479,9 @@
     (setq slack-disconnected-timer
           (run-with-idle-timer 5 t
                                #'(lambda ()
-                                   (message "Reconnect Count Exceeded. Manually invoke `slack-start'."))))))
+                                   (slack-log
+                                    "Reconnect Count Exceeded. Manually invoke `slack-start'."
+                                    team))))))
 
 (defun slack-cancel-notify-adandon-reconnect ()
   (if (and slack-disconnected-timer

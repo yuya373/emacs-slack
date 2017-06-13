@@ -165,7 +165,7 @@ never means never show typing indicator."
               rooms)))
     (slack-request-handle-error
      (data "slack-authorize")
-     (message "Slack Authorization Finished - %s" (oref team name))
+     (slack-log (format "Slack Authorization Finished" (oref team name)) team)
      (let ((team (slack-update-team data team)))
        (slack-channel-list-update
         team #'(lambda (team)
