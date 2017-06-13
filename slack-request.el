@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'eieio)
 (require 'json)
 (require 'request)
 
@@ -46,30 +47,76 @@
         (json-read-from-string payload)
       (json-end-of-file nil))))
 
-(cl-defun slack-request (url team &key
-                             (type "GET")
-                             (success)
-                             (error nil)
-                             (params nil)
-                             (data nil)
-                             (parser #'slack-parse-to-plist)
-                             (sync t)
-                             (files nil)
-                             (headers nil)
-                             (timeout slack-request-timeout))
-  (request
-   url
-   :type type
-   :sync sync
-   :params (cons (cons "token" (oref team token))
-                 params)
-   :data data
-   :files files
-   :headers headers
-   :parser parser
-   :success success
-   :error error
-   :timeout timeout))
+(defclass slack-request-request ()
+  ((url :initarg :url)
+   (team :initarg :team)
+   (type :initarg :type :initform "GET")
+   (success :initarg :success)
+   (error :initarg :error :initform nil)
+   (params :initarg :params :initform nil)
+   (data :initarg :data :initform nil)
+   (parser :initarg :parser :initform #'slack-parse-to-plist)
+   (sync :initarg :sync :initform nil)
+   (files :initarg :files :initform nil)
+   (headers :initarg :headers :initform nil)
+   (timeout :initarg :timeout :initform `,slack-request-timeout)))
+
+(cl-defun slack-request-create
+    (url team &key type success error params data parser sync files headers timeout)
+  (let ((args (list
+               :url url :team team :type type
+               :success success :error error
+               :params params :data data :parser parser
+               :sync sync :files files :headers headers
+               :timeout timeout))
+        (ret nil))
+    (mapc #'(lambda (maybe-key)
+              (let ((value (plist-get args maybe-key)))
+                (when value
+                  (setq ret (plist-put ret maybe-key value)))))
+          args)
+    (apply #'make-instance 'slack-request-request ret)))
+
+(defmethod slack-request ((req slack-request-request))
+  (if (oref (oref req team) retry-after-timer)
+      (cl-pushnew req (oref team waiting-requests) :test #'equal)
+
+    (with-slots (url team type success error params data parser sync files headers timeout) req
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (funcall success :data data)
+                       (oset team retry-after-timer nil))
+           (on-error (&key error-thrown symbol-status response data)
+                     (let ((retry-after-sec (request-response-header response "retry-after")))
+                       (when retry-after-sec
+                         (slack-log (format "retry-after-sec: %s, %s" retry-after-sec (numberp retry-after-sec)) team)
+
+                         (cl-pushnew req (oref team waiting-requests) :test #'equal)
+                         (unless (oref team retry-after-timer)
+                           (oset team retry-after-timer
+                                 (run-at-time retry-after-sec nil
+                                              #'slack-team-execute-waiting-request team)))))
+
+                     (when (functionp error)
+                       (funcall error
+                                :error-thrown error-thrown
+                                :symbol-status symbol-status
+                                :response response
+                                :data data))))
+        (request
+         url
+         :type type
+         :sync sync
+         :params (cons (cons "token" (oref team token))
+                       params)
+         :data data
+         :files files
+         :headers headers
+         :parser parser
+         :success #'on-success
+         :error #'on-error
+         :timeout timeout)))))
+
 
 (cl-defmacro slack-request-handle-error ((data req-name &optional handler) &body body)
   "Bind error to e if present in DATA."

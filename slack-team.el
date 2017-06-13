@@ -89,6 +89,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (display-profile-image :initarg :display-profile-image :initform nil)
    (display-attachment-image-inline :initarg :display-attachment-image-inline :initform nil)
    (display-file-image-inline :initarg :display-file-image-inline :initform nil)
+   (retry-after-timer :initform nil)
+   (waiting-requests :initform nil)
    ))
 
 (defun slack-team-find (id)
