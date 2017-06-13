@@ -185,12 +185,12 @@
            (if (and after-success (functionp after-success))
                (funcall after-success))))))
     (slack-request
-     (slack-room-history-url room)
-     team
-     :params (list (cons "channel" (oref room id))
-                   (if oldest (cons "latest" oldest)))
-     :success #'on-request-update
-     :sync (not async))))
+     (slack-request-create
+      (slack-room-history-url room)
+      team
+      :params (list (cons "channel" (oref room id))
+                    (if oldest (cons "latest" oldest)))
+      :success #'on-request-update))))
 
 (provide 'slack-room-history)
 ;;; slack-room-history.el ends here

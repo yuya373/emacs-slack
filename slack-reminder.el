@@ -88,13 +88,13 @@
                              (slack-team-add-reminder team reminder)
                              (message "Reminder Created!")))))
       (slack-request
-       slack-reminder-add-url
-       team
-       :sync nil
-       :params (list (cons "text" text)
-                     (cons "time" time)
-                     (and user (cons "user" (plist-get user :id))))
-       :success #'on-reminder-add))))
+       (slack-request-create
+        slack-reminder-add-url
+        team
+        :params (list (cons "text" text)
+                      (cons "time" time)
+                      (and user (cons "user" (plist-get user :id))))
+        :success #'on-reminder-add)))))
 
 (defmethod slack-reminder-to-body ((r slack-reminder))
   (with-slots (text time complete-ts) r
@@ -166,10 +166,10 @@
                 (slack-create-reminder-buffer team))
              (message "No Reminders!")))))
       (slack-request
-       slack-reminder-list-url
-       team
-       :sync nil
-       :success #'on-reminder-list))))
+       (slack-request-create
+        slack-reminder-list-url
+        team
+        :success #'on-reminder-list)))))
 
 (defmethod slack-reminders-alist ((team slack-team) &optional filter)
   (cl-labels ((text (r)
@@ -207,11 +207,11 @@
                               (slack-team-delete-reminder team reminder)
                               (message "Reminder Deleted!"))))
       (slack-request
-       slack-reminder-delete-url
-       team
-       :sync nil
-       :params (list (cons "reminder" (oref reminder id)))
-       :success #'on-reminder-delete))))
+       (slack-request-create
+        slack-reminder-delete-url
+        team
+        :params (list (cons "reminder" (oref reminder id)))
+        :success #'on-reminder-delete)))))
 
 (defmethod slack-reminder-info ((r slack-reminder-base) team callback)
   (cl-labels
@@ -223,11 +223,11 @@
                                                       :reminder))))
                             (funcall callback reminder)))))
     (slack-request
-     slack-reminder-info-url
-     team
-     :sync nil
-     :params (list (cons "reminder" (oref r id)))
-     :success #'on-reminder-info)))
+     (slack-request-create
+      slack-reminder-info-url
+      team
+      :params (list (cons "reminder" (oref r id)))
+      :success #'on-reminder-info))))
 
 (defmethod slack-reminder-refresh ((r slack-reminder-base) team)
   (slack-reminder-info
@@ -254,11 +254,11 @@
                                 (data "slack-reminder-complete")
                                 (slack-reminder-refresh reminder team))))
       (slack-request
-       slack-reminder-complete-url
-       team
-       :sync nil
-       :params (list (cons "reminder" (oref reminder id)))
-       :success #'on-reminder-complete))))
+       (slack-request-create
+        slack-reminder-complete-url
+        team
+        :params (list (cons "reminder" (oref reminder id)))
+        :success #'on-reminder-complete)))))
 
 (defmethod slack-user-find ((r slack-reminder-base) team)
   (slack-user--find (oref r user) team))

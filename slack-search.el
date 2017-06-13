@@ -236,15 +236,15 @@
 (defun slack-search-request (team query sort sort-dir success page async url)
   (if (< 0 (length query))
       (slack-request
-       url
-       team
-       :type "POST"
-       :params (list (cons "query" query)
-                     (cons "sort" sort)
-                     (cons "sort_dir" sort-dir)
-                     (cons "page" (number-to-string page)))
-       :success success
-       :sync (not async))))
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params (list (cons "query" query)
+                      (cons "sort" sort)
+                      (cons "sort_dir" sort-dir)
+                      (cons "page" (number-to-string page)))
+        :success success))))
 
 (defun slack-search-alist (team)
   (with-slots (search-results) team

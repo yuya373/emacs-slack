@@ -115,13 +115,13 @@ never means never show typing indicator."
                                    do (request-abort r))))
     (setq slack-authorize-requests nil)
     (let ((request (slack-request
-                    slack-rtm-connect-url
-                    team
-                    :success (cl-function (lambda (&key data &allow-other-keys)
-                                            (slack-on-authorize data team)))
-                    :sync nil
-                    :params (list (cons "mpim_aware" "1"))
-                    :error error-callback)))
+                    (slack-request-create
+                     slack-rtm-connect-url
+                     team
+                     :success (cl-function (lambda (&key data &allow-other-keys)
+                                             (slack-on-authorize data team)))
+                     :params (list (cons "mpim_aware" "1"))
+                     :error error-callback))))
       (push request slack-authorize-requests))))
 
 (defun slack-update-team (data team)

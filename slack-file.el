@@ -168,12 +168,12 @@
                              (slack-file-pushnew file team)
                              (slack-message-update file team t))))
           (slack-request
-           slack-file-info-url
-           team
-           :params (list (cons "file" file)
-                         (cons "page" (number-to-string page)))
-           :sync nil
-           :success #'on-file-info)))))
+           (slack-request-create
+            slack-file-info-url
+            team
+            :params (list (cons "file" file)
+                          (cons "page" (number-to-string page)))
+            :success #'on-file-info))))))
 
 (defmethod slack-message-body-to-string ((file slack-file) team)
   (with-slots (name size filetype permalink) file
@@ -256,12 +256,12 @@
          (if after-success
              (funcall after-success)))))
     (slack-request
-     slack-file-list-url
-     team
-     :params (list (if oldest
-                       (cons "ts_to" oldest)))
-     :success #'on-file-list
-     :sync (if async nil t))))
+     (slack-request-create
+      slack-file-list-url
+      team
+      :params (list (if oldest
+                        (cons "ts_to" oldest)))
+      :success #'on-file-list))))
 
 (defun slack-file-upload ()
   (interactive)
@@ -305,18 +305,18 @@
                                             (buffer-file-name buf))))
            (initial-comment (read-from-minibuffer "Message: ")))
       (slack-request
-       slack-file-upload-url
-       team
-       :type "POST"
-       :params (list (cons "filename" filename)
-                     (cons "channels" channel-ids)
-                     (cons "filetype" filetype)
-                     (if initial-comment
-                         (cons "initial_comment" initial-comment)))
-       :files (list (cons "file" buf))
-       :headers (list (cons "Content-Type" "multipart/form-data"))
-       :success #'on-file-upload
-       :sync nil))))
+       (slack-request-create
+        slack-file-upload-url
+        team
+        :type "POST"
+        :params (list (cons "filename" filename)
+                      (cons "channels" channel-ids)
+                      (cons "filetype" filetype)
+                      (if initial-comment
+                          (cons "initial_comment" initial-comment)))
+        :files (list (cons "file" buf))
+        :headers (list (cons "Content-Type" "multipart/form-data"))
+        :success #'on-file-upload)))))
 
 (defun slack-file-delete ()
   (interactive)
@@ -340,11 +340,11 @@
            (selected (funcall slack-completing-read-function "Select File: " candidates))
            (deleting-file (cdr (cl-assoc selected candidates :test #'string=))))
       (slack-request
-       slack-file-delete-url
-       team
-       :params (list (cons "file" (oref deleting-file id)))
-       :sync nil
-       :success #'on-file-delete))))
+       (slack-request-create
+        slack-file-delete-url
+        team
+        :params (list (cons "file" (oref deleting-file id)))
+        :success #'on-file-delete)))))
 
 (defconst slack-file-comment-add-url "https://slack.com/api/files.comments.add")
 
@@ -394,15 +394,14 @@
                      (channel (slack-file-channel message))
                      (comment (read-from-minibuffer "Write Comment: ")))
                  (slack-request
-                  slack-file-comment-add-url
-                  team
-                  :params (list (cons "file" id)
-                                (cons "comment" comment)
-                                (if channel
-                                    (cons "channel" channel)))
-                  :sync nil
-                  :success #'on-file-comment-add
-                  )))
+                  (slack-request-create
+                   slack-file-comment-add-url
+                   team
+                   :params (list (cons "file" id)
+                                 (cons "comment" comment)
+                                 (if channel
+                                     (cons "channel" channel)))
+                   :success #'on-file-comment-add))))
            (error "Message is not a File")))
      (error "Message can't fild"))))
 
@@ -420,12 +419,12 @@
                (let ((id (slack-file-comment-id message))
                      (file-id (slack-file-id message)))
                  (slack-request
-                  slack-file-comment-delete-url
-                  team
-                  :params (list (cons "id" id)
-                                (cons "file" file-id))
-                  :sync nil
-                  :success #'on-file-comment-delete))))))))
+                  (slack-request-create
+                   slack-file-comment-delete-url
+                   team
+                   :params (list (cons "id" id)
+                                 (cons "file" file-id))
+                   :success #'on-file-comment-delete)))))))))
 
 (defconst slack-file-comment-edit-url "https://slack.com/api/files.comments.edit")
 
@@ -440,13 +439,13 @@
                                (slack-request-handle-error
                                 (data "slack-file-comment-edit"))))
       (slack-request
-       slack-file-comment-edit-url
-       team
-       :params (list (cons "id" comment-id)
-                     (cons "file" file-id)
-                     (cons "comment" comment))
-       :sync nil
-       :success #'on-file-comment-edit))))
+       (slack-request-create
+        slack-file-comment-edit-url
+        team
+        :params (list (cons "id" comment-id)
+                      (cons "file" file-id)
+                      (cons "comment" comment))
+        :success #'on-file-comment-edit)))))
 
 (defmethod slack-room-setup-buffer ((room slack-file-room) buf)
   (with-current-buffer buf

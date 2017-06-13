@@ -87,14 +87,15 @@
                (slack-request-handle-error
                 (data "slack-user-set-status-request"))))
     (slack-request
-     slack-user-profile-set-url
-     team
-     :type "POST"
-     :data (list (cons "id" (oref team self-id))
-                 (cons "profile"
-                       (json-encode (list (cons "status_text" text)
-                                          (cons "status_emoji" emoji)))))
-     :success #'on-success)))
+     (slack-request-create
+      slack-user-profile-set-url
+      team
+      :type "POST"
+      :data (list (cons "id" (oref team self-id))
+                  (cons "profile"
+                        (json-encode (list (cons "status_text" text)
+                                           (cons "status_emoji" emoji)))))
+      :success #'on-success))))
 
 (defun slack-bot-info-request (bot_id team &optional after-success)
   (cl-labels
@@ -105,11 +106,11 @@
                     (if after-success
                         (funcall after-success team)))))
     (slack-request
-     slack-bot-info-url
-     team
-     :params (list (cons "bot" bot_id))
-     :success #'on-success
-     :sync nil)))
+     (slack-request-create
+      slack-bot-info-url
+      team
+      :params (list (cons "bot" bot_id))
+      :success #'on-success))))
 
 (defun slack-bot-list-update (&optional team)
   (interactive)
@@ -121,10 +122,10 @@
            (data "slack-bot-list-update")
            (oset team bots (append (plist-get data :bots) nil)))))
       (slack-request
-       slack-bot-list-url
-       team
-       :success #'on-success
-       :sync nil))))
+       (slack-request-create
+        slack-bot-list-url
+        team
+        :success #'on-success)))))
 
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
@@ -272,11 +273,11 @@
          (slack-im-open (plist-get data :user))
          (when after-success (funcall after-success)))))
     (slack-request
-     slack-user-info-url
-     team
-     :params (list (cons "user" user-id))
-     :sync nil
-     :success #'on-success)))
+     (slack-request-create
+      slack-user-info-url
+      team
+      :params (list (cons "user" user-id))
+      :success #'on-success))))
 
 (defun slack-user-image-url-24 (user)
   (plist-get (slack-user-profile user) :image_24))

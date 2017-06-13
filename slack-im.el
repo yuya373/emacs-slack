@@ -132,10 +132,10 @@
            (let* ((members (append (plist-get data :members) nil)))
              (slack-im-update-room-list members team after-success)))))
       (slack-request
-       slack-user-list-url
-       team
-       :success #'on-list-update
-       :sync nil))))
+       (slack-request-create
+        slack-user-list-url
+        team
+        :success #'on-list-update)))))
 
 (defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
@@ -159,12 +159,12 @@
                      (message "Direct Message Channel with %s Already Closed"
                               (slack-user-name (oref im user) team)))))))
           (slack-request
-           slack-im-close-url
-           team
-           :type "POST"
-           :params (list (cons "channel" (oref selected id)))
-           :success #'on-success
-           :sync nil)))))
+           (slack-request-create
+            slack-im-close-url
+            team
+            :type "POST"
+            :params (list (cons "channel" (oref selected id)))
+            :success #'on-success))))))
 
 (defun slack-im-open (&optional user)
   (interactive)
@@ -185,12 +185,12 @@
                  (message "Direct Message Channel with %s Already Open"
                           (slack-user-name (oref im user) team)))))))
       (slack-request
-       slack-im-open-url
-       team
-       :type "POST"
-       :params (list (cons "user" (plist-get user :id)))
-       :success #'on-success
-       :sync nil))))
+       (slack-request-create
+        slack-im-open-url
+        team
+        :type "POST"
+        :params (list (cons "user" (plist-get user :id)))
+        :success #'on-success)))))
 
 (defmethod slack-room-label-prefix ((room slack-im))
   (slack-im-user-presence room))

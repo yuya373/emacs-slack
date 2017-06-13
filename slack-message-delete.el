@@ -60,13 +60,13 @@
                (data "slack-message-delete"))))
           (if (yes-or-no-p "Are you sure you want to delete this message?")
               (slack-request
-               slack-message-delete-url
-               team
-               :type "POST"
-               :params (list (cons "ts" (oref message ts))
-                             (cons "channel" (oref channel id)))
-               :success #'on-delete
-               :sync nil)
+               (slack-request-create
+                slack-message-delete-url
+                team
+                :type "POST"
+                :params (list (cons "ts" (oref message ts))
+                              (cons "channel" (oref channel id)))
+                :success #'on-delete))
             (message "Canceled")))))))
 
 (defclass _slack-message-delete ()
