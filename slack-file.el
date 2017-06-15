@@ -238,8 +238,9 @@
     (with-slots (buffer) room
       (if buffer
           (slack-file-create-buffer team)
-        (slack-room-history-request room team)
-        (slack-file-create-buffer team)))))
+        (slack-room-history-request room team
+                                    :after-success
+                                    #'(lambda () (slack-file-create-buffer team)))))))
 
 (cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success async)
   (cl-labels
