@@ -194,9 +194,9 @@ you can change current-team with `slack-change-current-team'"
   (interactive)
   (let ((team (slack-team-find-by-name
                (funcall slack-completing-read-function
-                "Select Team: "
-                (mapcar #'(lambda (team) (oref team name))
-                        slack-teams)))))
+                        "Select Team: "
+                        (mapcar #'(lambda (team) (oref team name))
+                                slack-teams)))))
     (setq slack-current-team team)
     (message "Set slack-current-team to %s" (or (and team (oref team name))
                                                 "nil"))
@@ -258,6 +258,17 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
+
+(defmethod slack-team-request-suspended-p ((team slack-team))
+  (oref team retry-after-timer))
+
+(defmethod slack-team-run-retry-request-timer ((team slack-team) retry-after-sec)
+  (cl-labels (do-request ()
+                         (with-slots (waiting-requests) team
+                           (mapc #'slack-request waiting-requests)
+                           (setq waiting-requests nil)))
+    (oset team retry-after-timer
+          (run-at-time retry-after-sec nil #'do-request))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
