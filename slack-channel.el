@@ -152,7 +152,7 @@
                             (slack-request-handle-error
                              (data "slack-channel-join"))))
         (slack-request
-         (slack-request-crete
+         (slack-request-create
           slack-channel-join-url
           team
           :params (list (cons "name" (slack-room-name channel)))
