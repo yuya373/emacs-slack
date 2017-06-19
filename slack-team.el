@@ -263,10 +263,10 @@ you can change current-team with `slack-change-current-team'"
   (oref team retry-after-timer))
 
 (defmethod slack-team-run-retry-request-timer ((team slack-team) retry-after-sec)
-  (cl-labels (do-request ()
-                         (with-slots (waiting-requests) team
-                           (mapc #'slack-request waiting-requests)
-                           (setq waiting-requests nil)))
+  (cl-labels ((do-request ()
+                          (with-slots (waiting-requests) team
+                            (mapc #'slack-request waiting-requests)
+                            (setq waiting-requests nil))))
     (oset team retry-after-timer
           (run-at-time retry-after-sec nil #'do-request))))
 
