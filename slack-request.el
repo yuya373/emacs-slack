@@ -98,8 +98,9 @@
              (on-error (&key error-thrown symbol-status response data)
                        (let ((retry-after-sec (request-response-header response "retry-after")))
                          (when retry-after-sec
-                           (slack-log (format "!!!!!retry-after-sec: %s, %s" retry-after-sec (numberp retry-after-sec)) team)
-                           (slack-request-retry-request req retry-after-sec)))
+                           (slack-log (format "!!!!retry-after-sec: %s, %s" retry-after-sec (numberp retry-after-sec)) team)
+                           ;; (slack-request-retry-request req (string-to-number retry-after-sec))
+                           ))
 
                        (when (functionp error)
                          (funcall error
