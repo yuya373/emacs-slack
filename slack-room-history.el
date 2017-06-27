@@ -118,9 +118,9 @@
       (when current-ts
         (slack-buffer-goto current-ts)))))
 
-(defmethod slack-room-history--request ((this _slack-room-history))
+(defmethod slack-room-history--request ((this _slack-room-history) after-success)
   (with-slots (team room oldest) this
-    (slack-room-history-request room team :oldest oldest)))
+    (slack-room-history-request room team :oldest oldest :after-success after-success)))
 
 (defmethod slack-room-history--collect-message ((this _slack-room-history))
   (with-slots (team room oldest) this
@@ -156,8 +156,9 @@
                                                      (when change
                                                        (get-text-property change 'ts))))))
     (slack-room-history--collect-meta prev-messages)
-    (slack-room-history--request prev-messages)
-    (slack-room-history--insert prev-messages)))
+    (slack-room-history--request prev-messages
+                                 #'(lambda ()
+                                     (slack-room-history--insert prev-messages)))))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
@@ -178,8 +179,7 @@
                 (messages
                  (cl-loop for data across datum
                           collect (slack-message-create data team :room room))))
-           (if oldest
-               (slack-room-set-prev-messages room messages)
+           (if oldest (slack-room-set-prev-messages room messages)
              (slack-room-set-messages room messages)
              (slack-room-reset-last-read room))
            (if (and after-success (functionp after-success))
