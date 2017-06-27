@@ -272,18 +272,11 @@
                      acc)
        (remove-duplicates (threads messages)
                           (let ((ret))
-                            (if (< 0 (length threads))
-                                (progn
-                                  (dolist (message messages)
-                                    (if (and (oref message thread-ts)
-                                             (not (slack-message-thread-parentp message)))
-                                        (push message ret)
-                                      (let ((thread (cl-find-if #'(lambda (m)
-                                                                    (slack-message-equal m message))
-                                                                threads)))
-                                        (unless thread (push message ret)))))
-                                  (setq ret (append ret threads)))
-                              (setq ret messages))
+                            (dolist (message messages)
+                              (if (and (not (oref message thread-ts))
+                                       (not (slack-message-thread-parentp message)))
+                                  (push message ret)))
+                            (setq ret (append ret threads))
                             ret)))
     (let ((thread-messages (groupby-thread-ts messages (make-hash-table :test 'equal))))
       (if (< 0 (length (hash-table-keys thread-messages)))
@@ -313,11 +306,13 @@
     (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
-  (let ((sorted (slack-room-sort-messages
-                 (slack-room-gather-thread-messages messages))))
-    (oset room oldest (car sorted))
+  (let* ((sorted (slack-room-sort-messages
+                  (slack-room-gather-thread-messages messages)))
+         (oldest (car sorted))
+         (latest (car (last sorted))))
+    (oset room oldest oldest)
     (oset room messages sorted)
-    (oset room latest (car (last sorted)))))
+    (oset room latest latest)))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
