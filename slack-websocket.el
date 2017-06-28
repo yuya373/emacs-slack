@@ -450,9 +450,9 @@
 
 (defun slack-ws-ping-timeout (team)
   (slack-log "Slack Websocket PING Timeout." team)
-  (slack-ws-cancel-ping-check-timers team)
   (slack-ws-close team)
   (slack-ws-cancel-ping-timer team)
+  (slack-ws-cancel-ping-check-timers team)
   (when (oref team reconnect-auto)
     (if (timerp (oref team reconnect-timer))
         (cancel-timer (oref team reconnect-timer)))
