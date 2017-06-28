@@ -227,9 +227,16 @@
   (cl-labels
       ((on-success (&key data &allow-other-keys)
                    (when (functionp success) (funcall success)))
-       (on-error (url &allow-other-keys)
-                 (url-copy-file url newname)
-                 (when (functionp error) (funcall error)))
+       (on-error (&key error-thrown symbol-status response data)
+                 (message "Error Fetching Image: %s %s %s, url: %s"
+                          (request-response-status-code response)
+                          error-thrown symbol-status url)
+                 (case (request-response-status-code response)
+                   (403 nil)
+                   (404 nil)
+                   (t (progn
+                        (url-copy-file url newname)
+                        (when (functionp error) (funcall error))))))
        (parser () (mm-write-region (point-min) (point-max)
                                    newname nil nil nil 'binary t)))
     (request
