@@ -443,10 +443,9 @@
       (slack-ws-send json team))))
 
 (defun slack-ws-set-check-ping-timer (team time)
-  (cl-labels
-      ((ping-timeout () (slack-ws-ping-timeout team)))
-    (puthash time (run-at-time (oref team check-ping-timeout-sec) nil #'ping-timeout)
-             (oref team ping-check-timers))))
+  (puthash time (run-at-time (oref team check-ping-timeout-sec)
+                             nil #'slack-ws-ping-timeout team)
+           (oref team ping-check-timers)))
 
 
 (defun slack-ws-ping-timeout (team)
@@ -454,11 +453,12 @@
   (slack-ws-cancel-ping-check-timers team)
   (slack-ws-close team)
   (slack-ws-cancel-ping-timer team)
-  (if (and (oref team reconnect-auto) (not (oref team reconnect-timer)))
-      (cl-labels ((reconnect () (slack-ws-reconnect team)))
-        (oset team reconnect-timer
-              (run-at-time t (oref team reconnect-after-sec)
-                           #'reconnect)))))
+  (when (oref team reconnect-auto)
+    (if (timerp (oref team reconnect-timer))
+        (cancel-timer (oref team reconnect-timer)))
+    (oset team reconnect-timer
+          (run-at-time t (oref team reconnect-after-sec)
+                       #'slck-ws-reconnect team))))
 
 (defun slack-ws-cancel-ping-check-timers (team)
   (maphash #'(lambda (key value)
