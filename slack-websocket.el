@@ -458,7 +458,7 @@
         (cancel-timer (oref team reconnect-timer)))
     (oset team reconnect-timer
           (run-at-time t (oref team reconnect-after-sec)
-                       #'slck-ws-reconnect team))))
+                       #'slack-ws-reconnect team))))
 
 (defun slack-ws-cancel-ping-check-timers (team)
   (maphash #'(lambda (key value)
