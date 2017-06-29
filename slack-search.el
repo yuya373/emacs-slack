@@ -151,9 +151,9 @@
   (let ((team (slack-team-select))
         (query (read-from-minibuffer "Query: "))
         (sort (funcall slack-completing-read-function "Sort: " `("score" "timestamp")
-                               nil t))
+                       nil t))
         (sort-dir (funcall slack-completing-read-function "Direction: " `("desc" "asc")
-                                   nil t)))
+                           nil t)))
     (list team query sort sort-dir)))
 
 (defun slack-search-pushnew (search-result team)
@@ -256,8 +256,8 @@
   (let* ((team (slack-team-select))
          (alist (slack-search-alist team)))
     (slack-select-from-list
-     (alist "Select Search: ")
-     (funcall slack-buffer-function (slack-buffer-create selected team)))))
+        (alist "Select Search: ")
+        (funcall slack-buffer-function (slack-buffer-create selected team)))))
 
 ;; protocols
 (defmethod slack-room-update-mark ((_room slack-search-result) _team _msg))
@@ -357,9 +357,9 @@
     (oset room latest (car (last msgs)))
     (oset room oldest (car msgs))))
 
-(defmethod slack-room-history ((room slack-search-result) team
-                               &optional
-                               oldest after-success async)
+(cl-defmethod slack-room-history-request ((room slack-search-result) team
+                                  &key
+                                  oldest after-success async)
   (cl-labels
       ((on-history
         (&key data &allow-other-keys)
