@@ -24,7 +24,7 @@
 
 ;;; Code:
 (defvar slack-slash-commands-available
-  '("active" "away" "dnd" "leave" "join"))
+  '("active" "away" "dnd" "leave" "join" "remind"))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
@@ -48,6 +48,8 @@
       (slack-slash-commands-leave channel-id (car args) team))
      ((string= command "join")
       (slack-slash-commands-join (car args) team))
+     ((string= command "remind")
+      (slack-slash-commands-remind team))
      )))
 
 (defun slack-slash-commands-leave (channel-id channel-name team)
@@ -68,6 +70,8 @@
             (error "%s is not a Channel" (slack-room-name channel)))
           (slack-channel-request-join channel team))
       (error "Channel not found: %s" channel-name))))
+(defun slack-slash-commands-remind (team)
+  (slack-reminder-add team))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

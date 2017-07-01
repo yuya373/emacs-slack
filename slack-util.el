@@ -265,6 +265,17 @@
     buf))
 
 (defun slack-parse-time-string (time)
+  "TIME should be one of:
+- a string giving today’s time like \"11:23pm\"
+  (the acceptable formats are HHMM, H:MM, HH:MM, HHam, HHAM,
+  HHpm, HHPM, HH:MMam, HH:MMAM, HH:MMpm, or HH:MMPM;
+  a period ‘.’ can be used instead of a colon ‘:’ to separate
+  the hour and minute parts);
+- a string giving specific date and time like \"1991/03/23 03:00\";
+- a string giving a relative time like \"90\" or \"2 hours 35 minutes\"
+  (the acceptable forms are a number of seconds without units
+  or some combination of values using units in ‘timer-duration-words’);
+- a number of seconds from now;"
   (if (numberp time)
       (setq time (timer-relative-time nil time)))
   (if (stringp time)
@@ -273,8 +284,18 @@
             (setq time (timer-relative-time nil secs)))))
   (if (stringp time)
       (progn
-        (let ((hhmm (diary-entry-time time))
-              (now (decode-time)))
+        (let* ((date-and-time (split-string time " "))
+               (date (and (eq (length date-and-time) 2) (split-string (car date-and-time) "/")))
+               (time-str (or (and (eq (length date-and-time) 2) (cadr date-and-time))
+                             (car date-and-time)))
+               (hhmm (diary-entry-time time-str))
+               (now (or (and date (decode-time
+                                   (encode-time 0 0 0
+                                                (string-to-number (nth 2 date))
+                                                (string-to-number (nth 1 date))
+                                                (string-to-number (nth 0 date))
+                                                )))
+                        (decode-time))))
           (if (>= hhmm 0)
               (setq time
                     (encode-time 0 (% hhmm 100) (/ hhmm 100) (nth 3 now)
