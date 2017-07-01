@@ -47,6 +47,7 @@
 (require 'slack-room-history)
 (require 'slack-file-share-message)
 (require 'slack-attachment)
+(require 'slack-emoji)
 
 (require 'slack-websocket)
 (require 'slack-request)
@@ -194,6 +195,7 @@ never means never show typing indicator."
                    (update-room-info team ims)
                    (delete-existing-buffer ims))))
        (slack-bot-list-update team)
+       (slack-request-emoji team)
        (slack-update-modeline)
        (slack-ws-open team)))))
 
