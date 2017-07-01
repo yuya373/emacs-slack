@@ -218,42 +218,42 @@
                    (cons (slack-room-create (plist-get data :group) team 'slack-group)
                          (oref team groups)))))))
       (slack-request
-       slack-mpim-open-url
-       team
-       :type "POST"
-       :params (list (cons "users" (mapconcat (lambda (u) (plist-get u :id)) (select-users users '()) ",")))
-       :success #'on-success
-       :sync nil))))
+       (slack-request-create
+        slack-mpim-open-url
+        team
+        :type "POST"
+        :params (list (cons "users" (mapconcat (lambda (u) (plist-get u :id)) (select-users users '()) ",")))
+        :success #'on-success)))))
 
 (defun slack-group-mpim-close ()
   (interactive)
   (let* ((team (slack-team-select)))
     (slack-select-from-list
-     ((slack-group-names team #'(lambda (groups)
-                                  (cl-remove-if-not #'slack-mpim-p
-                                        groups)))
-      "Select MPIM: ")
-     (cl-labels
-         ((on-success
-           (&key data &allow-other-keys)
-           (slack-request-handle-error
-            (data "slack-group-mpim-close")
-            (let ((group (slack-room-find (oref selected id) team)))
-              (with-slots (groups) team
-                (setq groups
-                      (cl-delete-if #'(lambda (g)
-                                        (slack-room-equal-p group g))
-                                    groups)))
-              (if (plist-get data :already_closed)
-                  (message "Direct Message Channel with %s Already Closed"
-                           (slack-group-members-s group)))))))
-       (slack-request
-        slack-mpim-close-url
-        team
-        :type "POST"
-        :params (list (cons "channel" (oref selected id)))
-        :success #'on-success
-        :sync nil)))))
+        ((slack-group-names team #'(lambda (groups)
+                                     (cl-remove-if-not #'slack-mpim-p
+                                                       groups)))
+         "Select MPIM: ")
+        (cl-labels
+            ((on-success
+              (&key data &allow-other-keys)
+              (slack-request-handle-error
+               (data "slack-group-mpim-close")
+               (let ((group (slack-room-find (oref selected id) team)))
+                 (with-slots (groups) team
+                   (setq groups
+                         (cl-delete-if #'(lambda (g)
+                                           (slack-room-equal-p group g))
+                                       groups)))
+                 (if (plist-get data :already_closed)
+                     (message "Direct Message Channel with %s Already Closed"
+                              (slack-group-members-s group)))))))
+          (slack-request
+           (slack-request-create
+            slack-mpim-close-url
+            team
+            :type "POST"
+            :params (list (cons "channel" (oref selected id)))
+            :success #'on-success))))))
 
 
 (defmethod slack-mpim-p ((room slack-group))

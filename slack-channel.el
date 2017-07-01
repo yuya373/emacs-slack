@@ -146,18 +146,17 @@
            (channel (slack-current-room-or-select
                      #'(lambda ()
                          (slack-channel-names team
-                          #'filter-channel)))))
+                                              #'filter-channel)))))
       (cl-labels
           ((on-channel-join (&key data &allow-other-keys)
                             (slack-request-handle-error
                              (data "slack-channel-join"))))
         (slack-request
-         slack-channel-join-url
-         team
-         :params (list (cons "name" (slack-room-name channel)))
-         :sync nil
-         :success #'on-channel-join))))
-  )
+         (slack-request-create
+          slack-channel-join-url
+          team
+          :params (list (cons "name" (slack-room-name channel)))
+          :success #'on-channel-join))))))
 
 (defun slack-channel-create-from-info (id team)
   (cl-labels
@@ -175,11 +174,11 @@
 
 (defun slack-channel-fetch-info (id team success)
   (slack-request
-   slack-channel-info-url
-   team
-   :sync nil
-   :params (list (cons "channel" id))
-   :success success))
+   (slack-request-create
+    slack-channel-info-url
+    team
+    :params (list (cons "channel" id))
+    :success success)))
 
 (defun slack-channel-archive ()
   (interactive)

@@ -289,13 +289,13 @@
                               (mapc #'(lambda (parent) (slack-message-update parent team nil t))
                                     parents))))))))
       (slack-request
-       all-threads-url
-       team
-       :type "POST"
-       :params (list (cons "limit" "10")
-                     (cons "current_ts" (or ts (format-time-string "%s"))))
-       :sync sync
-       :success #'on-success))))
+       (slack-request-create
+        all-threads-url
+        team
+        :type "POST"
+        :params (list (cons "limit" "10")
+                      (cons "current_ts" (or ts (format-time-string "%s"))))
+        :success #'on-success)))))
 
 (defmethod slack-thread-title ((thread slack-thread) team)
   (with-slots (root) thread
@@ -364,13 +364,13 @@
                           (data "slack-thread-mark"))))
 
           (slack-request
-           thread-mark-url
-           team
-           :params (list (cons "channel" id)
-                         (cons "thread_ts" thread-ts)
-                         (cons "ts" ts))
-           :sync nil
-           :success #'on-success))))))
+           (slack-request-create
+            thread-mark-url
+            team
+            :params (list (cons "channel" id)
+                          (cons "thread_ts" thread-ts)
+                          (cons "ts" ts))
+            :success #'on-success)))))))
 
 (defmethod slack-thread-marked ((thread slack-thread) payload)
   (let ((unread-count (plist-get payload :unread_count))

@@ -270,12 +270,13 @@
                  (slack-request-handle-error
                   (data "slack-message-pins-request"))))
       (slack-request
-       url
-       team
-       :params (list (cons "channel" (oref room id))
-                     (cons "timestamp" ts))
-       :success #'on-pins-add
-       :sync nil))))
+       (slack-request-create
+        url
+        team
+        :params (list (cons "channel" (oref room id))
+                      (cons "timestamp" ts))
+        :success #'on-pins-add
+        )))))
 
 (defun slack-message-time-stamp (message)
   (seconds-to-time (string-to-number (oref message ts))))

@@ -80,12 +80,20 @@
      buf))
 
 (cl-defun slack-room-create-buffer (room team &key update)
-  (with-slots (messages) room
-    (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
-        (slack-room-history-request room team)))
-  (funcall slack-buffer-function
-           (slack-room-with-buffer room team
-             (slack-room-insert-messages room buf team))))
+  (cl-labels
+      ((open ()
+             (funcall slack-buffer-function
+                      (slack-room-with-buffer room team
+                        (slack-room-insert-messages room buf team)))))
+    (with-slots (messages) room
+      (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
+          (progn
+            (slack-log (format "There is no message in %s. fetching from server..."
+                               (slack-room-name room))
+                       team)
+            (slack-room-history-request room team :after-success #'open)
+            )
+        (open)))))
 
 (cl-defun slack-room-create-buffer-bg (room team)
   (cl-labels
@@ -125,10 +133,10 @@
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
-   url
-   team
-   :success success
-   :sync sync))
+   (slack-request-create
+    url
+    team
+    :success success)))
 
 (defun slack-room-update-messages ()
   (interactive)
@@ -264,18 +272,11 @@
                      acc)
        (remove-duplicates (threads messages)
                           (let ((ret))
-                            (if (< 0 (length threads))
-                                (progn
-                                  (dolist (message messages)
-                                    (if (and (oref message thread-ts)
-                                             (not (slack-message-thread-parentp message)))
-                                        (push message ret)
-                                      (let ((thread (cl-find-if #'(lambda (m)
-                                                                    (slack-message-equal m message))
-                                                                threads)))
-                                        (unless thread (push message ret)))))
-                                  (setq ret (append ret threads)))
-                              (setq ret messages))
+                            (dolist (message messages)
+                              (if (and (not (oref message thread-ts))
+                                       (not (slack-message-thread-parentp message)))
+                                  (push message ret)))
+                            (setq ret (append ret threads))
                             ret)))
     (let ((thread-messages (groupby-thread-ts messages (make-hash-table :test 'equal))))
       (if (< 0 (length (hash-table-keys thread-messages)))
@@ -305,11 +306,13 @@
     (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
-  (let ((sorted (slack-room-sort-messages
-                 (slack-room-gather-thread-messages messages))))
-    (oset room oldest (car sorted))
+  (let* ((sorted (slack-room-sort-messages
+                  (slack-room-gather-thread-messages messages)))
+         (oldest (car sorted))
+         (latest (car (last sorted))))
+    (oset room oldest oldest)
     (oset room messages sorted)
-    (oset room latest (car (last sorted)))))
+    (oset room latest latest)))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
@@ -326,13 +329,13 @@
         (with-slots (ts) msg
           (with-slots (id) room
             (slack-request
-             (slack-room-update-mark-url room)
-             team
-             :type "POST"
-             :params (list (cons "channel"  id)
-                           (cons "ts"  ts))
-             :success #'on-update-mark
-             :sync nil))))))
+             (slack-request-create
+              (slack-room-update-mark-url room)
+              team
+              :type "POST"
+              :params (list (cons "channel"  id)
+                            (cons "ts"  ts))
+              :success #'on-update-mark)))))))
 
 (defun slack-room-pins-list ()
   (interactive)
@@ -350,11 +353,11 @@
                                 (plist-get data :items)
                                 room team))))
       (slack-request
-       slack-room-pins-list-url
-       team
-       :params (list (cons "channel" channel))
-       :success #'on-pins-list
-       :sync nil))))
+       (slack-request-create
+        slack-room-pins-list-url
+        team
+        :params (list (cons "channel" channel))
+        :success #'on-pins-list)))))
 
 (defun slack-room-on-pins-list (items room team)
   (cl-labels ((buffer-name (room)
@@ -390,12 +393,12 @@
 
 (defun slack-create-room (url team success)
   (slack-request
-   url
-   team
-   :type "POST"
-   :params (list (cons "name" (read-from-minibuffer "Name: ")))
-   :success success
-   :sync nil))
+   (slack-request-create
+    url
+    team
+    :type "POST"
+    :params (list (cons "name" (read-from-minibuffer "Name: ")))
+    :success success)))
 
 (defun slack-room-rename (url room-alist-func)
   (cl-labels
@@ -408,12 +411,12 @@
                      (room-alist "Select Channel: ")))
            (name (read-from-minibuffer "New Name: ")))
       (slack-request
-       url
-       team
-       :params (list (cons "channel" (oref room id))
-                     (cons "name" name))
-       :success #'on-rename-success
-       :sync nil))))
+       (slack-request-create
+        url
+        team
+        :params (list (cons "channel" (oref room id))
+                      (cons "name" name))
+        :success #'on-rename-success)))))
 
 (defmacro slack-current-room-or-select (room-alist-func)
   `(if (and (boundp 'slack-current-room-id)
@@ -443,12 +446,12 @@
                                     ((slack-user-names team)
                                      "Select User: ")) :id)))
        (slack-request
-        ,url
-        team
-        :params (list (cons "channel" (oref room id))
-                      (cons "user" user-id))
-        :success #'on-group-invite
-        :sync nil))))
+        (slack-request-create
+         ,url
+         team
+         :params (list (cons "channel" (oref room id))
+                       (cons "user" user-id))
+         :success #'on-group-invite)))))
 
 (defmethod slack-room-member-p ((_room slack-room)) t)
 
@@ -471,11 +474,11 @@
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request
-   url
-   team
-   :params (list (cons "channel" id))
-   :success success
-   :sync nil))
+   (slack-request-create
+    url
+    team
+    :params (list (cons "channel" id))
+    :success success)))
 
 (defmethod slack-room-reset-last-read ((room slack-room))
   (oset room last-read "0"))
@@ -544,11 +547,11 @@
                        (message "Failed to request slack-room-info-request: %s" e))))
          (slack-room-update-info room data team))))
     (slack-request
-     (slack-room-get-info-url room)
-     team
-     :params (slack-room-info-request-params room)
-     :sync nil
-     :success #'on-success)))
+     (slack-request-create
+      (slack-room-get-info-url room)
+      team
+      :params (slack-room-info-request-params room)
+      :success #'on-success))))
 
 (defmethod slack-room-get-members ((room slack-room))
   (oref room members))

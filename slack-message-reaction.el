@@ -100,14 +100,14 @@
                    (slack-request-handle-error
                     (data "slack-message-reaction-add"))))
         (slack-request
-         slack-message-reaction-add-url
-         team
-         :type "POST"
-         :sync nil
-         :params (list (cons "channel" (oref room id))
-                       (slack-message-get-param-for-reaction message)
-                       (cons "name" reaction))
-         :success #'on-reaction-add)))))
+         (slack-request-create
+          slack-message-reaction-add-url
+          team
+          :type "POST"
+          :params (list (cons "channel" (oref room id))
+                        (slack-message-get-param-for-reaction message)
+                        (cons "name" reaction))
+          :success #'on-reaction-add))))))
 
 (defun slack-message-reaction-remove (reaction ts room team)
   (let ((message (slack-room-find-message room ts)))
@@ -117,14 +117,14 @@
                    (slack-request-handle-error
                     (data "slack-message-reaction-remove"))))
         (slack-request
-         slack-message-reaction-remove-url
-         team
-         :type "POST"
-         :sync nil
-         :params (list (cons "channel" (oref room id))
-                       (slack-message-get-param-for-reaction message)
-                       (cons "name" reaction))
-         :success #'on-reaction-remove)))))
+         (slack-request-create
+          slack-message-reaction-remove-url
+          team
+          :type "POST"
+          :params (list (cons "channel" (oref room id))
+                        (slack-message-get-param-for-reaction message)
+                        (cons "name" reaction))
+          :success #'on-reaction-remove))))))
 
 (cl-defmacro slack-message-find-reaction ((m reaction) &body body)
   `(let ((same-reaction

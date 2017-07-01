@@ -81,15 +81,15 @@
                      (slack-request-handle-error
                       (data "slack-message-share"))))
       (slack-request
-       slack-share-url
-       team
-       :type "POST"
-       :params (list (cons "channel" (oref room id))
-                     (cons "timestamp" ts)
-                     (cons "text" msg)
-                     (cons "share_channel" share-channel-id))
-       :sync nil
-       :success))))
+       (slack-request-create
+        slack-share-url
+        team
+        :type "POST"
+        :params (list (cons "channel" (oref room id))
+                      (cons "timestamp" ts)
+                      (cons "text" msg)
+                      (cons "share_channel" share-channel-id))
+        :success #'on-success)))))
 
 (defun slack-message-write-another-buffer ()
   (interactive)
@@ -211,14 +211,14 @@
                        (slack-request-handle-error
                         (data "slack-message--edit"))))
     (slack-request
-     slack-message-edit-url
-     team
-     :type "POST"
-     :sync nil
-     :params (list (cons "channel" channel)
-                   (cons "ts" ts)
-                   (cons "text" text))
-     :success #'on-edit)))
+     (slack-request-create
+      slack-message-edit-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel)
+                    (cons "ts" ts)
+                    (cons "text" text))
+      :success #'on-edit))))
 
 (provide 'slack-message-editor)
 ;;; slack-message-editor.el ends here

@@ -108,21 +108,31 @@ never means never show typing indicator."
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 (defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
 
-(defvar slack-authorize-requests nil)
 (defun slack-authorize (team &optional error-callback)
-  (cl-labels
-      ((abort-previous () (cl-loop for r in (reverse slack-authorize-requests)
-                                   do (request-abort r))))
-    (setq slack-authorize-requests nil)
-    (let ((request (slack-request
-                    slack-rtm-connect-url
-                    team
-                    :success (cl-function (lambda (&key data &allow-other-keys)
-                                            (slack-on-authorize data team)))
-                    :sync nil
-                    :params (list (cons "mpim_aware" "1"))
-                    :error error-callback)))
-      (push request slack-authorize-requests))))
+  (let ((authorize-request (oref team authorize-request)))
+    (if (and authorize-request (not (request-response-done-p authorize-request)))
+        (slack-log "Authorize Already Requested" team)
+      (cl-labels
+          ((on-error (&key error-thrown symbol-status response data)
+                     (oset team authorize-request nil)
+                     (if (functionp error-callback)
+                         (funcall error-callback
+                                  :error-thrown error-thrown
+                                  :symbol-status symbol-status
+                                  :response response
+                                  :data data)
+                       (slack-log (format "Slack Authorize Failed: %s" error-thrown)
+                                  team)))
+           (on-success (&key data &allow-other-keys)
+                       (slack-on-authorize data team)))
+        (let ((request (slack-request
+                        (slack-request-create
+                         slack-rtm-connect-url
+                         team
+                         :params (list (cons "mpim_aware" "1"))
+                         :success #'on-success
+                         :error #'on-error))))
+          (oset team authorize-request request))))))
 
 (defun slack-update-team (data team)
   (cl-labels
@@ -149,6 +159,7 @@ never means never show typing indicator."
       team)))
 
 (cl-defun slack-on-authorize (data team)
+  (oset team authorize-request nil)
   (cl-labels
       ((update-room-info
         (team rooms)
@@ -165,7 +176,7 @@ never means never show typing indicator."
               rooms)))
     (slack-request-handle-error
      (data "slack-authorize")
-     (message "Slack Authorization Finished - %s" (oref team name))
+     (slack-log (format "Slack Authorization Finished" (oref team name)) team)
      (let ((team (slack-update-team data team)))
        (slack-channel-list-update
         team #'(lambda (team)
