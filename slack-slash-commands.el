@@ -24,20 +24,26 @@
 
 ;;; Code:
 (defvar slack-slash-commands-available
-  '("active" "away"))
+  '("active" "away" "dnd"))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
-      (let ((maybe-command (car (split-string (substring text 1) " "))))
-        (cl-find maybe-command slack-slash-commands-available
-                 :test #'string=))))
+      (let* ((maybe-command (car (split-string (substring text 1) " ")))
+             (command (cl-find maybe-command slack-slash-commands-available
+                               :test #'string=)))
+        (when command
+          (cons command (cdr (split-string text " ")))))))
 
 (defun slack-slack-commands-execute (command team)
-  (cond
-   ((string= command "active")
-    (slack-request-set-active team))
-   ((string= command "away")
-    (slack-request-set-presence team))))
+  (let ((command (car command))
+        (args (cdr command)))
+    (cond
+     ((string= command "active")
+      (slack-request-set-active team))
+     ((string= command "away")
+      (slack-request-set-presence team))
+     ((string= command "dnd")
+      (slack-request-dnd-set-snooze team (car args))))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

@@ -25,6 +25,8 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'timer)
+(require 'diary-lib)
 
 (defcustom slack-profile-image-file-directory temporary-file-directory
   "Default directory for slack profile images."
@@ -261,6 +263,23 @@
       (goto-char (point-min)))
 
     buf))
+
+(defun slack-parse-time-string (time)
+  (if (numberp time)
+      (setq time (timer-relative-time nil time)))
+  (if (stringp time)
+      (let ((secs (timer-duration time)))
+        (if secs
+            (setq time (timer-relative-time nil secs)))))
+  (if (stringp time)
+      (progn
+        (let ((hhmm (diary-entry-time time))
+              (now (decode-time)))
+          (if (>= hhmm 0)
+              (setq time
+                    (encode-time 0 (% hhmm 100) (/ hhmm 100) (nth 3 now)
+                                 (nth 4 now) (nth 5 now) (nth 8 now)))))))
+  time)
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

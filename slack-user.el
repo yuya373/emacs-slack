@@ -28,6 +28,7 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-set-active-url "https://slack.com/api/users.setActive")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
@@ -348,6 +349,23 @@
       team
       :success #'on-success
       :params (list (cons "presence" presence))))))
+
+(defun slack-request-dnd-set-snooze (team time)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-dnd-set-snooze"))))
+    (let* ((input (slack-parse-time-string time))
+           (num-minutes (and time (/ (- (time-to-seconds input) (time-to-seconds))
+                                     60))))
+      (unless num-minutes
+        (error "Invalid time string %s" time))
+      (slack-request
+       (slack-request-create
+        slack-dnd-set-snooze-url
+        team
+        :success #'on-success
+        :params (list (cons "num_minutes" (format "%s" num-minutes))))))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
