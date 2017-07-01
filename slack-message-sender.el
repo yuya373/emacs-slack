@@ -95,7 +95,7 @@
       (let* ((team (slack-team-find slack-current-team-id))
              (message (slack-message-prepare-links (slack-escape-message message) team))
              (command (slack-slash-commands-parse message)))
-        (if command (slack-slack-commands-execute command team)
+        (if command (slack-slack-commands-execute command (slack-message-get-room-id) team)
           (slack-message-inc-id team)
           (with-slots (message-id sent-message self-id) team
             (let* ((m (list :id message-id

@@ -24,7 +24,7 @@
 
 ;;; Code:
 (defvar slack-slash-commands-available
-  '("active" "away" "dnd"))
+  '("active" "away" "dnd" "leave" "join"))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
@@ -34,7 +34,7 @@
         (when command
           (cons command (cdr (split-string text " ")))))))
 
-(defun slack-slack-commands-execute (command team)
+(defun slack-slack-commands-execute (command channel-id team)
   (let ((command (car command))
         (args (cdr command)))
     (cond
@@ -43,7 +43,31 @@
      ((string= command "away")
       (slack-request-set-presence team))
      ((string= command "dnd")
-      (slack-request-dnd-set-snooze team (car args))))))
+      (slack-request-dnd-set-snooze team (car args)))
+     ((string= command "leave")
+      (slack-slash-commands-leave channel-id (car args) team))
+     ((string= command "join")
+      (slack-slash-commands-join (car args) team))
+     )))
+
+(defun slack-slash-commands-leave (channel-id channel-name team)
+  (let ((channel (or (and channel-name (slack-room-find-by-name channel-name team))
+                     (slack-room-find channel-id team))))
+    (if channel
+        (progn
+          (unless (eq 'slack-channel (eieio-object-class channel))
+            (error "%s is not a Channel" (slack-room-name channel)))
+          (slack-channel-request-leave channel team))
+      (error "Channel not found: %s" channel-name))))
+
+(defun slack-slash-commands-join (channel-name team)
+  (let ((channel (and channel-name (slack-room-find-by-name channel-name team))))
+    (if channel
+        (progn
+          (unless (eq 'slack-channel (eieio-object-class channel))
+            (error "%s is not a Channel" (slack-room-name channel)))
+          (slack-channel-request-join channel team))
+      (error "Channel not found: %s" channel-name))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
