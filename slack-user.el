@@ -28,6 +28,8 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
+(defconst slack-set-active-url "https://slack.com/api/users.setActive")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
@@ -312,6 +314,40 @@
     (let ((image (slack-user-fetch-image user size team)))
       (when image
         (create-image image nil nil :ascent 80)))))
+
+(defun slack-request-set-active (team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-set-active"))))
+    (slack-request
+     (slack-request-create
+      slack-set-active-url
+      team
+      :success #'on-success
+      ))))
+
+(defun slack-user-presence (user)
+  (plist-get user :presence))
+
+(defun slack-request-set-presence (team &optional presence)
+  (unless presence
+    (let ((current-presence (slack-user-presence (slack-user--find (oref team self-id)
+                                                                   team))))
+
+      (setq presence (or (and (string= current-presence "away") "auto")
+                         "away"))
+      ))
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-set-presence"))))
+    (slack-request
+     (slack-request-create
+      slack-set-presence-url
+      team
+      :success #'on-success
+      :params (list (cons "presence" presence))))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

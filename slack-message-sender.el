@@ -31,6 +31,7 @@
 (require 'slack-group)
 (require 'slack-message)
 (require 'slack-channel)
+(require 'slack-slash-commands)
 
 (defvar slack-message-minibuffer-local-map nil)
 (defvar slack-buffer-function)
@@ -92,18 +93,20 @@
 (defun slack-message--send (message)
   (if slack-current-team-id
       (let* ((team (slack-team-find slack-current-team-id))
-             (message (slack-message-prepare-links (slack-escape-message message) team)))
-        (slack-message-inc-id team)
-        (with-slots (message-id sent-message self-id) team
-          (let* ((m (list :id message-id
-                          :channel (slack-message-get-room-id)
-                          :type "message"
-                          :user self-id
-                          :text message))
-                 (json (json-encode m))
-                 (obj (slack-message-create m team)))
-            (slack-ws-send json team)
-            (puthash message-id obj sent-message))))
+             (message (slack-message-prepare-links (slack-escape-message message) team))
+             (command (slack-slash-commands-parse message)))
+        (if command (slack-slack-commands-execute command team)
+          (slack-message-inc-id team)
+          (with-slots (message-id sent-message self-id) team
+            (let* ((m (list :id message-id
+                            :channel (slack-message-get-room-id)
+                            :type "message"
+                            :user self-id
+                            :text message))
+                   (json (json-encode m))
+                   (obj (slack-message-create m team)))
+              (slack-ws-send json team)
+              (puthash message-id obj sent-message)))))
     (error "Call from Slack Buffer")))
 
 (defun slack-message-get-room-id ()
@@ -124,7 +127,7 @@
 (defun slack-message-read-room-list (prompt choices)
   (let ((completion-ignore-case t))
     (funcall slack-completing-read-function (format "%s" prompt)
-                     choices nil t nil nil choices)))
+             choices nil t nil nil choices)))
 
 (defun slack-message-room-list (team)
   (append (slack-group-names team)
@@ -152,8 +155,8 @@
   (let ((team (slack-team-select)))
     (let* ((alist (slack-channel-names team)))
       (slack-select-from-list
-       (alist "Select Channel: ")
-       (insert (concat "#" (slack-room-name selected)))))))
+          (alist "Select Channel: ")
+          (insert (concat "#" (slack-room-name selected)))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
@@ -162,8 +165,8 @@
                               (list "channel" :name "channel")))
            (alist (append pre-defined (slack-user-names team))))
       (slack-select-from-list
-       (alist "Select User: ")
-       (insert (concat "@" (plist-get selected :name)))))))
+          (alist "Select User: ")
+          (insert (concat "@" (plist-get selected :name)))))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here
