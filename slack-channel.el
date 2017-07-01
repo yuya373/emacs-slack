@@ -111,16 +111,17 @@
   (slack-room-invite slack-channel-invite-url
                      #'slack-channel-names))
 
-(defun slack-channel-leave ()
+(defun slack-channel-leave (&optional team select)
   (interactive)
-  (let* ((team (slack-team-select))
+  (let* ((team (or team (slack-team-select)))
          (channel (slack-current-room-or-select
                    #'(lambda ()
                        (slack-channel-names
                         team
                         #'(lambda (channels)
                             (cl-remove-if-not #'slack-room-member-p
-                                              channels)))))))
+                                              channels))))
+                   select)))
     (slack-channel-request-leave channel team)))
 
 (defun slack-channel-request-leave (channel team)
@@ -136,7 +137,7 @@
                                 team
                                 #'on-channel-leave)))
 
-(defun slack-channel-join ()
+(defun slack-channel-join (&optional team select)
   (interactive)
   (cl-labels
       ((filter-channel (channels)
@@ -145,11 +146,12 @@
                             (or (slack-room-member-p c)
                                 (slack-room-archived-p c)))
                         channels)))
-    (let* ((team (slack-team-select))
+    (let* ((team (or team (slack-team-select)))
            (channel (slack-current-room-or-select
                      #'(lambda ()
                          (slack-channel-names team
-                                              #'filter-channel)))))
+                                              #'filter-channel))
+                     select)))
       (slack-channel-request-join channel team))))
 
 (defun slack-channel-request-join (channel team)

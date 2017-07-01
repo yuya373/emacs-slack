@@ -45,31 +45,19 @@
      ((string= command "dnd")
       (slack-request-dnd-set-snooze team (car args)))
      ((string= command "leave")
-      (slack-slash-commands-leave channel-id (car args) team))
+      (slack-slash-commands-leave team))
      ((string= command "join")
-      (slack-slash-commands-join (car args) team))
+      (slack-slash-commands-join team))
      ((string= command "remind")
       (slack-slash-commands-remind team))
      )))
 
-(defun slack-slash-commands-leave (channel-id channel-name team)
-  (let ((channel (or (and channel-name (slack-room-find-by-name channel-name team))
-                     (slack-room-find channel-id team))))
-    (if channel
-        (progn
-          (unless (eq 'slack-channel (eieio-object-class channel))
-            (error "%s is not a Channel" (slack-room-name channel)))
-          (slack-channel-request-leave channel team))
-      (error "Channel not found: %s" channel-name))))
+(defun slack-slash-commands-leave (team)
+  (slack-channel-leave team t))
 
-(defun slack-slash-commands-join (channel-name team)
-  (let ((channel (and channel-name (slack-room-find-by-name channel-name team))))
-    (if channel
-        (progn
-          (unless (eq 'slack-channel (eieio-object-class channel))
-            (error "%s is not a Channel" (slack-room-name channel)))
-          (slack-channel-request-join channel team))
-      (error "Channel not found: %s" channel-name))))
+(defun slack-slash-commands-join (team)
+  (slack-channel-join team t))
+
 (defun slack-slash-commands-remind (team)
   (slack-reminder-add team))
 

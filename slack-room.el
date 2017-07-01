@@ -418,8 +418,9 @@
                       (cons "name" name))
         :success #'on-rename-success)))))
 
-(defmacro slack-current-room-or-select (room-alist-func)
-  `(if (and (boundp 'slack-current-room-id)
+(defmacro slack-current-room-or-select (room-alist-func &optional select)
+  `(if (and (not ,select)
+            (boundp 'slack-current-room-id)
             (boundp 'slack-current-team-id))
        (slack-room-find slack-current-room-id
                         (slack-team-find slack-current-team-id))
