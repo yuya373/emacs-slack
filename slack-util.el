@@ -91,16 +91,22 @@
 @USER; adding #CHANNEL should be a simple matter of programming."
   (interactive (list 'interactive))
   (cl-labels
-      ((prefix-type (str) (cond
+      ((start-from-line-beginning (str)
+                                  (let ((prompt-length (length lui-prompt-string)))
+                                    (>= 0 (- (current-column) prompt-length (length str)))))
+       (prefix-type (str) (cond
                            ((string-prefix-p "@" str) 'user)
-                           ((string-prefix-p "#" str) 'channel)))
+                           ((string-prefix-p "#" str) 'channel)
+                           ((and (string-prefix-p "/" str)
+                                 (start-from-line-beginning str))
+                            'slash)))
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (cl-find major-mode '(slack-mode
                                           slack-edit-message-mode
                                           slack-thread-mode))
-                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
+                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
                                    2)))
       (candidates (let ((content (content arg)))
                     (cl-case (prefix-type arg)
@@ -113,7 +119,12 @@
                        (cl-loop for team in (oref slack-current-team channels)
                                 if (string-prefix-p content
                                                     (oref team name))
-                                collect (concat "#" (oref team name)))))))
+                                collect (concat "#" (oref team name))))
+                      (slash
+                       (cl-loop for com in slack-slash-commands-available
+                                if (string-prefix-p content com)
+                                collect (concat "/" com))
+                       ))))
       )))
 
 (defun slack-get-ts ()
