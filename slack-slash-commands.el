@@ -24,7 +24,7 @@
 
 ;;; Code:
 (defvar slack-slash-commands-available
-  '("active" "away" "dnd" "leave" "join" "remind" "shrug"))
+  '("active" "away" "dnd" "leave" "join" "remind" "shrug" "status"))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
@@ -52,6 +52,8 @@
       (slack-slash-commands-remind team))
      ((string= command "shrug")
       (slack-slash-commands-shrug args))
+     ((string= command "status")
+      (slack-slash-commands-status args team))
      )))
 
 (defun slack-slash-commands-leave (team)
@@ -73,6 +75,15 @@
 (defun slack-slash-commands-shrug (messages)
   (slack-message--send (format "%s ¯\\_(ツ)_/¯"
                                (mapconcat #'identity messages " "))))
+
+(defun slack-slash-commands-status (args team)
+  (let ((emoji (car args))
+        (text (cdr args)))
+    (if (string= emoji "clear")
+        (slack-user-set-status-request team "" "")
+      (if (string-prefix-p ":" emoji)
+          (slack-user-set-status-request team emoji (mapconcat #'identity text " "))
+        (slack-user-set-status-request team "" (mapconcat #'identity args " "))))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
