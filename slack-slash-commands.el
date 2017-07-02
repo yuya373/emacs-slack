@@ -23,8 +23,18 @@
 ;;
 
 ;;; Code:
+(defvar slack-slash-commands-map
+  '(("active" . slack-slash-commands-active)
+    ("away" . slack-slash-commands-away)
+    ("dnd" . slack-slash-commands-dnd)
+    ("leave" . slack-slash-commands-leave)
+    ("join" . slack-slash-commands-join)
+    ("remind" . slack-slash-commands-remind)
+    ("shrug" . slack-slash-commands-shrug)
+    ("status" . slack-slash-commands-status)))
+
 (defvar slack-slash-commands-available
-  '("active" "away" "dnd" "leave" "join" "remind" "shrug" "status"))
+  (mapcar #'car slack-slash-commands-map))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
@@ -34,49 +44,45 @@
         (when command
           (cons command (cdr (split-string text " ")))))))
 
+(defun slack-slash-commands-find (command)
+  (cdr (cl-assoc command slack-slash-commands-map :test #'string=)))
+
 (defun slack-slack-commands-execute (command team)
   (let ((command (car command))
         (args (cdr command)))
-    (cond
-     ((string= command "active")
-      (slack-request-set-active team))
-     ((string= command "away")
-      (slack-request-set-presence team))
-     ((string= command "dnd")
-      (slack-slash-commands-dnd team (car args)))
-     ((string= command "leave")
-      (slack-slash-commands-leave team))
-     ((string= command "join")
-      (slack-slash-commands-join team))
-     ((string= command "remind")
-      (slack-slash-commands-remind team))
-     ((string= command "shrug")
-      (slack-slash-commands-shrug args))
-     ((string= command "status")
-      (slack-slash-commands-status args team))
-     )))
+    (funcall (slack-slash-commands-find command) team args)))
 
-(defun slack-slash-commands-leave (team)
+(defun slack-slash-commands-active (team _args)
+  (slack-request-set-active team))
+
+(defun slack-slash-commands-away (team _args)
+  (slack-request-set-presence team))
+
+(defun slack-slash-commands-leave (team _args)
   (slack-channel-leave team t))
 
-(defun slack-slash-commands-join (team)
+(defun slack-slash-commands-join (team _args)
   (slack-channel-join team t))
 
-(defun slack-slash-commands-remind (team)
+(defun slack-slash-commands-remind (team _args)
   (slack-reminder-add team))
 
-(defun slack-slash-commands-dnd (team time)
-  (let ((user (slack-user--find (oref team self-id) team)))
+(defun slack-slash-commands-dnd (team args)
+  "[some description of time, see `slack-parse-time-string']"
+  (let ((time (car args))
+        (user (slack-user--find (oref team self-id) team)))
     (if (or (not (slack-user-dnd-in-range-p user))
             time)
         (slack-request-dnd-set-snooze team time)
       (slack-request-dnd-end-dnd team))))
 ;; ¯\_(ツ)_/¯
-(defun slack-slash-commands-shrug (messages)
+(defun slack-slash-commands-shrug (_team messages)
+  "[your message]"
   (slack-message--send (format "%s ¯\\_(ツ)_/¯"
                                (mapconcat #'identity messages " "))))
 
-(defun slack-slash-commands-status (args team)
+(defun slack-slash-commands-status (team args)
+  "[clear] or [:your_new_status_emoji:] [your new status message]"
   (let ((emoji (car args))
         (text (cdr args)))
     (if (string= emoji "clear")

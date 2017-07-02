@@ -125,6 +125,13 @@
                                 if (string-prefix-p content com)
                                 collect (concat "/" com))
                        ))))
+      (doc-buffer
+       (cl-case (prefix-type arg)
+         (slash
+          (company-doc-buffer
+           (documentation
+            (slack-slash-commands-find (substring arg 1))
+            t)))))
       )))
 
 (defun slack-get-ts ()
