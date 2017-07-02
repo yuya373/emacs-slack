@@ -31,7 +31,8 @@
     ("join" . slack-slash-commands-join)
     ("remind" . slack-slash-commands-remind)
     ("shrug" . slack-slash-commands-shrug)
-    ("status" . slack-slash-commands-status)))
+    ("status" . slack-slash-commands-status)
+    ("who" . slack-slash-commands-who)))
 
 (defvar slack-slash-commands-available
   (mapcar #'car slack-slash-commands-map))
@@ -90,6 +91,9 @@
       (if (string-prefix-p ":" emoji)
           (slack-user-set-status-request team emoji (mapconcat #'identity text " "))
         (slack-user-set-status-request team "" (mapconcat #'identity args " "))))))
+
+(defun slack-slash-commands-who (_team _args)
+  (slack-room-user-select))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
