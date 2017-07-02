@@ -43,7 +43,7 @@
      ((string= command "away")
       (slack-request-set-presence team))
      ((string= command "dnd")
-      (slack-request-dnd-set-snooze team (car args)))
+      (slack-slash-commands-dnd team (car args)))
      ((string= command "leave")
       (slack-slash-commands-leave team))
      ((string= command "join")
@@ -60,6 +60,13 @@
 
 (defun slack-slash-commands-remind (team)
   (slack-reminder-add team))
+
+(defun slack-slash-commands-dnd (team time)
+  (let ((user (slack-user--find (oref team self-id) team)))
+    (if (or (not (slack-user-dnd-in-range-p user))
+            time)
+        (slack-request-dnd-set-snooze team time)
+      (slack-request-dnd-end-dnd team))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

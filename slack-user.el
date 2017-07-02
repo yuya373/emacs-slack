@@ -28,6 +28,7 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
 (defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-set-active-url "https://slack.com/api/users.setActive")
@@ -72,15 +73,18 @@
     (mapcar (lambda (u) (cons (plist-get u :name) u))
             users)))
 
-(defun slack-user-dnd-status-to-string (user)
+(defun slack-user-dnd-in-range-p (user)
   (let ((current (time-to-seconds))
         (dnd-start (plist-get (plist-get user :dnd_status) :next_dnd_start_ts))
         (dnd-end (plist-get (plist-get user :dnd_status) :next_dnd_end_ts)))
-    (if (and dnd-start dnd-end
-             (<= dnd-start current)
-             (<= current dnd-end))
-        "Z"
-      nil)))
+    (and dnd-start dnd-end
+         (<= dnd-start current)
+         (<= current dnd-end))))
+
+(defun slack-user-dnd-status-to-string (user)
+  (if (slack-user-dnd-in-range-p user)
+      "Z"
+    nil))
 
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")
@@ -364,7 +368,8 @@
   (cl-labels
       ((on-success (&key data &allow-other-keys)
                    (slack-request-handle-error
-                    (data "slack-request-dnd-set-snooze"))))
+                    (data "slack-request-dnd-set-snooze")
+                    (message "setSnooze: %s" data))))
     (let* ((input (slack-parse-time-string time))
            (num-minutes (and time (/ (- (time-to-seconds input) (time-to-seconds))
                                      60))))
@@ -376,6 +381,19 @@
         team
         :success #'on-success
         :params (list (cons "num_minutes" (format "%s" num-minutes))))))))
+
+(defun slack-request-dnd-end-dnd (team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-dnd-end-dnd")
+                    (message "endDnd: %s" data))))
+    (slack-request
+     (slack-request-create
+      slack-dnd-end-dnd-url
+      team
+      :success #'on-success
+      ))))
 
 (defun slack-user-update-dnd-status (user dnd-status)
   (plist-put user :dnd_status dnd-status))
