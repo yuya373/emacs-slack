@@ -174,7 +174,11 @@
          ((string= type "member_joined_channel")
           (slack-ws-handle-member-joined-channel decoded-payload team))
          ((string= type "member_left_channel")
-          (slack-ws-handle-member-left_channel decoded-payload team)))))))
+          (slack-ws-handle-member-left_channel decoded-payload team))
+         ((or (string= type "dnd_updated")
+              (string= type "dnd_updated_user"))
+          (slack-ws-handle-dnd-updated decoded-payload team))
+         )))))
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
@@ -592,6 +596,14 @@
       (oset channel members
             (cl-remove-if #'(lambda (e) (string= e user))
                           (oref channel members))))))
+
+(defun slack-ws-handle-dnd-updated (payload team)
+  (let* ((user (slack-user--find (plist-get payload :user) team))
+         (updated (slack-user-update-dnd-status user (plist-get payload :dnd_status))))
+    (oset team users
+          (cons updated (cl-remove-if #'(lambda (user) (string= (plist-get user :id)
+                                                                (plist-get updated :id)))
+                                      (oref team users))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

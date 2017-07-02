@@ -72,10 +72,20 @@
     (mapcar (lambda (u) (cons (plist-get u :name) u))
             users)))
 
+(defun slack-user-dnd-status-to-string (user)
+  (let ((current (time-to-seconds))
+        (dnd-start (plist-get (plist-get user :dnd_status) :next_dnd_start_ts))
+        (dnd-end (plist-get (plist-get user :dnd_status) :next_dnd_end_ts)))
+    (if (and dnd-start dnd-end
+             (<= dnd-start current)
+             (<= current dnd-end))
+        "Z"
+      nil)))
+
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")
-      "* "
-    "  "))
+      "*"
+    " "))
 
 (defun slack-user-set-status ()
   (interactive)
@@ -366,6 +376,9 @@
         team
         :success #'on-success
         :params (list (cons "num_minutes" (format "%s" num-minutes))))))))
+
+(defun slack-user-update-dnd-status (user dnd-status)
+  (plist-put user :dnd_status dnd-status))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

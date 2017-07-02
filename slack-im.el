@@ -51,6 +51,11 @@
     (let ((team (slack-team-find team-id)))
       (slack-user-presence-to-string (slack-user-find room team)))))
 
+(defmethod slack-im-user-dnd-status ((room slack-im))
+  (with-slots (team-id) room
+    (slack-user-dnd-status-to-string (slack-user-find room
+                                                      (slack-team-find team-id)))))
+
 (defmethod slack-room-name ((room slack-im))
   (with-slots (user team-id) room
     (slack-user-name user (slack-team-find team-id))))
@@ -193,7 +198,10 @@
         :success #'on-success)))))
 
 (defmethod slack-room-label-prefix ((room slack-im))
-  (slack-im-user-presence room))
+  (format "%s "
+          (or
+           (slack-im-user-dnd-status room)
+           (slack-im-user-presence room))))
 
 (defmethod slack-room-get-info-url ((_room slack-im))
   slack-im-open-url)
