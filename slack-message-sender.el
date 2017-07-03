@@ -93,21 +93,29 @@
 (defun slack-message--send (message)
   (if slack-current-team-id
       (let* ((team (slack-team-find slack-current-team-id))
-             (message (slack-message-prepare-links (slack-escape-message message) team))
+             (formatted-message
+              (slack-message-prepare-links (slack-escape-message message)
+                                           team))
              (command (slack-slash-commands-parse message)))
-        (if command (slack-slack-commands-execute command team)
-          (slack-message-inc-id team)
-          (with-slots (message-id sent-message self-id) team
-            (let* ((m (list :id message-id
-                            :channel (slack-message-get-room-id)
-                            :type "message"
-                            :user self-id
-                            :text message))
-                   (json (json-encode m))
-                   (obj (slack-message-create m team)))
-              (slack-ws-send json team)
-              (puthash message-id obj sent-message)))))
+        (if command
+            (slack-slack-commands-execute command team)
+          (slack-message-send-internal formatted-message
+                                       (slack-message-get-room-id)
+                                       team)))
     (error "Call from Slack Buffer")))
+
+(defun slack-message-send-internal (message channel-id team)
+  (slack-message-inc-id team)
+  (with-slots (message-id sent-message self-id) team
+    (let* ((m (list :id message-id
+                    :channel channel-id
+                    :type "message"
+                    :user self-id
+                    :text message))
+           (json (json-encode m))
+           (obj (slack-message-create m team)))
+      (slack-ws-send json team)
+      (puthash message-id obj sent-message))))
 
 (defun slack-message-get-room-id ()
   (if (and (boundp 'slack-current-room-id)

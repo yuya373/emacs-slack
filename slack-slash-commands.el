@@ -32,7 +32,8 @@
     ("remind" . slack-slash-commands-remind)
     ("shrug" . slack-slash-commands-shrug)
     ("status" . slack-slash-commands-status)
-    ("who" . slack-slash-commands-who)))
+    ("who" . slack-slash-commands-who)
+    ("dm" . slack-slash-commands-dm)))
 
 (defvar slack-slash-commands-available
   (mapcar #'car slack-slash-commands-map))
@@ -94,6 +95,26 @@
 
 (defun slack-slash-commands-who (_team _args)
   (slack-room-user-select))
+
+(defun slack-slash-commands-dm (team args)
+  "@user [your message]"
+  (let* ((user-name (substring (car args) 1))
+         (text (mapconcat #'identity (cdr args) " "))
+         (user (slack-user-find-by-name user-name team)))
+    (unless user
+      (error "Invalid user name: %s" (car args)))
+    (cl-labels
+        ((send-message
+          ()
+          (slack-message-send-internal
+           text
+           (oref (slack-im-find-by-user-id (plist-get user :id)
+                                           team)
+                 id)
+           team)))
+      (if (slack-im-find-by-user-id (plist-get user :id) team)
+          (send-message)
+        (slack-im-open user #'send-message)))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

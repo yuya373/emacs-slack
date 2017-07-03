@@ -171,7 +171,7 @@
             :params (list (cons "channel" (oref selected id)))
             :success #'on-success))))))
 
-(defun slack-im-open (&optional user)
+(defun slack-im-open (&optional user after-success)
   (interactive)
   (let* ((team (slack-team-select))
          (user (or user (slack-select-from-list
@@ -188,7 +188,9 @@
                (let ((im (slack-room-find (plist-get (plist-get data :channel) :id) team)))
                  (oset im is-open t)
                  (message "Direct Message Channel with %s Already Open"
-                          (slack-user-name (oref im user) team)))))))
+                          (slack-user-name (oref im user) team))))
+           (when (functionp after-success)
+             (funcall after-success)))))
       (slack-request
        (slack-request-create
         slack-im-open-url
