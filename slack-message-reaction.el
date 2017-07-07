@@ -93,7 +93,8 @@
   (cons "file_comment" (oref (oref m comment) id)))
 
 (defun slack-message-reaction-add (reaction ts room team)
-  (let ((message (slack-room-find-message room ts)))
+  (let ((message (or (slack-room-find-message room ts)
+                     (slack-room-find-thread-message room ts))))
     (when message
       (cl-labels ((on-reaction-add
                    (&key data &allow-other-keys)
@@ -110,7 +111,8 @@
           :success #'on-reaction-add))))))
 
 (defun slack-message-reaction-remove (reaction ts room team)
-  (let ((message (slack-room-find-message room ts)))
+  (let ((message (or (slack-room-find-message room ts)
+                     (slack-room-find-thread-message room ts))))
     (when message
       (cl-labels ((on-reaction-remove
                    (&key data &allow-other-keys)
