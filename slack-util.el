@@ -25,6 +25,8 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'timer)
+(require 'diary-lib)
 
 (defcustom slack-profile-image-file-directory temporary-file-directory
   "Default directory for slack profile images."
@@ -89,16 +91,22 @@
 @USER; adding #CHANNEL should be a simple matter of programming."
   (interactive (list 'interactive))
   (cl-labels
-      ((prefix-type (str) (cond
+      ((start-from-line-beginning (str)
+                                  (let ((prompt-length (length lui-prompt-string)))
+                                    (>= 0 (- (current-column) prompt-length (length str)))))
+       (prefix-type (str) (cond
                            ((string-prefix-p "@" str) 'user)
-                           ((string-prefix-p "#" str) 'channel)))
+                           ((string-prefix-p "#" str) 'channel)
+                           ((and (string-prefix-p "/" str)
+                                 (start-from-line-beginning str))
+                            'slash)))
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (cl-find major-mode '(slack-mode
                                           slack-edit-message-mode
                                           slack-thread-mode))
-                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\)"
+                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
                                    2)))
       (candidates (let ((content (content arg)))
                     (cl-case (prefix-type arg)
@@ -111,7 +119,19 @@
                        (cl-loop for team in (oref slack-current-team channels)
                                 if (string-prefix-p content
                                                     (oref team name))
-                                collect (concat "#" (oref team name)))))))
+                                collect (concat "#" (oref team name))))
+                      (slash
+                       (cl-loop for com in slack-slash-commands-available
+                                if (string-prefix-p content com)
+                                collect (concat "/" com))
+                       ))))
+      (doc-buffer
+       (cl-case (prefix-type arg)
+         (slash
+          (company-doc-buffer
+           (documentation
+            (slack-slash-commands-find (substring arg 1))
+            t)))))
       )))
 
 (defun slack-get-ts ()
@@ -261,6 +281,44 @@
       (goto-char (point-min)))
 
     buf))
+
+(defun slack-parse-time-string (time)
+  "TIME should be one of:
+- a string giving today’s time like \"11:23pm\"
+  (the acceptable formats are HHMM, H:MM, HH:MM, HHam, HHAM,
+  HHpm, HHPM, HH:MMam, HH:MMAM, HH:MMpm, or HH:MMPM;
+  a period ‘.’ can be used instead of a colon ‘:’ to separate
+  the hour and minute parts);
+- a string giving specific date and time like \"1991/03/23 03:00\";
+- a string giving a relative time like \"90\" or \"2 hours 35 minutes\"
+  (the acceptable forms are a number of seconds without units
+  or some combination of values using units in ‘timer-duration-words’);
+- a number of seconds from now;"
+  (if (numberp time)
+      (setq time (timer-relative-time nil time)))
+  (if (stringp time)
+      (let ((secs (timer-duration time)))
+        (if secs
+            (setq time (timer-relative-time nil secs)))))
+  (if (stringp time)
+      (progn
+        (let* ((date-and-time (split-string time " "))
+               (date (and (eq (length date-and-time) 2) (split-string (car date-and-time) "/")))
+               (time-str (or (and (eq (length date-and-time) 2) (cadr date-and-time))
+                             (car date-and-time)))
+               (hhmm (diary-entry-time time-str))
+               (now (or (and date (decode-time
+                                   (encode-time 0 0 0
+                                                (string-to-number (nth 2 date))
+                                                (string-to-number (nth 1 date))
+                                                (string-to-number (nth 0 date))
+                                                )))
+                        (decode-time))))
+          (if (>= hhmm 0)
+              (setq time
+                    (encode-time 0 (% hhmm 100) (/ hhmm 100) (nth 3 now)
+                                 (nth 4 now) (nth 5 now) (nth 8 now)))))))
+  time)
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

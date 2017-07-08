@@ -28,6 +28,11 @@
 (require 'slack-request)
 (require 'slack-room)
 
+(defconst slack-dnd-team-info-url "https://slack.com/api/dnd.teamInfo")
+(defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
+(defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
+(defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
+(defconst slack-set-active-url "https://slack.com/api/users.setActive")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
@@ -69,10 +74,23 @@
     (mapcar (lambda (u) (cons (plist-get u :name) u))
             users)))
 
+(defun slack-user-dnd-in-range-p (user)
+  (let ((current (time-to-seconds))
+        (dnd-start (plist-get (plist-get user :dnd_status) :next_dnd_start_ts))
+        (dnd-end (plist-get (plist-get user :dnd_status) :next_dnd_end_ts)))
+    (and dnd-start dnd-end
+         (<= dnd-start current)
+         (<= current dnd-end))))
+
+(defun slack-user-dnd-status-to-string (user)
+  (if (slack-user-dnd-in-range-p user)
+      "Z"
+    nil))
+
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")
-      "* "
-    "  "))
+      "*"
+    " "))
 
 (defun slack-user-set-status ()
   (interactive)
@@ -312,6 +330,96 @@
     (let ((image (slack-user-fetch-image user size team)))
       (when image
         (create-image image nil nil :ascent 80)))))
+
+(defun slack-request-set-active (team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-set-active"))))
+    (slack-request
+     (slack-request-create
+      slack-set-active-url
+      team
+      :success #'on-success
+      ))))
+
+(defun slack-user-presence (user)
+  (plist-get user :presence))
+
+(defun slack-request-set-presence (team &optional presence)
+  (unless presence
+    (let ((current-presence (slack-user-presence (slack-user--find (oref team self-id)
+                                                                   team))))
+
+      (setq presence (or (and (string= current-presence "away") "auto")
+                         "away"))
+      ))
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-set-presence"))))
+    (slack-request
+     (slack-request-create
+      slack-set-presence-url
+      team
+      :success #'on-success
+      :params (list (cons "presence" presence))))))
+
+(defun slack-request-dnd-set-snooze (team time)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-dnd-set-snooze")
+                    (message "setSnooze: %s" data))))
+    (let* ((input (slack-parse-time-string time))
+           (num-minutes (and time (/ (- (time-to-seconds input) (time-to-seconds))
+                                     60))))
+      (unless num-minutes
+        (error "Invalid time string %s" time))
+      (slack-request
+       (slack-request-create
+        slack-dnd-set-snooze-url
+        team
+        :success #'on-success
+        :params (list (cons "num_minutes" (format "%s" num-minutes))))))))
+
+(defun slack-request-dnd-end-dnd (team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-dnd-end-dnd")
+                    (message "endDnd: %s" data))))
+    (slack-request
+     (slack-request-create
+      slack-dnd-end-dnd-url
+      team
+      :success #'on-success
+      ))))
+
+(defun slack-user-update-dnd-status (user dnd-status)
+  (plist-put user :dnd_status dnd-status))
+
+(defun slack-request-dnd-team-info (team &optional after-success)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-dnd-team-info")
+                    (let ((users (plist-get data :users)))
+                      (oset team users
+                            (cl-loop for user in (oref team users)
+                                     collect (plist-put
+                                              user
+                                              :dnd_status
+                                              (plist-get users
+                                                         (intern (format ":%s"
+                                                                         (plist-get user :id)))))))))
+                   (when (functionp after-success)
+                     (funcall after-success team))))
+    (slack-request
+     (slack-request-create
+      slack-dnd-team-info-url
+      team
+      :success #'on-success))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

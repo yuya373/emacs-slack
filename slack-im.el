@@ -51,6 +51,11 @@
     (let ((team (slack-team-find team-id)))
       (slack-user-presence-to-string (slack-user-find room team)))))
 
+(defmethod slack-im-user-dnd-status ((room slack-im))
+  (with-slots (team-id) room
+    (slack-user-dnd-status-to-string (slack-user-find room
+                                                      (slack-team-find team-id)))))
+
 (defmethod slack-room-name ((room slack-im))
   (with-slots (user team-id) room
     (slack-user-name user (slack-team-find team-id))))
@@ -166,7 +171,7 @@
             :params (list (cons "channel" (oref selected id)))
             :success #'on-success))))))
 
-(defun slack-im-open (&optional user)
+(defun slack-im-open (&optional user after-success)
   (interactive)
   (let* ((team (slack-team-select))
          (user (or user (slack-select-from-list
@@ -183,7 +188,9 @@
                (let ((im (slack-room-find (plist-get (plist-get data :channel) :id) team)))
                  (oset im is-open t)
                  (message "Direct Message Channel with %s Already Open"
-                          (slack-user-name (oref im user) team)))))))
+                          (slack-user-name (oref im user) team))))
+           (when (functionp after-success)
+             (funcall after-success)))))
       (slack-request
        (slack-request-create
         slack-im-open-url
@@ -193,7 +200,10 @@
         :success #'on-success)))))
 
 (defmethod slack-room-label-prefix ((room slack-im))
-  (slack-im-user-presence room))
+  (format "%s "
+          (or
+           (slack-im-user-dnd-status room)
+           (slack-im-user-presence room))))
 
 (defmethod slack-room-get-info-url ((_room slack-im))
   slack-im-open-url)

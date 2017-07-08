@@ -92,6 +92,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (retry-after-timer :initform nil)
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
+   (emoji-download-watch-timer :initform nil)
    ))
 
 (defun slack-team-find (id)

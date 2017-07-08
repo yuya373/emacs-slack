@@ -39,18 +39,22 @@
    (user-name :initarg :user-name :initform nil)))
 
 (defun slack-ws-open (team)
-  (with-slots (ws-url ws-conn reconnect-count) team
-    (unless ws-conn
-      (setq ws-conn
-            (websocket-open
-             ws-url
-             :on-message
-             #'(lambda (websocket frame)
-                 (slack-ws-on-message websocket frame team))
-             :on-open
-             #'(lambda (_websocket) (oset team connected t))
-             ))
-      (setq reconnect-count 0))))
+  (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
+      (slack-log "Websocket is Already Open")
+    (cl-labels
+        ((on-message (websocket frame)
+                     (slack-ws-on-message websocket frame team))
+         (on-open (_websocket)
+                  (oset team reconnect-count 0)
+                  (oset team connected t))
+         (on-close (_websocket)
+                   (oset team ws-conn nil)
+                   (oset team connected nil)))
+      (oset team ws-conn
+            (websocket-open (oref team ws-url)
+                            :on-message #'on-message
+                            :on-open #'on-open
+                            :on-close #'on-close)))))
 
 (defun slack-ws-close (&optional team)
   (interactive)
@@ -62,8 +66,6 @@
                 (if ws-conn
                     (progn
                       (websocket-close ws-conn)
-                      (setq ws-conn nil)
-                      (setq connected nil)
                       (slack-ws-cancel-ping-timer team)
                       (slack-ws-cancel-ping-check-timers team)
                       (slack-log "Slack Websocket Closed" team))
@@ -174,7 +176,11 @@
          ((string= type "member_joined_channel")
           (slack-ws-handle-member-joined-channel decoded-payload team))
          ((string= type "member_left_channel")
-          (slack-ws-handle-member-left_channel decoded-payload team)))))))
+          (slack-ws-handle-member-left_channel decoded-payload team))
+         ((or (string= type "dnd_updated")
+              (string= type "dnd_updated_user"))
+          (slack-ws-handle-dnd-updated decoded-payload team))
+         )))))
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
@@ -592,6 +598,14 @@
       (oset channel members
             (cl-remove-if #'(lambda (e) (string= e user))
                           (oref channel members))))))
+
+(defun slack-ws-handle-dnd-updated (payload team)
+  (let* ((user (slack-user--find (plist-get payload :user) team))
+         (updated (slack-user-update-dnd-status user (plist-get payload :dnd_status))))
+    (oset team users
+          (cons updated (cl-remove-if #'(lambda (user) (string= (plist-get user :id)
+                                                                (plist-get updated :id)))
+                                      (oref team users))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

@@ -70,31 +70,34 @@
     (apply #'make-instance klass
            (slack-collect-slots klass payload))))
 
-(defun slack-reminder-add ()
+(defun slack-reminder-add (&optional team)
   (interactive)
-  (let* ((team (slack-team-select))
+  (let* ((team (or team (slack-team-select)))
          (user (slack-select-from-list
-                ((slack-user-names team) "Select Target User: ")))
+                   ((slack-user-names team) "Select Target User: ")))
          (time (read-from-minibuffer
                 "Time (Ex. \"in 15 minutes,\" or \"every Thursday\"): "))
          (text (read-from-minibuffer "Text: ")))
-    (cl-labels
-        ((on-reminder-add (&key data &allow-other-keys)
-                          (slack-request-handle-error
-                           (data "slack-reminder-add")
-                           (let ((reminder (slack-reminder-create
-                                            (slack-decode
-                                             (plist-get data :reminder)))))
-                             (slack-team-add-reminder team reminder)
-                             (message "Reminder Created!")))))
-      (slack-request
-       (slack-request-create
-        slack-reminder-add-url
-        team
-        :params (list (cons "text" text)
-                      (cons "time" time)
-                      (and user (cons "user" (plist-get user :id))))
-        :success #'on-reminder-add)))))
+    (slack-reminder-request-add time text team user)))
+
+(defun slack-reminder-request-add (time text team &optional user)
+  (cl-labels
+      ((on-reminder-add (&key data &allow-other-keys)
+                        (slack-request-handle-error
+                         (data "slack-reminder-add")
+                         (let ((reminder (slack-reminder-create
+                                          (slack-decode
+                                           (plist-get data :reminder)))))
+                           (slack-team-add-reminder team reminder)
+                           (message "Reminder Created!")))))
+    (slack-request
+     (slack-request-create
+      slack-reminder-add-url
+      team
+      :params (list (cons "text" text)
+                    (cons "time" time)
+                    (and user (cons "user" (plist-get user :id))))
+      :success #'on-reminder-add))))
 
 (defmethod slack-reminder-to-body ((r slack-reminder))
   (with-slots (text time complete-ts) r
@@ -194,7 +197,7 @@
 
 (defun slack-reminder-select (team &optional filter)
   (slack-select-from-list
-   ((slack-reminders-alist team filter) "Select: ")))
+      ((slack-reminders-alist team filter) "Select: ")))
 
 (defun slack-reminder-delete ()
   (interactive)

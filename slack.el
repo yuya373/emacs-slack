@@ -191,9 +191,12 @@ never means never show typing indicator."
                    (delete-existing-buffer groups))))
        (slack-im-list-update
         team #'(lambda (team)
-                 (let ((ims (oref team ims)))
-                   (update-room-info team ims)
-                   (delete-existing-buffer ims))))
+                 (slack-request-dnd-team-info
+                  team
+                  #'(lambda (team)
+                      (let ((ims (oref team ims)))
+                        (update-room-info team ims)
+                        (delete-existing-buffer ims))))))
        (slack-bot-list-update team)
        (slack-request-emoji team)
        (slack-update-modeline)

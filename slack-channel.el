@@ -111,29 +111,33 @@
   (slack-room-invite slack-channel-invite-url
                      #'slack-channel-names))
 
-(defun slack-channel-leave ()
+(defun slack-channel-leave (&optional team select)
   (interactive)
-  (let* ((team (slack-team-select))
+  (let* ((team (or team (slack-team-select)))
          (channel (slack-current-room-or-select
                    #'(lambda ()
                        (slack-channel-names
                         team
                         #'(lambda (channels)
                             (cl-remove-if-not #'slack-room-member-p
-                                              channels)))))))
-    (cl-labels
-        ((on-channel-leave (&key data &allow-other-keys)
-                           (slack-request-handle-error
-                            (data "slack-channel-leave")
-                            (oset channel is-member nil)
-                            (message "Left Channel: %s"
-                                     (slack-room-name channel)))))
-      (slack-room-request-with-id slack-channel-leave-url
-                                  (oref channel id)
-                                  team
-                                  #'on-channel-leave))))
+                                              channels))))
+                   select)))
+    (slack-channel-request-leave channel team)))
 
-(defun slack-channel-join ()
+(defun slack-channel-request-leave (channel team)
+  (cl-labels
+      ((on-channel-leave (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-channel-leave")
+                          (oset channel is-member nil)
+                          (message "Left Channel: %s"
+                                   (slack-room-name channel)))))
+    (slack-room-request-with-id slack-channel-leave-url
+                                (oref channel id)
+                                team
+                                #'on-channel-leave)))
+
+(defun slack-channel-join (&optional team select)
   (interactive)
   (cl-labels
       ((filter-channel (channels)
@@ -142,21 +146,25 @@
                             (or (slack-room-member-p c)
                                 (slack-room-archived-p c)))
                         channels)))
-    (let* ((team (slack-team-select))
+    (let* ((team (or team (slack-team-select)))
            (channel (slack-current-room-or-select
                      #'(lambda ()
                          (slack-channel-names team
-                                              #'filter-channel)))))
-      (cl-labels
-          ((on-channel-join (&key data &allow-other-keys)
-                            (slack-request-handle-error
-                             (data "slack-channel-join"))))
-        (slack-request
-         (slack-request-create
-          slack-channel-join-url
-          team
-          :params (list (cons "name" (slack-room-name channel)))
-          :success #'on-channel-join))))))
+                                              #'filter-channel))
+                     select)))
+      (slack-channel-request-join channel team))))
+
+(defun slack-channel-request-join (channel team)
+  (cl-labels
+      ((on-channel-join (&key data &allow-other-keys)
+                        (slack-request-handle-error
+                         (data "slack-channel-join"))))
+    (slack-request
+     (slack-request-create
+      slack-channel-join-url
+      team
+      :params (list (cons "name" (slack-room-name channel)))
+      :success #'on-channel-join))))
 
 (defun slack-channel-create-from-info (id team)
   (cl-labels
