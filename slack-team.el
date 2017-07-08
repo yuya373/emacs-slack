@@ -64,8 +64,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (ws-conn :initarg :ws-conn :initform nil)
    (ping-timer :initform nil)
    (check-ping-timeout-timer :initform nil)
-   (check-ping-timeout-sec :initarg :check-ping-timeout-sec
-                           :initform 20)
+   (check-ping-timeout-sec :initarg :check-ping-timeout-sec :initform 20)
    (reconnect-auto :initarg :reconnect-auto :initform t)
    (reconnect-timer :initform nil)
    (reconnect-after-sec :initform 10)

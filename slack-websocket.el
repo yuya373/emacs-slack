@@ -62,14 +62,12 @@
     (setq team slack-teams))
   (cl-labels
       ((close (team)
+              (slack-ws-cancel-ping-timer team)
+              (slack-ws-cancel-ping-check-timers team)
               (with-slots (connected ws-conn last-pong) team
-                (if ws-conn
-                    (progn
-                      (websocket-close ws-conn)
-                      (slack-ws-cancel-ping-timer team)
-                      (slack-ws-cancel-ping-check-timers team)
-                      (slack-log "Slack Websocket Closed" team))
-                  (slack-log "Slack Websocket is not open" team)))))
+                (when ws-conn
+                  (websocket-close ws-conn)
+                  (slack-log "Slack Websocket Closed" team)))))
     (if (listp team)
         (mapc #'close team)
       (close team))))
@@ -457,8 +455,6 @@
 (defun slack-ws-ping-timeout (team)
   (slack-log "Slack Websocket PING Timeout." team)
   (slack-ws-close team)
-  (slack-ws-cancel-ping-timer team)
-  (slack-ws-cancel-ping-check-timers team)
   (when (oref team reconnect-auto)
     (if (timerp (oref team reconnect-timer))
         (cancel-timer (oref team reconnect-timer)))
@@ -499,13 +495,13 @@
 (defun slack-ws-reconnect (team &optional force)
   (with-slots
       (reconnect-count (reconnect-max reconnect-count-max)) team
-    (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
     (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
         (progn
           (slack-notify-abandon-reconnect)
           (slack-ws-cancel-reconnect-timer team))
       (cl-incf reconnect-count)
       (slack-ws-close team)
+      (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
       (cl-labels
           ((on-error (&key error-thrown &allow-other-keys)
                      (slack-log (format "Slack Reconnect Failed: %s" (cdr error-thrown)) team)))
@@ -520,6 +516,7 @@
 (defun slack-ws-handle-pong (payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref team ping-check-timers))))
+    (slack-log (format "pong-time: %s, %s" key (timerp timer)) team )
     (when timer
       (cancel-timer timer)
       (remhash key (oref team ping-check-timers)))))
