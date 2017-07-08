@@ -40,7 +40,7 @@
 
 (defun slack-ws-open (team)
   (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
-      (slack-log "Websocket is Already Open")
+      (slack-log "Websocket is Already Open" team)
     (cl-labels
         ((on-message (websocket frame)
                      (slack-ws-on-message websocket frame team))
