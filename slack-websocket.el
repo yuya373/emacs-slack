@@ -516,7 +516,6 @@
 (defun slack-ws-handle-pong (payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref team ping-check-timers))))
-    (slack-log (format "pong-time: %s, %s" key (timerp timer)) team )
     (when timer
       (cancel-timer timer)
       (remhash key (oref team ping-check-timers)))))
