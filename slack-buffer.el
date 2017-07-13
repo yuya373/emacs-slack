@@ -232,15 +232,9 @@
                       (equal (get-text-property (point) 'ts)
                              (oref msg ts))))))))
 
-(defun slack-get-info-buffer-create (room)
-  (let* ((buf-name (slack-room-buffer-name room))
-         (buffer (get-buffer buf-name)))
-    (unless buffer
-      (setq buffer (generate-new-buffer buf-name)))
-    buffer))
-
 (defun slack-buffer-create-info (buf-name insert-func)
-  (let ((buf (slack-get-info-buffer-create buf-name)))
+  (let ((buf (or (get-buffer buf-name)
+                 (generate-new-buffer buf-name))))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (erase-buffer)

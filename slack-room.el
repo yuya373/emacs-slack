@@ -163,9 +163,9 @@
 (defun slack-room-find-thread-message (room ts)
   (cl-find-if #'(lambda (th) (and th (string= ts (oref th ts))))
               (apply #'append (mapcar #'(lambda (m)
-                                  (if (oref m thread)
-                                      (oref (oref m thread) messages)))
-                              (oref room messages)))
+                                          (if (oref m thread)
+                                              (oref (oref m thread) messages)))
+                                      (oref room messages)))
               :from-end t))
 
 (defun slack-room-find-thread-parent (room thread-message)
@@ -381,14 +381,16 @@
                                            t
                                            :weight bold))))
       (funcall slack-buffer-function
-               (slack-buffer-create-info
-                (buffer-name room)
-                #'(lambda ()
-                    (insert buf-header)
-                    (insert "\n\n")
-                    (mapc #'(lambda (m) (insert
-                                         (slack-message-to-string m)))
-                          messages)))
+               (slack-buffer-create-info (buffer-name room)
+                                         #'(lambda ()
+                                             (insert buf-header)
+                                             (insert "\n\n")
+                                             (if (< 0 (length messages))
+                                                 (mapc #'(lambda (m)
+                                                           (insert (slack-message-to-string m team))
+                                                           (insert "\n"))
+                                                       messages)
+                                               (insert "No Pinned Items"))))
                team))))
 
 (defun slack-select-rooms ()
