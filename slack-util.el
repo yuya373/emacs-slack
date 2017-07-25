@@ -112,8 +112,9 @@
                     (cl-case (prefix-type arg)
                       (user
                        (cl-loop for user in (oref slack-current-team users)
-                                if (string-prefix-p content
-                                                    (plist-get user :name))
+                                if (and (not (eq (plist-get user :deleted) t))
+                                        (string-prefix-p content
+                                                         (plist-get user :name)))
                                 collect (concat "@" (plist-get user :name))))
                       (channel
                        (cl-loop for team in (oref slack-current-team channels)
