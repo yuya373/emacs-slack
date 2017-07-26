@@ -319,5 +319,15 @@
                                (define-key map (kbd "RET") #'open-image)
                                map)))))
 
+(defun slack-message-copy-link ()
+  (interactive)
+  (let ((ts (slack-get-ts))
+        (team (slack-team-find slack-current-team-id)))
+    (kill-new
+     (format "https://%s.slack.com/archives/%s/p%s"
+            (oref team domain)
+            slack-current-room-id
+            (replace-regexp-in-string "\\." "" ts)))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
