@@ -81,7 +81,7 @@ Emacs client for [Slack](https://slack.com/)
 3. Fill "App Name" and "Development Slack Team" and click "Create App".
 4. "Client ID" and "Client Secret" are listed in the "App Credentials" section.
 
-### 2. Configure Redurect URL
+### 2. Configure Redirect URL
 
 1. Click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
 2. Fill in the "Redirect URLs" section (slack-emacs defaults to: "http://localhost:8080").
