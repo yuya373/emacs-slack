@@ -89,7 +89,7 @@ Emacs client for [Slack](https://slack.com/)
 
 ### 3. Get token
 
-1. Call `slack-register-team` with above "Client ID" and "Client Secret" (ignore the "Token" prompt [e.i., just hit enter.]).
+1. Call `slack-register-team` with above "Client ID" and "Client Secret" (ignore the "Token" prompt [i.e., just hit enter.]).
 2. Emacs' prompt will display: "Enter the code your browser displayed: ".
 3. Code appears in the browser's address bar like "http://localhost:8080?code=181818181818.1819919191&state=", enter this code in the previous Emacs' prompt.
 4. Once you activate `emacs-slack`, token appears in the URL like: "https://api.slack.com/apps/{APPID}/oauth".
