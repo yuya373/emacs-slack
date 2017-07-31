@@ -157,6 +157,7 @@ never means never show typing indicator."
       (oset team self-id (plist-get self :id))
       (oset team self-name (plist-get self :name))
       (oset team ws-url (plist-get data :url))
+      (oset team domain (plist-get team-data :domain))
       team)))
 
 (cl-defun slack-on-authorize (data team)

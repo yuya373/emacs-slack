@@ -319,5 +319,26 @@
                                (define-key map (kbd "RET") #'open-image)
                                map)))))
 
+(defun slack-message-copy-link ()
+  (interactive)
+  (let* ((ts (slack-get-ts))
+         (team (slack-team-find slack-current-team-id))
+         (room (slack-room-find slack-current-room-id team))
+         (msg (or (slack-room-find-message room ts)
+                  (slack-room-find-thread-message room ts)))
+         (template "https://%s.slack.com/archives/%s/p%s%s"))
+    (if msg
+        (kill-new
+         (format template
+                 (oref team domain)
+                 slack-current-room-id
+                 (replace-regexp-in-string "\\." "" ts)
+                 (if (slack-message-thread-messagep msg)
+                     (format "?thread_ts=%s&cid=%s"
+                             (oref msg thread-ts)
+                             slack-current-room-id)
+                   "")))
+      (error "Message Not Found"))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
