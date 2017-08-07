@@ -54,7 +54,8 @@
             (websocket-open (oref team ws-url)
                             :on-message #'on-message
                             :on-open #'on-open
-                            :on-close #'on-close)))))
+                            :on-close #'on-close
+                            :nowait t)))))
 
 (defun slack-ws-close (&optional team)
   (interactive)
