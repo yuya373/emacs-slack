@@ -160,7 +160,9 @@
 
 (defun slack-message-embed-channel ()
   (interactive)
-  (let ((team (slack-team-select)))
+  (when (not (bound-and-true-p slack-current-team-id))
+    (error "Call From Slack Buffer"))
+  (let ((team (slack-team-find slack-current-team-id)))
     (let* ((alist (slack-channel-names team)))
       (slack-select-from-list
           (alist "Select Channel: ")
