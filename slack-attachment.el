@@ -70,12 +70,13 @@
                                                                                (format "\t%s" pad)))
                                          fields
                                          (format "\n\t%s\n" pad))))
-           (footer (if (and footer ts)
+           (footer (if footer
                        (format "%s\t%s"
                                pad
                                (propertize
-                                (format "%s|%s" footer
-                                        (slack-message-time-to-string ts))
+                                (format "%s%s" footer
+                                        (or (and ts (format "|%s" (slack-message-time-to-string ts)))
+                                            ""))
                                 'face 'slack-attachment-footer))))
            (image (when (functionp image-renderer)
                     (funcall image-renderer attachment))))
