@@ -55,7 +55,7 @@
                             :on-message #'on-message
                             :on-open #'on-open
                             :on-close #'on-close
-                            :nowait t)))))
+                            :nowait (oref team websocket-nowait))))))
 
 (defun slack-ws-close (&optional team)
   (interactive)
