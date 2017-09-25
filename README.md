@@ -72,7 +72,13 @@ Emacs client for [Slack](https://slack.com/)
 
 ```
 
-## How to get token
+## How to get token (the easy way)
+
+1. Log into the Slack team you're interested in with a web browser
+1. Open DevTools
+1. Ctrl-F to find, "xoxs-", copy it
+
+## How to get token (the harder yet officially sanctioned way)
 
 ### 1. Get client-id and client-secret
 
