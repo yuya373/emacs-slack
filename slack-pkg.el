@@ -1,6 +1,6 @@
 (define-package "slack" "0"
   "Slack client for Emacs"
-  '((websocket "1.5")
+  '((websocket "1.8")
     (request "0.2.0")
     (oauth2 "0.10")
     (circe "2.2")
