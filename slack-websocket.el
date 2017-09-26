@@ -57,7 +57,7 @@
                             :on-close #'on-close
                             :nowait (oref team websocket-nowait))))))
 
-(defun slack-ws-close (&optional team)
+(cl-defun slack-ws-close (&optional team (close-reconnection t))
   (interactive)
   (unless team
     (setq team slack-teams))
@@ -65,6 +65,8 @@
       ((close (team)
               (slack-ws-cancel-ping-timer team)
               (slack-ws-cancel-ping-check-timers team)
+              (when close-reconnection
+                (slack-ws-cancel-reconnect-timer team))
               (with-slots (connected ws-conn last-pong) team
                 (when ws-conn
                   (websocket-close ws-conn)
