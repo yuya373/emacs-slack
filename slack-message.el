@@ -42,7 +42,7 @@
    (item-type :initarg :item_type)
    (attachments :initarg :attachments :type (or null list) :initform nil)
    (reactions :initarg :reactions :type (or null list))
-   (is-starred :initarg :is_starred :type boolean)
+   (is-starred :initarg :is_starred :type boolean :initform nil)
    (pinned-to :initarg :pinned_to :type (or null list))
    (edited-at :initarg :edited-at :initform nil)
    (deleted-at :initarg :deleted-at :initform nil)
@@ -62,7 +62,8 @@
    (is-intro :initarg :is_intro)
    (comment :initarg :comment)
    (channel :initarg :channel)
-   (reactions :initarg :reactions type list)))
+   (reactions :initarg :reactions type list)
+   (is-starred :initarg :is_starred :type boolean :initform nil)))
 
 (defclass slack-file-comment-message (slack-file-message)
   ((comment :initarg :comment :initform nil)))

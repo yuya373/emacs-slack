@@ -59,6 +59,7 @@
    (thumb-160 :initarg :thumb_160 :initform nil)
    (original-w :initarg :original_w :initform nil)
    (original-h :initarg :original_h :initform nil)
+   (is-starred :initarg :is_starred :initform nil)
    ))
 
 (defclass slack-file-room (slack-room) ())
