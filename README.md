@@ -3,7 +3,7 @@
 Emacs client for [Slack](https://slack.com/)
 ### **[ScreenShot](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
 
-## Dependent
+## Dependencies
 - [websocket](https://github.com/ahyatt/emacs-websocket)
 - [request](https://github.com/tkf/emacs-request)
 - [Oauth2](https://github.com/emacsmirror/oauth2/blob/master/oauth2.el)
@@ -113,15 +113,20 @@ make sure `slack-oauth2-auth` requesting with "client" scope and prevent token m
 
 I recommend to chat with slackbot for tutorial using `slack-im-select`.
 
+Some terminology in the `slack-` functions:
+- `im`: An IM (instant message) is a direct message between you and exactly one other Slack user.
+- `channel`: A channel is a Slack channel which you are a member of
+- `group`. Any chat (direct message or channel) which isn't an IM is a group.
+
 - `slack-register-team`
   - set team configuration and create team.
-  - :name, :client-id, :client-secret is needed for arguments
+  - :name, :client-id, :client-secret are needed for arguments
 - `slack-change-current-team`
   - change `slack-current-team` var
 - `slack-start`
   - do authorize and initialize
 - `slack-ws-close`
-  - turn off websoeket connection
+  - turn off websocket connection
 - `slack-group-select`
   - select group from list
 - `slack-im-select`
