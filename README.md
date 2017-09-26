@@ -103,7 +103,7 @@ Emacs client for [Slack](https://slack.com/)
 
 #### Note
 
-emacs-slack use websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start) (you can also test your settings in that page's "Tester" tab to make sure things have been configured correctly).
+emacs-slack uses websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start) (you can also test your settings in that page's "Tester" tab to make sure things have been configured correctly).
 this request needs "client" scope when authorize and Slack does not yet have "client" scope in new OAuth scope.
 make sure `slack-oauth2-auth` requesting with "client" scope and prevent token migration.
 ![token_migration](https://github.com/yuya373/emacs-slack/wiki/images/token_migration.png)
@@ -120,7 +120,7 @@ Some terminology in the `slack-` functions:
 
 - `slack-register-team`
   - set team configuration and create team.
-  - :name, :client-id, :client-secret are needed for arguments
+  - :name, :client-id, and :client-secret are needed for arguments
 - `slack-change-current-team`
   - change `slack-current-team` var
 - `slack-start`
