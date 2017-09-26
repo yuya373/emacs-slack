@@ -234,7 +234,8 @@
 (defun slack-mapconcat-images (images)
   (when images
     (cl-labels ((sort-images (images)
-                             (let ((compare (if (< emacs-major-version 26)
+                             (let ((compare (if (or (and (eq system-type 'darwin) (< emacs-major-version 26))
+						    (< emacs-major-version 25))
                                                 #'>
                                               #'<)))
                                (cl-sort images compare :key #'(lambda (image) (caddr (car image))))))
