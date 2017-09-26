@@ -63,6 +63,12 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
   (cons "file" (oref (oref m file) id)))
 
+(defmethod slack-message-star-added ((m slack-file-share-message))
+  (oset (oref m file) is-starred t))
+
+(defmethod slack-message-star-removed ((m slack-file-share-message))
+  (oset (oref m file) is-starred nil))
+
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here
