@@ -607,9 +607,10 @@
                                        (oref (oref m comment) timestamp))))
                 messages)))
 
-(defun slack-room-find-file-message (room file-id)
+(defun slack-room-find-file-share-message (room file-id)
   (let ((messages (oref room messages)))
-    (cl-find-if #'(lambda (m) (and (slot-exists-p m 'file)
+    (cl-find-if #'(lambda (m) (and (slack-file-share-message-p m)
+                                   (slot-exists-p m 'file)
                                    (slot-boundp m 'file)
                                    (string= file-id (oref (oref m file) id))))
                 messages)))

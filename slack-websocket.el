@@ -652,7 +652,7 @@
                                         (oref file ims))
                  do (let* ((channel (slack-room-find channel team))
                            (message (and channel
-                                         (slack-room-find-file-message
+                                         (slack-room-find-file-share-message
                                           channel (oref file id)))))
                       (when message
                         (funcall (or on-add-to-file-message

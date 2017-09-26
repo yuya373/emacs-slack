@@ -347,7 +347,7 @@
 (defmethod slack-message-star-added ((m slack-file-comment-message))
   (oset (oref m comment) is-starred t))
 
-(defmethod slack-message-star-added ((m slack-file-message))
+(defmethod slack-message-star-added ((m slack-file-share-message))
   (oset (oref m file) is-starred t))
 
 (defmethod slack-message-star-removed ((m slack-message))
@@ -356,7 +356,7 @@
 (defmethod slack-message-star-removed ((m slack-file-comment-message))
   (oset (oref m comment) is-starred nil))
 
-(defmethod slack-message-star-removed ((m slack-file-message))
+(defmethod slack-message-star-removed ((m slack-file-share-message))
   (oset (oref m file) is-starred nil))
 
 (provide 'slack-message)
