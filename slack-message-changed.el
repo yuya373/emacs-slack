@@ -60,7 +60,12 @@
   (with-slots ((base base-message) (edited edited-message)) this
     (oset base text (oref edited text))
     (oset base attachments (oref edited attachments))
-    (oset base edited-at (oref edited edited-at))))
+    (oset base edited-at (oref edited edited-at))
+    (slack-message-copy base edited)))
+
+(defmethod slack-message-copy ((base slack-message) other))
+(defmethod slack-message-copy ((base slack-file-message) other)
+  (oset base file (oref other file)))
 
 (defmethod slack-message-changed--update ((this _slack-message-changed))
   (with-slots ((base base-message) team) this
