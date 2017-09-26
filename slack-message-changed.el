@@ -66,6 +66,9 @@
 (defmethod slack-message-copy ((base slack-message) other))
 (defmethod slack-message-copy ((base slack-file-message) other)
   (oset base file (oref other file)))
+(defmethod slack-message-copy ((base slack-file-comment-message) other)
+  (oset base comment (oref other comment))
+  (call-next-method))
 
 (defmethod slack-message-changed--update ((this _slack-message-changed))
   (with-slots ((base base-message) team) this
