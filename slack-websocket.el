@@ -57,7 +57,7 @@
                             :on-close #'on-close
                             :nowait (oref team websocket-nowait))))))
 
-(defun slack-ws-close (&optional team)
+(cl-defun slack-ws-close (&optional team (close-reconnection t))
   (interactive)
   (unless team
     (setq team slack-teams))
@@ -65,6 +65,8 @@
       ((close (team)
               (slack-ws-cancel-ping-timer team)
               (slack-ws-cancel-ping-check-timers team)
+              (when close-reconnection
+                (slack-ws-cancel-reconnect-timer team))
               (with-slots (connected ws-conn last-pong) team
                 (when ws-conn
                   (websocket-close ws-conn)
@@ -499,9 +501,9 @@
     (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
         (progn
           (slack-notify-abandon-reconnect)
-          (slack-ws-cancel-reconnect-timer team))
+          (slack-ws-close team t))
       (cl-incf reconnect-count)
-      (slack-ws-close team)
+      (slack-ws-close team nil)
       (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
       (cl-labels
           ((on-error (&key error-thrown &allow-other-keys)
