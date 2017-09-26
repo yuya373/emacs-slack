@@ -341,5 +341,23 @@
                    "")))
       (error "Message Not Found"))))
 
+(defmethod slack-message-star-added ((m slack-message))
+  (oset m is-starred t))
+
+(defmethod slack-message-star-added ((m slack-file-comment-message))
+  (oset (oref m comment) is-starred t))
+
+(defmethod slack-message-star-added ((m slack-file-message))
+  (oset (oref m file) is-starred t))
+
+(defmethod slack-message-star-removed ((m slack-message))
+  (oset m is-starred nil))
+
+(defmethod slack-message-star-removed ((m slack-file-comment-message))
+  (oset (oref m comment) is-starred nil))
+
+(defmethod slack-message-star-removed ((m slack-file-message))
+  (oset (oref m file) is-starred nil))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

@@ -64,6 +64,11 @@
 
 (defclass slack-file-room (slack-room) ())
 
+(defun slack-file-find (id team)
+  (let ((files (oref (slack-file-room-obj team) messages)))
+    (cl-find-if #'(lambda (file) (string= (oref file id) id))
+                files)))
+
 (defun slack-file-room-obj (team)
   (with-slots (file-room) team
     (if file-room

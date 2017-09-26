@@ -181,6 +181,10 @@
          ((or (string= type "dnd_updated")
               (string= type "dnd_updated_user"))
           (slack-ws-handle-dnd-updated decoded-payload team))
+         ((string= type "star_added")
+          (slack-ws-handle-star-added decoded-payload team))
+         ((string= type "star_removed")
+          (slack-ws-handle-star-removed decoded-payload team))
          )))))
 
 (defun slack-user-typing (team)
@@ -605,6 +609,76 @@
           (cons updated (cl-remove-if #'(lambda (user) (string= (plist-get user :id)
                                                                 (plist-get updated :id)))
                                       (oref team users))))))
+
+;; [star_added event | Slack](https://api.slack.com/events/star_added)
+(cl-defun slack-ws-handle-star (payload team &key
+                                        (on-add-to-message nil)
+                                        (on-remove-from-message nil)
+                                        (on-add-to-file-comment-message nil)
+                                        (on-remove-from-file-comment-message nil)
+                                        (on-add-to-file-message nil)
+                                        (on-remove-from-file-message nil))
+  (let* ((item (plist-get payload :item))
+         (type (plist-get item :type)))
+    (cond
+     ((string= type "message")
+      (let* ((room (slack-room-find (plist-get item :channel) team))
+             (ts (plist-get (plist-get item :message) :ts))
+             (message (slack-room-find-message room ts)))
+        (when message
+          (funcall (or on-add-to-message on-remove-from-message) message)
+          (slack-message-update message team t))))
+     ((string= type "file_comment")
+      (let* ((file-id (plist-get (plist-get item :file) :id))
+             (file (slack-file-find file-id team))
+             (comment-timestamp (plist-get (plist-get item :comment) :timestamp)))
+        (cl-loop for channel in (append (oref file channels)
+                                        (oref file groups)
+                                        (oref file ims))
+                 do (let* ((channel (slack-room-find channel team))
+                           (message (and channel
+                                         (slack-room-find-file-comment-message
+                                          channel comment-timestamp))))
+                      (when message
+                        (funcall (or on-add-to-file-comment-message
+                                     on-remove-from-file-comment-message)
+                                 message)
+                        (slack-message-update message team t))))))
+     ((string= type "file")
+      (let* ((file-id (plist-get (plist-get item :file) :id))
+             (file (slack-file-find file-id team)))
+        (cl-loop for channel in (append (oref file channels)
+                                        (oref file groups)
+                                        (oref file ims))
+                 do (let* ((channel (slack-room-find channel team))
+                           (message (and channel
+                                         (slack-room-find-file-message
+                                          channel (oref file id)))))
+                      (when message
+                        (funcall (or on-add-to-file-message
+                                     on-remove-from-file-message)
+                                 message)
+                        (slack-message-update message team t)))))))))
+
+(defun slack-ws-handle-star-added (payload team)
+  (cl-labels
+      ((on-add-to-message (message)
+                          (slack-message-star-added message)))
+    (slack-ws-handle-star
+     payload team
+     :on-add-to-message #'on-add-to-message
+     :on-add-to-file-comment-message #'on-add-to-message
+     :on-add-to-file-message #'on-add-to-message)))
+
+(defun slack-ws-handle-star-removed (payload team)
+  (cl-labels
+      ((on-remove-from-message (message)
+                               (slack-message-star-removed message)))
+    (slack-ws-handle-star
+     payload team
+     :on-remove-from-message #'on-remove-from-message
+     :on-remove-from-file-comment-message #'on-remove-from-message
+     :on-remove-from-file-message #'on-remove-from-message)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
