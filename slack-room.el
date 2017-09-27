@@ -599,12 +599,11 @@
 (defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
 
-(defun slack-room-find-file-comment-message (room comment-timestamp)
+(defun slack-room-find-file-comment-message (room comment-id)
   (let ((messages (oref room messages)))
     (cl-find-if #'(lambda (m) (and (slot-exists-p m 'comment)
                                    (slot-boundp m 'comment)
-                                   (eq comment-timestamp
-                                       (oref (oref m comment) timestamp))))
+                                   (string= comment-id (oref (oref m comment) id))))
                 messages)))
 
 (defun slack-room-find-file-share-message (room file-id)

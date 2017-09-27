@@ -325,21 +325,41 @@
 
 (cl-defmacro slack-ws-handle-reaction ((payload team) &body body)
   `(let* ((item (plist-get ,payload :item))
-          (room (slack-room-find (plist-get item :channel)
-                                 ,team)))
-     (if room
-         (let ((msg (slack-room-find-message room (plist-get item :ts))))
-           (if msg
-               (let* ((r-name (plist-get ,payload :reaction))
-                      (r-count 1)
-                      (r-users (list (plist-get ,payload :user)))
-                      (reaction (make-instance 'slack-reaction
-                                               :name r-name
-                                               :count r-count
-                                               :users r-users)))
-
-                 ,@body
-                 (slack-message-update msg ,team t t)))))))
+          (type (plist-get item :type))
+          (reaction (make-instance 'slack-reaction
+                                   :name (plist-get ,payload :reaction)
+                                   :count 1
+                                   :users (list (plist-get ,payload :user)))))
+     (cond
+      ((string= type "message")
+       (let ((room (slack-room-find (plist-get item :channel) ,team)))
+         (when room
+           (let ((msg (slack-room-find-message room (plist-get item :ts))))
+             (when msg
+               ,@body
+               (slack-message-update msg ,team t t))))))
+      ((string= type "file")
+       (let ((file (slack-file-find (plist-get item :file) ,team)))
+         (when file
+           (cl-loop for channel in (slack-file-channel-ids file)
+                    do (let* ((room (slack-room-find channel ,team))
+                              (msg (and room
+                                        (slack-room-find-file-share-message
+                                         room (oref file id)))))
+                         (when msg
+                           ,@body
+                           (slack-message-update msg ,team t t)))))))
+      ((string= type "file_comment")
+       (let ((file (slack-file-find (plist-get item :file) ,team)))
+         (when file
+           (cl-loop for channel in (slack-file-channel-ids file)
+                    do (let* ((room (slack-room-find channel ,team))
+                              (msg (and room
+                                        (slack-room-find-file-comment-message
+                                         room (plist-get item :file_comment)))))
+                         (when msg
+                           ,@body
+                           (slack-message-update msg ,team t t))))))))))
 
 (defun slack-ws-handle-reaction-added (payload team)
   (slack-ws-handle-reaction
@@ -631,14 +651,12 @@
      ((string= type "file_comment")
       (let* ((file-id (plist-get (plist-get item :file) :id))
              (file (slack-file-find file-id team))
-             (comment-timestamp (plist-get (plist-get item :comment) :timestamp)))
-        (cl-loop for channel in (append (oref file channels)
-                                        (oref file groups)
-                                        (oref file ims))
+             (comment-id (plist-get (plist-get item :comment) :id)))
+        (cl-loop for channel in (slack-file-channel-ids file)
                  do (let* ((channel (slack-room-find channel team))
                            (message (and channel
                                          (slack-room-find-file-comment-message
-                                          channel comment-timestamp))))
+                                          channel comment-id))))
                       (when message
                         (funcall (or on-add-to-file-comment-message
                                      on-remove-from-file-comment-message)
@@ -647,9 +665,7 @@
      ((string= type "file")
       (let* ((file-id (plist-get (plist-get item :file) :id))
              (file (slack-file-find file-id team)))
-        (cl-loop for channel in (append (oref file channels)
-                                        (oref file groups)
-                                        (oref file ims))
+        (cl-loop for channel in (slack-file-channel-ids file)
                  do (let* ((channel (slack-room-find channel team))
                            (message (and channel
                                          (slack-room-find-file-share-message

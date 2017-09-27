@@ -501,5 +501,10 @@
                                 :error #'render
                                 :token (oref team token)))))
 
+(defmethod slack-file-channel-ids ((file slack-file))
+  (append (oref file channels)
+          (oref file ims)
+          (oref file groups)))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
