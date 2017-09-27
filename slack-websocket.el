@@ -365,7 +365,7 @@
   (slack-ws-handle-reaction
    (payload team)
    (slack-message-append-reaction msg reaction)
-   (slack-reaction-notify payload team)))
+   (slack-reaction-notify payload team room)))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (slack-ws-handle-reaction
