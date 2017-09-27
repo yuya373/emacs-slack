@@ -147,7 +147,7 @@
            (slack-collect-slots 'slack-attachment payload))))
 
 (defmethod slack-message-set-attachments ((m slack-message) payload)
-  (let ((attachments (plist-get payload :attachments)))
+  (let ((attachments (append (plist-get payload :attachments) nil)))
     (if (< 0 (length attachments))
         (oset m attachments
               (mapcar #'slack-attachment-create attachments))))
