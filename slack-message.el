@@ -32,6 +32,8 @@
 (defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
+(defconst slack-message-stars-add-url "https://slack.com/api/stars.add")
+(defconst slack-message-stars-remove-url "https://slack.com/api/stars.remove")
 
 (defclass slack-message ()
   ((type :initarg :type :type string)
@@ -358,6 +360,38 @@
 
 (defmethod slack-message-star-removed ((m slack-file-share-message))
   (oset (oref m file) is-starred nil))
+
+(defun slack-message-process-star-api (url)
+  (let* ((team (slack-team-find slack-current-team-id))
+         (room (and team (slack-room-find slack-current-room-id team)))
+         (ts (slack-get-ts))
+         (message (and room ts (slack-room-find-message room ts))))
+    (when message
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data url))))
+        (slack-request
+         (slack-request-create
+          url
+          team
+          :params (list (cons "channel" (oref room id))
+                        (slack-message-star-api-params message))
+          :success #'on-success))))))
+
+(defun slack-message-remove-star ()
+  (interactive)
+  (slack-message-process-star-api slack-message-stars-remove-url))
+
+(defun slack-message-add-star ()
+  (interactive)
+  (slack-message-process-star-api slack-message-stars-add-url))
+
+(defmethod slack-message-star-api-params ((m slack-message))
+  (cons "timestamp" (oref m ts)))
+
+(defmethod slack-message-star-api-params ((m slack-file-comment-message))
+  (cons "file_comment" (oref (oref m comment) id)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

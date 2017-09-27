@@ -63,6 +63,8 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
   (cons "file" (oref (oref m file) id)))
 
+(defmethod slack-message-star-api-params ((m slack-file-share-message))
+  (cons "file" (oref (oref m file) id)))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here
