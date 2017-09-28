@@ -159,6 +159,7 @@
 (defmethod slack-message-set-file ((m slack-file-message) payload team)
   (let ((file (slack-file-create (plist-get payload :file))))
     (oset m file file)
+    (slack-file-set-channel file (plist-get payload :channel))
     (slack-file-pushnew file team)
     m))
 

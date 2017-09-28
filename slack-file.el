@@ -62,6 +62,15 @@
    (is-starred :initarg :is_starred :initform nil)
    ))
 
+(defmethod slack-file-set-channel ((f slack-file) id)
+  (cond
+   ((string-prefix-p "G" id)
+    (oset f groups (list id)))
+   ((string-prefix-p "C" id)
+    (oset f channels (list id)))
+   ((string-prefix-p "D" id)
+    (oset f ims (list id)))))
+
 (defclass slack-file-room (slack-room) ())
 
 (defun slack-file-find (id team)
