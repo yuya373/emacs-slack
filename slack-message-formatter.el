@@ -106,6 +106,20 @@
 (defmethod slack-message-header ((m slack-message) team)
   (slack-message-sender-name m team))
 
+(defmethod slack-message-starred-p ((m slack-message))
+  (oref m is-starred))
+
+(defmethod slack-message-starred-p ((m slack-file-comment-message))
+  (oref (oref m comment) is-starred))
+
+(defmethod slack-message-starred-p ((m slack-file-message))
+  (oref (oref m file) is-starred))
+
+(defmethod slack-message-starred-str ((m slack-message))
+  (if (slack-message-starred-p m)
+      ":star:"
+    ""))
+
 (defun slack-format-message (&rest args)
   (let ((messages args))
     (concat (mapconcat #'identity
@@ -126,7 +140,10 @@
       header)))
 
 (defmethod slack-message-header-to-string ((m slack-message) team)
-  (let ((header (slack-message-put-header-property (slack-message-header m team))))
+  (let ((header (format "%s %s"
+                        (slack-message-put-header-property
+                         (slack-message-header m team))
+                        (slack-message-starred-str m))))
     (if (slack-team-display-profile-imagep team)
         (slack-message-header-with-image m header team)
       header)))

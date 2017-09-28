@@ -599,5 +599,20 @@
 (defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
 
+(defun slack-room-find-file-comment-message (room comment-id)
+  (let ((messages (oref room messages)))
+    (cl-find-if #'(lambda (m) (and (slot-exists-p m 'comment)
+                                   (slot-boundp m 'comment)
+                                   (string= comment-id (oref (oref m comment) id))))
+                messages)))
+
+(defun slack-room-find-file-share-message (room file-id)
+  (let ((messages (oref room messages)))
+    (cl-find-if #'(lambda (m) (and (slack-file-share-message-p m)
+                                   (slot-exists-p m 'file)
+                                   (slot-boundp m 'file)
+                                   (string= file-id (oref (oref m file) id))))
+                messages)))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here

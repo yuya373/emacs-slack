@@ -30,49 +30,27 @@
 (require 'slack-message-update)
 (require 'slack-thread)
 
-(defclass _slack-message-changed ()
-  ((room :initarg :room :initform nil)
-   (team :initarg :team)
-   (edited-message :initarg :edited-message)
-   (base-message :initarg :base-message :initform nil)))
-
-(defclass _slack-thread-message-changed (_slack-message-changed) ())
-
 (defun slack-message-changed (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))
          (mpayload (plist-get payload :message))
-         (edited (and room (slack-message-create (slack-decode mpayload)
-                                                 team
-                                                 :room room)))
-         (base (and room (slack-room-find-message room (plist-get mpayload :ts))))
-         (class (and base (or (and (slack-message-thread-messagep base) '_slack-thread-message-changed)
-                              '_slack-message-changed)))
-         (changed (and class (make-instance class
-                                            :room room
-                                            :team team
-                                            :edited-message edited
-                                            :base-message base))))
-    (when changed
-      (slack-message-changed--copy changed)
-      (slack-message-changed--update changed))))
+         (base (and room (slack-room-find-message room (plist-get mpayload :ts)))))
+    (when base
+      (slack-message-changed--copy base mpayload)
+      (slack-message-update base team t))))
 
-(defmethod slack-message-changed--copy ((this _slack-message-changed))
-  (with-slots ((base base-message) (edited edited-message)) this
-    (oset base text (oref edited text))
-    (oset base attachments (oref edited attachments))
-    (oset base edited-at (oref edited edited-at))
-    (slack-message-copy base edited)))
+(defmethod slack-message-changed--copy ((this slack-message) payload)
+  (oset this text (plist-get payload :text))
+  (slack-message-set-attachments this payload)
+  (oset this edited-at (plist-get (plist-get payload :edited) :ts)))
 
-(defmethod slack-message-copy ((base slack-message) other))
-(defmethod slack-message-copy ((base slack-file-message) other)
-  (oset base file (oref other file)))
-(defmethod slack-message-copy ((base slack-file-comment-message) other)
-  (oset base comment (oref other comment))
-  (call-next-method))
-
-(defmethod slack-message-changed--update ((this _slack-message-changed))
-  (with-slots ((base base-message) team) this
-    (slack-message-update base team t)))
+(defmethod slack-message-changed--copy ((this slack-file-comment-message) payload)
+  (let* ((file-id (plist-get (plist-get payload :file) :id))
+         (new-comment (slack-file-comment-create
+                       (plist-get payload :comment)
+                       file-id)))
+    (with-slots (comment text) this
+      (oset comment comment (oref new-comment comment)))
+    (call-next-method)))
 
 (provide 'slack-message-changed)
 ;;; slack-message-changed.el ends here

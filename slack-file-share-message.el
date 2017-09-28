@@ -63,6 +63,21 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
   (cons "file" (oref (oref m file) id)))
 
+(defmethod slack-message-star-added ((m slack-file-share-message))
+  (oset (oref m file) is-starred t))
+
+(defmethod slack-message-star-removed ((m slack-file-share-message))
+  (oset (oref m file) is-starred nil))
+
+(defmethod slack-message-star-api-params ((m slack-file-share-message))
+  (cons "file" (oref (oref m file) id)))
+
+(defmethod slack-message-changed--copy ((this slack-file-share-message) payload)
+  (let ((new-file (slack-file-create (plist-get payload :file)))
+        (base-file (oref this file)))
+    (oset base-file comments (oref new-file comments))
+    (oset base-file initial-comment (oref new-file initial-comment)))
+  (call-next-method))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here

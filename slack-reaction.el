@@ -50,10 +50,8 @@
   (let ((text (format ":%s:: %d" (oref r name) (oref r count))))
     (propertize text 'reaction r)))
 
-(defun slack-reaction-notify (payload team)
+(defun slack-reaction-notify (payload team room)
   (let* ((user-id (plist-get payload :user))
-         (room (slack-room-find (plist-get (plist-get payload :item) :channel)
-                                team))
          (reaction (plist-get payload :reaction))
          (msg (slack-user-message "msg"
                                   :text (format "added reaction %s" reaction)

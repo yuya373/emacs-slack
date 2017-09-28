@@ -59,9 +59,15 @@
    (thumb-160 :initarg :thumb_160 :initform nil)
    (original-w :initarg :original_w :initform nil)
    (original-h :initarg :original_h :initform nil)
+   (is-starred :initarg :is_starred :initform nil)
    ))
 
 (defclass slack-file-room (slack-room) ())
+
+(defun slack-file-find (id team)
+  (let ((files (oref (slack-file-room-obj team) messages)))
+    (cl-find-if #'(lambda (file) (string= (oref file id) id))
+                files)))
 
 (defun slack-file-room-obj (team)
   (with-slots (file-room) team
@@ -494,6 +500,11 @@
                                 :success #'render
                                 :error #'render
                                 :token (oref team token)))))
+
+(defmethod slack-file-channel-ids ((file slack-file))
+  (append (oref file channels)
+          (oref file ims)
+          (oref file groups)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
