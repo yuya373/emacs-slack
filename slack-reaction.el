@@ -43,6 +43,9 @@
     (mapcar #'(lambda (u) (slack-user-name u team))
             users)))
 
+(defmethod slack-equalp ((r slack-reaction) other)
+  (slack-reaction-equalp r other))
+
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
 

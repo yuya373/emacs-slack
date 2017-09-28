@@ -62,6 +62,44 @@
    (is-starred :initarg :is_starred :initform nil)
    ))
 
+(defun slack-merge-list (old-list new-list)
+  (cl-loop for n in new-list
+           do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
+                                   old-list)))
+                (if o (slack-merge o n)
+                  (push n old-list)))))
+
+(defmethod slack-equalp ((c slack-file-comment) other)
+  (string= (oref c id) (oref other id)))
+
+(defmethod slack-merge ((old slack-reaction) new)
+  (with-slots (count users) old
+    (setq count (oref new count))
+    (setq users (cl-remove-duplicates (append users (oref new users))
+                                      :test #'string=))))
+
+;; (defmethod slack-merge ((old slack-file-comment) new)
+;;   (with-slots ()))
+
+(defmethod slack-merge ((old slack-file) new)
+  (cl-labels
+      ((slack-merge-string-list
+        (new old)
+        (cl-remove-duplicates (append new old) :test #'string=)))
+    (with-slots (channels groups ims reactions comments comments-count initial-comment) old
+      (setq channels (slack-merge-string-list channels (oref new channels)))
+      (setq groups (slack-merge-string-list groups (oref new groups)))
+      (setq ims (slack-merge-string-list ims (oref new ims)))
+      (setq reactions (oref new reactions))
+      (setq comments (oref new comments))
+      ;; (slack-merge-list reactions (oref new reactions))
+      ;; (slack-merge-list comments (oref new comments))
+      (setq comments-count (oref new comments-count))
+      (setq initial-comment (oref new initial-comment))
+
+      ))
+  )
+
 (defmethod slack-file-set-channel ((f slack-file) id)
   (cond
    ((string-prefix-p "G" id)
@@ -124,12 +162,13 @@
 (defmethod slack-file-pushnew ((f slack-file) team)
   (let ((room (slack-file-room-obj team)))
     (with-slots (messages) room
-      (setq messages (cl-remove-if #'(lambda (n) (slack-message-equal f n))
-                                   messages))
-      (push f messages)
-      (setq messages (slack-room-sorted-messages room))
-      (oset room oldest (car messages))
-      (oset room latest (car (last messages))))))
+      (let ((old (slack-file-find (oref f id) team)))
+        (if old
+            (slack-merge old f)
+          (push f messages)
+          (setq messages (slack-room-sorted-messages room))
+          (oset room oldest (car messages))
+          (oset room latest (car (last messages))))))))
 
 (defmethod slack-message-body ((file slack-file) team)
   (with-slots (initial-comment) file
