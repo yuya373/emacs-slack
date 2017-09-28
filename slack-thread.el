@@ -163,11 +163,13 @@
                           (mapc #'(lambda (m) (slack-thread-add-message thread m))
                                 (cl-remove-if #'slack-message-thread-parentp messages))))))
 
-        (slack-request (slack-room-replies-url room)
-                       team
-                       :params (list (cons "thread_ts" thread-ts)
-                                     (cons "channel" id))
-                       :success #'on-success)))))
+        (slack-request
+         (slack-request-create
+          (slack-room-replies-url room)
+          team
+          :params (list (cons "thread_ts" thread-ts)
+                        (cons "channel" id))
+          :success #'on-success))))))
 
 (defmethod slack-thread-show-messages ((thread slack-thread) room team)
   (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
