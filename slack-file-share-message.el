@@ -60,8 +60,10 @@
            (thread (slack-thread-to-string m team))
            (initial-comment (if-let* ((initial-comment
                                        (oref (oref m file) initial-comment)))
-                                (format "\n“ %s" (oref initial-comment comment))
-                              ;; TODO display initial-comment reactions
+                                (format "\n“ %s\n%s"
+                                        (slack-message-body initial-comment team)
+                                        (slack-message-reaction-to-string
+                                         initial-comment))
                               "")))
       (slack-format-message header body attachment-body
                             thumb reactions initial-comment thread))))

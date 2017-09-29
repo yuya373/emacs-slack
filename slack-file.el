@@ -181,13 +181,15 @@
     (let ((body (plist-get initial-comment :comment)))
       (slack-message-unescape-string body team))))
 
+(defmethod slack-message-body ((comment slack-file-comment) team)
+  (slack-message-unescape-string (oref comment comment) team))
+
 (defmethod slack-message-to-string ((comment slack-file-comment) team)
   (let ((header (propertize (slack-user-name (oref comment user) team)
                             'face 'slack-shared-message-header))
-        (body (slack-message-unescape-string (mapconcat #'identity
-                                                        (split-string (oref comment comment) "\n")
-                                                        "\n\t")
-                                             team))
+        (body (mapconcat #'identity
+                         (split-string (slack-message-body comment team) "\n")
+                         "\n\t"))
         (pad (propertize "|" 'face 'slack-shared-message-pad)))
     (format "\t%s\n \t%s\n" header body)))
 

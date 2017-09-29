@@ -154,13 +154,22 @@
         (slack-message-put-deleted-property raw-body)
       (slack-message-put-text-property raw-body))))
 
+
+(defun slack-format-reactions (reactions)
+  (slack-message-put-reactions-property
+   (concat "\n"
+           (mapconcat #'slack-reaction-to-string
+                      reactions " "))))
+
+(defmethod slack-message-reaction-to-string ((m slack-file-comment))
+  (let ((reactions (oref m reactions)))
+    (when reactions
+      (slack-format-reactions reactions))))
+
 (defmethod slack-message-reaction-to-string ((m slack-message))
   (let ((reactions (slack-message-get-reactions m)))
     (when reactions
-      (slack-message-put-reactions-property
-       (concat "\n"
-               (mapconcat #'slack-reaction-to-string
-                          reactions " "))))))
+      (slack-format-reactions reactions))))
 
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text) (oref m text))))
