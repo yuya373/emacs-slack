@@ -78,8 +78,10 @@
     (setq users (cl-remove-duplicates (append users (oref new users))
                                       :test #'string=))))
 
-;; (defmethod slack-merge ((old slack-file-comment) new)
-;;   (with-slots ()))
+(defmethod slack-merge ((old slack-file-comment) new)
+  (with-slots (comment reactions) old
+    (setq comment (oref new comment))
+    (setq reactions (slack-merge-list reactions (oref new reactions)))))
 
 (defmethod slack-merge ((old slack-file) new)
   (cl-labels
@@ -134,8 +136,11 @@
 (defun slack-file-comment-create (payload file-id)
   (let ((comment (apply #'make-instance
                         'slack-file-comment
-                        (slack-collect-slots 'slack-file-comment payload))))
+                        (slack-collect-slots 'slack-file-comment payload)))
+        (reactions (mapcar #'slack-reaction-create
+                           (plist-get payload :reactions))))
     (oset comment file-id file-id)
+    (oset comment reactions reactions)
     comment))
 
 (defun slack-file-create (payload)
@@ -553,6 +558,35 @@
   (append (oref file channels)
           (oref file ims)
           (oref file groups)))
+
+(defmethod slack-file-summary ((file slack-file))
+  (with-slots (initial-comment user permalink name) file
+    (format "<@%s> uploaded a file: <%s|%s>%s"
+            user permalink name
+            (if initial-comment
+                (format " and commented: %s" (oref initial-comment comment))
+              ""))))
+
+(defmethod slack-file-update-comment ((file slack-file) comment team
+                                      &optional edited-at)
+  (when (oref comment is-intro)
+    (oset file initial-comment comment))
+  (oset file comments (slack-merge-list (oref file comments)
+                                        (list comment)))
+  (cl-loop for channel in (slack-file-channel-ids file)
+           do (let* ((room (slack-room-find channel team))
+                     (message (if (oref comment is-intro)
+                                  (slack-room-find-file-share-message
+                                   room (oref file id))
+                                (slack-room-find-file-comment-message
+                                 room (oref comment id)))))
+                (when message
+                  (oset message file file)
+                  (oset message edited-at edited-at)
+                  (if (oref comment is-intro)
+                      (oset message text (slack-file-summary file))
+                    (oset message comment comment))
+                  (slack-message-update message team t)))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

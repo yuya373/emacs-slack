@@ -169,10 +169,7 @@
 (defmethod slack-message-set-file-comment ((m slack-file-comment-message) payload)
   (let* ((file-id (plist-get (plist-get payload :file) :id))
          (comment (plist-get payload :comment))
-         (reactions (mapcar #'slack-reaction-create
-                            (plist-get comment :reactions)))
          (file-comment (slack-file-comment-create comment file-id)))
-    (oset file-comment reactions reactions)
     (oset m comment file-comment)
     m))
 
