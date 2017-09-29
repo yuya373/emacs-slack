@@ -54,11 +54,17 @@
       ((redisplay () (slack-message-redisplay m (slack-room-find (oref m channel) team))))
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
-           (body (slack-message-body-to-string m team))
+           (body (slack-file-summary (oref m file)))
            (thumb (slack-message-image-to-string m team))
            (reactions (slack-message-reaction-to-string m))
-           (thread (slack-thread-to-string m team)))
-      (slack-format-message header body attachment-body thumb reactions thread))))
+           (thread (slack-thread-to-string m team))
+           (initial-comment (if-let* ((initial-comment
+                                       (oref (oref m file) initial-comment)))
+                                (format "\n“ %s" (oref initial-comment comment))
+                              ;; TODO display initial-comment reactions
+                              "")))
+      (slack-format-message header body attachment-body
+                            thumb reactions initial-comment thread))))
 
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
   (cons "file" (oref (oref m file) id)))

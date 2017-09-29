@@ -60,6 +60,7 @@
    (original-w :initarg :original_w :initform nil)
    (original-h :initarg :original_h :initform nil)
    (is-starred :initarg :is_starred :initform nil)
+   (mimetype :initarg :mimetype :type string :initform "")
    ))
 
 (defun slack-merge-list (old-list new-list)
@@ -560,12 +561,13 @@
           (oref file groups)))
 
 (defmethod slack-file-summary ((file slack-file))
-  (with-slots (initial-comment user permalink name) file
-    (format "<@%s> uploaded a file: <%s|%s>%s"
-            user permalink name
+  (with-slots (initial-comment mimetype permalink name) file
+    (format "uploaded%s this %s: <%s|%s>"
             (if initial-comment
-                (format " and commented: %s" (oref initial-comment comment))
-              ""))))
+                " and commented on"
+              "")
+            mimetype
+            permalink name)))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)
