@@ -640,41 +640,42 @@
                                         (on-remove-from-file-message nil))
   (let* ((item (plist-get payload :item))
          (type (plist-get item :type)))
-    (cond
-     ((string= type "message")
-      (let* ((room (slack-room-find (plist-get item :channel) team))
-             (ts (plist-get (plist-get item :message) :ts))
-             (message (slack-room-find-message room ts)))
-        (when message
-          (funcall (or on-add-to-message on-remove-from-message) message)
-          (slack-message-update message team t))))
-     ((string= type "file_comment")
-      (let* ((file-id (plist-get (plist-get item :file) :id))
-             (file (slack-file-find file-id team))
-             (comment-id (plist-get (plist-get item :comment) :id)))
-        (cl-loop for channel in (slack-file-channel-ids file)
-                 do (let* ((channel (slack-room-find channel team))
-                           (message (and channel
-                                         (slack-room-find-file-comment-message
-                                          channel comment-id))))
-                      (when message
-                        (funcall (or on-add-to-file-comment-message
-                                     on-remove-from-file-comment-message)
-                                 message)
-                        (slack-message-update message team t))))))
-     ((string= type "file")
-      (let* ((file-id (plist-get (plist-get item :file) :id))
-             (file (slack-file-find file-id team)))
-        (cl-loop for channel in (slack-file-channel-ids file)
-                 do (let* ((channel (slack-room-find channel team))
-                           (message (and channel
-                                         (slack-room-find-file-share-message
-                                          channel (oref file id)))))
-                      (when message
-                        (funcall (or on-add-to-file-message
-                                     on-remove-from-file-message)
-                                 message)
-                        (slack-message-update message team t)))))))))
+    (cl-labels ((update (message) (slack-message-update message team t t)))
+      (cond
+       ((string= type "message")
+        (let* ((room (slack-room-find (plist-get item :channel) team))
+               (ts (plist-get (plist-get item :message) :ts))
+               (message (slack-room-find-message room ts)))
+          (when message
+            (funcall (or on-add-to-message on-remove-from-message) message)
+            (update message))))
+       ((string= type "file_comment")
+        (let* ((file-id (plist-get (plist-get item :file) :id))
+               (file (slack-file-find file-id team))
+               (comment-id (plist-get (plist-get item :comment) :id)))
+          (cl-loop for channel in (slack-file-channel-ids file)
+                   do (let* ((channel (slack-room-find channel team))
+                             (message (and channel
+                                           (slack-room-find-file-comment-message
+                                            channel comment-id))))
+                        (when message
+                          (funcall (or on-add-to-file-comment-message
+                                       on-remove-from-file-comment-message)
+                                   message)
+                          (update message))))))
+       ((string= type "file")
+        (let* ((file-id (plist-get (plist-get item :file) :id))
+               (file (slack-file-find file-id team)))
+          (cl-loop for channel in (slack-file-channel-ids file)
+                   do (let* ((channel (slack-room-find channel team))
+                             (message (and channel
+                                           (slack-room-find-file-share-message
+                                            channel (oref file id)))))
+                        (when message
+                          (funcall (or on-add-to-file-message
+                                       on-remove-from-file-message)
+                                   message)
+                          (update message))))))))))
 
 (defun slack-ws-handle-star-added (payload team)
   (cl-labels
