@@ -175,7 +175,7 @@
   (with-slots (permalink name id page) (oref this file)
     (with-slots (comment) (oref this comment)
       (let* ((face '(:underline t))
-             (text (format "commented on %s <%s|open in browser>"
+             (text (format "commented on %s <%s|open in browser>\n%s"
                            (propertize name
                                        'face face
                                        'file id
@@ -183,7 +183,8 @@
                                                  (define-key map (kbd "RET")
                                                    #'slack-file-display)
                                                  map))
-                           permalink))
+                           permalink
+                           (format "“ %s" comment)))
              (header (slack-message-header-to-string this team))
              (reactions (slack-message-reaction-to-string this)))
         (slack-format-message header text reactions)))))
