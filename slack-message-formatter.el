@@ -139,7 +139,7 @@
                 header)
       header)))
 
-(defmethod slack-message-header-to-string ((m slack-message) team)
+(defun slack-message-header-to-string (m team)
   (let ((header (format "%s %s"
                         (slack-message-put-header-property
                          (slack-message-header m team))
