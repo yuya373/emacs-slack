@@ -563,8 +563,9 @@
          (file (slack-file-find file-id team))
          (comment (slack-file-comment-create (plist-get payload :comment)
                                              file-id)))
-    (when file
+    (slack-with-file file-id team
       (slack-add-comment file comment)
+      (slack-redisplay file team)
       (slack-message-update file team t))))
 
 (defun slack-ws-handle-file-comment-deleted (payload team)

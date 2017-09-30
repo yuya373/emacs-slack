@@ -621,6 +621,12 @@
                                  :key #'(lambda (e) (oref e timestamp)))
                         :test #'string= :key #'(lambda (e) (oref e id))))
 
+(defmacro slack-with-file (id team &rest body)
+  (declare (indent 2) (debug t))
+  `(cl-loop for file in (oref (slack-file-room-obj ,team) messages)
+            do (when (string= (oref file id) ,id)
+                 ,@body)))
+
 (defmethod slack-add-comment ((this slack-file) comment)
   (with-slots (comments comments-count) this
     (setq comments (slack-reorder-comments (cons comment comments)))
@@ -632,6 +638,52 @@
                                                          comments)))
     (cl-decf comments-count)))
 
+(defmethod slack-room-buffer-name ((this slack-file))
+  (with-slots (name) this
+    (format "*Slack File - %s*" name)))
+
+(defmethod slack-buffer-set-current-room-id ((this slack-file))
+  (set (make-local-variable 'slack-current-file-id) (oref this id)))
+
+(defmethod slack-room-setup-buffer ((_this slack-file) buf)
+  (with-current-buffer buf
+    (slack-file-info-mode)))
+
+(defmethod slack-room-set-buffer ((_this slack-file) _buf))
+
+(define-derived-mode slack-file-info-mode lui-mode "Slack File Info"
+  ""
+  (setq-local default-directory slack-default-directory)
+  (lui-set-prompt (format "Add Comment %s" lui-prompt-string))
+  (setq lui-input-function 'slack-file-comment--add))
+
+(defun slack-file-comment--add (message)
+  (let ((file-id slack-current-file-id)
+        (team (slack-team-find slack-current-team-id)))
+    (slack-file-comment-add-request file-id
+                                    message
+                                    team)))
+
+(defun slack-file-display ()
+  (interactive)
+  (let* ((line (thing-at-point 'line))
+         (id (get-text-property (- (point) (line-beginning-position)) 'file line))
+         (team (slack-team-find slack-current-team-id)))
+    (if-let* ((file (slack-file-find id team))
+              (buf (slack-buffer-create file team)))
+        (progn
+          (slack-file--display file buf team)
+          (funcall slack-buffer-function buf)))))
+
+(defun slack-file--display (file buf team)
+  (with-current-buffer buf
+    (let ((inhibit-read-only t))
+      (delete-region (point-min) lui-output-marker))
+    (lui-insert (slack-message-to-string file team))))
+
+(defun slack-redisplay (file team)
+  (if-let* ((buffer (get-buffer (slack-room-buffer-name file))))
+      (slack-file--display file buffer team)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
