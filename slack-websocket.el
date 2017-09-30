@@ -560,26 +560,19 @@
 
 (defun slack-ws-handle-file-comment-added (payload team)
   (let* ((file-id (plist-get payload :file_id))
-         (file (cl-find-if #'(lambda (f) (string= (oref f id) file-id))
-                           (oref (slack-file-room-obj team) messages)))
+         (file (slack-file-find file-id team))
          (comment (slack-file-comment-create (plist-get payload :comment)
                                              file-id)))
     (when file
-      (with-slots (comments comments-count) file
-        (push comment comments)
-        (cl-incf comments-count))
+      (slack-add-comment file comment)
       (slack-message-update file team t))))
 
 (defun slack-ws-handle-file-comment-deleted (payload team)
   (let* ((file-id (plist-get payload :file_id))
-         (file (cl-find-if #'(lambda (f) (string= (oref f id) file-id))
-                           (oref (slack-file-room-obj team) messages)))
+         (file (slack-file-find file-id team))
          (comment-id (plist-get payload :comment)))
     (when file
-      (with-slots (comments comments-count) file
-        (setq comments (cl-remove-if #'(lambda (c) (string= (oref c id) comment-id))
-                                     comments))
-        (cl-decf comments-count))
+      (slack-delete-comment file comment-id)
       (slack-message-update file team t))))
 
 (defun slack-ws-handle-thread-marked (payload team)

@@ -609,5 +609,23 @@
 (defmethod slack-reaction-find ((this slack-file) reaction)
   (slack-reaction--find (oref this reactions) reaction))
 
+(defun slack-reorder-comments (comments)
+  (cl-remove-duplicates (cl-sort comments
+                                 #'<
+                                 :key #'(lambda (e) (oref e timestamp)))
+                        :test #'string= :key #'(lambda (e) (oref e id))))
+
+(defmethod slack-add-comment ((this slack-file) comment)
+  (with-slots (comments comments-count) this
+    (setq comments (slack-reorder-comments (cons comment comments)))
+    (cl-incf comments-count)))
+
+(defmethod slack-delete-comment ((this slack-file) comment-id)
+  (with-slots (comments comments-count) this
+    (setq comments (slack-reorder-comments (cl-remove-if #'(lambda (e) (string= comment-id (oref e id)))
+                                                         comments)))
+    (cl-decf comments-count)))
+
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
