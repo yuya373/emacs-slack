@@ -186,7 +186,8 @@
   (let ((header (slack-message-header-to-string comment team))
         (body (slack-message-body-to-string comment team))
         (reactions (slack-message-reaction-to-string comment)))
-    (slack-format-message header body reactions)))
+    (propertize (slack-format-message header body reactions)
+                'file-comment-id (oref comment id))))
 
 (defun slack-file-more-comments-string (file)
   (let ((count (oref file comments-count))
@@ -223,7 +224,8 @@
                                                   #'(lambda (c) (slack-file-comment-create c (oref file id)))
                                                   comments))
                              (slack-file-pushnew file team)
-                             (slack-message-update file team t))))
+                             (slack-message-update file team t)
+                             (slack-redisplay file team))))
           (slack-request
            (slack-request-create
             slack-file-info-url
@@ -241,9 +243,10 @@
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
     (and (< 0 (length comments))
-         (mapconcat #'(lambda (e)
-                        (slack-message-to-string e team))
-                    comments "\n"))))
+         (format "\n%s"
+                 (mapconcat #'(lambda (e)
+                                (slack-message-to-string e team))
+                            comments "\n")))))
 
 (defmethod slack-file-initial-comment-to-string ((file slack-file) team)
   (with-slots (initial-comment) file
@@ -275,12 +278,14 @@
          (comments-count
           (slack-file-comments-count-to-string file)))
     (propertize
-     (slack-format-message header body reactions
-                           thumb
+     (slack-format-message (propertize (slack-format-message header
+                                                             body
+                                                             thumb
+                                                             reactions)
+                                       'file-id (oref file id))
                            ;; initial-comment
                            comments
-                           comments-count
-                           )
+                           comments-count)
      'ts (oref file ts))))
 
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
@@ -682,8 +687,13 @@
     (lui-insert (slack-message-to-string file team))))
 
 (defun slack-redisplay (file team)
-  (if-let* ((buffer (get-buffer (slack-room-buffer-name file))))
-      (slack-file--display file buffer team)))
+  (if-let* ((buffer (get-buffer (slack-room-buffer-name file)))
+            (cur-point (point)))
+      (with-current-buffer buffer
+        (slack-file--display file buffer team)
+        (when (and (<= (point-min) cur-point)
+                   (<= cur-point (point-max)))
+          (goto-char cur-point)))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

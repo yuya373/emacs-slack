@@ -126,8 +126,8 @@
 (defmethod slack-reaction-push ((this slack-file-share-message) reaction)
   (slack-reaction-push (oref this file) reaction))
 
-(defmethod slack-message-append-reaction ((m slack-file-share-message)
-                                          reaction type)
+(defmethod slack-message-append-reaction ((m slack-file-share-message) reaction
+                                          &optional type)
   (if (string= type "file_comment")
       (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
                                                    reaction)))
@@ -137,8 +137,8 @@
         (slack-reaction-join old-reaction reaction)
       (slack-reaction-push m reaction))))
 
-(defmethod slack-message-pop-reaction ((m slack-file-share-message)
-                                       reaction type)
+(defmethod slack-message-pop-reaction ((m slack-file-share-message) reaction
+                                       &optional type)
   (if (string= type "file_comment")
       (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
                                                    reaction)))

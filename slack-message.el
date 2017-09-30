@@ -417,15 +417,21 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-file-comment-message))
   (cons "file_comment" (oref (oref m comment) id)))
 
-(defmethod slack-message-append-reaction ((m slack-message) reaction _type)
+(defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type)
   (if-let* ((old-reaction (slack-reaction-find m reaction)))
       (slack-reaction-join old-reaction reaction)
     (slack-reaction-push m reaction)))
 
-(defmethod slack-message-pop-reaction ((m slack-message) reaction _type)
+(defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type)
   (if-let* ((old-reaction (slack-reaction-find m reaction)))
       (slack-reaction-delete m reaction)
     (cl-decf (oref old-reaction count))))
+
+(defmacro slack-with-file-comment (id file &rest body)
+  (declare (indent 2) (debug t))
+  `(cl-loop for file-comment in (oref ,file comments)
+            do (when (string= ,id (oref file-comment id))
+                 ,@body)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
