@@ -307,7 +307,7 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-file-list")
-         (let ((files (cl-loop for e across (plist-get data :files)
+         (let ((files (cl-loop for e in (plist-get data :files)
                                collect (slack-file-create e))))
            (if oldest
                (slack-room-set-prev-messages room files)

@@ -32,13 +32,9 @@
   "Request Timeout in seconds."
   :group 'slack)
 
-(defun slack-parse-to-hash ()
-  (let ((json-object-type 'hash-table))
-    (let ((res (json-read-from-string (buffer-string))))
-      res)))
-
-(defun slack-parse-to-plist ()
-  (let ((json-object-type 'plist))
+(defun slack-parse ()
+  (let ((json-object-type 'plist)
+        (json-array-type 'list))
     (json-read)))
 
 (defun slack-request-parse-payload (payload)
@@ -55,7 +51,7 @@
    (error :initarg :error :initform nil)
    (params :initarg :params :initform nil)
    (data :initarg :data :initform nil)
-   (parser :initarg :parser :initform #'slack-parse-to-plist)
+   (parser :initarg :parser :initform #'slack-parse)
    (sync :initarg :sync :initform nil)
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
