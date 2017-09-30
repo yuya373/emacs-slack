@@ -55,7 +55,7 @@
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
 
-(defclass slack-file-comment ()
+(defclass slack-file-comment (slack-user-message)
   ((id :initarg :id :type string)
    (file-id :initarg :file_id :type string)
    (created :initarg :created)
@@ -81,7 +81,7 @@
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (edited :initarg :edited)
-   (id :initarg :id)
+   (id :initarg :id :type string)
    (inviter :initarg :inviter)))
 
 (defclass slack-reply-broadcast-message (slack-user-message)

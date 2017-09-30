@@ -130,11 +130,14 @@
                                        :messages '())))))
 
 (defun slack-file-comment-create (payload file-id)
-  (let ((comment (apply #'make-instance
-                        'slack-file-comment
-                        (slack-collect-slots 'slack-file-comment payload)))
-        (reactions (mapcar #'slack-reaction-create
-                           (plist-get payload :reactions))))
+  (let* ((reactions (mapcar #'slack-reaction-create
+                            (append (plist-get payload :reactions) nil)))
+         (comment (apply #'make-instance
+                         'slack-file-comment
+                         (slack-collect-slots 'slack-file-comment
+                                              (plist-put payload
+                                                         :reactions
+                                                         reactions)))))
     (oset comment file-id file-id)
     (oset comment reactions reactions)
     comment))
@@ -180,13 +183,10 @@
   (slack-message-unescape-string (oref comment comment) team))
 
 (defmethod slack-message-to-string ((comment slack-file-comment) team)
-  (let ((header (propertize (slack-user-name (oref comment user) team)
-                            'face 'slack-shared-message-header))
-        (body (mapconcat #'identity
-                         (split-string (slack-message-body comment team) "\n")
-                         "\n\t"))
-        (pad (propertize "|" 'face 'slack-shared-message-pad)))
-    (format "\t%s\n \t%s\n" header body)))
+  (let ((header (slack-message-header-to-string comment team))
+        (body (slack-message-body-to-string comment team))
+        (reactions (slack-message-reaction-to-string comment)))
+    (slack-format-message header body reactions)))
 
 (defun slack-file-more-comments-string (file)
   (let ((count (oref file comments-count))
