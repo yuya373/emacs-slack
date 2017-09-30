@@ -200,12 +200,12 @@
                   'file (oref file id)
                   'keymap (let ((map (make-sparse-keymap)))
                             (define-key map (kbd "RET")
-                              #'slack-file-info)
+                              #'slack-file-update)
                             map)))))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
-(defun slack-file-info ()
+(defun slack-file-update ()
   (interactive)
   (let* ((line (thing-at-point 'line))
          (page (get-text-property 0 'page line))
@@ -446,24 +446,33 @@
        (let ((message (slack-room-find-message room ts)))
          (if (or (object-of-class-p message 'slack-file)
                  (object-of-class-p message 'slack-file-message))
-             (cl-labels
-                 ((on-file-comment-add (&key data &allow-other-keys)
-                                       (slack-request-handle-error
-                                        (data "slack-file-comment-add"))))
-               (let ((id (slack-file-id message))
-                     (channel (slack-file-channel message))
-                     (comment (read-from-minibuffer "Write Comment: ")))
-                 (slack-request
-                  (slack-request-create
-                   slack-file-comment-add-url
-                   team
-                   :params (list (cons "file" id)
-                                 (cons "comment" comment)
-                                 (if channel
-                                     (cons "channel" channel)))
-                   :success #'on-file-comment-add))))
+             (let ((id (slack-file-id message))
+                   (channel (slack-file-channel message))
+                   (comment (read-from-minibuffer "Write Comment: ")))
+               (slack-file-comment-add-request id
+                                               comment
+                                               team
+                                               channel))
            (error "Message is not a File")))
-     (error "Message can't fild"))))
+     (error "Message can't find"))))
+
+(defun slack-file-comment-add-request (id comment team
+                                          &optional channel after-success)
+  (cl-labels
+      ((on-file-comment-add (&key data &allow-other-keys)
+                            (slack-request-handle-error
+                             (data "slack-file-comment-add")
+                             (when after-success
+                               (funcall after-success)))))
+    (slack-request
+     (slack-request-create
+      slack-file-comment-add-url
+      team
+      :params (list (cons "file" id)
+                    (cons "comment" comment)
+                    (if channel
+                        (cons "channel" channel)))
+      :success #'on-file-comment-add))))
 
 (defun slack-file-comment-delete ()
   (interactive)
