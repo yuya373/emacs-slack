@@ -52,7 +52,12 @@
                                 team))
          (ts (slack-get-ts))
          (msg (slack-room-find-message room ts))
-         (reactions (slack-message-get-reactions msg))
+         (reactions (if (and
+                         (slack-file-share-message-p msg)
+                         (slack-get-file-comment-id))
+                        (slack-message-reactions
+                         (oref (oref msg file) initial-comment))
+                      (slack-message-reactions msg)))
          (reaction (slack-message-reaction-select reactions)))
     (slack-message-reaction-remove reaction ts room team)))
 
@@ -128,34 +133,38 @@
                         (cons "name" reaction))
           :success #'on-reaction-remove))))))
 
-(cl-defmacro slack-message-find-reaction ((m reaction) &body body)
-  `(let ((same-reaction
-          (cl-find-if #'(lambda (r) (slack-reaction-equalp r ,reaction))
-                      (slack-message-get-reactions ,m))))
-     ,@body))
+(defmethod slack-message-append-reaction ((m slack-file-share-message)
+                                          reaction type)
+  (if (string= type "file_comment")
+      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
+                                                   reaction)))
+          (slack-reaction-join old-reaction reaction)
+        (slack-reaction-push (oref (oref m file) initial-comment) reaction))
+    (if-let* ((old-reaction (slack-reaction-find m reaction)))
+        (slack-reaction-join old-reaction reaction)
+      (slack-reaction-push m reaction))))
 
-(defmethod slack-message-append-reaction ((m slack-message) reaction)
-  (let ((reactions (slack-message-get-reactions m)))
-    (slack-message-find-reaction
-     (m reaction)
-     (if same-reaction
-         (slack-reaction-join same-reaction reaction)
-       (push reaction reactions)
-       (slack-message-set-reactions m reactions)))))
+(defmethod slack-message-append-reaction ((m slack-message) reaction _type)
+  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+      (slack-reaction-join old-reaction reaction)
+    (slack-reaction-push m reaction)))
 
-(defmethod slack-message-pop-reaction ((m slack-message) reaction)
-  (slack-message-find-reaction
-   (m reaction)
-   (if same-reaction
-       (if (eq 1 (oref same-reaction count))
-           (progn
-             (let ((reactions (slack-message-get-reactions m)))
-               (slack-message-set-reactions
-                m
-                (cl-delete-if
-                 #'(lambda (r) (slack-reaction-equalp same-reaction r))
-                 reactions))))
-         (cl-decf (oref same-reaction count))))))
+(defmethod slack-message-pop-reaction ((m slack-file-share-message)
+                                       reaction type)
+  (if (string= type "file_comment")
+      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
+                                                   reaction)))
+          (slack-reaction-delete (oref (oref m file) initial-comment)
+                                 reaction)
+        (cl-decf (oref old-reaction count)))
+    (if-let* ((old-reaction (slack-reaction-find m reaction)))
+        (slack-reaction-delete m reaction)
+      (cl-decf (oref old-reaction count)))))
+
+(defmethod slack-message-pop-reaction ((m slack-message) reaction _type)
+  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+      (slack-reaction-delete m reaction)
+    (cl-decf (oref old-reaction count))))
 
 (provide 'slack-message-reaction)
 ;;; slack-message-reaction.el ends here

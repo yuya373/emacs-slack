@@ -60,16 +60,26 @@
            (thread (slack-thread-to-string m team))
            (initial-comment (if-let* ((initial-comment
                                        (oref (oref m file) initial-comment)))
-                                (format "\n“ %s\n%s"
-                                        (slack-message-body initial-comment team)
-                                        (slack-message-reaction-to-string
-                                         initial-comment))
+                                (propertize
+                                 (format "\n“ %s%s"
+                                         (slack-message-body initial-comment team)
+                                         (let ((str (slack-message-reaction-to-string
+                                                     initial-comment)))
+                                           (if (slack-string-blankp str)
+                                               ""
+                                             (format "\n%s" str))))
+                                 'file-comment-id (oref initial-comment id))
                               "")))
       (slack-format-message header body attachment-body
                             thumb reactions initial-comment thread))))
 
+(defun slack-get-file-comment-id ()
+  (get-text-property 0 'file-comment-id (thing-at-point 'line)))
+
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
-  (cons "file" (oref (oref m file) id)))
+  (if-let* ((file-comment-id (slack-get-file-comment-id)))
+      (cons "file_comment" file-comment-id)
+    (cons "file" (oref (oref m file) id))))
 
 (defmethod slack-message-star-added ((m slack-file-share-message))
   (oset (oref m file) is-starred t))
@@ -106,6 +116,15 @@
             (setq initial-comment new-initial-comment)
             (setq changed t)))))
     changed))
+
+(defmethod slack-reaction-find ((this slack-file-share-message) reaction)
+  (slack-reaction-find (oref this file) reaction))
+
+(defmethod slack-reaction-delete ((this slack-file-share-message) reaction)
+  (slack-reaction-delete (oref this file) reaction))
+
+(defmethod slack-reaction-push ((this slack-file-share-message) reaction)
+  (slack-reaction-push (oref this file) reaction))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here

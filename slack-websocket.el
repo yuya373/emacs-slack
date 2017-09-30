@@ -366,13 +366,13 @@
 (defun slack-ws-handle-reaction-added (payload team)
   (slack-ws-handle-reaction
    (payload team)
-   (slack-message-append-reaction msg reaction)
+   (slack-message-append-reaction msg reaction type)
    (slack-reaction-notify payload team room)))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (slack-ws-handle-reaction
    (payload team)
-   (slack-message-pop-reaction msg reaction)))
+   (slack-message-pop-reaction msg reaction type)))
 
 (defun slack-ws-handle-channel-created (payload team)
   ;; (let ((id (plist-get (plist-get payload :channel) :id)))

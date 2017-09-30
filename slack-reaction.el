@@ -61,6 +61,14 @@
                                   :user user-id)))
     (slack-message-notify msg room team)))
 
+(defun slack-reaction--find (reactions reaction)
+  (cl-find-if #'(lambda (e) (slack-reaction-equalp e reaction))
+              reactions))
+
+(defun slack-reaction--delete (reactions reaction)
+  (cl-delete-if #'(lambda (e) (slack-reaction-equalp e reaction))
+                reactions))
+
 (provide 'slack-reaction)
 ;;; slack-reaction.el ends here
 

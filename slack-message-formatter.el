@@ -167,7 +167,7 @@
       (slack-format-reactions reactions))))
 
 (defmethod slack-message-reaction-to-string ((m slack-message))
-  (let ((reactions (slack-message-get-reactions m)))
+  (let ((reactions (slack-message-reactions m)))
     (when reactions
       (slack-format-reactions reactions))))
 

@@ -592,5 +592,19 @@
                     (oset message comment comment))
                   (slack-message-update message team t)))))
 
+(defmethod slack-reaction-find ((this slack-file) reaction)
+  (slack-reaction--find (oref this reactions) reaction))
+
+(defmethod slack-reaction-delete ((this slack-file) reaction)
+  (with-slots (reactions) this
+    (setq reactions
+          (slack-reaction--delete reactions reaction))))
+
+(defmethod slack-reaction-push ((this slack-file) reaction)
+  (push reaction (oref this reactions)))
+
+(defmethod slack-message-reactions ((this slack-file))
+  (oref this reactions))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
