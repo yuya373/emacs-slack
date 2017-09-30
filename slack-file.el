@@ -240,10 +240,10 @@
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
-    (and (< 1 (length comments))
+    (and (< 0 (length comments))
          (mapconcat #'(lambda (e)
                         (slack-message-to-string e team))
-                    (cl-subseq comments 1) "\n"))))
+                    comments "\n"))))
 
 (defmethod slack-file-initial-comment-to-string ((file slack-file) team)
   (with-slots (initial-comment) file
@@ -269,16 +269,18 @@
          (body (slack-message-body-to-string file team))
          (thumb (slack-message-image-to-string file team))
          (reactions (slack-message-reaction-to-string file))
-         (initial-comment
-          (slack-file-initial-comment-to-string file team))
+         ;; (initial-comment
+         ;;  (slack-file-initial-comment-to-string file team))
          (comments (slack-file-comments-to-string file team))
          (comments-count
           (slack-file-comments-count-to-string file)))
     (propertize
      (slack-format-message header body reactions
                            thumb
-                           initial-comment comments
-                           comments-count)
+                           ;; initial-comment
+                           comments
+                           comments-count
+                           )
      'ts (oref file ts))))
 
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
