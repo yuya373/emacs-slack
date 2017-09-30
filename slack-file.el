@@ -606,5 +606,8 @@
 (defmethod slack-message-reactions ((this slack-file))
   (oref this reactions))
 
+(defmethod slack-reaction-find ((this slack-file) reaction)
+  (slack-reaction--find (oref this reactions) reaction))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here

@@ -272,64 +272,6 @@
 (defun slack-message-time-stamp (message)
   (seconds-to-time (string-to-number (oref message ts))))
 
-(defmethod slack-reaction-delete ((this slack-message) reaction)
-  (with-slots (reactions) this
-    (setq reactions (slack-reaction--delete reactions reaction))))
-
-(defmethod slack-reaction-delete ((this slack-file-comment) reaction)
-  (with-slots (reactions) this
-    (setq reactions
-          (slack-reaction--delete reactions reaction))))
-
-(defmethod slack-reaction-delete ((this slack-file-comment-message) reaction)
-  (slack-reaction-delete (oref this comment) reaction))
-
-(defmethod slack-reaction-push ((this slack-message) reaction)
-  (push reaction (oref this reactions)))
-
-(defmethod slack-reaction-push ((this slack-file-comment) reaction)
-  (push reaction (oref this reactions)))
-
-(defmethod slack-reaction-push ((this slack-file-comment-message) reaction)
-  (slack-reaction-push (oref this comment) reaction))
-
-(defmethod slack-message-set-reactions ((m slack-message) reactions)
-  (oset m reactions reactions)
-  m)
-
-(defmethod slack-message-set-reactions ((m slack-file-message) rs)
-  (oset (oref m file) reactions rs))
-
-(defmethod slack-message-set-reactions ((m slack-file-comment-message) reactions)
-  (oset (oref m comment) reactions reactions))
-
-(defmethod slack-reaction-find ((m slack-message) reaction)
-  (slack-reaction--find (oref m reactions) reaction))
-
-(defmethod slack-reaction-find ((m slack-file-message) reaction)
-  (slack-reaction-find (oref m file) reaction))
-
-(defmethod slack-reaction-find ((this slack-file) reaction)
-  (slack-reaction--find (oref this reactions) reaction))
-
-(defmethod slack-reaction-find ((this slack-file-comment) reaction)
-  (slack-reaction--find (oref this reactions) reaction))
-
-(defmethod slack-reaction-find ((this slack-file-comment-message) reaction)
-  (slack-reaction-find (oref this comment) reaction))
-
-(defmethod slack-message-reactions ((this slack-message))
-  (oref this reactions))
-
-(defmethod slack-message-reactions ((this slack-file-message))
-  (slack-message-reactions (oref this file)))
-
-(defmethod slack-message-reactions ((this slack-file-comment))
-  (oref this reactions))
-
-(defmethod slack-message-reactions ((this slack-file-comment-message))
-  (slack-message-reactions (oref this comment)))
-
 (defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
 
@@ -423,6 +365,67 @@
 
 (defmethod slack-message-star-api-params ((m slack-file-comment-message))
   (cons "file_comment" (oref (oref m comment) id)))
+
+(defmethod slack-reaction-delete ((this slack-message) reaction)
+  (with-slots (reactions) this
+    (setq reactions (slack-reaction--delete reactions reaction))))
+
+(defmethod slack-reaction-delete ((this slack-file-comment) reaction)
+  (with-slots (reactions) this
+    (setq reactions
+          (slack-reaction--delete reactions reaction))))
+
+(defmethod slack-reaction-delete ((this slack-file-comment-message) reaction)
+  (slack-reaction-delete (oref this comment) reaction))
+
+(defmethod slack-reaction-push ((this slack-message) reaction)
+  (push reaction (oref this reactions)))
+
+(defmethod slack-reaction-push ((this slack-file-comment) reaction)
+  (push reaction (oref this reactions)))
+
+(defmethod slack-reaction-push ((this slack-file-comment-message) reaction)
+  (slack-reaction-push (oref this comment) reaction))
+
+(defmethod slack-reaction-find ((m slack-message) reaction)
+  (slack-reaction--find (oref m reactions) reaction))
+
+(defmethod slack-reaction-find ((m slack-file-message) reaction)
+  (slack-reaction-find (oref m file) reaction))
+
+(defmethod slack-reaction-find ((this slack-file-comment) reaction)
+  (slack-reaction--find (oref this reactions) reaction))
+
+(defmethod slack-reaction-find ((this slack-file-comment-message) reaction)
+  (slack-reaction-find (oref this comment) reaction))
+
+(defmethod slack-message-reactions ((this slack-message))
+  (oref this reactions))
+
+(defmethod slack-message-reactions ((this slack-file-message))
+  (slack-message-reactions (oref this file)))
+
+(defmethod slack-message-reactions ((this slack-file-comment))
+  (oref this reactions))
+
+(defmethod slack-message-reactions ((this slack-file-comment-message))
+  (slack-message-reactions (oref this comment)))
+
+(defmethod slack-message-get-param-for-reaction ((m slack-message))
+  (cons "timestamp" (oref m ts)))
+
+(defmethod slack-message-get-param-for-reaction ((m slack-file-comment-message))
+  (cons "file_comment" (oref (oref m comment) id)))
+
+(defmethod slack-message-append-reaction ((m slack-message) reaction _type)
+  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+      (slack-reaction-join old-reaction reaction)
+    (slack-reaction-push m reaction)))
+
+(defmethod slack-message-pop-reaction ((m slack-message) reaction _type)
+  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+      (slack-reaction-delete m reaction)
+    (cl-decf (oref old-reaction count))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

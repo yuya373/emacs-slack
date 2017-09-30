@@ -126,5 +126,28 @@
 (defmethod slack-reaction-push ((this slack-file-share-message) reaction)
   (slack-reaction-push (oref this file) reaction))
 
+(defmethod slack-message-append-reaction ((m slack-file-share-message)
+                                          reaction type)
+  (if (string= type "file_comment")
+      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
+                                                   reaction)))
+          (slack-reaction-join old-reaction reaction)
+        (slack-reaction-push (oref (oref m file) initial-comment) reaction))
+    (if-let* ((old-reaction (slack-reaction-find m reaction)))
+        (slack-reaction-join old-reaction reaction)
+      (slack-reaction-push m reaction))))
+
+(defmethod slack-message-pop-reaction ((m slack-file-share-message)
+                                       reaction type)
+  (if (string= type "file_comment")
+      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
+                                                   reaction)))
+          (slack-reaction-delete (oref (oref m file) initial-comment)
+                                 reaction)
+        (cl-decf (oref old-reaction count)))
+    (if-let* ((old-reaction (slack-reaction-find m reaction)))
+        (slack-reaction-delete m reaction)
+      (cl-decf (oref old-reaction count)))))
+
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here
