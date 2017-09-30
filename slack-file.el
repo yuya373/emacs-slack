@@ -199,7 +199,7 @@
         (comments (oref file comments)))
     (if (eq count (length comments))
         ""
-      (propertize (format "%s more comments" count)
+      (propertize (format "%s more comments" (- count 1))
                   'face '(:underline t)
                   'page page
                   'file (oref file id)
@@ -245,10 +245,10 @@
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
-    (and (< 0 (length comments))
+    (and (< 1 (length comments))
          (mapconcat #'(lambda (e)
                         (slack-message-to-string e team))
-                    comments "\n"))))
+                    (cl-subseq comments 1) "\n"))))
 
 (defmethod slack-file-initial-comment-to-string ((file slack-file) team)
   (with-slots (initial-comment) file
