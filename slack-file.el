@@ -93,15 +93,10 @@
       (setq channels (slack-merge-string-list channels (oref new channels)))
       (setq groups (slack-merge-string-list groups (oref new groups)))
       (setq ims (slack-merge-string-list ims (oref new ims)))
-      (setq reactions (oref new reactions))
-      (setq comments (oref new comments))
-      ;; (slack-merge-list reactions (oref new reactions))
-      ;; (slack-merge-list comments (oref new comments))
+      (slack-merge-list reactions (oref new reactions))
+      (slack-merge-list comments (oref new comments))
       (setq comments-count (oref new comments-count))
-      (setq initial-comment (oref new initial-comment))
-
-      ))
-  )
+      (setq initial-comment (oref new initial-comment)))))
 
 (defmethod slack-file-set-channel ((f slack-file) id)
   (cond
