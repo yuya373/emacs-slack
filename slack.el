@@ -46,6 +46,7 @@
 (require 'slack-message-delete)
 (require 'slack-room-history)
 (require 'slack-file-share-message)
+(require 'slack-file-comment)
 (require 'slack-attachment)
 (require 'slack-emoji)
 

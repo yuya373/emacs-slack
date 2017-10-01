@@ -161,11 +161,6 @@
            (mapconcat #'slack-reaction-to-string
                       reactions " "))))
 
-(defmethod slack-message-reaction-to-string ((m slack-file-comment))
-  (let ((reactions (oref m reactions)))
-    (when reactions
-      (slack-format-reactions reactions))))
-
 (defmethod slack-message-reaction-to-string ((m slack-message))
   (let ((reactions (slack-message-reactions m)))
     (when reactions

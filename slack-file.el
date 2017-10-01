@@ -70,19 +70,11 @@
                 (if o (slack-merge o n)
                   (push n old-list)))))
 
-(defmethod slack-equalp ((c slack-file-comment) other)
-  (string= (oref c id) (oref other id)))
-
 (defmethod slack-merge ((old slack-reaction) new)
   (with-slots (count users) old
     (setq count (oref new count))
     (setq users (cl-remove-duplicates (append users (oref new users))
                                       :test #'string=))))
-
-(defmethod slack-merge ((old slack-file-comment) new)
-  (with-slots (comment reactions) old
-    (setq comment (oref new comment))
-    (setq reactions (slack-merge-list reactions (oref new reactions)))))
 
 (defmethod slack-merge ((old slack-file) new)
   (cl-labels
@@ -178,16 +170,6 @@
   (with-slots (initial-comment) file
     (let ((body (plist-get initial-comment :comment)))
       (slack-message-unescape-string body team))))
-
-(defmethod slack-message-body ((comment slack-file-comment) team)
-  (slack-message-unescape-string (oref comment comment) team))
-
-(defmethod slack-message-to-string ((comment slack-file-comment) team)
-  (let ((header (slack-message-header-to-string comment team))
-        (body (slack-message-body-to-string comment team))
-        (reactions (slack-message-reaction-to-string comment)))
-    (propertize (slack-format-message header body reactions)
-                'file-comment-id (oref comment id))))
 
 (defun slack-file-more-comments-string (file)
   (let ((count (oref file comments-count))
@@ -422,9 +404,6 @@
 (defmethod slack-file-id ((m slack-file-comment-message))
   (slack-file-id (oref m comment)))
 
-(defmethod slack-file-id ((file-comment slack-file-comment))
-  (oref file-comment file-id))
-
 (defmethod slack-file-channel ((m slack-file-message))
   (oref m channel))
 
@@ -479,26 +458,29 @@
                         (cons "channel" channel)))
       :success #'on-file-comment-add))))
 
-(defun slack-file-comment-delete ()
+(defun -slack-file-comment-delete ()
   (interactive)
   (slack-get-message-metadata
    (if (and ts room)
        (let ((message (slack-room-find-message room ts)))
          (if (or (object-of-class-p message 'slack-file-comment)
                  (object-of-class-p message 'slack-file-comment-message))
-             (cl-labels
-                 ((on-file-comment-delete (&key data &allow-other-keys)
-                                          (slack-request-handle-error
-                                           (data "slack-file-comment-delete"))))
-               (let ((id (slack-file-comment-id message))
-                     (file-id (slack-file-id message)))
-                 (slack-request
-                  (slack-request-create
-                   slack-file-comment-delete-url
-                   team
-                   :params (list (cons "id" id)
-                                 (cons "file" file-id))
-                   :success #'on-file-comment-delete)))))))))
+             (let ((id (slack-file-comment-id message))
+                   (file-id (slack-file-id message)))
+               (slack-file-comment-delete-request file-id id team)))))))
+
+(defun slack-file-comment-delete-request (file-id file-comment-id team)
+  (cl-labels
+      ((on-file-comment-delete (&key data &allow-other-keys)
+                               (slack-request-handle-error
+                                (data "slack-file-comment-delete"))))
+    (slack-request
+     (slack-request-create
+      slack-file-comment-delete-url
+      team
+      :params (list (cons "id" file-comment-id)
+                    (cons "file" file-id))
+      :success #'on-file-comment-delete))))
 
 (defconst slack-file-comment-edit-url "https://slack.com/api/files.comments.edit")
 
@@ -696,9 +678,10 @@
             (cur-point (point)))
       (with-current-buffer buffer
         (slack-file--display file buffer team)
-        (when (and (<= (point-min) cur-point)
+        (if (and (<= (point-min) cur-point)
                    (<= cur-point (point-max)))
-          (goto-char cur-point)))))
+            (goto-char cur-point)
+          (goto-char lui-output-marker)))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

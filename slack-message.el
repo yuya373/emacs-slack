@@ -55,18 +55,6 @@
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
 
-(defclass slack-file-comment (slack-user-message)
-  ((id :initarg :id :type string)
-   (file-id :initarg :file_id :type string)
-   (created :initarg :created)
-   (timestamp :initarg :timestamp)
-   (user :initarg :user)
-   (is-intro :initarg :is_intro)
-   (comment :initarg :comment)
-   (channel :initarg :channel)
-   (reactions :initarg :reactions type list)
-   (is-starred :initarg :is_starred :type boolean :initform nil)))
-
 (defclass slack-file-comment-message (slack-file-message)
   ((comment :initarg :comment :initform nil)))
 
@@ -370,18 +358,10 @@
   (with-slots (reactions) this
     (setq reactions (slack-reaction--delete reactions reaction))))
 
-(defmethod slack-reaction-delete ((this slack-file-comment) reaction)
-  (with-slots (reactions) this
-    (setq reactions
-          (slack-reaction--delete reactions reaction))))
-
 (defmethod slack-reaction-delete ((this slack-file-comment-message) reaction)
   (slack-reaction-delete (oref this comment) reaction))
 
 (defmethod slack-reaction-push ((this slack-message) reaction)
-  (push reaction (oref this reactions)))
-
-(defmethod slack-reaction-push ((this slack-file-comment) reaction)
   (push reaction (oref this reactions)))
 
 (defmethod slack-reaction-push ((this slack-file-comment-message) reaction)
@@ -393,9 +373,6 @@
 (defmethod slack-reaction-find ((m slack-file-message) reaction)
   (slack-reaction-find (oref m file) reaction))
 
-(defmethod slack-reaction-find ((this slack-file-comment) reaction)
-  (slack-reaction--find (oref this reactions) reaction))
-
 (defmethod slack-reaction-find ((this slack-file-comment-message) reaction)
   (slack-reaction-find (oref this comment) reaction))
 
@@ -404,9 +381,6 @@
 
 (defmethod slack-message-reactions ((this slack-file-message))
   (slack-message-reactions (oref this file)))
-
-(defmethod slack-message-reactions ((this slack-file-comment))
-  (oref this reactions))
 
 (defmethod slack-message-reactions ((this slack-file-comment-message))
   (slack-message-reactions (oref this comment)))
@@ -429,52 +403,10 @@
 
 (defmacro slack-with-file-comment (id file &rest body)
   (declare (indent 2) (debug t))
-  `(cl-loop for file-comment in (oref ,file comments)
-            do (when (string= ,id (oref file-comment id))
-                 ,@body)))
-(define-derived-mode slack-edit-file-comment-mode
-  fundamental-mode
-  "Slack Edit File Comment"
-  ""
-  (slack-buffer-enable-emojify))
-
-(defvar slack-edit-file-comment-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "C-c C-c") #'slack-file-comment-edit-commit)
-    keymap))
-
-(defun slack-file-comment-edit ()
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id (slack-get-file-comment-id))
-            (team (slack-team-find slack-current-team-id)))
-      (slack-with-file file-id team
-        (slack-with-file-comment file-comment-id file
-          (let* ((bufname "*Slack - Edit File Comment*")
-                 (buf (get-buffer-create bufname)))
-            (with-current-buffer buf
-              (slack-edit-file-comment-mode)
-              (setq buffer-read-only nil)
-              (erase-buffer)
-              (setq-local slack-current-file-id file-id)
-              (setq-local slack-current-file-comment-id file-comment-id)
-              (slack-buffer-set-current-team-id team)
-              (insert (oref file-comment comment)))
-            (funcall slack-buffer-function buf))))))
-
-(defun slack-file-comment-edit-commit ()
-  (interactive)
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id slack-current-file-comment-id)
-            (team (slack-team-find slack-current-team-id))
-            (comment (buffer-substring-no-properties (point-min) (point-max))))
-
-      (progn
-        (slack-file-comment-edit-request file-id
-                                         file-comment-id
-                                         comment
-                                         team)
-        (kill-buffer)
-        (if (> (count-windows) 1) (delete-window)))))
+  `(let ((file-comment (cl-find-if #'(lambda (e) (string= ,id (oref e id)))
+                                   (oref ,file comments))))
+     (when file-comment
+       ,@body)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
