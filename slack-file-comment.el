@@ -37,7 +37,7 @@
     keymap))
 
 (defclass slack-file-comment (slack-user-message)
-  ((id :initarg :id :type string)
+  ((id :initarg :id)
    (file-id :initarg :file_id :type string)
    (created :initarg :created)
    (timestamp :initarg :timestamp)

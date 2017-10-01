@@ -70,7 +70,7 @@
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (edited :initarg :edited)
-   (id :initarg :id :type string)
+   (id :initarg :id)
    (inviter :initarg :inviter)))
 
 (defclass slack-reply-broadcast-message (slack-user-message)
