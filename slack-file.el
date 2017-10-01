@@ -682,13 +682,14 @@
 
 (defun slack-redisplay (file team)
   (if-let* ((buffer (get-buffer (slack-room-buffer-name file)))
-            (cur-point (point)))
+            (cur-point (point))
+            (max (marker-position lui-output-marker)))
       (with-current-buffer buffer
         (slack-file--display file buffer team)
         (if (and (<= (point-min) cur-point)
-                   (<= cur-point (point-max)))
-            (goto-char cur-point)
-          (goto-char lui-output-marker)))))
+                 (< cur-point max))
+            (goto-char cur-point))
+        )))
 
 (defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
