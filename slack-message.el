@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'subr-x)
 (require 'slack-util)
 (require 'slack-reaction)
 
@@ -314,45 +315,64 @@
   (oset m is-starred t))
 
 (defmethod slack-message-star-added ((m slack-file-comment-message))
-  (oset (oref m comment) is-starred t))
+  (slack-message-star-added (oref m comment)))
 
 (defmethod slack-message-star-removed ((m slack-message))
   (oset m is-starred nil))
 
 (defmethod slack-message-star-removed ((m slack-file-comment-message))
-  (oset (oref m comment) is-starred nil))
+  (slack-message-star-removed (oref m comment)))
 
-(defun slack-message-process-star-api (url)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (and team (slack-room-find slack-current-room-id team)))
+(defun slack-message-process-star-api (url team)
+  (let* ((room (and team (slack-room-find slack-current-room-id team)))
          (ts (slack-get-ts))
          (message (and room ts (slack-room-find-message room ts))))
     (when message
-      (cl-labels
-          ((on-success (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data url))))
-        (slack-request
-         (slack-request-create
-          url
-          team
-          :params (list (cons "channel" (oref room id))
-                        (slack-message-star-api-params message))
-          :success #'on-success))))))
+      (slack-message-star-api-request url
+                                      (list (cons "channel" (oref room id))
+                                            (slack-message-star-api-params message))
+                                      team))))
+
+(defun slack-message-star-api-request (url params team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data url))))
+    (slack-request
+     (slack-request-create
+      url
+      team
+      :params params
+      :success #'on-success))))
 
 (defun slack-message-remove-star ()
   (interactive)
-  (slack-message-process-star-api slack-message-stars-remove-url))
+  (let ((team (slack-team-find slack-current-team-id))
+        (url slack-message-stars-remove-url))
+    (if (eq major-mode 'slack-file-info-mode)
+        (if-let* ((file-id (slack-get-file-id)))
+            (slack-file-process-star-api url team file-id)
+          (slack-file-comment-process-star-api url team))
+      (slack-message-process-star-api url team))))
 
 (defun slack-message-add-star ()
   (interactive)
-  (slack-message-process-star-api slack-message-stars-add-url))
+  (let ((team (slack-team-find slack-current-team-id))
+        (url slack-message-stars-add-url))
+    (if (eq major-mode 'slack-file-info-mode)
+        (if-let* ((file-id (slack-get-file-id)))
+            (slack-file-process-star-api url team file-id)
+          (slack-file-comment-process-star-api url team))
+      (slack-message-process-star-api url team))))
 
 (defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (oref m ts)))
 
 (defmethod slack-message-star-api-params ((m slack-file-comment-message))
-  (cons "file_comment" (oref (oref m comment) id)))
+  (slack-message-star-api-params (oref m comment)))
+
+(defmethod slack-message-star-api-params ((this slack-file-comment))
+  (cons "file_comment" (oref this id)))
 
 (defmethod slack-reaction-delete ((this slack-message) reaction)
   (with-slots (reactions) this

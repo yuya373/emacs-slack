@@ -683,5 +683,20 @@
             (goto-char cur-point)
           (goto-char lui-output-marker)))))
 
+(defmethod slack-message-star-added ((this slack-file))
+  (oset this is-starred t))
+
+(defmethod slack-message-star-removed ((this slack-file))
+  (oset this is-starred nil))
+
+(defmethod slack-message-star-api-params ((this slack-file))
+  (cons "file" (oref this id)))
+
+(defun slack-file-process-star-api (url team file-id)
+  (slack-with-file file-id team
+    (slack-message-star-api-request url
+                                    (list (slack-message-star-api-params file))
+                                    team)))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here

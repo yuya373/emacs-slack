@@ -648,7 +648,8 @@
                                         (on-add-to-file-message nil)
                                         (on-remove-from-file-message nil))
   (let* ((item (plist-get payload :item))
-         (type (plist-get item :type)))
+         (type (plist-get item :type))
+         (_type (plist-get payload :type)))
     (cl-labels ((update (message) (slack-message-update message team t t)))
       (cond
        ((string= type "message")
@@ -671,6 +672,12 @@
                           (funcall (or on-add-to-file-comment-message
                                        on-remove-from-file-comment-message)
                                    message)
+                          (slack-with-file-comment comment-id file
+                            (when (string= _type "star_removed")
+                              (slack-message-star-removed file-comment))
+                            (when (string= _type "star_added")
+                              (slack-message-star-added file-comment)))
+                          (slack-redisplay file team)
                           (update message))))))
        ((string= type "file")
         (let* ((file-id (plist-get (plist-get item :file) :id))
@@ -684,6 +691,11 @@
                           (funcall (or on-add-to-file-message
                                        on-remove-from-file-message)
                                    message)
+                          (when (string= _type "star_removed")
+                            (slack-message-star-removed file))
+                          (when (string= _type "star_added")
+                            (slack-message-star-added file))
+                          (slack-redisplay file team)
                           (update message))))))))))
 
 (defun slack-ws-handle-star-added (payload team)

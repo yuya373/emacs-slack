@@ -82,13 +82,13 @@
     (cons "file" (oref (oref m file) id))))
 
 (defmethod slack-message-star-added ((m slack-file-share-message))
-  (oset (oref m file) is-starred t))
+  (slack-message-star-added (oref m file)))
 
 (defmethod slack-message-star-removed ((m slack-file-share-message))
-  (oset (oref m file) is-starred nil))
+  (slack-message-star-removed (oref m file)))
 
 (defmethod slack-message-star-api-params ((m slack-file-share-message))
-  (cons "file" (oref (oref m file) id)))
+  (slack-message-star-api-params (oref m file)))
 
 (defmethod slack-message-changed--copy ((this slack-file-share-message) other)
   (let ((changed (call-next-method)))

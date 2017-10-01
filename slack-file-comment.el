@@ -88,6 +88,12 @@
 (defmethod slack-file-id ((file-comment slack-file-comment))
   (oref file-comment file-id))
 
+(defmethod slack-message-star-added ((this slack-file-comment))
+  (oset this is-starred t))
+
+(defmethod slack-message-star-removed ((this slack-file-comment))
+  (oset this is-starred nil))
+
 (defun slack-file-comment-edit ()
   (if-let* ((file-id slack-current-file-id)
             (file-comment-id (slack-get-file-comment-id))
@@ -130,6 +136,15 @@
             (slack-with-file-comment file-comment-id file
               (slack-file-comment-delete-request file-id file-comment-id team)))
         (message "Canceled"))))
+
+(defun slack-file-comment-process-star-api (url team)
+  (if-let* ((file-id slack-current-file-id)
+            (file-comment-id (slack-get-file-comment-id)))
+      (slack-with-file file-id team
+        (slack-with-file-comment file-comment-id file
+          (slack-message-star-api-request url
+                                          (list (slack-message-star-api-params file-comment))
+                                          team)))))
 
 (provide 'slack-file-comment)
 ;;; slack-file-comment.el ends here
