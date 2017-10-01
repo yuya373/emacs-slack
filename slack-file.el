@@ -254,8 +254,10 @@
          (body (slack-message-body-to-string file team))
          (thumb (slack-message-image-to-string file team))
          (reactions (slack-message-reaction-to-string file))
-         ;; (initial-comment
-         ;;  (slack-file-initial-comment-to-string file team))
+         (initial-comment
+          (if-let* ((ic (oref file initial-comment)))
+              (slack-message-to-string ic team)
+            ""))
          (comments (slack-file-comments-to-string file team))
          (comments-count
           (slack-file-comments-count-to-string file)))
@@ -265,7 +267,7 @@
                                                              thumb
                                                              reactions)
                                        'file-id (oref file id))
-                           ;; initial-comment
+                           initial-comment
                            comments
                            comments-count)
      'ts (oref file ts))))
