@@ -713,7 +713,8 @@
          (edited-at (plist-get payload :event_ts)))
     (cl-labels
         ((update (file)
-                 (slack-file-update-comment file comment team edited-at)))
+                 (slack-file-update-comment file comment team edited-at)
+                 (slack-redisplay file team)))
       (if file (update file)
         (slack-file-info-request file-id team :after-success #'update)))))
 

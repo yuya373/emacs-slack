@@ -502,24 +502,30 @@
 
 (defconst slack-file-comment-edit-url "https://slack.com/api/files.comments.edit")
 
-(defun slack-file-comment-edit (room-id team-id ts comment)
+(defun slack-file-comment--edit (room-id team-id ts comment)
   (let* ((team (slack-team-find team-id))
          (room (slack-room-find room-id team))
          (message (slack-room-find-message room ts))
          (file-id (slack-file-id message))
          (comment-id (slack-file-comment-id message)))
-    (cl-labels
-        ((on-file-comment-edit (&key data &allow-other-keys)
-                               (slack-request-handle-error
-                                (data "slack-file-comment-edit"))))
-      (slack-request
-       (slack-request-create
-        slack-file-comment-edit-url
-        team
-        :params (list (cons "id" comment-id)
-                      (cons "file" file-id)
-                      (cons "comment" comment))
-        :success #'on-file-comment-edit)))))
+    (slack-file-comment-edit-request file-id
+                                     comment-id
+                                     comment
+                                     team)))
+
+(defun slack-file-comment-edit-request (file-id file-comment-id comment team)
+  (cl-labels
+      ((on-file-comment-edit (&key data &allow-other-keys)
+                             (slack-request-handle-error
+                              (data "slack-file-comment-edit-request"))))
+    (slack-request
+     (slack-request-create
+      slack-file-comment-edit-url
+      team
+      :params (list (cons "id" file-comment-id)
+                    (cons "file" file-id)
+                    (cons "comment" comment))
+      :success #'on-file-comment-edit))))
 
 (defmethod slack-room-setup-buffer ((room slack-file-room) buf)
   (with-current-buffer buf
