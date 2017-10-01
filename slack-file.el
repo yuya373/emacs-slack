@@ -563,12 +563,19 @@
 
 (defmethod slack-file-summary ((file slack-file))
   (with-slots (initial-comment mimetype permalink name) file
-    (format "uploaded%s this %s: <%s|%s>"
+    (format "uploaded%s this %s: %s <%s|open in browser>"
             (if initial-comment
                 " and commented on"
               "")
             mimetype
-            permalink name)))
+            (propertize name
+                        'file (oref file id)
+                        'face '(:underline t)
+                        'keymap (let ((map (make-sparse-keymap)))
+                                  (define-key map (kbd "RET")
+                                    #'slack-file-display)
+                                  map))
+            permalink)))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)
