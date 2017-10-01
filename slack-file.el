@@ -175,7 +175,8 @@
   (let ((count (oref file comments-count))
         (page (oref file page))
         (comments (oref file comments)))
-    (if (eq count (length comments))
+    (if (eq count (+ (length comments) 1 ;; initial comment
+                     ))
         ""
       (propertize (format "%s more comments" (- count 1))
                   'face '(:underline t)
