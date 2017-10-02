@@ -146,9 +146,12 @@
          (initial-comment (if (plist-get payload :initial_comment)
                               (slack-file-comment-create (plist-get payload :initial_comment)
                                                          (oref file id))
-                            nil)))
+                            nil))
+         (comments (mapcar #'(lambda (e) (slack-file-comment-create e (oref file id)))
+                           (plist-get payload :comments))))
     (oset file reactions
           (mapcar #'slack-reaction-create (plist-get payload :reactions)))
+    (oset file comments comments)
     (oset file initial-comment initial-comment)
     file))
 
@@ -175,17 +178,16 @@
   (let ((count (oref file comments-count))
         (page (oref file page))
         (comments (oref file comments)))
-    (if (eq count (+ (length comments) 1 ;; initial comment
-                     ))
-        ""
-      (propertize (format "%s more comments" (- count 1))
-                  'face '(:underline t)
-                  'page page
-                  'file (oref file id)
-                  'keymap (let ((map (make-sparse-keymap)))
-                            (define-key map (kbd "RET")
-                              #'slack-file-update)
-                            map)))))
+    (if (> count (length comments))
+        (propertize (format "%s more comments" (- count 1))
+                    'face '(:underline t)
+                    'page page
+                    'file (oref file id)
+                    'keymap (let ((map (make-sparse-keymap)))
+                              (define-key map (kbd "RET")
+                                #'slack-file-update)
+                              map))
+      "")))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
@@ -255,10 +257,10 @@
          (body (slack-message-body-to-string file team))
          (thumb (slack-message-image-to-string file team))
          (reactions (slack-message-reaction-to-string file))
-         (initial-comment
-          (if-let* ((ic (oref file initial-comment)))
-              (slack-message-to-string ic team)
-            ""))
+         ;; (initial-comment
+         ;;  (if-let* ((ic (oref file initial-comment)))
+         ;;      (slack-message-to-string ic team)
+         ;;    ""))
          (comments (slack-file-comments-to-string file team))
          (comments-count
           (slack-file-comments-count-to-string file)))
@@ -268,7 +270,7 @@
                                                              thumb
                                                              reactions)
                                        'file-id (oref file id))
-                           initial-comment
+                           ;; initial-comment
                            comments
                            comments-count)
      'ts (oref file ts))))

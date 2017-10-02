@@ -458,8 +458,14 @@
       (push bot bots))))
 
 (defun slack-ws-handle-file-share (payload team)
-  (let ((file (slack-file-create (plist-get payload :file))))
-    (slack-file-pushnew file team)))
+  (cl-labels
+      ((build-file-payload (payload)
+                       (let ((file (plist-get payload :file)))
+                         (if-let* ((initial-comment (plist-get file :initial_comment)))
+                             (plist-put file :comments (list initial-comment))
+                           file))))
+    (let ((file (slack-file-create (build-file-payload payload))))
+      (slack-file-pushnew file team))))
 
 (defun slack-ws-handle-file-deleted (payload team)
   (let ((file-id (plist-get payload :file_id))
