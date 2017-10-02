@@ -404,9 +404,6 @@
 (defmethod slack-file-id ((file slack-file))
   (oref file id))
 
-(defmethod slack-file-id ((m slack-file-comment-message))
-  (slack-file-id (oref m comment)))
-
 (defmethod slack-file-channel ((m slack-file-message))
   (oref m channel))
 

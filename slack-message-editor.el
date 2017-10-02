@@ -119,9 +119,6 @@
 (defmethod slack-message-get-user-id ((m slack-user-message))
   (oref m user))
 
-(defmethod slack-message-get-user-id ((m slack-file-comment-message))
-  (oref (oref m comment) user))
-
 (defun slack-message-edit ()
   (interactive)
   (if (eq major-mode 'slack-file-info-mode)
@@ -140,14 +137,8 @@
 (defmethod slack-message-edit-type ((_m slack-message))
   'edit)
 
-(defmethod slack-message-edit-type ((_m slack-file-comment-message))
-  'edit-file-comment)
-
 (defmethod slack-message-get-text ((m slack-message))
   (oref m text))
-
-(defmethod slack-message-get-text ((m slack-file-comment-message))
-  (oref (oref m comment) comment))
 
 (defun slack-message-edit-text (msg room)
   (let ((buf (get-buffer-create slack-message-edit-buffer-name))

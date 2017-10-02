@@ -109,9 +109,6 @@
 (defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
-(defmethod slack-message-starred-p ((m slack-file-comment-message))
-  (oref (oref m comment) is-starred))
-
 (defmethod slack-message-starred-p ((m slack-file-message))
   (oref (oref m file) is-starred))
 
@@ -165,24 +162,6 @@
   (let ((reactions (slack-message-reactions m)))
     (when reactions
       (slack-format-reactions reactions))))
-
-(defmethod slack-message-to-string ((this slack-file-comment-message) team)
-  (with-slots (permalink name id page) (oref this file)
-    (with-slots (comment) (oref this comment)
-      (let* ((face '(:underline t))
-             (text (format "commented on %s <%s|open in browser>\n%s"
-                           (propertize name
-                                       'face face
-                                       'file id
-                                       'keymap (let ((map (make-sparse-keymap)))
-                                                 (define-key map (kbd "RET")
-                                                   #'slack-file-display)
-                                                 map))
-                           permalink
-                           (format "“ %s" comment)))
-             (header (slack-message-header-to-string this team))
-             (reactions (slack-message-reaction-to-string this)))
-        (slack-format-message header text reactions)))))
 
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text) (oref m text))))

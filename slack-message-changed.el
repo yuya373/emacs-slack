@@ -50,14 +50,5 @@
       (setq edited-at (oref other edited-at)))
     changed))
 
-(defmethod slack-message-changed--copy ((this slack-file-comment-message) other)
-  (let ((changed (call-next-method)))
-    (with-slots ((old-comment comment) text) this
-      (let ((new-comment (oref other comment)))
-        (unless (string= (oref old-comment comment) (oref new-comment comment))
-          (oset old-comment comment (oref new-comment comment))
-          (setq changed t))))
-    changed))
-
 (provide 'slack-message-changed)
 ;;; slack-message-changed.el ends here
