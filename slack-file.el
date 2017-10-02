@@ -61,6 +61,7 @@
    (original-h :initarg :original_h :initform nil)
    (is-starred :initarg :is_starred :initform nil)
    (mimetype :initarg :mimetype :type string :initform "")
+   (title :initarg :title :type (or null string) :initform nil)
    ))
 
 (defun slack-merge-list (old-list new-list)
@@ -224,10 +225,10 @@
       :success #'on-file-info))))
 
 (defmethod slack-message-body-to-string ((file slack-file) team)
-  (with-slots (name size filetype permalink) file
+  (with-slots (name title size filetype permalink) file
     (slack-message-put-text-property
      (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-             name size filetype permalink))))
+             (or title name) size filetype permalink))))
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
@@ -406,7 +407,7 @@
                                    (cons (concat
                                           (slack-message-time-to-string (oref f ts))
                                           " "
-                                          (oref f name))
+                                          (oref f (or title name)))
                                          f))
                                your-files))
            (selected (funcall slack-completing-read-function "Select File: " candidates))
