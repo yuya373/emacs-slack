@@ -179,16 +179,14 @@
   (let ((count (oref file comments-count))
         (page (oref file page))
         (comments (oref file comments)))
-    (if (> count (length comments))
-        (propertize (format "%s more comments" (- count 1))
-                    'face '(:underline t)
-                    'page page
-                    'file (oref file id)
-                    'keymap (let ((map (make-sparse-keymap)))
-                              (define-key map (kbd "RET")
-                                #'slack-file-update)
-                              map))
-      "")))
+    (propertize (format "%s more comments" (- count 1))
+                'face '(:underline t)
+                'page page
+                'file (oref file id)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET")
+                            #'slack-file-update)
+                          map))))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
@@ -245,9 +243,10 @@
                  (slack-message-to-string initial-comment team )))))
 
 (defmethod slack-file-comments-count-to-string ((file slack-file))
-  (with-slots (comments-count) file
-    (and (< 1 comments-count)
-         (slack-file-more-comments-string file))))
+  (with-slots (comments-count comments) file
+    (if (> comments-count (length comments))
+        (slack-file-more-comments-string file)
+      "")))
 
 (defmethod slack-team-display-image-inlinep ((_file slack-file) team)
   (slack-team-display-file-image-inlinep team))
@@ -265,7 +264,7 @@
                                     (if-let* ((ic (oref file initial-comment)))
                                         (format "\n%s" (slack-message-to-string ic team))
                                       "")
-                                    (slack-file-comments-count-to-string file))
+                                    (slack-file-more-comments-string file))
               'ts (oref file ts)
               'file (oref file id)
               'keymap (let ((map (make-sparse-keymap)))
