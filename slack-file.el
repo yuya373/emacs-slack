@@ -225,8 +225,12 @@
 (defmethod slack-message-body-to-string ((file slack-file) team)
   (with-slots (name title size filetype permalink) file
     (slack-message-put-text-property
-     (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-             (or title name) size filetype permalink))))
+     (format "name: %s\nsize: %s\ntype: %s\n%s\n%s\n"
+             (or title name) size filetype permalink
+             (format "%s comment%s"
+                     (oref file comments-count)
+                     (if (< 1 (oref file comments-count))
+                         "s" ""))))))
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
