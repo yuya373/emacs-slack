@@ -142,12 +142,12 @@
   (if (string= type "file_comment")
       (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
                                                    reaction)))
-          (slack-reaction-delete (oref (oref m file) initial-comment)
-                                 reaction)
-        (cl-decf (oref old-reaction count)))
+          (cl-decf (oref old-reaction count))
+        (slack-reaction-delete (oref (oref m file) initial-comment)
+                               reaction))
     (if-let* ((old-reaction (slack-reaction-find m reaction)))
-        (slack-reaction-delete m reaction)
-      (cl-decf (oref old-reaction count)))))
+        (cl-decf (oref old-reaction count))
+      (slack-reaction-delete m reaction))))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here

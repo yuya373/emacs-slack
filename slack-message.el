@@ -372,8 +372,8 @@
 
 (defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type)
   (if-let* ((old-reaction (slack-reaction-find m reaction)))
-      (slack-reaction-delete m reaction)
-    (cl-decf (oref old-reaction count))))
+      (cl-decf (oref old-reaction count))
+    (slack-reaction-delete m reaction)))
 
 (defmacro slack-with-file-comment (id file &rest body)
   (declare (indent 2) (debug t))
