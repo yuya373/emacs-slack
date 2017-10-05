@@ -140,14 +140,9 @@
 (defmethod slack-message-pop-reaction ((m slack-file-share-message) reaction
                                        &optional type)
   (if (string= type "file_comment")
-      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
-                                                   reaction)))
-          (cl-decf (oref old-reaction count))
-        (slack-reaction-delete (oref (oref m file) initial-comment)
-                               reaction))
-    (if-let* ((old-reaction (slack-reaction-find m reaction)))
-        (cl-decf (oref old-reaction count))
-      (slack-reaction-delete m reaction))))
+      (slack-message--pop-reaction (oref (oref m file) initial-comment)
+                                   reaction)
+    (slack-message--pop-reaction m reaction)))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here
