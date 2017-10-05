@@ -350,12 +350,12 @@
                                        room (oref file id)))))
                        (when msg
                          ,@body
-                         (slack-message-update msg ,team t t)
-                         (when (string= _type "reaction_added")
-                           (slack-message-append-reaction file reaction))
-                         (when (string= _type "reaction_removed")
-                           (slack-message-pop-reaction file reaction))
-                         (slack-redisplay file ,team))))))
+                         (slack-message-update msg ,team t t))))
+         (when (string= _type "reaction_added")
+           (slack-message-append-reaction file reaction))
+         (when (string= _type "reaction_removed")
+           (slack-message-pop-reaction file reaction))
+         (slack-redisplay file ,team)))
       ((string= type "file_comment")
        (let ((file (slack-file-find (plist-get item :file) ,team)))
          (slack-with-file (plist-get item :file) team
@@ -367,13 +367,14 @@
                          (when msg
                            ,@body
                            (slack-message-update msg ,team t t)
-                           (when (string= _type "reaction_added")
-                             (slack-with-file-comment (plist-get item :file_comment) file
-                               (slack-message-append-reaction file-comment reaction)))
-                           (when (string= _type "reaction_removed")
-                             (slack-with-file-comment (plist-get item :file_comment) file
-                               (slack-message-pop-reaction file-comment reaction)))
-                           (slack-redisplay file ,team))))))))))
+                           )))
+
+           (slack-with-file-comment (plist-get item :file_comment) file
+             (when (string= _type "reaction_added")
+               (slack-message-append-reaction file-comment reaction))
+             (when (string= _type "reaction_removed")
+               (slack-message-pop-reaction file-comment reaction))
+             (slack-redisplay file ,team))))))))
 
 (defun slack-ws-handle-reaction-added (payload team)
   (slack-ws-handle-reaction
