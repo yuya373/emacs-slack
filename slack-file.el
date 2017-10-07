@@ -74,8 +74,13 @@
 (defmethod slack-merge ((old slack-reaction) new)
   (with-slots (count users) old
     (setq count (oref new count))
-    (setq users (cl-remove-duplicates (append users (oref new users))
-                                      :test #'string=))))
+    (setq users
+          (append users
+                  (cl-remove-if #'null
+                                (cl-loop for n in (oref new users)
+                                         collect (not (cl-find-if
+                                                       #'(lambda (e) (string= n e))
+                                                       users))))))))
 
 (defmethod slack-merge ((old slack-file) new)
   (cl-labels
