@@ -228,5 +228,8 @@
           (setq changed t))))
     changed))
 
+(defmethod slack-ts ((this slack-file-comment))
+  (number-to-string (oref this timestamp)))
+
 (provide 'slack-file-comment)
 ;;; slack-file-comment.el ends here
