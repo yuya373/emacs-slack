@@ -387,7 +387,7 @@
                                                                 (plist-get (plist-get item :file) :id)))))))
     (let* ((messages (mapcar #'create-message-from-item items))
            (header-face '(:underline t :weight bold))
-           (buf-header (propertize "Pinned Items" 'face header-face))
+           (buf-header (propertize "Pinned Items\n" 'face header-face))
            (buf-name (buffer-name room))
            (buf (or (get-buffer buf-name)
                     (let ((buf (generate-new-buffer buf-name)))
@@ -399,11 +399,10 @@
                       buf))))
 
       (with-current-buffer buf
-        (let ((inhibit-read-only t)
-              (lui-time-stamp-position nil))
-          (erase-buffer)
-          (lui-insert buf-header)
-          (lui-insert "\n"))
+        (let ((inhibit-read-only t))
+          (delete-region (point-min) lui-output-marker))
+        (let ((lui-time-stamp-position nil))
+          (lui-insert buf-header t))
         (if (< 0 (length messages))
             (cl-loop for m in messages
                      do (slack-buffer-insert m team t))
