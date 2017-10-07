@@ -694,13 +694,13 @@
                    (progn
                      (slack-file--display file buf team)
                      (funcall slack-buffer-function buf)))))
-      (slack-with-file id team
-        (with-slots (comments comments-count) file
-          (if (<= comments-count (length comments))
-              (open file team)
-            (slack-file-request-info id 1 team #'open)))
-
-        ))))
+      (let ((file (slack-file-find id team)))
+        (if file
+            (with-slots (comments comments-count) file
+              (if (<= comments-count (length comments))
+                  (open file team)
+                (slack-file-request-info id 1 team #'open)))
+          (slack-file-request-info id 1 team #'open))))))
 
 (defun slack-file--display (file buf team)
   (with-current-buffer buf
