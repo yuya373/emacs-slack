@@ -28,6 +28,7 @@
 (require 'lui)
 (require 'slack-request)
 (require 'slack-message)
+(require 'slack-pinned-item)
 
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)
@@ -366,25 +367,26 @@
         team
         :params (list (cons "channel" channel))
         :success #'on-pins-list)))))
-
 (defun slack-room-on-pins-list (items room team)
   (cl-labels
       ((buffer-name (room)
                     (concat "*Slack - Pinned Items*"
                             " : "
                             (slack-room-display-name room)))
-       (create-message-from-item (item)
-                                 (let ((type (plist-get item :type)))
-                                   (cond
-                                    ((string= type "message")
-                                     (slack-message-create (plist-get item :message)
-                                                           team :room room))
-                                    ((string= type "file")
-                                     (or (slack-file-find (plist-get (plist-get item :file) :id) team)
-                                         (slack-file-create (plist-get item :file))))
-                                    ((string= type "file_comment")
-                                     (slack-file-comment-create (plist-get item :comment)
-                                                                (plist-get (plist-get item :file) :id)))))))
+       (create-message-from-item
+        (item)
+
+        (let ((type (plist-get item :type)))
+          (slack-pinned-item-create (cond
+                                     ((string= type "message")
+                                      (slack-message-create (plist-get item :message)
+                                                            team :room room))
+                                     ((string= type "file")
+                                      (or (slack-file-find (plist-get (plist-get item :file) :id) team)
+                                          (slack-file-create (plist-get item :file))))
+                                     ((string= type "file_comment")
+                                      (slack-file-comment-create (plist-get item :comment)
+                                                                 (plist-get (plist-get item :file) :id))))))))
     (let* ((messages (mapcar #'create-message-from-item items))
            (header-face '(:underline t :weight bold))
            (buf-header (propertize "Pinned Items\n" 'face header-face))

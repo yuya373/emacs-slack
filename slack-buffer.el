@@ -129,7 +129,7 @@
       (lui-insert-with-text-properties
        (slack-message-to-string message team)
        'not-tracked-p not-tracked-p
-       'ts (oref message ts)
+       'ts (slack-ts message)
        'slack-last-ts lui-time-stamp-last))))
 
 (defun slack-buffer-show-typing-p (buffer)
