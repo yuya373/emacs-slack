@@ -35,7 +35,7 @@
   (if (string= (oref r name) (oref other name))
       (progn
         (cl-incf (oref r count))
-        (oset r users (nconc (oref other users) (oref r users)))
+        (oset r users (append (oref other users) (oref r users)))
         r)))
 
 (defmethod slack-reaction-user-names ((r slack-reaction) team)
