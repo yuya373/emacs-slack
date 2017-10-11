@@ -391,14 +391,14 @@
            (header-face '(:underline t :weight bold))
            (buf-header (propertize "Pinned Items\n" 'face header-face))
            (buf-name (buffer-name room))
-           (buf (or (get-buffer buf-name)
-                    (let ((buf (generate-new-buffer buf-name)))
-                      (with-current-buffer buf
-                        (slack-info-mode)
-                        (slack-buffer-set-current-team-id team)
-                        (slack-buffer-set-current-room-id room)
-                        (slack-buffer-enable-emojify))
-                      buf))))
+           (buf (let ((buf (generate-new-buffer buf-name)))
+                  (with-current-buffer buf
+                    (unless (eq major-mode 'slack-info-mode)
+                      (slack-info-mode))
+                    (slack-buffer-set-current-team-id team)
+                    (slack-buffer-set-current-room-id room)
+                    (slack-buffer-enable-emojify))
+                  buf)))
 
       (with-current-buffer buf
         (let ((inhibit-read-only t))
