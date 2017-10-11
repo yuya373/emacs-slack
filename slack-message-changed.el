@@ -35,22 +35,20 @@
          (mpayload (plist-get payload :message))
          (base (and room (slack-room-find-message room (plist-get mpayload :ts)))))
     (when base
-      (slack-message-changed--copy base mpayload)
-      (slack-message-update base team t))))
+      (plist-put mpayload :edited-at (plist-get (plist-get mpayload :edited) :ts))
+      (let* ((new-message (slack-message-create mpayload team :room room))
+             (notifyp (slack-message-changed--copy base new-message)))
+        (slack-message-update base team t (not notifyp))))))
 
-(defmethod slack-message-changed--copy ((this slack-message) payload)
-  (oset this text (plist-get payload :text))
-  (slack-message-set-attachments this payload)
-  (oset this edited-at (plist-get (plist-get payload :edited) :ts)))
-
-(defmethod slack-message-changed--copy ((this slack-file-comment-message) payload)
-  (let* ((file-id (plist-get (plist-get payload :file) :id))
-         (new-comment (slack-file-comment-create
-                       (plist-get payload :comment)
-                       file-id)))
-    (with-slots (comment text) this
-      (oset comment comment (oref new-comment comment)))
-    (call-next-method)))
+(defmethod slack-message-changed--copy ((this slack-message) other)
+  (let ((changed nil))
+    (with-slots (text attachments edited-at) this
+      (unless (string= text (oref other text))
+        (setq text (oref other text))
+        (setq changed t))
+      (setq attachments (oref other attachments))
+      (setq edited-at (oref other edited-at)))
+    changed))
 
 (provide 'slack-message-changed)
 ;;; slack-message-changed.el ends here

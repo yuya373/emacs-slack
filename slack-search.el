@@ -369,7 +369,7 @@
                            ('slack-search-result (plist-get data :messages))
                            ('slack-file-search-result (plist-get data :files))))
                 (messages (cl-loop
-                           for match across (plist-get matches :matches)
+                           for match in (plist-get matches :matches)
                            collect (slack-search-create-message room match))))
            (oset room current-page
                  (plist-get (plist-get matches :paging) :page))

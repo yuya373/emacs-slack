@@ -119,33 +119,26 @@
 (defmethod slack-message-get-user-id ((m slack-user-message))
   (oref m user))
 
-(defmethod slack-message-get-user-id ((m slack-file-comment-message))
-  (oref (oref m comment) user))
-
 (defun slack-message-edit ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id
-                                team))
-         (ts (slack-get-ts))
-         (msg (slack-room-find-message room ts)))
-    (unless msg
-      (error "Can't find original message"))
-    (unless (string= (oref team self-id) (slack-message-get-user-id msg))
-      (error "Cant't edit other user's message"))
-    (slack-message-edit-text msg room)))
+  (if (eq major-mode 'slack-file-info-mode)
+      (slack-file-comment-edit)
+    (let* ((team (slack-team-find slack-current-team-id))
+           (room (slack-room-find slack-current-room-id
+                                  team))
+           (ts (slack-get-ts))
+           (msg (slack-room-find-message room ts)))
+      (unless msg
+        (error "Can't find original message"))
+      (unless (string= (oref team self-id) (slack-message-get-user-id msg))
+        (error "Cant't edit other user's message"))
+      (slack-message-edit-text msg room))))
 
 (defmethod slack-message-edit-type ((_m slack-message))
   'edit)
 
-(defmethod slack-message-edit-type ((_m slack-file-comment-message))
-  'edit-file-comment)
-
 (defmethod slack-message-get-text ((m slack-message))
   (oref m text))
-
-(defmethod slack-message-get-text ((m slack-file-comment-message))
-  (oref (oref m comment) comment))
 
 (defun slack-message-edit-text (msg room)
   (let ((buf (get-buffer-create slack-message-edit-buffer-name))
@@ -185,10 +178,10 @@
     (let ((buf-string (buffer-substring (point-min) (point-max))))
       (cl-case slack-message-edit-buffer-type
         ('edit-file-comment
-         (slack-file-comment-edit slack-current-room-id
-                                  slack-current-team-id
-                                  slack-target-ts
-                                  buf-string))
+         (slack-file-comment--edit slack-current-room-id
+                                   slack-current-team-id
+                                   slack-target-ts
+                                   buf-string))
         ('edit
          (let ((team (get-team)))
            (slack-message--edit (oref (get-room team) id)

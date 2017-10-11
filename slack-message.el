@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'subr-x)
 (require 'slack-util)
 (require 'slack-reaction)
 
@@ -54,24 +55,6 @@
 
 (defclass slack-file-message (slack-message)
   ((file :initarg :file)))
-
-(defclass slack-file-comment ()
-  ((id :initarg :id :type string)
-   (file-id :initarg :file_id :type string)
-   (created :initarg :created)
-   (timestamp :initarg :timestamp)
-   (user :initarg :user)
-   (is-intro :initarg :is_intro)
-   (comment :initarg :comment)
-   (channel :initarg :channel)
-   (reactions :initarg :reactions type list)
-   (is-starred :initarg :is_starred :type boolean :initform nil)))
-
-(defclass slack-file-comment-message (slack-file-message)
-  ((comment :initarg :comment :initform nil)))
-
-(defclass slack-file-mention-message (slack-file-message)
-  ((user :initarg :user :initform nil)))
 
 (defclass slack-reply (slack-message)
   ((user :initarg :user :initform nil)
@@ -122,16 +105,6 @@
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
 
-(defmethod slack-message-set-reactions ((m slack-message) reactions)
-  (oset m reactions reactions)
-  m)
-
-(defmethod slack-message-set-reactions ((m slack-file-message) rs)
-  (oset (oref m file) reactions rs))
-
-(defmethod slack-message-set-reactions ((m slack-file-comment-message) reactions)
-  (oset (oref m comment) reactions reactions))
-
 (defun slack-attachment-create (payload)
   (plist-put payload :fields
              (mapcar #'(lambda (field) (apply #'slack-attachment-field
@@ -159,21 +132,12 @@
 (defmethod slack-message-set-file ((m slack-file-message) payload team)
   (let ((file (slack-file-create (plist-get payload :file))))
     (oset m file file)
+    (slack-file-set-channel file (plist-get payload :channel))
     (slack-file-pushnew file team)
     m))
 
 (defmethod slack-message-set-file-comment ((m slack-message) _payload)
   m)
-
-(defmethod slack-message-set-file-comment ((m slack-file-comment-message) payload)
-  (let* ((file-id (plist-get (plist-get payload :file) :id))
-         (comment (plist-get payload :comment))
-         (reactions (mapcar #'slack-reaction-create
-                            (plist-get comment :reactions)))
-         (file-comment (slack-file-comment-create comment file-id)))
-    (oset file-comment reactions reactions)
-    (oset m comment file-comment)
-    m))
 
 (defmethod slack-message-set-thread ((m slack-message) team payload)
   (when (slack-message-thread-parentp m)
@@ -244,12 +208,6 @@
 (defmethod slack-message-sender-id ((m slack-message))
   (oref m user))
 
-(defmethod slack-message-sender-name ((m slack-file-comment-message) team)
-  (slack-user-name (oref (oref m comment) user) team))
-
-(defmethod slack-message-sender-id ((m slack-file-comment-message))
-  (oref (oref m comment) user))
-
 (defun slack-message-pins-add ()
   (interactive)
   (slack-message-pins-request slack-message-pins-add-url))
@@ -283,15 +241,6 @@
 
 (defun slack-message-time-stamp (message)
   (seconds-to-time (string-to-number (oref message ts))))
-
-(defmethod slack-message-get-reactions ((m slack-message))
-  (oref m reactions))
-
-(defmethod slack-message-get-reactions ((m slack-file-message))
-  (oref (oref m file) reactions))
-
-(defmethod slack-message-get-reactions ((m slack-file-comment-message))
-  (oref (oref m comment) reactions))
 
 (defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
@@ -346,46 +295,97 @@
 (defmethod slack-message-star-added ((m slack-message))
   (oset m is-starred t))
 
-(defmethod slack-message-star-added ((m slack-file-comment-message))
-  (oset (oref m comment) is-starred t))
-
 (defmethod slack-message-star-removed ((m slack-message))
   (oset m is-starred nil))
 
-(defmethod slack-message-star-removed ((m slack-file-comment-message))
-  (oset (oref m comment) is-starred nil))
-
-(defun slack-message-process-star-api (url)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (and team (slack-room-find slack-current-room-id team)))
+(defun slack-message-process-star-api (url team)
+  (let* ((room (and team (slack-room-find slack-current-room-id team)))
          (ts (slack-get-ts))
          (message (and room ts (slack-room-find-message room ts))))
     (when message
-      (cl-labels
-          ((on-success (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data url))))
-        (slack-request
-         (slack-request-create
-          url
-          team
-          :params (list (cons "channel" (oref room id))
-                        (slack-message-star-api-params message))
-          :success #'on-success))))))
+      (slack-message-star-api-request url
+                                      (list (cons "channel" (oref room id))
+                                            (slack-message-star-api-params message))
+                                      team))))
+
+(defun slack-message-star-api-request (url params team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data url))))
+    (slack-request
+     (slack-request-create
+      url
+      team
+      :params params
+      :success #'on-success))))
 
 (defun slack-message-remove-star ()
   (interactive)
-  (slack-message-process-star-api slack-message-stars-remove-url))
+  (let ((team (slack-team-find slack-current-team-id))
+        (url slack-message-stars-remove-url))
+    (if (eq major-mode 'slack-file-info-mode)
+        (if-let* ((file-id (slack-get-file-id)))
+            (slack-file-process-star-api url team file-id)
+          (slack-file-comment-process-star-api url team))
+      (slack-message-process-star-api url team))))
 
 (defun slack-message-add-star ()
   (interactive)
-  (slack-message-process-star-api slack-message-stars-add-url))
+  (let ((team (slack-team-find slack-current-team-id))
+        (url slack-message-stars-add-url))
+    (if (eq major-mode 'slack-file-info-mode)
+        (if-let* ((file-id (slack-get-file-id)))
+            (slack-file-process-star-api url team file-id)
+          (slack-file-comment-process-star-api url team))
+      (slack-message-process-star-api url team))))
 
 (defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (oref m ts)))
 
-(defmethod slack-message-star-api-params ((m slack-file-comment-message))
-  (cons "file_comment" (oref (oref m comment) id)))
+(defmethod slack-reaction-delete ((this slack-message) reaction)
+  (with-slots (reactions) this
+    (setq reactions (slack-reaction--delete reactions reaction))))
+
+(defmethod slack-reaction-push ((this slack-message) reaction)
+  (push reaction (oref this reactions)))
+
+(defmethod slack-reaction-find ((m slack-message) reaction)
+  (slack-reaction--find (oref m reactions) reaction))
+
+(defmethod slack-reaction-find ((m slack-file-message) reaction)
+  (slack-reaction-find (oref m file) reaction))
+
+(defmethod slack-message-reactions ((this slack-message))
+  (oref this reactions))
+
+(defmethod slack-message-reactions ((this slack-file-message))
+  (slack-message-reactions (oref this file)))
+
+(defmethod slack-message-get-param-for-reaction ((m slack-message))
+  (cons "timestamp" (oref m ts)))
+
+(defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type)
+  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+      (slack-reaction-join old-reaction reaction)
+    (slack-reaction-push m reaction)))
+
+(defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type)
+  (slack-message--pop-reaction m reaction))
+
+(defun slack-message--pop-reaction (message reaction)
+  (let* ((old-reaction (slack-reaction-find message reaction))
+         (decl-p (< 1 (oref old-reaction count))))
+    (if decl-p
+        (cl-decf (oref old-reaction count))
+      (slack-reaction-delete message reaction))))
+
+(defmacro slack-with-file-comment (id file &rest body)
+  (declare (indent 2) (debug t))
+  `(let ((file-comment (cl-find-if #'(lambda (e) (string= ,id (oref e id)))
+                                   (oref ,file comments))))
+     (when file-comment
+       ,@body)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

@@ -109,9 +109,6 @@
 (defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
-(defmethod slack-message-starred-p ((m slack-file-comment-message))
-  (oref (oref m comment) is-starred))
-
 (defmethod slack-message-starred-p ((m slack-file-message))
   (oref (oref m file) is-starred))
 
@@ -139,7 +136,7 @@
                 header)
       header)))
 
-(defmethod slack-message-header-to-string ((m slack-message) team)
+(defun slack-message-header-to-string (m team)
   (let ((header (format "%s %s"
                         (slack-message-put-header-property
                          (slack-message-header m team))
@@ -154,13 +151,17 @@
         (slack-message-put-deleted-property raw-body)
       (slack-message-put-text-property raw-body))))
 
+
+(defun slack-format-reactions (reactions)
+  (slack-message-put-reactions-property
+   (concat "\n"
+           (mapconcat #'slack-reaction-to-string
+                      reactions " "))))
+
 (defmethod slack-message-reaction-to-string ((m slack-message))
-  (let ((reactions (slack-message-get-reactions m)))
+  (let ((reactions (slack-message-reactions m)))
     (when reactions
-      (slack-message-put-reactions-property
-       (concat "\n"
-               (mapconcat #'slack-reaction-to-string
-                          reactions " "))))))
+      (slack-format-reactions reactions))))
 
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text) (oref m text))))

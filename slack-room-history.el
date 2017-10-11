@@ -177,7 +177,7 @@
          (data "slack-room-request-update")
          (let* ((datum (plist-get data :messages))
                 (messages
-                 (cl-loop for data across datum
+                 (cl-loop for data in datum
                           collect (slack-message-create data team :room room))))
            (if oldest (slack-room-set-prev-messages room messages)
              (slack-room-set-messages room messages)

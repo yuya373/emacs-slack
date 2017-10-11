@@ -32,17 +32,14 @@
   "Request Timeout in seconds."
   :group 'slack)
 
-(defun slack-parse-to-hash ()
-  (let ((json-object-type 'hash-table))
-    (let ((res (json-read-from-string (buffer-string))))
-      res)))
-
-(defun slack-parse-to-plist ()
-  (let ((json-object-type 'plist))
+(defun slack-parse ()
+  (let ((json-object-type 'plist)
+        (json-array-type 'list))
     (json-read)))
 
 (defun slack-request-parse-payload (payload)
-  (let ((json-object-type 'plist))
+  (let ((json-object-type 'plist)
+        (json-array-type 'list))
     (condition-case err-var
         (json-read-from-string payload)
       (json-end-of-file nil))))
@@ -55,7 +52,7 @@
    (error :initarg :error :initform nil)
    (params :initarg :params :initform nil)
    (data :initarg :data :initform nil)
-   (parser :initarg :parser :initform #'slack-parse-to-plist)
+   (parser :initarg :parser :initform #'slack-parse)
    (sync :initarg :sync :initform nil)
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
@@ -81,9 +78,9 @@
   (cl-pushnew req (oref team waiting-requests) :test #'equal))
 
 (defmethod slack-request-retry-request ((req slack-request-request) retry-after)
-    (slack-request-suspend-request req)
-    (unless (slack-team-request-suspended-p (oref req team))
-      (slack-team-run-retry-request-timer (oref req team) retry-after)))
+  (slack-request-suspend-request req)
+  (unless (slack-team-request-suspended-p (oref req team))
+    (slack-team-run-retry-request-timer (oref req team) retry-after)))
 
 (defmethod slack-request ((req slack-request-request))
   (let ((team (oref req team)))

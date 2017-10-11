@@ -35,13 +35,16 @@
   (if (string= (oref r name) (oref other name))
       (progn
         (cl-incf (oref r count))
-        (oset r users (nconc (oref other users) (oref r users)))
+        (oset r users (append (oref other users) (oref r users)))
         r)))
 
 (defmethod slack-reaction-user-names ((r slack-reaction) team)
   (with-slots (users) r
     (mapcar #'(lambda (u) (slack-user-name u team))
             users)))
+
+(defmethod slack-equalp ((r slack-reaction) other)
+  (slack-reaction-equalp r other))
 
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
@@ -57,6 +60,14 @@
                                   :text (format "added reaction %s" reaction)
                                   :user user-id)))
     (slack-message-notify msg room team)))
+
+(defun slack-reaction--find (reactions reaction)
+  (cl-find-if #'(lambda (e) (slack-reaction-equalp e reaction))
+              reactions))
+
+(defun slack-reaction--delete (reactions reaction)
+  (cl-delete-if #'(lambda (e) (slack-reaction-equalp e reaction))
+                reactions))
 
 (provide 'slack-reaction)
 ;;; slack-reaction.el ends here

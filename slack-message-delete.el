@@ -42,32 +42,34 @@
 
 (defun slack-message-delete ()
   (interactive)
-  (unless (and (boundp 'slack-current-team-id)
-               (boundp 'slack-current-room-id))
-    (error "Call From Slack Room Buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (channel (slack-room-find slack-current-room-id
-                                   team))
-         (ts (ignore-errors (get-text-property (point) 'ts))))
-    (unless ts
-      (error "Call With Cursor On Message"))
-    (let ((message (slack-room-find-message channel ts)))
-      (when message
-        (cl-labels
-            ((on-delete
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-message-delete"))))
-          (if (yes-or-no-p "Are you sure you want to delete this message?")
-              (slack-request
-               (slack-request-create
-                slack-message-delete-url
-                team
-                :type "POST"
-                :params (list (cons "ts" (oref message ts))
-                              (cons "channel" (oref channel id)))
-                :success #'on-delete))
-            (message "Canceled")))))))
+  (if (eq major-mode 'slack-file-info-mode)
+      (slack-file-comment-delete)
+    (unless (and (boundp 'slack-current-team-id)
+                 (boundp 'slack-current-room-id))
+      (error "Call From Slack Room Buffer"))
+    (let* ((team (slack-team-find slack-current-team-id))
+           (channel (slack-room-find slack-current-room-id
+                                     team))
+           (ts (ignore-errors (get-text-property (point) 'ts))))
+      (unless ts
+        (error "Call With Cursor On Message"))
+      (let ((message (slack-room-find-message channel ts)))
+        (when message
+          (cl-labels
+              ((on-delete
+                (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-message-delete"))))
+            (if (yes-or-no-p "Are you sure you want to delete this message?")
+                (slack-request
+                 (slack-request-create
+                  slack-message-delete-url
+                  team
+                  :type "POST"
+                  :params (list (cons "ts" (oref message ts))
+                                (cons "channel" (oref channel id)))
+                  :success #'on-delete))
+              (message "Canceled"))))))))
 
 (defclass _slack-message-delete ()
   ((room :initarg :room)
