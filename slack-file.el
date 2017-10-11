@@ -714,15 +714,14 @@
     (lui-insert (slack-to-string file team))))
 
 (defun slack-redisplay (file team)
-  (if-let* ((buffer (get-buffer (slack-room-buffer-name file)))
-            (cur-point (point))
-            (max (marker-position lui-output-marker)))
+  (if-let* ((buffer (get-buffer (slack-room-buffer-name file))))
       (with-current-buffer buffer
-        (slack-file--display file buffer team)
-        (if (and (<= (point-min) cur-point)
-                 (< cur-point max))
-            (goto-char cur-point))
-        )))
+        (let ((cur-point (point))
+              (max (marker-position lui-output-marker)))
+          (slack-file--display file buffer team)
+          (if (and (<= (point-min) cur-point)
+                   (< cur-point max))
+              (goto-char cur-point))))))
 
 (defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
