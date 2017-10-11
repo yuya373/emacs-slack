@@ -28,6 +28,7 @@
 (require 'lui)
 (require 'slack-request)
 (require 'slack-message)
+(require 'slack-pinned-item)
 
 (defvar slack-current-room-id)
 (defvar slack-current-team-id)
@@ -366,32 +367,50 @@
         team
         :params (list (cons "channel" channel))
         :success #'on-pins-list)))))
-
 (defun slack-room-on-pins-list (items room team)
-  (cl-labels ((buffer-name (room)
-                           (concat "*Slack - Pinned Items*"
-                                   " : "
-                                   (slack-room-display-name room))))
-    (let* ((messages (mapcar #'(lambda (m) (slack-message-create m team :room room))
-                             (mapcar #'(lambda (i)
-                                         (plist-get i :message))
-                                     items)))
-           (buf-header (propertize "Pinned Items"
-                                   'face '(:underline
-                                           t
-                                           :weight bold))))
-      (funcall slack-buffer-function
-               (slack-buffer-create-info (buffer-name room)
-                                         #'(lambda ()
-                                             (insert buf-header)
-                                             (insert "\n\n")
-                                             (if (< 0 (length messages))
-                                                 (mapc #'(lambda (m)
-                                                           (insert (slack-message-to-string m team))
-                                                           (insert "\n"))
-                                                       messages)
-                                               (insert "No Pinned Items"))))
-               team))))
+  (cl-labels
+      ((buffer-name (room)
+                    (concat "*Slack - Pinned Items*"
+                            " : "
+                            (slack-room-display-name room)))
+       (create-message-from-item
+        (item)
+
+        (let ((type (plist-get item :type)))
+          (slack-pinned-item-create (cond
+                                     ((string= type "message")
+                                      (slack-message-create (plist-get item :message)
+                                                            team :room room))
+                                     ((string= type "file")
+                                      (or (slack-file-find (plist-get (plist-get item :file) :id) team)
+                                          (slack-file-create (plist-get item :file))))
+                                     ((string= type "file_comment")
+                                      (slack-file-comment-create (plist-get item :comment)
+                                                                 (plist-get (plist-get item :file) :id))))))))
+    (let* ((messages (mapcar #'create-message-from-item items))
+           (header-face '(:underline t :weight bold))
+           (buf-header (propertize "Pinned Items\n" 'face header-face))
+           (buf-name (buffer-name room))
+           (buf (let ((buf (generate-new-buffer buf-name)))
+                  (with-current-buffer buf
+                    (unless (eq major-mode 'slack-info-mode)
+                      (slack-info-mode))
+                    (slack-buffer-set-current-team-id team)
+                    (slack-buffer-set-current-room-id room)
+                    (slack-buffer-enable-emojify))
+                  buf)))
+
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (delete-region (point-min) lui-output-marker))
+        (let ((lui-time-stamp-position nil))
+          (lui-insert buf-header t))
+        (if (< 0 (length messages))
+            (cl-loop for m in messages
+                     do (slack-buffer-insert m team t))
+          (let ((inhibit-read-only t))
+            (insert "No Pinned Items"))))
+      (funcall slack-buffer-function buf))))
 
 (defun slack-select-rooms ()
   (interactive)

@@ -203,7 +203,7 @@
     (with-slots (comment) (oref this comment)
       (let* ((face '(:underline t))
              (text (format "commented on %s <%s|open in browser>\n%s"
-                           (slack-file-link-info (oref this file) name)
+                           (slack-file-link-info (oref (oref this file) id) name)
                            permalink
                            (format "“ %s" comment)))
              (header (slack-message-header-to-string this team))
@@ -227,6 +227,9 @@
           (oset old-comment comment (oref new-comment comment))
           (setq changed t))))
     changed))
+
+(defmethod slack-ts ((this slack-file-comment))
+  (number-to-string (oref this timestamp)))
 
 (provide 'slack-file-comment)
 ;;; slack-file-comment.el ends here

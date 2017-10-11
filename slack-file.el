@@ -265,7 +265,7 @@
                         (slack-message-body-to-string file team)
                         (slack-message-image-to-string file team)
                         (slack-message-reaction-to-string file)
-                        (slack-file-link-info file "\n(more info)")))
+                        (slack-file-link-info (oref file id) "\n(more info)")))
 
 (defmethod slack-to-string ((file slack-file) team)
   (let* ((header (slack-message-header-to-string file team))
@@ -578,9 +578,9 @@
           (oref file ims)
           (oref file groups)))
 
-(defun slack-file-link-info (file text)
+(defun slack-file-link-info (file-id text)
   (propertize text
-              'file (oref file id)
+              'file file-id
               'face '(:underline t :weight bold)
               'keymap (let ((map (make-sparse-keymap)))
                         (define-key map (kbd "RET")
@@ -594,7 +594,7 @@
                 " and commented on"
               "")
             mimetype
-            (slack-file-link-info file (or title name))
+            (slack-file-link-info (oref file id) (or title name))
             permalink)))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
@@ -694,13 +694,13 @@
                    (progn
                      (slack-file--display file buf team)
                      (funcall slack-buffer-function buf)))))
-      (slack-with-file id team
-        (with-slots (comments comments-count) file
-          (if (<= comments-count (length comments))
-              (open file team)
-            (slack-file-request-info id 1 team #'open)))
-
-        ))))
+      (let ((file (slack-file-find id team)))
+        (if file
+            (with-slots (comments comments-count) file
+              (if (<= comments-count (length comments))
+                  (open file team)
+                (slack-file-request-info id 1 team #'open)))
+          (slack-file-request-info id 1 team #'open))))))
 
 (defun slack-file--display (file buf team)
   (with-current-buffer buf

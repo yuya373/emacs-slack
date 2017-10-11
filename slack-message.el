@@ -239,8 +239,11 @@
         :success #'on-pins-add
         )))))
 
+(defmethod slack-ts ((this slack-message))
+  (oref this ts))
+
 (defun slack-message-time-stamp (message)
-  (seconds-to-time (string-to-number (oref message ts))))
+  (seconds-to-time (string-to-number (slack-ts message))))
 
 (defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
