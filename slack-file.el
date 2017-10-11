@@ -283,7 +283,7 @@
                                                          (cons "" channels) nil t)
                                                  (list "Select channel: " channels nil t)))))
                           (if (< 0 (length selected))
-                              (select-channels (remove-if (lambda (x) (equal selected (car-safe x))) channels)
+                              (select-channels (cl-remove-if (lambda (x) (equal selected (car-safe x))) channels)
                                                (cons selected acc))
                             acc)))
        (channel-id (selected channels)
