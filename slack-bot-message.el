@@ -36,7 +36,8 @@
                 bots)))
 
 (defmethod slack-bot-name ((m slack-bot-message) team)
-  (or (oref m username)
+  (or (unless (slack-string-blankp (oref m username))
+        (oref m username))
       (when (slot-boundp m 'bot-id)
         (let ((bot (slack-find-bot (oref m bot-id) team)))
           (plist-get bot :name)))
