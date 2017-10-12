@@ -36,12 +36,12 @@
                 bots)))
 
 (defmethod slack-bot-name ((m slack-bot-message) team)
-  (if (slot-boundp m 'bot-id)
-      (let ((bot (slack-find-bot (oref m bot-id) team)))
-        (if bot
-            (plist-get bot :name)
-          (oref m username)))
-    (oref m username)))
+  (or (unless (slack-string-blankp (oref m username))
+        (oref m username))
+      (when (slot-boundp m 'bot-id)
+        (let ((bot (slack-find-bot (oref m bot-id) team)))
+          (plist-get bot :name)))
+      "Unknown Bot"))
 
 (defmethod slack-message-to-alert ((m slack-bot-message) team)
   (let ((text (if (slot-boundp m 'text)
