@@ -44,32 +44,8 @@
   (interactive)
   (if (eq major-mode 'slack-file-info-mode)
       (slack-file-comment-delete)
-    (unless (and (boundp 'slack-current-team-id)
-                 (boundp 'slack-current-room-id))
-      (error "Call From Slack Room Buffer"))
-    (let* ((team (slack-team-find slack-current-team-id))
-           (channel (slack-room-find slack-current-room-id
-                                     team))
-           (ts (ignore-errors (get-text-property (point) 'ts))))
-      (unless ts
-        (error "Call With Cursor On Message"))
-      (let ((message (slack-room-find-message channel ts)))
-        (when message
-          (cl-labels
-              ((on-delete
-                (&key data &allow-other-keys)
-                (slack-request-handle-error
-                 (data "slack-message-delete"))))
-            (if (yes-or-no-p "Are you sure you want to delete this message?")
-                (slack-request
-                 (slack-request-create
-                  slack-message-delete-url
-                  team
-                  :type "POST"
-                  :params (list (cons "ts" (oref message ts))
-                                (cons "channel" (oref channel id)))
-                  :success #'on-delete))
-              (message "Canceled"))))))))
+    (if-let* ((buf slack-current-buffer))
+        (slack-buffer-delete-message buf (slack-get-ts)))))
 
 (defclass _slack-message-delete ()
   ((room :initarg :room)
@@ -109,9 +85,8 @@
 
 (defmethod slack-message-delete--buffer ((this _slack-message-delete))
   (with-slots (message room) this
-    (when message
-      (slack-buffer-delete-message (slack-room-buffer-name room)
-                                   (oref message ts)))))
+    (when (and message (oref room buffer))
+      (slack-buffer-message-delete (oref room buffer) (oref message ts)))))
 
 (defmethod slack-message-delete--buffer ((this _slack-thread-message-delete))
   (with-slots (message room team) this
@@ -119,9 +94,8 @@
            (thread (and parent (slack-message-get-thread parent team))))
       (when thread
         (slack-thread-delete-message thread message)
-        (slack-buffer-delete-message
-         (slack-thread-buf-name room (oref thread thread-ts))
-         (oref message ts))
+        (if-let* ((buffer (oref room buffer)))
+            (slack-buffer-message-delete buffer (oref message ts)))
         (slack-message-update parent team t)))))
 
 (provide 'slack-message-delete)

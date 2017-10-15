@@ -91,18 +91,8 @@
   (slack-link-channels (slack-link-users message team) team))
 
 (defun slack-message--send (message)
-  (if slack-current-team-id
-      (let* ((team (slack-team-find slack-current-team-id))
-             (formatted-message
-              (slack-message-prepare-links (slack-escape-message message)
-                                           team))
-             (command (slack-slash-commands-parse message)))
-        (if command
-            (slack-slack-commands-execute command team)
-          (slack-message-send-internal formatted-message
-                                       (slack-message-get-room-id)
-                                       team)))
-    (error "Call from Slack Buffer")))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-send-message buf message)))
 
 (defun slack-message-send-internal (message channel-id team)
   (slack-message-inc-id team)
@@ -116,14 +106,6 @@
            (obj (slack-message-create m team)))
       (slack-ws-send json team)
       (puthash message-id obj sent-message))))
-
-(defun slack-message-get-room-id ()
-  (if (and (boundp 'slack-current-room-id)
-           (boundp 'slack-current-team-id))
-      (oref (slack-room-find slack-current-room-id
-                             (slack-team-find slack-current-team-id))
-            id)
-    (oref (slack-message-read-room (slack-team-select)) id)))
 
 (defun slack-message-read-room (team)
   (let* ((list (slack-message-room-list team))
@@ -160,25 +142,22 @@
 
 (defun slack-message-embed-channel ()
   (interactive)
-  (when (not (bound-and-true-p slack-current-team-id))
-    (error "Call From Slack Buffer"))
-  (let ((team (slack-team-find slack-current-team-id)))
-    (let* ((alist (slack-channel-names team)))
-      (slack-select-from-list
-          (alist "Select Channel: ")
-          (insert (concat "#" (slack-room-name selected)))))))
+  (if-let* ((buf slack-current-buffer))
+      (with-slots (team) buf
+        (slack-select-from-list
+            ((slack-channel-names team) "Select Channel: ")
+            (insert (concat "#" (slack-room-name selected)))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
-  (when (not (bound-and-true-p slack-current-team-id))
-    (error "Call From Slack Buffer"))
-  (let ((team (slack-team-find slack-current-team-id)))
-    (let* ((pre-defined (list (list "here" :name "here")
-                              (list "channel" :name "channel")))
-           (alist (append pre-defined (slack-user-names team))))
-      (slack-select-from-list
-          (alist "Select User: ")
-          (insert (concat "@" (plist-get selected :name)))))))
+  (if-let* ((buf slack-current-buffer))
+      (with-slots (team) buf
+        (let* ((pre-defined (list (list "here" :name "here")
+                                  (list "channel" :name "channel")))
+               (alist (append pre-defined (slack-user-names team))))
+          (slack-select-from-list
+              (alist "Select User: ")
+              (insert (concat "@" (plist-get selected :name))))))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here

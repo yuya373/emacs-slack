@@ -47,7 +47,8 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
    (team-id :initarg :team-id)
-   (buffer :initform nil)))
+   (buffer :initform nil :type (or null slack-buffer))
+   (thread-message-buffers :initform '() :type list)))
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
@@ -79,6 +80,12 @@
      (with-current-buffer buf
        ,@body)
      buf))
+
+(defmethod slack-room-message-buffer ((this slack-room) team)
+  (or (oref this buffer)
+      (let ((buffer (slack-create-message-buffer this team)))
+        (oset this buffer buffer)
+        buffer)))
 
 (cl-defun slack-room-create-buffer (room team &key update)
   (cl-labels
@@ -127,10 +134,7 @@
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
                  rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
-    (slack-select-from-list
-        (alist "Select Channel: ")
-        (slack-room-create-buffer selected
-                                  (slack-team-find (oref selected team-id))))))
+    (slack-select-from-list (alist "Select Channel: "))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
@@ -232,6 +236,7 @@
 (defmethod slack-room-update-last-read ((room slack-room) msg)
   (if (slack-room-update-last-read-p room (oref msg ts))
       (oset room last-read (oref msg ts))))
+
 
 (defmethod slack-room-latest-messages ((room slack-room) messages)
   (with-slots (last-read) room
@@ -414,11 +419,12 @@
 
 (defun slack-select-rooms ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              append (with-slots (groups ims channels) team
-                       (append ims groups channels))))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (append ims groups channels))))))
+    (slack-room-display room team)))
 
 (defun slack-create-room (url team success)
   (slack-request
@@ -541,6 +547,7 @@
       (oset room buffer nil))))
 
 (defmethod slack-room-set-buffer ((room slack-room) buf)
+  (error "aaa")
   (oset room buffer buf))
 
 (defmethod slack-room-has-buffer-p ((room slack-room))
@@ -608,12 +615,16 @@
 
 (defun slack-select-unread-rooms ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              append (with-slots (groups ims channels) team
-                       (cl-remove-if #'(lambda (room) (not (< 0 (oref room unread-count-display))))
-                                     (append ims groups channels)))))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (cl-remove-if
+                                   #'(lambda (room)
+                                       (not (< 0 (oref room
+                                                       unread-count-display))))
+                                   (append ims groups channels)))))))
+    (slack-room-display room team)))
 
 (defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
@@ -643,6 +654,17 @@
                                    (slot-boundp m 'file)
                                    (string= file-id (oref (oref m file) id))))
                 messages)))
+
+(defun slack-room-display (room team)
+  (cl-labels
+      ((open (buf)
+             (slack-buffer-display buf)))
+    (let* ((buf (oref room buffer)))
+      (if buf (open buf)
+        (slack-room-history-request
+         room team
+         :after-success #'(lambda ()
+                            (open (slack-create-message-buffer room team))))))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

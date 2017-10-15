@@ -73,11 +73,12 @@
 
 (defun slack-group-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              for groups = (oref team groups)
-              nconc groups))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         for groups = (oref team groups)
+                         nconc groups))))
+    (slack-room-display room team)))
 
 (defun slack-group-list-update (&optional team after-success)
   (interactive)

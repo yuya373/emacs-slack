@@ -76,16 +76,21 @@
     (with-current-buffer buf
       (slack-buffer-widen
        (let* ((inhibit-read-only t)
-              (base (propertize "(load more message)"
-                                'face '(:underline t)
-                                'keymap (let ((map (make-sparse-keymap)))
-                                          (define-key map (kbd "RET")
-                                            #'slack-room-history-load)
-                                          map)))
-              (text (slack-room-propertize-load-more room base)))
+              (text (slack-room-previous-link room)))
          (goto-char (point-min))
          (insert (format "%s\n\n" text))
          (set-marker lui-output-marker (point)))))))
+
+(defmethod slack-room-previous-link ((room slack-room))
+  (when (slack-room-prev-link-info room)
+    (slack-room-propertize-load-more
+     room
+     (propertize "(load more message)"
+                 'face '(:underline t)
+                 'keymap (let ((map (make-sparse-keymap)))
+                           (define-key map (kbd "RET")
+                             #'slack-room-history-load)
+                           map)))))
 
 (defmethod slack-room-history--collect-meta ((this _slack-room-history))
   this)

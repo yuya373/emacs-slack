@@ -40,14 +40,26 @@
 
 (defmethod slack-message-update--buffer ((this _slack-message-update))
   (with-slots (room message team replace) this
-    (slack-buffer-update room message team :replace replace)))
+    (slack-room-update-buffer room team message replace)))
+
+(defmethod slack-room-update-buffer ((this slack-room) team message replace)
+  (if-let* ((buffer (oref this buffer)))
+      (progn
+        (slack-buffer-update buffer message :replace replace)
+        (slack-room-inc-unread-count this)
+        (and slack-buffer-create-on-notify
+             (slack-room-history-request
+              this team
+              :after-success #'(lambda ()
+                                 (slack-buffer-buffer
+                                  (slack-create-message-buffer this team))))))))
 
 (defmethod slack-message-update--buffer ((this _slack-thread-message-update))
   (with-slots (room team replace message) this
     (let* ((parent (slack-room-find-thread-parent room message))
            (thread (and parent (slack-message-get-thread parent team))))
       (when parent
-        (slack-buffer-update room parent team :replace t)
+        (slack-room-update-buffer room team parent replace)
         (when thread
           (slack-thread-add-message thread message)
           (slack-thread-update-buffer thread message room team :replace replace))))))

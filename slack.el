@@ -53,6 +53,13 @@
 (require 'slack-attachment)
 (require 'slack-emoji)
 
+(require 'slack-buffer)
+(require 'slack-message-buffer)
+(require 'slack-message-edit-buffer)
+(require 'slack-message-share-buffer)
+(require 'slack-thread-message-buffer)
+(require 'slack-message-compose-buffer)
+
 (require 'slack-websocket)
 (require 'slack-request)
 

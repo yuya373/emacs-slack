@@ -93,12 +93,14 @@
 
 (defun slack-im-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              for ims = (cl-remove-if #'(lambda (im) (not (oref im is-open)))
-                                      (oref team ims))
-              nconc ims))))
+  (let* ((team (slack-team-select))
+         (candidates (cl-loop for team in (list team)
+                              for ims = (cl-remove-if #'(lambda (im)
+                                                          (not (oref im is-open)))
+                                                      (oref team ims))
+                              nconc ims))
+         (room (slack-room-select candidates)))
+    (slack-room-display room team)))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))

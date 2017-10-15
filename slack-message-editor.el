@@ -52,18 +52,21 @@
 
 (defun slack-message-share ()
   (interactive)
-  (let ((ts (slack-get-ts))
-        (buf (get-buffer-create slack-message-share-buffer-name))
-        (room-id slack-current-room-id)
-        (team slack-current-team))
-    (unless ts
-      (error "Can't find message."))
-    (with-current-buffer buf
-      (slack-message-setup-edit-buf (slack-room-find room-id team)
-                                    'share
-                                    :ts ts
-                                    :team team))
-    (funcall slack-buffer-function buf)))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-share-message buf (slack-get-ts)))
+  ;; (let ((ts (slack-get-ts))
+  ;;       (buf (get-buffer-create slack-message-share-buffer-name))
+  ;;       (room-id slack-current-room-id)
+  ;;       (team slack-current-team))
+  ;;   (unless ts
+  ;;     (error "Can't find message."))
+  ;;   (with-current-buffer buf
+  ;;     (slack-message-setup-edit-buf (slack-room-find room-id team)
+  ;;                                   'share
+  ;;                                   :ts ts
+  ;;                                   :team team))
+  ;;   (funcall slack-buffer-function buf))
+  )
 
 (defun slack-message-share--send (team room ts msg)
   (let* ((slack-room-list (or (and (object-of-class-p room 'slack-channel)
@@ -71,10 +74,10 @@
                               (list (cons (slack-room-display-name room)
                                           room))))
          (share-channel-id (oref (slack-select-from-list
-                                  (slack-room-list
-                                   "Select Channel: "
-                                   :initial
-                                   (slack-room-name room)))
+                                     (slack-room-list
+                                      "Select Channel: "
+                                      :initial
+                                      (slack-room-name room)))
                                  id)))
     (cl-labels
         ((on-success (&key data &allow-other-keys)
@@ -93,28 +96,31 @@
 
 (defun slack-message-write-another-buffer ()
   (interactive)
-  (let* ((cur-buf (current-buffer))
-         (cur-mode (with-current-buffer cur-buf major-mode))
-         (team (slack-team-find slack-current-team-id))
-         (target-room (if (boundp 'slack-current-room-id)
-                          (slack-room-find slack-current-room-id
-                                           team)
-                        (slack-message-read-room team)))
-         (buf (get-buffer-create slack-message-write-buffer-name)))
-    (cl-case cur-mode
-      ('slack-mode
-       (with-current-buffer buf
-         (slack-message-setup-edit-buf target-room 'new
-                                       :team team)))
-      ('slack-thread-mode
-       (let ((ts slack-target-ts))
-         (with-current-buffer buf
-           (slack-thread-setup-edit-buf ts
-                                        target-room
-                                        team
-                                        'thread-message-new)))))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-message-compose-buffer buf))
+  ;; (let* ((cur-buf (current-buffer))
+  ;;        (cur-mode (with-current-buffer cur-buf major-mode))
+  ;;        (team (slack-team-find slack-current-team-id))
+  ;;        (target-room (if (boundp 'slack-current-room-id)
+  ;;                         (slack-room-find slack-current-room-id
+  ;;                                          team)
+  ;;                       (slack-message-read-room team)))
+  ;;        (buf (get-buffer-create slack-message-write-buffer-name)))
+  ;;   (cl-case cur-mode
+  ;;     ('slack-mode
+  ;;      (with-current-buffer buf
+  ;;        (slack-message-setup-edit-buf target-room 'new
+  ;;                                      :team team)))
+  ;;     ('slack-thread-mode
+  ;;      (let ((ts slack-target-ts))
+  ;;        (with-current-buffer buf
+  ;;          (slack-thread-setup-edit-buf ts
+  ;;                                       target-room
+  ;;                                       team
+  ;;                                       'thread-message-new)))))
 
-    (funcall slack-buffer-function buf)))
+  ;;   (funcall slack-buffer-function buf))
+  )
 
 (defmethod slack-message-get-user-id ((m slack-user-message))
   (oref m user))
@@ -123,16 +129,19 @@
   (interactive)
   (if (eq major-mode 'slack-file-info-mode)
       (slack-file-comment-edit)
-    (let* ((team (slack-team-find slack-current-team-id))
-           (room (slack-room-find slack-current-room-id
-                                  team))
-           (ts (slack-get-ts))
-           (msg (slack-room-find-message room ts)))
-      (unless msg
-        (error "Can't find original message"))
-      (unless (string= (oref team self-id) (slack-message-get-user-id msg))
-        (error "Cant't edit other user's message"))
-      (slack-message-edit-text msg room))))
+    (if-let* ((buf slack-current-buffer))
+        (slack-buffer-display-edit-message-buffer buf (slack-get-ts)))
+    ;; (let* ((team (slack-team-find slack-current-team-id))
+    ;;        (room (slack-room-find slack-current-room-id
+    ;;                               team))
+    ;;        (ts (slack-get-ts))
+    ;;        (msg (slack-room-find-message room ts)))
+    ;;   (unless msg
+    ;;     (error "Can't find original message"))
+    ;;   (unless (string= (oref team self-id) (slack-message-get-user-id msg))
+    ;;     (error "Cant't edit other user's message"))
+    ;;   (slack-message-edit-text msg room))
+    ))
 
 (defmethod slack-message-edit-type ((_m slack-message))
   'edit)
@@ -140,17 +149,17 @@
 (defmethod slack-message-get-text ((m slack-message))
   (oref m text))
 
-(defun slack-message-edit-text (msg room)
-  (let ((buf (get-buffer-create slack-message-edit-buffer-name))
-        (team (slack-team-find slack-current-team-id)))
-    (with-current-buffer buf
-      (slack-edit-message-mode)
-      (slack-message-setup-edit-buf room
-                                    (slack-message-edit-type msg)
-                                    :ts (oref msg ts)
-                                    :team team)
-      (insert (slack-message-get-text msg)))
-    (funcall slack-buffer-function buf)))
+;; (defun slack-message-edit-text (msg room)
+;;   (let ((buf (get-buffer-create slack-message-edit-buffer-name))
+;;         (team (slack-team-find slack-current-team-id)))
+;;     (with-current-buffer buf
+;;       (slack-edit-message-mode)
+;;       (slack-message-setup-edit-buf room
+;;                                     (slack-message-edit-type msg)
+;;                                     :ts (oref msg ts)
+;;                                     :team team)
+;;       (insert (slack-message-get-text msg)))
+;;     (funcall slack-buffer-function buf)))
 
 (cl-defun slack-message-setup-edit-buf (room buf-type &key ts team)
   (slack-edit-message-mode)
@@ -164,40 +173,41 @@
 
 (defun slack-message-cancel-edit ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id
-                                team)))
-    (erase-buffer)
-    (delete-window)
-    (slack-room-create-buffer room team)))
+  (if-let* ((buf slack-current-buffer))
+      (with-slots (buffer) buf
+        (with-current-buffer buffer
+          (erase-buffer)
+          (if (> (count-windows) 1) (delete-window))))))
 
 (defun slack-message-send-from-buffer ()
   (interactive)
-  (cl-labels ((get-team () (slack-team-find slack-current-team-id))
-              (get-room (team) (slack-room-find slack-current-room-id team)))
-    (let ((buf-string (buffer-substring (point-min) (point-max))))
-      (cl-case slack-message-edit-buffer-type
-        ('edit-file-comment
-         (slack-file-comment--edit slack-current-room-id
-                                   slack-current-team-id
-                                   slack-target-ts
-                                   buf-string))
-        ('edit
-         (let ((team (get-team)))
-           (slack-message--edit (oref (get-room team) id)
-                                team
-                                slack-target-ts
-                                buf-string)))
-        ('share
-         (let ((team (get-team)))
-           (slack-message-share--send team
-                                      (get-room team)
-                                      slack-target-ts
-                                      buf-string)))
-        ('new (slack-message--send buf-string))
-        ('thread-message-new (slack-thread-message--send buf-string)))
-      (kill-buffer)
-      (if (> (count-windows) 1) (delete-window)))))
+  (if-let* ((buf slack-current-buffer)
+            (text (buffer-substring-no-properties (point-min) (point-max))))
+      (slack-buffer-send-message buf text))
+  ;; (cl-labels ((get-team () (slack-team-find slack-current-team-id))
+  ;;             (get-room (team) (slack-room-find slack-current-room-id team)))
+  ;;   (let ((buf-string (buffer-substring (point-min) (point-max))))
+  ;;     (cl-case slack-message-edit-buffer-type
+  ;;       ('edit-file-comment
+  ;;        (slack-file-comment--edit slack-current-room-id
+  ;;                                  slack-current-team-id
+  ;;                                  slack-target-ts
+  ;;                                  buf-string))
+  ;;       ('edit
+  ;;        (let ((team (get-team)))
+  ;;          (slack-message--edit (oref (get-room team) id)
+  ;;                               team
+  ;;                               slack-target-ts
+  ;;                               buf-string)))
+  ;;       ('share
+  ;;        (let ((team (get-team)))
+  ;;          (slack-message-share--send team
+  ;;                                     (get-room team)
+  ;;                                     slack-target-ts
+  ;;                                     buf-string))))
+  ;;     (kill-buffer)
+  ;;     (if (> (count-windows) 1) (delete-window))))
+  )
 
 (defun slack-message--edit (channel team ts text)
   (cl-labels ((on-edit (&key data &allow-other-keys)

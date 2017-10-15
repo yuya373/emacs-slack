@@ -56,31 +56,25 @@
 
 (defun slack-thread-start ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (and team(slack-room-find slack-current-room-id team)))
-         (ts (slack-get-ts))
-         (message (slack-room-find-message room ts))
-         (buf (and room ts (slack-thread-get-buffer-create room team ts))))
-    (unless buf (error "Can't create slack thread buffer"))
-    (if (object-of-class-p message 'slack-reply-broadcast-message)
-        (error "Can't start thread from broadcasted message"))
-    (with-current-buffer buf
-      (slack-thread-insert-as-root-message message team))
-    (funcall slack-buffer-function buf)))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-start-thread buf (slack-get-ts))))
 
 (defun slack-thread-message--send (message)
-  (if slack-current-team-id
-      (let* ((team (slack-team-find slack-current-team-id))
-             (room (slack-room-find slack-current-room-id team))
-             (message (slack-message-prepare-links (slack-escape-message message) team))
-             (broadcast (y-or-n-p (format "Also send to %s ? " (slack-room-name room)))))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-send-message buf message)))
 
+(defun slack-thread-send-message (room team message thread-ts)
+  (if-let* ((message (slack-message-prepare-links (slack-escape-message message)
+                                                  team))
+            (broadcast (y-or-n-p (format "Also send to %s ? "
+                                         (slack-room-name room)))))
+      (progn
         (slack-message-inc-id team)
         (with-slots (message-id sent-message self-id) team
           (let* ((payload (list :id message-id
                                 :channel (oref room id)
                                 :reply_broadcast broadcast
-                                :thread_ts slack-target-ts
+                                :thread_ts thread-ts
                                 :type "message"
                                 :user self-id
                                 :text message))
@@ -90,12 +84,11 @@
             (puthash message-id obj sent-message))))))
 
 (defmethod slack-thread-update-buffer ((thread slack-thread) message room team &key replace)
-  (let ((buf (get-buffer (slack-thread-buf-name room (oref thread thread-ts)))))
-    (when buf
+  (if-let* ((buf (slack-thread-message-buffer-find (oref thread thread-ts)
+                                                   room)))
       (if replace
           (slack-buffer-replace buf message)
-        (with-current-buffer buf
-          (slack-buffer-insert message team))))))
+        (with-current-buffer (oref buf buffer) (slack-buffer-insert message team)))))
 
 (defun slack-thread-buf-name (room thread-ts)
   (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))
@@ -122,20 +115,8 @@
   (interactive)
   (if (eq major-mode 'slack-thread-mode)
       (error "Already in thread")
-    (let* ((line (thing-at-point 'line))
-           (team-id slack-current-team-id)
-           (team (and team-id (slack-team-find team-id)))
-           (room-id slack-current-room-id)
-           (room (and room-id team (slack-room-find room-id team)))
-           (ts (slack-get-ts)))
-      (if (or (not team) (not room) (not ts))
-          (error "Can't find: %s" (or (and (not team) "team")
-                                      (and (not room) "room")
-                                      (and (not ts) "ts"))))
-      (let* ((thread (slack-room-find-thread room ts)))
-        (if thread
-            (slack-thread-show-messages thread room team)
-          (slack-thread-start))))))
+    (if-let* ((buf slack-current-buffer))
+        (slack-buffer-display-thread buf (slack-get-ts)))))
 
 (defun slack-thread-insert-as-root-message (message team)
   (slack-buffer-insert message team)
@@ -382,24 +363,8 @@
 
 (defun slack-room-unread-threads ()
   (interactive)
-  (if (or (not (boundp 'slack-current-team-id))
-          (not (boundp 'slack-current-room-id)))
-      (error "Call from Slack Buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id team))
-
-         (threads (mapcar #'(lambda (m) (oref m thread))
-                          (cl-remove-if
-                           #'(lambda (m)
-                               (or (not (slack-message-thread-parentp m))
-                                   (not (< 0 (oref (oref m thread) unread-count)))))
-                           (oref room messages))))
-         (alist (mapcar #'(lambda (thread) (cons (slack-thread-title thread team) thread))
-                        (cl-sort threads
-                                 #'string>
-                                 :key #'(lambda (thread) (oref thread thread-ts)))))
-         (selected (slack-select-from-list (alist "Select Thread: "))))
-    (slack-thread-show-messages selected room team)))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-unread-threads buf)))
 
 (defmethod slack-thread-update-last-read ((thread slack-thread) msg)
   (with-slots (ts) msg
