@@ -102,13 +102,13 @@
         (and room (oset room buffer nil)))))
 
 (cl-defmethod slack-buffer-update ((this slack-message-buffer) message &key replace)
-  (with-slots (room team buffer) this
-    (slack-buffer-update-last-read this message)
-    (if (slack-buffer-in-current-frame buffer)
-        (slack-room-update-mark room team message)
-      (slack-room-inc-unread-count room))
-    (if replace (slack-buffer-replace this message)
-      (with-current-buffer buffer (slack-buffer-insert message team)))))
+  (let ((buffer (slack-buffer-buffer this)))
+    (with-slots (room team) this
+      (if (slack-buffer-in-current-frame buffer)
+          (slack-room-update-mark room team message)
+        (slack-room-inc-unread-count room))
+      (if replace (slack-buffer-replace this message)
+        (with-current-buffer buffer (slack-buffer-insert message team))))))
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
@@ -117,7 +117,7 @@
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-message-delete ((this slack-message-buffer) ts)
-  (with-slots (buffer) this
+  (let ((buffer (slack-buffer-buffer this)))
     (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
                                     ts)))))
 
@@ -221,7 +221,7 @@
     (oset this oldest (oref message ts))))
 
 (defmethod slack-buffer-load-history ((this slack-message-buffer))
-  (with-slots (room team oldest buffer) this
+  (with-slots (room team oldest) this
     (let ((current-ts (let ((change (next-single-property-change (point) 'ts)))
                         (when change
                           (get-text-property change 'ts))))
@@ -229,7 +229,7 @@
       (cl-labels
           ((update-buffer
             (messages)
-            (with-current-buffer buffer
+            (with-current-buffer (slack-buffer-buffer this)
               (slack-buffer-widen
                (let ((inhibit-read-only t))
                  (goto-char (point-min))

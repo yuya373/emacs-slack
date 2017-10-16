@@ -51,14 +51,14 @@
     buf))
 
 (defmethod slack-buffer-send-message ((this slack-buffer) _message)
-  (with-slots (buffer) this
+  (let ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (kill-buffer)
       (if (> (count-windows) 1) (delete-window)))))
 
 (defmethod slack-buffer-replace ((this slack-buffer) message)
-  (with-slots (buffer team) this
-    (with-current-buffer buffer
+  (with-slots (team) this
+    (with-current-buffer (slack-buffer-buffer this)
       (lui-replace (slack-message-to-string message team)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
