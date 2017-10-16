@@ -81,21 +81,21 @@
        ,@body)
      buf))
 
-(cl-defun slack-room-create-buffer (room team &key update)
-  (cl-labels
-      ((open ()
-             (funcall slack-buffer-function
-                      (slack-room-with-buffer room team
-                        (slack-room-insert-messages room buf team)))))
-    (with-slots (messages) room
-      (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
-          (progn
-            (slack-log (format "There is no message in %s. fetching from server..."
-                               (slack-room-name room))
-                       team)
-            (slack-room-history-request room team :after-success #'open)
-            )
-        (open)))))
+;; (cl-defun slack-room-create-buffer (room team &key update)
+;;   (cl-labels
+;;       ((open ()
+;;              (funcall slack-buffer-function
+;;                       (slack-room-with-buffer room team
+;;                         (slack-room-insert-messages room buf team)))))
+;;     (with-slots (messages) room
+;;       (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
+;;           (progn
+;;             (slack-log (format "There is no message in %s. fetching from server..."
+;;                                (slack-room-name room))
+;;                        team)
+;;             (slack-room-history-request room team :after-success #'open)
+;;             )
+;;         (open)))))
 
 (cl-defun slack-room-create-buffer-bg (room team)
   (cl-labels
