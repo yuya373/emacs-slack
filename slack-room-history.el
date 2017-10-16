@@ -150,20 +150,22 @@
 
 (defun slack-room-history-load ()
   (interactive)
-  (let* ((cur-point (point))
-         (class (get-text-property 0 'class (thing-at-point 'line)))
-         (team (slack-team-find slack-current-team-id))
-         (prev-messages (make-instance class
-                                       :room (slack-room-find slack-current-room-id team)
-                                       :team team
-                                       :oldest (get-text-property 0 'oldest (thing-at-point 'line))
-                                       :current-ts (let ((change (next-single-property-change cur-point 'ts)))
-                                                     (when change
-                                                       (get-text-property change 'ts))))))
-    (slack-room-history--collect-meta prev-messages)
-    (slack-room-history--request prev-messages
-                                 #'(lambda ()
-                                     (slack-room-history--insert prev-messages)))))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-load-history buf)
+    (let* ((cur-point (point))
+           (class (get-text-property 0 'class (thing-at-point 'line)))
+           (team (slack-team-find slack-current-team-id))
+           (prev-messages (make-instance class
+                                         :room (slack-room-find slack-current-room-id team)
+                                         :team team
+                                         :oldest (get-text-property 0 'oldest (thing-at-point 'line))
+                                         :current-ts (let ((change (next-single-property-change cur-point 'ts)))
+                                                       (when change
+                                                         (get-text-property change 'ts))))))
+      (slack-room-history--collect-meta prev-messages)
+      (slack-room-history--request prev-messages
+                                   #'(lambda ()
+                                       (slack-room-history--insert prev-messages))))))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)

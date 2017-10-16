@@ -88,7 +88,8 @@
                                                    room)))
       (if replace
           (slack-buffer-replace buf message)
-        (with-current-buffer (oref buf buffer) (slack-buffer-insert message team)))))
+        (with-current-buffer (slack-buffer-buffer buf)
+          (slack-buffer-insert message team)))))
 
 (defun slack-thread-buf-name (room thread-ts)
   (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))

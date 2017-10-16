@@ -59,6 +59,8 @@
 (require 'slack-message-share-buffer)
 (require 'slack-thread-message-buffer)
 (require 'slack-message-compose-buffer)
+(require 'slack-pinned-items-buffer)
+(require 'slack-user-profile-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)
@@ -180,12 +182,15 @@ never means never show typing indicator."
                   (unless (slack-room-hiddenp room)
                     (slack-room-info-request room team)))
               rooms))
+       (kill-slack-buffer (sb)
+                          (if-let* ((buffer-name (and sb (slack-buffer-name sb))))
+                              (when (get-buffer buffer-name)
+                                (kill-buffer buffer-name))))
        (delete-existing-buffer
         (rooms)
         (mapc #'(lambda (room)
-                  (let ((bufname (slack-room-buffer-name room)))
-                    (when (get-buffer bufname)
-                      (kill-buffer bufname))))
+                  (kill-slack-buffer (oref room buffer))
+                  (mapc #'kill-slack-buffer (oref room thread-message-buffers)))
               rooms)))
     (slack-request-handle-error
      (data "slack-authorize")
@@ -251,15 +256,6 @@ never means never show typing indicator."
                    do (start team))
         (slack-start (call-interactively #'slack-register-team))))
     (slack-enable-modeline)))
-
-(defun slack-redisplay-message ()
-  (interactive)
-  (let* ((ts (slack-get-ts))
-         (team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id team))
-         (message (slack-room-find-message room ts)))
-    (slack-message-redisplay message room)))
-
 
 (provide 'slack)
 ;;; slack.el ends here

@@ -25,9 +25,9 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-message-edit-buffer)
+(require 'slack-room-buffer)
 
-(defclass slack-message-share-buffer (slack-buffer)
+(defclass slack-message-share-buffer (slack-room-buffer)
   ((ts :initarg :ts :type string)))
 
 (defmethod slack-buffer-name ((_this slack-message-share-buffer))

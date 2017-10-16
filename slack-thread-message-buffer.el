@@ -25,9 +25,9 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-buffer)
+(require 'slack-room-buffer)
 
-(defclass slack-thread-message-buffer (slack-buffer)
+(defclass slack-thread-message-buffer (slack-room-buffer)
   ((thread-ts :initarg :thread-ts :type string)))
 
 (defmethod slack-buffer-name ((this slack-thread-message-buffer))

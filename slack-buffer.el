@@ -31,32 +31,23 @@
 (defvar-local slack-current-buffer nil)
 
 (defclass slack-buffer ()
-  ((buffer :initarg :buffer :initform nil :reader slack-buffer-buffer)
-   (room :initarg :room :type slack-room)
-   (team :initarg :team :type slack-team)))
+  ((team :initarg :team :type slack-team)))
 
 (defmethod slack-buffer-buffer ((this slack-buffer))
-  (or (oref this buffer)
+  (or (get-buffer (slack-buffer-name this))
       (slack-buffer-init-buffer this)))
 
 (defmethod slack-buffer-display ((this slack-buffer))
   (funcall slack-buffer-function (slack-buffer-buffer this)))
 
 (defmethod slack-buffer-name ((this slack-buffer))
-  (with-slots (team room) this
-    (if-let* ((room-name (slack-room-name room)))
-        (format  "*Slack* : %s"
-                 (or (and slack-display-team-name
-                          (format "%s - %s"
-                                  (oref team name)
-                                  room-name))
-                     room-name)))))
+  "*Slack*")
 
 (defmethod slack-buffer-init-buffer ((this slack-buffer))
   (let ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
+      (slack-buffer-enable-emojify)
       (setq slack-current-buffer this))
-    (oset this buffer buf)
     buf))
 
 (defmethod slack-buffer-send-message ((this slack-buffer) _message)

@@ -210,34 +210,27 @@
 
 (defun slack-message-pins-add ()
   (interactive)
-  (slack-message-pins-request slack-message-pins-add-url))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-pins-add buf (slack-get-ts))))
 
 (defun slack-message-pins-remove ()
   (interactive)
-  (slack-message-pins-request slack-message-pins-remove-url))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-pins-remove buf (slack-get-ts))))
 
-(defun slack-message-pins-request (url)
-  (unless (and (bound-and-true-p slack-current-team-id)
-               (bound-and-true-p slack-current-room-id))
-    (error "Call From Slack Room Buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id
-                                team))
-         (ts (ignore-errors (slack-get-ts))))
-    (unless ts
-      (error "Call From Slack Room Buffer"))
-    (cl-labels ((on-pins-add
-                 (&key data &allow-other-keys)
-                 (slack-request-handle-error
-                  (data "slack-message-pins-request"))))
-      (slack-request
-       (slack-request-create
-        url
-        team
-        :params (list (cons "channel" (oref room id))
-                      (cons "timestamp" ts))
-        :success #'on-pins-add
-        )))))
+(defun slack-message-pins-request (url room team ts)
+  (cl-labels ((on-pins-add
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-message-pins-request"))))
+    (slack-request
+     (slack-request-create
+      url
+      team
+      :params (list (cons "channel" (oref room id))
+                    (cons "timestamp" ts))
+      :success #'on-pins-add
+      ))))
 
 (defmethod slack-ts ((this slack-message))
   (oref this ts))
@@ -275,24 +268,7 @@
 
 (defun slack-message-copy-link ()
   (interactive)
-  (let* ((ts (slack-get-ts))
-         (team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id team))
-         (msg (or (slack-room-find-message room ts)
-                  (slack-room-find-thread-message room ts)))
-         (template "https://%s.slack.com/archives/%s/p%s%s"))
-    (if msg
-        (kill-new
-         (format template
-                 (oref team domain)
-                 slack-current-room-id
-                 (replace-regexp-in-string "\\." "" ts)
-                 (if (slack-message-thread-messagep msg)
-                     (format "?thread_ts=%s&cid=%s"
-                             (oref msg thread-ts)
-                             slack-current-room-id)
-                   "")))
-      (error "Message Not Found"))))
+  (slack-buffer-copy-link slack-current-buffer (slack-get-ts)))
 
 (defmethod slack-message-star-added ((m slack-message))
   (oset m is-starred t))
@@ -324,23 +300,30 @@
 
 (defun slack-message-remove-star ()
   (interactive)
-  (let ((team (slack-team-find slack-current-team-id))
-        (url slack-message-stars-remove-url))
+  (let ((url slack-message-stars-remove-url))
     (if (eq major-mode 'slack-file-info-mode)
         (if-let* ((file-id (slack-get-file-id)))
-            (slack-file-process-star-api url team file-id)
-          (slack-file-comment-process-star-api url team))
-      (slack-message-process-star-api url team))))
+            (slack-file-process-star-api url
+                                         (slack-team-find slack-current-team-id)
+                                         file-id)
+          (slack-file-comment-process-star-api
+           url
+           (slack-team-find slack-current-team-id)))
+      (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))))
 
 (defun slack-message-add-star ()
   (interactive)
-  (let ((team (slack-team-find slack-current-team-id))
+  (let ((team )
         (url slack-message-stars-add-url))
     (if (eq major-mode 'slack-file-info-mode)
         (if-let* ((file-id (slack-get-file-id)))
-            (slack-file-process-star-api url team file-id)
-          (slack-file-comment-process-star-api url team))
-      (slack-message-process-star-api url team))))
+            (slack-file-process-star-api url
+                                         (slack-team-find slack-current-team-id)
+                                         file-id)
+          (slack-file-comment-process-star-api
+           url
+           (slack-team-find slack-current-team-id)))
+      (slack-buffer-add-star slack-current-buffer (slack-get-ts)))))
 
 (defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (oref m ts)))

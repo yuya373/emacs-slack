@@ -25,9 +25,9 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-buffer)
+(require 'slack-room-buffer)
 
-(defclass slack-message-compose-buffer (slack-buffer) ())
+(defclass slack-message-compose-buffer (slack-room-buffer) ())
 
 (defmethod slack-buffer-name ((_this slack-message-compose-buffer))
   (format "%s Compose Message" (call-next-method)))

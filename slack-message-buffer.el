@@ -25,10 +25,10 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-buffer)
+(require 'slack-room-buffer)
 
-(defclass slack-message-buffer (slack-buffer)
-  ((oldest-ts :initform nil :type (or null string))
+(defclass slack-message-buffer (slack-room-buffer)
+  ((oldest :initform nil :type (or null string))
    (last-read :initform nil :type (or null string))))
 
 
@@ -43,9 +43,12 @@
 
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
-  (let ((buffer (call-next-method)))
+  (let ((has-buffer (get-buffer (slack-buffer-name this)))
+        (buffer (call-next-method)))
     (with-current-buffer buffer
-      (slack-buffer-insert-latest-messages this))
+      (slack-buffer-insert-latest-messages this)
+      (unless has-buffer
+        (goto-char (marker-position lui-input-marker))))
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
@@ -73,6 +76,10 @@
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
+  (if-let* ((messages (slack-room-sorted-messages (oref this room)))
+            (oldest-message (car messages)))
+      (oset this oldest (oref oldest-message ts)))
+
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-mode)
@@ -81,7 +88,7 @@
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (goto-char (point-min))
       (let ((lui-time-stamp-position nil))
-        (lui-insert (slack-room-previous-link (oref this room)) t)))
+        (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t)))
     (oset (oref this room) buffer this)
     buf))
 
@@ -147,6 +154,146 @@
   (with-slots (room team) this
     (let ((buf (slack-create-message-share-buffer room team ts)))
       (slack-buffer-display buf))))
+
+(defmethod slack-buffer-add-reaction-to-message
+  ((this slack-message-buffer) reaction ts)
+  (with-slots (room team) this
+    (slack-message-reaction-add reaction ts room team)))
+
+(defmethod slack-buffer-remove-reaction-from-message
+  ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (let* ((message (slack-room-find-message room ts))
+           ;; TODO
+           (reactions (slack-message-reactions message))
+           (reaction (slack-message-reaction-select reactions)))
+      (if-let* ((file-comment-id (slack-get-file-comment-id)))
+          (slack-file-comment-add-reaction file-comment-id reaction team)
+        (slack-message-reaction-remove reaction ts room team)))))
+
+(defmethod slack-buffer-pins-remove ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (slack-message-pins-request slack-message-pins-remove-url
+                                room team ts)))
+
+(defmethod slack-buffer-pins-add ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (slack-message-pins-request slack-message-pins-add-url
+                                room team ts)))
+
+(defmethod slack-buffer-copy-link ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (or (slack-room-find-message room ts)
+                           (slack-room-find-thread-message room ts)))
+              (template "https://%s.slack.com/archives/%s/p%s%s"))
+        (kill-new
+         (format template
+                 (oref team domain)
+                 (oref room id)
+                 (replace-regexp-in-string "\\." "" ts)
+                 (if (slack-message-thread-messagep message)
+                     (format "?thread_ts=%s&cid=%s"
+                             (oref message thread-ts)
+                             (oref room id))
+                   ""))))))
+
+(defmethod slack-buffer-remove-star ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-remove-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
+
+(defmethod slack-buffer-add-star ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-add-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
+
+(defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
+  (when (and message (string< (oref message ts) (oref this oldest)))
+    (oset this oldest (oref message ts))))
+
+(defmethod slack-buffer-load-history ((this slack-message-buffer))
+  (with-slots (room team oldest buffer) this
+    (let ((current-ts (let ((change (next-single-property-change (point) 'ts)))
+                        (when change
+                          (get-text-property change 'ts))))
+          (cur-point (point)))
+      (cl-labels
+          ((update-buffer
+            (messages)
+            (with-current-buffer buffer
+              (slack-buffer-widen
+               (let ((inhibit-read-only t))
+                 (goto-char (point-min))
+
+                 (if-let* ((loading-message-end (slack-buffer-ts-eq (point-min)
+                                                                    (point-max)
+                                                                    oldest)))
+                     (delete-region (point-min) loading-message-end)
+                   (message "loading-message-end not found, oldest: %s" oldest))
+
+                 (set-marker lui-output-marker (point-min))
+
+                 (let ((lui-time-stamp-position nil))
+                   (if (and messages (< 0 (length messages)))
+                       (lui-insert (format "%s\n"(slack-room-previous-link room)))
+                     (lui-insert "(no more messages)\n")))
+
+                 (cl-loop for m in messages
+                          do (slack-buffer-insert m team t))
+                 (lui-recover-output-marker)))
+              (if current-ts
+                  (slack-buffer-goto current-ts)
+                (goto-char cur-point))))
+           (after-success
+            ()
+            (let ((messages (cl-remove-if #'(lambda (e)
+                                              (or (string< oldest e)
+                                                  (string= oldest e)))
+                                          (slack-room-sorted-messages room)
+                                          :key #'(lambda (e) (oref e ts)))))
+              (update-buffer messages)
+              (slack-buffer-update-oldest this (car messages)))))
+        (slack-room-history-request room team
+                                    :oldest oldest
+                                    :after-success #'after-success)))))
+
+(defmethod slack-buffer-display-pins-list ((this slack-message-buffer))
+  (with-slots (room team) this
+    (cl-labels
+        ((on-pins-list (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-room-pins-list")
+                        (let* ((buf (slack-create-pinned-items-buffer
+                                     room team (plist-get data :items))))
+                          (slack-buffer-display buf)))))
+      (slack-request
+       (slack-request-create
+        slack-room-pins-list-url
+        team
+        :params (list (cons "channel" (oref room id)))
+        :success #'on-pins-list)))))
+
+(defmethod slack-buffer-display-user-profile ((this slack-message-buffer))
+  (with-slots (room team) this
+    (let* ((members (cl-remove-if
+                     #'(lambda (e)
+                         (or (slack-user-self-p e team)
+                             (slack-user-hidden-p
+                              (slack-user--find e team))))
+                     (slack-room-get-members room)))
+           (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
+                               members))
+           (user-id (if (eq 1 (length members))
+                        (car members)
+                      (slack-select-from-list (user-alist "Select User: ")))))
+      (let ((buf (slack-create-user-profile-buffer team user-id)))
+        (slack-buffer-display buf)))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
