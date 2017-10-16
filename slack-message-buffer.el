@@ -75,6 +75,9 @@
           (error "Can't start thread from broadcasted message"))
       (slack-buffer-display buf))))
 
+(defmethod slack-buffer-major-mode ((this slack-message-buffer))
+  'slack-mode)
+
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
   (if-let* ((messages (slack-room-sorted-messages (oref this room)))
             (oldest-message (car messages)))
@@ -82,7 +85,7 @@
 
   (let ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-mode)
+      (funcall (slack-buffer-major-mode this))
       (setq slack-current-buffer this)
       (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
@@ -147,7 +150,7 @@
     (let ((buf (slack-create-edit-message-buffer room team ts)))
       (slack-buffer-display buf))))
 
-(defun slack-create-message-buffer (room team)
+(defmethod slack-create-message-buffer ((room slack-room) team)
   (slack-message-buffer :room room :team team))
 
 (defmethod slack-buffer-share-message ((this slack-message-buffer) ts)

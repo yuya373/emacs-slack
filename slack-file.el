@@ -301,12 +301,7 @@
   (interactive)
   (let* ((team (slack-team-select))
          (room (slack-file-room-obj team)))
-    (with-slots (buffer) room
-      (if buffer
-          (slack-file-create-buffer team)
-        (slack-room-history-request room team
-                                    :after-success
-                                    #'(lambda () (slack-file-create-buffer team)))))))
+    (slack-room-display room team)))
 
 (cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success async)
   (cl-labels
