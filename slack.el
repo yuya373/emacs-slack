@@ -28,6 +28,9 @@
 (require 'subr-x)
 (require 'oauth2)
 
+(when (not (fboundp 'if-let*))
+  (defalias 'if-let* #'if-let))
+
 (require 'slack-team)
 (require 'slack-channel)
 (require 'slack-im)
