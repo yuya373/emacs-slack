@@ -672,30 +672,29 @@
   (setq lui-input-function 'slack-file-comment--add))
 
 (defun slack-file-comment--add (message)
-  (let ((file-id slack-current-file-id)
-        (team (slack-team-find slack-current-team-id)))
-    (slack-file-comment-add-request file-id
-                                    message
-                                    team)))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-send-message buf message)))
 
 (defun slack-file-display ()
   (interactive)
-  (let* ((line (thing-at-point 'line))
-         (id (get-text-property (- (point) (line-beginning-position)) 'file line))
-         (team (slack-team-find slack-current-team-id)))
-    (cl-labels
-        ((open (file team)
-               (if-let* ((buf (slack-buffer-create file team)))
-                   (progn
-                     (slack-file--display file buf team)
-                     (funcall slack-buffer-function buf)))))
-      (let ((file (slack-file-find id team)))
-        (if file
-            (with-slots (comments comments-count) file
-              (if (<= comments-count (length comments))
-                  (open file team)
-                (slack-file-request-info id 1 team #'open)))
-          (slack-file-request-info id 1 team #'open))))))
+  (let ((id (get-text-property (- (point) (line-beginning-position)) 'file (thing-at-point 'line))))
+    (if-let* ((buf slack-current-buffer))
+        (slack-buffer-display-file buf id)
+      (let* ((line (thing-at-point 'line))
+             (team (slack-team-find slack-current-team-id)))
+        (cl-labels
+            ((open (file team)
+                   (if-let* ((buf (slack-buffer-create file team)))
+                       (progn
+                         (slack-file--display file buf team)
+                         (funcall slack-buffer-function buf)))))
+          (let ((file (slack-file-find id team)))
+            (if file
+                (with-slots (comments comments-count) file
+                  (if (<= comments-count (length comments))
+                      (open file team)
+                    (slack-file-request-info id 1 team #'open)))
+              (slack-file-request-info id 1 team #'open))))))))
 
 (defun slack-file--display (file buf team)
   (with-current-buffer buf
@@ -704,14 +703,8 @@
     (lui-insert (slack-to-string file team))))
 
 (defun slack-redisplay (file team)
-  (if-let* ((buffer (get-buffer (slack-room-buffer-name file))))
-      (with-current-buffer buffer
-        (let ((cur-point (point))
-              (max (marker-position lui-output-marker)))
-          (slack-file--display file buffer team)
-          (if (and (<= (point-min) cur-point)
-                   (< cur-point max))
-              (goto-char cur-point))))))
+  (if-let* ((buf (slack-create-file-info-buffer team file)))
+      (slack-buffer-redisplay buf)))
 
 (defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
@@ -727,6 +720,10 @@
     (slack-message-star-api-request url
                                     (list (slack-message-star-api-params file))
                                     team)))
+
+(defmethod slack-file-comments-loaded-p ((this slack-file))
+  (with-slots (comments comments-count) this
+    (<= comments-count (length comments))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
