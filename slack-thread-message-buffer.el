@@ -46,7 +46,6 @@
               (slack-buffer-insert message team t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))))))
-    (oset this buffer buf)
     buf))
 
 (defun slack-thread-message-buffer-on-killed ()
