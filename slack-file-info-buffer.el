@@ -41,11 +41,14 @@
     (with-current-buffer buf
       (slack-file-info-mode)
       (setq slack-current-buffer this)
-      (let ((inhibit-read-only t))
-        (delete-region (point-min) lui-output-marker))
-      (with-slots (file team) this
-        (lui-insert (slack-to-string file team))))
+      (slack-buffer--insert this))
     buf))
+
+(defmethod slack-buffer--insert ((this slack-file-info-buffer))
+  (let ((inhibit-read-only t))
+    (delete-region (point-min) lui-output-marker))
+  (with-slots (file team) this
+    (lui-insert (slack-to-string file team))))
 
 (defun slack-create-file-info-buffer (team file)
   (slack-file-info-buffer :team team :file file))
@@ -58,7 +61,7 @@
   (with-current-buffer (slack-buffer-buffer this)
     (let ((cur-point (point))
           (max (marker-position lui-output-marker)))
-      (slack-buffer-init-buffer this)
+      (slack-buffer--insert this)
       (if (and (<= (point-min) cur-point)
                (< cur-point max))
           (goto-char cur-point)))))

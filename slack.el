@@ -62,6 +62,7 @@
 (require 'slack-pinned-items-buffer)
 (require 'slack-user-profile-buffer)
 (require 'slack-file-list-buffer)
+(require 'slack-file-info-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)
