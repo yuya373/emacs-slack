@@ -102,13 +102,14 @@
         (and room (oset room buffer nil)))))
 
 (cl-defmethod slack-buffer-update ((this slack-message-buffer) message &key replace)
-  (let ((buffer (slack-buffer-buffer this)))
-    (with-slots (room team) this
-      (if (slack-buffer-in-current-frame buffer)
-          (slack-room-update-mark room team message)
-        (slack-room-inc-unread-count room))
-      (if replace (slack-buffer-replace this message)
-        (with-current-buffer buffer (slack-buffer-insert message team))))))
+  (if-let* ((buffer (get-buffer (slack-buffer-name this))))
+      (with-slots (room team) this
+        (if (slack-buffer-in-current-frame buffer)
+            (slack-buffer-update-mark this message)
+          (slack-room-inc-unread-count room))
+        (if replace (slack-buffer-replace this message)
+          (with-current-buffer buffer (slack-buffer-insert message team)))
+        (slack-buffer-update-last-read this message))))
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
