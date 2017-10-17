@@ -68,7 +68,7 @@
     (let ((buf (slack-thread-message-buffer :room room
                                             :team team
                                             :thread-ts thread-ts)))
-      (push buf thread-message-buffers)
+      (push buf (oref room thread-message-buffers))
       buf)))
 
 (defmethod slack-buffer-display-message-compose-buffer
