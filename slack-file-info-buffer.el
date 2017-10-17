@@ -66,7 +66,15 @@
                (< cur-point max))
           (goto-char cur-point)))))
 
+(defmethod slack-buffer-add-reaction-to-message
+  ((this slack-file-info-buffer) reaction _ts)
+  (with-slots (file team) this
+    (slack-file-add-reaction (oref file id) reaction team)))
 
+(defmethod slack-buffer-add-reaction-to-file-comment
+  ((this slack-file-info-buffer) reaction id)
+  (with-slots (team) this
+    (slack-file-comment-add-reaction id reaction team)))
 
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here
