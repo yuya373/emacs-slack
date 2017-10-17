@@ -40,7 +40,6 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-file-info-mode)
-      (setq slack-current-buffer this)
       (slack-buffer--insert this))
     buf))
 

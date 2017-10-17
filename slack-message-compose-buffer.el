@@ -36,7 +36,6 @@
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-edit-message-mode)
-      (setq slack-current-buffer this)
       (setq buffer-read-only nil)
       (erase-buffer)
       (message "C-c C-c to send edited msg"))

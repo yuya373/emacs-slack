@@ -37,8 +37,6 @@
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-thread-mode)
-      (setq slack-current-buffer this)
-      (slack-buffer-enable-emojify)
       (goto-char lui-input-marker)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (add-hook 'kill-buffer-hook 'slack-thread-message-buffer-on-killed)

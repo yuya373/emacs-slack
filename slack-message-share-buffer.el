@@ -36,8 +36,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-edit-message-mode)
-      (setq slack-current-buffer this))
+      (slack-edit-message-mode))
     buf))
 
 (defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)

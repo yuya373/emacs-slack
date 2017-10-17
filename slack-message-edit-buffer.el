@@ -39,7 +39,6 @@
            (message (slack-room-find-message room ts)))
       (with-current-buffer buf
         (slack-edit-message-mode)
-        (setq slack-current-buffer this)
         (insert (slack-message-get-text message)))
       buf)))
 

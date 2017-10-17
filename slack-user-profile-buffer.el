@@ -38,7 +38,6 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-info-mode)
-      (setq slack-current-buffer this)
       (let ((inhibit-read-only t))
         (setq buffer-read-only nil)
         (erase-buffer)

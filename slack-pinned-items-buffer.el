@@ -39,7 +39,6 @@
          (buf-header (propertize "Pinned Items\n" 'face header-face)))
     (with-current-buffer buf
       (slack-info-mode)
-      (setq slack-current-buffer this)
       (let ((inhibit-read-only t))
         (delete-region (point-min) lui-output-marker))
       (let ((lui-time-stamp-position nil))

@@ -86,7 +86,6 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
-      (setq slack-current-buffer this)
       (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (goto-char (point-min))

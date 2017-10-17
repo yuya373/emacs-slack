@@ -43,12 +43,16 @@
 (defmethod slack-buffer-name ((this slack-buffer))
   "*Slack*")
 
-(defmethod slack-buffer-init-buffer ((this slack-buffer))
-  (let ((buf (generate-new-buffer (slack-buffer-name this))))
-    (with-current-buffer buf
-      (slack-buffer-enable-emojify)
-      (setq slack-current-buffer this))
+(defmethod slack-buffer-init-buffer :after (this)
+  (if-let* ((buf (get-buffer (slack-buffer-name this))))
+      (with-current-buffer buf
+        (slack-buffer-enable-emojify)
+        (setq slack-current-buffer this))
     buf))
+
+
+(defmethod slack-buffer-init-buffer ((this slack-buffer))
+  (generate-new-buffer (slack-buffer-name this)))
 
 (defmethod slack-buffer-send-message ((this slack-buffer) _message)
   (let ((buffer (slack-buffer-buffer this)))
