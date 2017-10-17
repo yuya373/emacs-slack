@@ -164,6 +164,11 @@
   (with-slots (room team) this
     (slack-message-reaction-add reaction ts room team)))
 
+(defmethod slack-buffer-add-reaction-to-file-comment
+  ((this slack-message-buffer) reaction id)
+  (with-slots (team) this
+    (slack-file-comment-add-reaction id reaction team)))
+
 (defmethod slack-buffer-remove-reaction-from-message
   ((this slack-message-buffer) ts)
   (with-slots (room team) this
