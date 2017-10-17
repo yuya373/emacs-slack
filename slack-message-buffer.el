@@ -170,15 +170,16 @@
     (slack-file-comment-add-reaction id reaction team)))
 
 (defmethod slack-buffer-remove-reaction-from-message
-  ((this slack-message-buffer) ts)
+  ((this slack-message-buffer) ts &optional file-comment-id)
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
            ;; TODO
-           (reactions (slack-message-reactions message))
+           (reactions (if file-comment-id
+                          (slack-message-reactions
+                           (oref (oref message file) initial-comment))
+                        (slack-message-reactions message)))
            (reaction (slack-message-reaction-select reactions)))
-      (if-let* ((file-comment-id (slack-get-file-comment-id)))
-          (slack-file-comment-add-reaction file-comment-id reaction team)
-        (slack-message-reaction-remove reaction ts room team)))))
+      (slack-message-reaction-remove reaction ts room team))))
 
 (defmethod slack-buffer-pins-remove ((this slack-message-buffer) ts)
   (with-slots (room team) this

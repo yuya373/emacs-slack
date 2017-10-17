@@ -92,7 +92,10 @@
                                               file-id
                                               (slack-team-find slack-current-team-id))
         (slack-file-remove-reaction file-id (slack-team-find slack-current-team-id)))
-    (slack-buffer-remove-reaction-from-message slack-current-buffer (slack-get-ts))
+    (slack-buffer-remove-reaction-from-message slack-current-buffer
+                                               (slack-get-ts)
+                                               (slack-get-file-comment-id))
+
     ;; (let* ((ts (slack-get-ts))
     ;;        (msg (slack-room-find-message room ts))
     ;;        (reactions (if (and
