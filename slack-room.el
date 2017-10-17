@@ -97,17 +97,17 @@
 ;;             )
 ;;         (open)))))
 
-(cl-defun slack-room-create-buffer-bg (room team)
-  (cl-labels
-      ((create-buffer ()
-                      (tracking-add-buffer
-                       (slack-room-with-buffer room team
-                         (slack-room-insert-messages room buf team)))))
-    (if (< (length (oref room messages)) 1)
-        (slack-room-history-request room team
-                                    :after-success #'(lambda () (create-buffer))
-                                    :async t)
-      (create-buffer))))
+;; (cl-defun slack-room-create-buffer-bg (room team)
+;;   (cl-labels
+;;       ((create-buffer ()
+;;                       (tracking-add-buffer
+;;                        (slack-room-with-buffer room team
+;;                          (slack-room-insert-messages room buf team)))))
+;;     (if (< (length (oref room messages)) 1)
+;;         (slack-room-history-request room team
+;;                                     :after-success #'(lambda () (create-buffer))
+;;                                     :async t)
+;;       (create-buffer))))
 
 (cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."

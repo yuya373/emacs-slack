@@ -44,15 +44,14 @@
 
 (defmethod slack-room-update-buffer ((this slack-room) team message replace)
   (if-let* ((buffer (oref this buffer)))
-      (progn
-        (slack-buffer-update buffer message :replace replace)
-        (slack-room-inc-unread-count this)
-        (and slack-buffer-create-on-notify
-             (slack-room-history-request
-              this team
-              :after-success #'(lambda ()
-                                 (slack-buffer-buffer
-                                  (slack-create-message-buffer this team))))))))
+           (slack-buffer-update buffer message :replace replace)
+           (and slack-buffer-create-on-notify
+                (slack-room-history-request
+                 this team
+                 :after-success #'(lambda ()
+                                    (tracking-add-buffer
+                                     (slack-buffer-buffer
+                                      (slack-create-message-buffer this team))))))))
 
 (defmethod slack-message-update--buffer ((this _slack-thread-message-update))
   (with-slots (room team replace message) this
