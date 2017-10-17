@@ -76,5 +76,14 @@
   (with-slots (team) this
     (slack-file-comment-add-reaction id reaction team)))
 
+(defmethod slack-buffer-remove-reaction-from-message
+  ((this slack-file-info-buffer) _ts &optional file-comment-id)
+  (with-slots (file team) this
+    (if file-comment-id
+        (slack-file-comment-remove-reaction file-comment-id
+                                            (oref file id)
+                                            team)
+      (slack-file-remove-reaction (oref file id) team))))
+
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

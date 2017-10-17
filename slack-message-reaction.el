@@ -81,28 +81,10 @@
 
 (defun slack-message-remove-reaction ()
   (interactive)
-  (if (eq major-mode 'slack-file-info-mode)
-      (if-let* ((file-id slack-current-file-id)
-                (file-comment-id (slack-get-file-comment-id)))
-          (slack-file-comment-remove-reaction file-comment-id
-                                              file-id
-                                              (slack-team-find slack-current-team-id))
-        (slack-file-remove-reaction file-id (slack-team-find slack-current-team-id)))
-    (slack-buffer-remove-reaction-from-message slack-current-buffer
-                                               (slack-get-ts)
-                                               (slack-get-file-comment-id))
-
-    ;; (let* ((ts (slack-get-ts))
-    ;;        (msg (slack-room-find-message room ts))
-    ;;        (reactions (if (and
-    ;;                        (slack-file-share-message-p msg)
-    ;;                        (slack-get-file-comment-id))
-    ;;                       (slack-message-reactions
-    ;;                        (oref (oref msg file) initial-comment))
-    ;;                     (slack-message-reactions msg)))
-    ;;        (reaction (slack-message-reaction-select reactions)))
-    ;;   (slack-message-reaction-remove reaction ts room team))
-    ))
+  (slack-buffer-remove-reaction-from-message
+   slack-current-buffer
+   (slack-get-ts)
+   (slack-get-file-comment-id)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)
