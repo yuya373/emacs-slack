@@ -29,13 +29,13 @@
 
 (defclass slack-file-list-buffer (slack-message-buffer) ())
 
-(defmethod slack-buffer-name ((this slack-file-list-buffer))
-  (format "%s%s" (call-next-method) " Files"))
+(defmethod slack-buffer-name ((_this slack-file-list-buffer))
+  (format "%s" (call-next-method)))
 
 (defmethod slack-buffer-major-mode ((this slack-file-list-buffer))
   'slack-info-mode)
 
-(defmethod slack-create-message-buffer ((room slack-room) team)
+(defmethod slack-create-message-buffer ((room slack-file-room) team)
   (slack-file-list-buffer :room room :team team))
 
 (provide 'slack-file-list-buffer)
