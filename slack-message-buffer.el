@@ -46,7 +46,6 @@
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
         (buffer (call-next-method)))
     (with-current-buffer buffer
-      (slack-buffer-insert-latest-messages this)
       (unless has-buffer
         (goto-char (marker-position lui-input-marker))))
     buffer))
@@ -79,10 +78,6 @@
   'slack-mode)
 
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
-  (if-let* ((messages (slack-room-sorted-messages (oref this room)))
-            (oldest-message (car messages)))
-      (oset this oldest (oref oldest-message ts)))
-
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
@@ -90,8 +85,8 @@
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (goto-char (point-min))
       (let ((lui-time-stamp-position nil))
-        (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t)))
-    (oset (oref this room) buffer this)
+        (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))
+      (slack-buffer-insert-latest-messages this))
     buf))
 
 (defun slack-message-buffer-on-killed ()
