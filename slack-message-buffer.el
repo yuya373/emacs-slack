@@ -146,7 +146,12 @@
       (slack-buffer-display buf))))
 
 (defmethod slack-create-message-buffer ((room slack-room) team)
-  (slack-message-buffer :room room :team team))
+  (if-let* ((buffer (slack-buffer-find 'slack-message-buffer
+                                       room
+                                       team)))
+      buffer
+    (slack-message-buffer :room room :team team)))
+
 
 (defmethod slack-buffer-share-message ((this slack-message-buffer) ts)
   (with-slots (room team) this

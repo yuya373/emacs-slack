@@ -579,7 +579,7 @@
   (cl-labels
       ((open (buf)
              (slack-buffer-display buf)))
-    (let* ((buf (oref room buffer)))
+    (let* ((buf (slack-buffer-find 'slack-message-buffer room team)))
       (if buf (open buf)
         (slack-room-history-request
          room team
