@@ -39,6 +39,16 @@
                                 room-name))
                    room-name))))
 
+
+(defmethod slack-buffer-init-buffer :after ((this slack-room-buffer))
+  (with-slots (room team) this
+    (let* ((class (eieio-object-class-name this)))
+      (unless (slack-buffer-find class room team)
+        (push (get-buffer (slack-buffer-name class room team))
+              (slot-value team class))
+        )))
+  this)
+
 (defmethod slack-buffer-find :static ((class slack-room-buffer) room team)
   (if-let* ((buf (cl-find-if
                   #'(lambda (buf)
