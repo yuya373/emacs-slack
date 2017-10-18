@@ -39,7 +39,7 @@
       (slack-thread-mode)
       (goto-char lui-input-marker)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
-      (add-hook 'kill-buffer-hook 'slack-thread-message-buffer-on-killed)
+      (add-hook 'kill-buffer-hook 'slack-thread-message-buffer-on-killed nil t)
       (with-slots (room thread-ts team) this
         (if-let* ((message (slack-room-find-message room thread-ts)))
             (progn
