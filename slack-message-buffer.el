@@ -81,19 +81,16 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
-      (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (goto-char (point-min))
       (let ((lui-time-stamp-position nil))
         (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))
       (slack-buffer-insert-latest-messages this))
+    (with-slots (room team) this
+      (let* ((class (eieio-object-class-name this)))
+        (slack-buffer-push-new-3 team class room)))
     buf))
 
-(defun slack-message-buffer-on-killed ()
-  (if-let* ((buf (and (boundp 'slack-current-buffer)
-                      slack-current-buffer)))
-      (with-slots (room) buf
-        (and room (oset room buffer nil)))))
 
 (cl-defmethod slack-buffer-update ((this slack-message-buffer) message &key replace)
   (with-slots (room team) this

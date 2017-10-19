@@ -36,7 +36,11 @@
   'slack-info-mode)
 
 (defmethod slack-create-message-buffer ((room slack-file-room) team)
-  (slack-file-list-buffer :room room :team team))
+  (if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
+                                       room
+                                       team)))
+      buffer
+    (slack-file-list-buffer :room room :team team)))
 
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here

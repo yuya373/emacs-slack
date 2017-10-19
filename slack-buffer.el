@@ -33,6 +33,27 @@
 (defclass slack-buffer ()
   ((team :initarg :team :type slack-team)))
 
+(defun slack-buffer-push-new-3 (team class a)
+  (let ((buf (get-buffer (slack-buffer-name class a team))))
+    (unless (slack-buffer-find class a team)
+      (push buf
+            (slot-value team class)))
+    buf))
+
+(defun slack-buffer-push-new-4 (team class a b)
+  (let ((buf (get-buffer (slack-buffer-name class a b team))))
+    (unless (slack-buffer-find class a b team)
+      (push buf (slot-value team class)))
+    buf))
+
+(defmethod slack-buffer-find :static ((class slack-buffer) room team)
+  (if-let* ((buf (cl-find-if
+                  #'(lambda (buf)
+                      (string= (buffer-name buf)
+                               (slack-buffer-name class room team)))
+                  (slot-value team class))))
+      (with-current-buffer buf slack-current-buffer)))
+
 (defmethod slack-buffer-buffer ((this slack-buffer))
   (or (get-buffer (slack-buffer-name this))
       (slack-buffer-init-buffer this)))
@@ -43,10 +64,19 @@
 (defmethod slack-buffer-name ((this slack-buffer))
   "*Slack*")
 
+(defun slack-message-buffer-on-killed ()
+  (if-let* ((buf slack-current-buffer)
+            (class (eieio-object-class-name buf))
+            (cb (current-buffer)))
+      (set-slot-value (oref buf team) class
+                      (cl-remove-if #'(lambda (e) (equal e cb))
+                                    (slot-value (oref buf team) class)))))
+
 (defmethod slack-buffer-init-buffer :after (this)
   (if-let* ((buf (get-buffer (slack-buffer-name this))))
       (with-current-buffer buf
         (slack-buffer-enable-emojify)
+        (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
         (setq slack-current-buffer this))
     buf))
 
@@ -202,8 +232,8 @@
 ;;           (if replace (slack-buffer-replace buffer msg)
 ;;             (with-current-buffer buffer (slack-buffer-insert msg team))))
 ;;       (slack-room-inc-unread-count room)
-;;       (and slack-buffer-create-on-notify
-;;            (slack-room-create-buffer-bg room team)))))
+;; (and slack-buffer-create-on-notify
+;;      (slack-room-create-buffer-bg room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
@@ -271,19 +301,6 @@
 ;;                     (lambda ()
 ;;                       (equal (get-text-property (point) 'ts)
 ;;                              (oref msg ts))))))))
-
-(defun slack-buffer-create-info (buf-name insert-func)
-  (let ((buf (or (get-buffer buf-name)
-                 (generate-new-buffer buf-name))))
-    (with-current-buffer buf
-      (setq buffer-read-only nil)
-      (erase-buffer)
-      (goto-char (point-min))
-      (funcall insert-func)
-      (goto-char (point-max))
-      (setq buffer-read-only t)
-      (slack-buffer-enable-emojify))
-    buf))
 
 ;; (defun slack-buffer-delete-message (buf-name ts)
 ;;   (let ((buf (get-buffer buf-name)))

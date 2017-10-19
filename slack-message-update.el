@@ -45,7 +45,7 @@
 (defmethod slack-room-update-buffer ((this slack-room) team message replace)
   (if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
       (slack-buffer-update buffer message :replace replace)
-    (slack-room-inc-unread-count room)
+    (slack-room-inc-unread-count this)
     (and slack-buffer-create-on-notify
          (slack-room-history-request
           this team

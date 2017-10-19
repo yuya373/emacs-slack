@@ -103,6 +103,17 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-message-compose-buffer :initform nil)
    ))
 
+(defmethod slack-team-kill-buffers ((this slack-team))
+  (cl-loop for e in (append (oref this slack-message-buffer)
+                            (oref this slack-file-info-buffer)
+                            (oref this slack-file-list-buffer)
+                            (oref this slack-message-edit-buffer)
+                            (oref this slack-pinned-items-buffer)
+                            (oref this slack-user-profile-buffer)
+                            (oref this slack-thread-message-buffer)
+                            (oref this slack-message-compose-buffer))
+           do (kill-buffer e)))
+
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
               slack-teams))

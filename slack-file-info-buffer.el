@@ -30,11 +30,30 @@
 (defclass slack-file-info-buffer (slack-buffer)
   ((file :initarg :file :type slack-file)))
 
+(defmethod slack-buffer-name :static ((class slack-file-info-buffer) file team)
+  (format "*Slack - %s File: %s"
+          (oref team name)
+          (or (oref file title)
+              (oref file name)
+              (oref file id))))
+
+(defun slack-create-file-info-buffer (team file)
+  (if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                       file
+                                       team)))
+      buffer
+    (slack-file-info-buffer :team team :file file)))
+
+(defmethod slack-buffer-init-buffer :after ((this slack-file-info-buffer))
+  (with-slots (file team) this
+    (let ((class (eieio-object-class-name this)))
+      (slack-buffer-push-new-3 team class file))))
+
 (defmethod slack-buffer-name ((this slack-file-info-buffer))
-  (format "%s File: %s"
-          (call-next-method)
-          (with-slots (title name id) (oref this file)
-            (or title name id))))
+  (with-slots (file team) this
+    (slack-buffer-name (eieio-object-class-name this)
+                       file
+                       team)))
 
 (defmethod slack-buffer-init-buffer ((this slack-file-info-buffer))
   (let ((buf (call-next-method)))
@@ -48,9 +67,6 @@
     (delete-region (point-min) lui-output-marker))
   (with-slots (file team) this
     (lui-insert (slack-to-string file team))))
-
-(defun slack-create-file-info-buffer (team file)
-  (slack-file-info-buffer :team team :file file))
 
 (defmethod slack-buffer-send-message ((this slack-file-info-buffer) message)
   (with-slots (file team) this

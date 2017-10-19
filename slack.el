@@ -247,6 +247,7 @@ never means never show typing indicator."
   (interactive)
   (cl-labels ((start
                (team)
+               (slack-team-kill-buffers team)
                (slack-ws-close team)
                (when (slack-team-need-token-p team)
                  (slack-request-token team))

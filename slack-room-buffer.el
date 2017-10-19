@@ -32,34 +32,13 @@
 
 (defmethod slack-buffer-name :static ((class slack-room-buffer) room team)
   (if-let* ((room-name (slack-room-name room)))
-      (format  "*Slack* : %s"
-               (or (and slack-display-team-name
-                        (format "%s - %s"
-                                (oref team name)
-                                room-name))
-                   room-name))))
-
-
-(defmethod slack-buffer-init-buffer :after ((this slack-room-buffer))
-  (with-slots (room team) this
-    (let* ((class (eieio-object-class-name this)))
-      (unless (slack-buffer-find class room team)
-        (push (get-buffer (slack-buffer-name class room team))
-              (slot-value team class))
-        )))
-  this)
-
-(defmethod slack-buffer-find :static ((class slack-room-buffer) room team)
-  (if-let* ((buf (cl-find-if
-                  #'(lambda (buf)
-                      (string= (buffer-name buf)
-                               (slack-buffer-name class room team)))
-                  (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
+      (format  "*Slack - %s : %s"
+               (oref team name)
+               room-name)))
 
 (defmethod slack-buffer-name ((this slack-room-buffer))
   (with-slots (room team) this
-      (slack-buffer-name (eieio-object-class-name this) room team)))
+    (slack-buffer-name (eieio-object-class-name this) room team)))
 
 
 (provide 'slack-room-buffer)
