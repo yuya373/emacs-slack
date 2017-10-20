@@ -64,24 +64,24 @@
       (slack-buffer-send-message buf message)))
 
 (defun slack-thread-send-message (room team message thread-ts)
-  (if-let* ((message (slack-message-prepare-links (slack-escape-message message)
-                                                  team))
-            (broadcast (y-or-n-p (format "Also send to %s ? "
-                                         (slack-room-name room)))))
-      (progn
-        (slack-message-inc-id team)
-        (with-slots (message-id sent-message self-id) team
-          (let* ((payload (list :id message-id
-                                :channel (oref room id)
-                                :reply_broadcast broadcast
-                                :thread_ts thread-ts
-                                :type "message"
-                                :user self-id
-                                :text message))
-                 (json (json-encode payload))
-                 (obj (slack-message-create payload team :room room)))
-            (slack-ws-send json team)
-            (puthash message-id obj sent-message))))))
+  (let ((message (slack-message-prepare-links (slack-escape-message message)
+                                              team))
+        (broadcast (y-or-n-p (format "Also send to %s ? "
+                                     (slack-room-name room)))))
+    (progn
+      (slack-message-inc-id team)
+      (with-slots (message-id sent-message self-id) team
+        (let* ((payload (list :id message-id
+                              :channel (oref room id)
+                              :reply_broadcast broadcast
+                              :thread_ts thread-ts
+                              :type "message"
+                              :user self-id
+                              :text message))
+               (json (json-encode payload))
+               (obj (slack-message-create payload team :room room)))
+          (slack-ws-send json team)
+          (puthash message-id obj sent-message))))))
 
 (defmethod slack-thread-update-buffer ((thread slack-thread) message room team &key replace)
   (if-let* ((buf (slack-thread-message-buffer-find (oref thread thread-ts)
