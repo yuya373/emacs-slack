@@ -133,7 +133,7 @@
 (defmethod slack-room-replies-url ((_room slack-im))
   "https://slack.com/api/im.replies")
 
-(defmethod slack-thread-request-messages ((thread slack-thread) room team)
+(cl-defmethod slack-thread-request-messages ((thread slack-thread) room team &key after-success)
   (with-slots (thread-ts) thread
     (with-slots (id) room
       (cl-labels
@@ -143,7 +143,9 @@
                         (let ((messages (mapcar #'(lambda (payload) (slack-message-create payload team :room room))
                                                 (plist-get data :messages))))
                           (mapc #'(lambda (m) (slack-thread-add-message thread m))
-                                (cl-remove-if #'slack-message-thread-parentp messages))))))
+                                (cl-remove-if #'slack-message-thread-parentp messages))))
+                       (if after-success
+                           (funcall after-success))))
 
         (slack-request
          (slack-request-create
@@ -154,26 +156,35 @@
           :success #'on-success))))))
 
 (defmethod slack-thread-show-messages ((thread slack-thread) room team)
-  (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
-         (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
-    (if (< (length messages) (oref thread reply-count))
-        (progn
-          (slack-thread-request-messages thread room team)
-          (setq messages (oref thread messages))))
-    (with-current-buffer buf
-      (slack-thread-insert-as-root-message (oref thread root) team)
-      (cl-loop for m in messages
-               do (slack-buffer-insert m team)))
-    (funcall slack-buffer-function buf)
-    (oset thread unread-count 0)
-    (let* ((msg (car (last messages)))
-           (room (and msg (slack-room-find (oref msg channel) team))))
-      (when (and msg room)
-        (slack-room-update-last-read room msg)
-        (slack-room-update-mark room team msg))
-      (when (and msg room (string< (oref thread last-read) (oref msg ts)))
-        (slack-thread-update-last-read thread msg)
-        (slack-thread-update-mark thread room msg team)))))
+  (cl-labels
+      ((after-success ()
+                      (let ((buf (slack-create-thread-message-buffer
+                                  room team (oref thread thread-ts))))
+                        (slack-buffer-display buf))))
+    (slack-thread-request-messages thread room team
+                                   :after-success #'after-success))
+
+  ;; (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
+  ;;        (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
+  ;;   (if (< (length messages) (oref thread reply-count))
+  ;;       (progn
+  ;;         (slack-thread-request-messages thread room team)
+  ;;         (setq messages (oref thread messages))))
+  ;;   (with-current-buffer buf
+  ;;     (slack-thread-insert-as-root-message (oref thread root) team)
+  ;;     (cl-loop for m in messages
+  ;;              do (slack-buffer-insert m team)))
+  ;;   (funcall slack-buffer-function buf)
+  ;;   (oset thread unread-count 0)
+  ;;   (let* ((msg (car (last messages)))
+  ;;          (room (and msg (slack-room-find (oref msg channel) team))))
+  ;;     (when (and msg room)
+  ;;       (slack-room-update-last-read room msg)
+  ;;       (slack-room-update-mark room team msg))
+  ;;     (when (and msg room (string< (oref thread last-read) (oref msg ts)))
+  ;;       (slack-thread-update-last-read thread msg)
+  ;;       (slack-thread-update-mark thread room msg team))))
+  )
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m
