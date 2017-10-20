@@ -74,11 +74,12 @@
 
 (defmethod slack-buffer-init-buffer :after (this)
   (if-let* ((buf (get-buffer (slack-buffer-name this))))
-      (with-current-buffer buf
-        (slack-buffer-enable-emojify)
-        (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
-        (setq slack-current-buffer this))
-    buf))
+      (progn
+        (with-current-buffer buf
+          (slack-buffer-enable-emojify)
+          (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
+          (setq slack-current-buffer this))
+        buf)))
 
 
 (defmethod slack-buffer-init-buffer ((this slack-buffer))
