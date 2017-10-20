@@ -33,14 +33,14 @@
 (defclass slack-buffer ()
   ((team :initarg :team :type slack-team)))
 
-(defun slack-buffer-push-new-3 (team class a)
+(defun slack-buffer-push-new-3 (class a team)
   (let ((buf (get-buffer (slack-buffer-name class a team))))
     (unless (slack-buffer-find class a team)
       (push buf
             (slot-value team class)))
     buf))
 
-(defun slack-buffer-push-new-4 (team class a b)
+(defun slack-buffer-push-new-4 (class a b team)
   (let ((buf (get-buffer (slack-buffer-name class a b team))))
     (unless (slack-buffer-find class a b team)
       (push buf (slot-value team class)))

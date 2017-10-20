@@ -47,7 +47,7 @@
 (defmethod slack-buffer-init-buffer :after ((this slack-file-info-buffer))
   (with-slots (file team) this
     (let ((class (eieio-object-class-name this)))
-      (slack-buffer-push-new-3 team class file))))
+      (slack-buffer-push-new-3 class file team))))
 
 (defmethod slack-buffer-name ((this slack-file-info-buffer))
   (with-slots (file team) this

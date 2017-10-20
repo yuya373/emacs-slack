@@ -67,10 +67,10 @@
         (slack-edit-message-mode)
         (insert (slack-message-get-text message)))
       (with-slots (room ts team) this
-        (slack-buffer-push-new-4 team
-                                 (eieio-object-class-name this)
+        (slack-buffer-push-new-4 (eieio-object-class-name this)
                                  room
-                                 ts))
+                                 ts
+                                 team))
       buf)))
 
 (defmethod slack-buffer-send-message ((this slack-message-edit-buffer) message)

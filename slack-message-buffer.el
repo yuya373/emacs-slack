@@ -88,7 +88,7 @@
       (slack-buffer-insert-latest-messages this))
     (with-slots (room team) this
       (let* ((class (eieio-object-class-name this)))
-        (slack-buffer-push-new-3 team class room)))
+        (slack-buffer-push-new-3 class room team)))
     buf))
 
 
