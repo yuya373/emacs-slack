@@ -91,6 +91,19 @@
     (with-slots (room team thread-ts) this
       (slack-thread-send-message room team message thread-ts))))
 
+(defmethod slack-buffer-add-reaction-to-message
+  ((this slack-thread-message-buffer) reaction ts)
+  (with-slots (room team) this
+    (slack-message-reaction-add reaction ts room team)))
+
+(defmethod slack-buffer-remove-reaction-from-message
+  ((this slack-thread-message-buffer) ts &optional _file-comment-id)
+  (with-slots (room team) this
+    (let* ((message (or (slack-room-find-message room ts)
+                        (slack-room-find-thread-message room ts)))
+           (reaction (slack-message-reaction-select
+                      (slack-message-reactions message))))
+      (slack-message-reaction-remove reaction ts room team))))
 
 
 (provide 'slack-thread-message-buffer)
