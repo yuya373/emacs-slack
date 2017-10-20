@@ -30,22 +30,46 @@
 (defclass slack-thread-message-buffer (slack-room-buffer)
   ((thread-ts :initarg :thread-ts :type string)))
 
+(defmethod slack-buffer-find :static ((class slack-thread-message-buffer) room ts team)
+  (slack-buffer-find-4 class room ts team))
+
+(defun slack-create-thread-message-buffer (room team thread-ts)
+  (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+                                      room thread-ts team)))
+      buf
+    (slack-thread-message-buffer :room room
+                                 :team team
+                                 :thread-ts thread-ts)))
+
+(defmethod slack-buffer-name :static ((class slack-thread-message-buffer) room ts team)
+  (format "*Slack - %s : %s Thread - %s"
+          (oref team name)
+          (slack-room-name room)
+          ts))
+
 (defmethod slack-buffer-name ((this slack-thread-message-buffer))
-  (format "%s Thread: %s" (call-next-method) (oref this thread-ts)))
+  (with-slots (room thread-ts team) this
+    (slack-buffer-name 'slack-thread-message-buffer
+                       room thread-ts team)))
 
 (defmethod slack-buffer-init-buffer ((this slack-thread-message-buffer))
-  (let* ((buf (call-next-method)))
+  (let* ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
       (slack-thread-mode)
       (goto-char lui-input-marker)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
-      (add-hook 'kill-buffer-hook 'slack-thread-message-buffer-on-killed nil t)
       (with-slots (room thread-ts team) this
         (if-let* ((message (slack-room-find-message room thread-ts)))
             (progn
               (slack-buffer-insert message team t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))))))
+    (with-slots (room thread-ts team) this
+      (slack-buffer-push-new-4 (eieio-object-class-name this)
+                               room
+                               thread-ts
+                               team))
+
     buf))
 
 (defun slack-thread-message-buffer-on-killed ()
@@ -61,15 +85,6 @@
   (cl-find-if #'(lambda (e) (string= e thread-ts))
               (oref room thread-message-buffers)
               :key #'(lambda (e) (oref e thread-ts))))
-
-(defun slack-create-thread-message-buffer (room team thread-ts)
-  (if-let* ((buf (slack-thread-message-buffer-find thread-ts room)))
-      buf
-    (let ((buf (slack-thread-message-buffer :room room
-                                            :team team
-                                            :thread-ts thread-ts)))
-      (push buf (oref room thread-message-buffers))
-      buf)))
 
 (defmethod slack-buffer-display-message-compose-buffer
   ((this slack-thread-message-buffer))

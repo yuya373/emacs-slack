@@ -30,6 +30,12 @@
 (defclass slack-message-edit-buffer (slack-room-buffer)
   ((ts :initarg :ts :type string)))
 
+(defun slack-buffer-find-4 (class a b team)
+  (if-let* ((buf (cl-find-if #'(lambda (buf)
+                                 (string= (buffer-name buf)
+                                          (slack-buffer-name class a b team)))
+                             (slot-value team class))))
+      (with-current-buffer buf slack-current-buffer)))
 
 (defun slack-create-edit-message-buffer (room team ts)
   (if-let* ((buffer (slack-buffer-find 'slack-message-edit-buffer
@@ -39,13 +45,7 @@
 
 (defmethod slack-buffer-find :static
   ((class slack-message-edit-buffer) room ts team)
-  (if-let* ((buf (cl-find-if
-                  #'(lambda (buf)
-                      (string= (buffer-name buf)
-                               (slack-buffer-name class room
-                                                  ts team)))
-                  (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
+  (slack-buffer-find-4 class room ts team))
 
 (defmethod slack-buffer-name :static
   ((class slack-message-edit-buffer) room  ts team)
