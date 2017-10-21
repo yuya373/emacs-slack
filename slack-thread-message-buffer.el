@@ -77,20 +77,6 @@
 
     buf))
 
-(defun slack-thread-message-buffer-on-killed ()
-  (if-let* ((buf slack-current-buffer))
-      (with-slots (room thread-ts) buf
-        (with-slots (thread-message-buffers) room
-          (setq thread-message-buffers
-                (cl-remove-if #'(lambda (e) (string= e thread-ts))
-                              thread-message-buffers
-                              :key #'(lambda (e) (oref e thread-ts))))))))
-
-(defun slack-thread-message-buffer-find (thread-ts room)
-  (cl-find-if #'(lambda (e) (string= e thread-ts))
-              (oref room thread-message-buffers)
-              :key #'(lambda (e) (oref e thread-ts))))
-
 (defmethod slack-buffer-display-message-compose-buffer
   ((this slack-thread-message-buffer))
   (with-slots (room team thread-ts) this
