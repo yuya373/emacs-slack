@@ -142,10 +142,15 @@
           ((on-success (&key data &allow-other-keys)
                        (slack-request-handle-error
                         (data "slack-thread-request-messages")
-                        (let ((messages (mapcar #'(lambda (payload) (slack-message-create payload team :room room))
+                        (let ((messages (mapcar #'(lambda (payload)
+                                                    (slack-message-create payload
+                                                                          team
+                                                                          :room room))
                                                 (plist-get data :messages))))
-                          (mapc #'(lambda (m) (slack-thread-add-message thread m))
-                                (cl-remove-if #'slack-message-thread-parentp messages))))
+                          (oset thread messages
+                                (slack-room-sort-messages
+                                 (cl-remove-if #'slack-message-thread-parentp
+                                               messages)))))
                        (if after-success
                            (funcall after-success))))
 

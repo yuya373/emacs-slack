@@ -172,13 +172,18 @@
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
 
+(defmethod slack-message-thread ((this slack-message) _room)
+  (oref this thread))
+
+(defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
+  (let ((message (slack-room-find-message room
+                                          (oref this broadcast-thread-ts))))
+    (slack-message-thread message)))
+
 (defun slack-room-find-thread (room ts)
   (let ((message (slack-room-find-message room ts)))
     (when message
-      (if (object-of-class-p message 'slack-reply-broadcast-message)
-          (progn
-            (setq message (slack-room-find-message room (oref message broadcast-thread-ts)))))
-      (and message (oref message thread)))))
+      (slack-message-thread message room))))
 
 (defmethod slack-room-team ((room slack-room))
   (slack-team-find (oref room team-id)))
