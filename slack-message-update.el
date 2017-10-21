@@ -59,7 +59,7 @@
     (let* ((parent (slack-room-find-thread-parent room message))
            (thread (and parent (slack-message-get-thread parent team))))
       (when parent
-        (slack-room-update-buffer room team parent replace)
+        (slack-room-update-buffer room team parent t)
         (when thread
           (slack-thread-add-message thread message)
           (slack-thread-update-buffer thread message room team :replace replace))))))

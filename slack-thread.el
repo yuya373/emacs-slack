@@ -84,8 +84,10 @@
           (puthash message-id obj sent-message))))))
 
 (defmethod slack-thread-update-buffer ((thread slack-thread) message room team &key replace)
-  (if-let* ((buf (slack-thread-message-buffer-find (oref thread thread-ts)
-                                                   room)))
+  (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+                                    room
+                                    (oref thread thread-ts)
+                                    team)))
       (if replace
           (slack-buffer-replace buf message)
         (with-current-buffer (slack-buffer-buffer buf)
