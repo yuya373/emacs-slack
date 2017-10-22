@@ -41,7 +41,9 @@
   (if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                        file
                                        team)))
-      buffer
+      (progn
+        (oset buffer file file)
+        buffer)
     (slack-file-info-buffer :team team :file file)))
 
 (defmethod slack-buffer-init-buffer :after ((this slack-file-info-buffer))
