@@ -101,7 +101,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-user-profile-buffer :initform nil :type (or null list))
    (slack-thread-message-buffer :initform nil :type (or null list))
    (slack-message-share-buffer :initform nil :type (or null list))
-   (slack-message-compose-buffer :initform nil :type (or null list))
+   (slack-room-message-compose-buffer :initform nil :type (or null list))
    (slack-thread-message-compose-buffer :initform nil :type (or null list))
    ))
 
@@ -114,7 +114,7 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (oref this slack-user-profile-buffer)
                             (oref this slack-thread-message-buffer)
                             (oref this slack-message-share-buffer)
-                            (oref this slack-message-compose-buffer)
+                            (oref this slack-room-message-compose-buffer)
                             (oref this slack-thread-message-compose-buffer))
            do (kill-buffer e)))
 

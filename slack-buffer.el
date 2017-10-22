@@ -85,12 +85,6 @@
 (defmethod slack-buffer-init-buffer ((this slack-buffer))
   (generate-new-buffer (slack-buffer-name this)))
 
-(defmethod slack-buffer-send-message ((this slack-buffer) _message)
-  (let ((buffer (slack-buffer-buffer this)))
-    (with-current-buffer buffer
-      (kill-buffer)
-      (if (> (count-windows) 1) (delete-window)))))
-
 (defmethod slack-buffer-replace ((this slack-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)

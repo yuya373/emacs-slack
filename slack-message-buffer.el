@@ -106,8 +106,7 @@
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
-    (let ((buf (slack-message-compose-buffer :room room
-                                             :team team)))
+    (let ((buf (slack-create-room-message-compose-buffer room team)))
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-message-delete ((this slack-message-buffer) ts)

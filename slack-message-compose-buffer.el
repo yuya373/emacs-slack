@@ -25,27 +25,15 @@
 ;;; Code:
 
 (require 'eieio)
-(require 'slack-room-buffer)
+(require 'slack-buffer)
 
-(defclass slack-message-compose-buffer (slack-room-buffer) ())
+(defclass slack-message-compose-buffer (slack-buffer) ())
 
-(defmethod slack-buffer-name ((_this slack-message-compose-buffer))
-  (format "%s Compose Message" (call-next-method)))
-
-(defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
-  (let* ((buf (call-next-method)))
-    (with-current-buffer buf
-      (slack-edit-message-mode)
-      (setq buffer-read-only nil)
-      (erase-buffer)
-      (message "C-c C-c to send edited msg"))
-    buf))
-
-(defmethod slack-buffer-send-message ((this slack-message-compose-buffer) message)
+(defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
   (let ((buffer (slack-buffer-buffer this)))
-    (with-slots (room team) this
-      (slack-message-send-internal message (oref room id) team)
-      (call-next-method))))
+    (with-current-buffer buffer
+      (kill-buffer)
+      (if (> (count-windows) 1) (delete-window)))))
 
 
 (provide 'slack-message-compose-buffer)
