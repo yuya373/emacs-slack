@@ -103,6 +103,21 @@
                       (slack-message-reactions message))))
       (slack-message-reaction-remove reaction ts room team))))
 
+(defmethod slack-buffer-add-star ((this slack-thread-message-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-add-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
+
+(defmethod slack-buffer-remove-star ((this slack-thread-message-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-remove-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
 
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here
