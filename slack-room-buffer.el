@@ -40,6 +40,14 @@
   (with-slots (room team) this
     (slack-buffer-name (eieio-object-class-name this) room team)))
 
+(defmethod slack-buffer-display-file ((this slack-room-buffer) file-id)
+  (with-slots (team) this
+    (cl-labels
+        ((open (file _)
+               (slack-buffer-display
+                (slack-create-file-info-buffer team file))))
+      (slack-file-request-info file-id 1 team #'open))))
+
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

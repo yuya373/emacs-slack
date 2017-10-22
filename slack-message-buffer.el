@@ -303,13 +303,5 @@
       (let ((buf (slack-create-user-profile-buffer team user-id)))
         (slack-buffer-display buf)))))
 
-(defmethod slack-buffer-display-file ((this slack-message-buffer) file-id)
-  (with-slots (team) this
-    (cl-labels
-        ((open (file _)
-               (slack-buffer-display
-                (slack-create-file-info-buffer team file))))
-      (slack-file-request-info file-id 1 team #'open))))
-
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
