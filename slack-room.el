@@ -252,7 +252,9 @@
            :key #'(lambda (m) (oref m ts))))
 
 (defun slack-room-reject-thread-message (messages)
-  (cl-remove-if #'(lambda (m) (slack-message-thread-messagep m))
+  (cl-remove-if #'(lambda (m) (and (not (eq (eieio-object-class-name m)
+                                            'slack-reply-broadcast-message))
+                                   (slack-message-thread-messagep m)))
                 messages))
 
 (defmethod slack-room-sorted-messages ((room slack-room))
@@ -288,8 +290,10 @@
        (remove-duplicates (threads messages)
                           (let ((ret))
                             (dolist (message messages)
-                              (if (and (not (oref message thread-ts))
-                                       (not (slack-message-thread-parentp message)))
+                              (if (or (eq (eieio-object-class-name message)
+                                          'slack-reply-broadcast-message)
+                                      (and (not (oref message thread-ts))
+                                           (not (slack-message-thread-parentp message))))
                                   (push message ret)))
                             (setq ret (append ret threads))
                             ret)))
