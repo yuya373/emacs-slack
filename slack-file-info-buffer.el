@@ -102,5 +102,34 @@
                                             team)
       (slack-file-remove-reaction (oref file id) team))))
 
+(defmethod slack-buffer-add-star ((this slack-file-info-buffer) _ts)
+  (let ((url slack-message-stars-add-url)
+        (file-comment-id (slack-get-file-comment-id)))
+    (with-slots (file team) this
+      (if file-comment-id
+          (slack-with-file-comment file-comment-id file
+            (slack-message-star-api-request
+             url
+             (list (slack-message-star-api-params file-comment))
+             team))
+        (slack-message-star-api-request url
+                                        (list (slack-message-star-api-params file))
+                                        team)))))
+
+(defmethod slack-buffer-remove-star ((this slack-file-info-buffer) _ts)
+  (let ((url slack-message-stars-remove-url)
+        (file-comment-id (slack-get-file-comment-id)))
+    (with-slots (file team) this
+      (if file-comment-id
+          (slack-with-file-comment file-comment-id file
+            (slack-message-star-api-request url
+                                            (list (slack-message-star-api-params
+                                                   file-comment))
+                                            team))
+        (slack-message-star-api-request url
+                                        (list (slack-message-star-api-params
+                                               file))
+                                        team)))))
+
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

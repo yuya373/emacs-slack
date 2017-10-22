@@ -302,30 +302,11 @@
 
 (defun slack-message-remove-star ()
   (interactive)
-  (let ((url slack-message-stars-remove-url))
-    (if (eq major-mode 'slack-file-info-mode)
-        (if-let* ((file-id (slack-get-file-id)))
-            (slack-file-process-star-api url
-                                         (slack-team-find slack-current-team-id)
-                                         file-id)
-          (slack-file-comment-process-star-api
-           url
-           (slack-team-find slack-current-team-id)))
-      (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))))
+  (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))
 
 (defun slack-message-add-star ()
   (interactive)
-  (let ((team )
-        (url slack-message-stars-add-url))
-    (if (eq major-mode 'slack-file-info-mode)
-        (if-let* ((file-id (slack-get-file-id)))
-            (slack-file-process-star-api url
-                                         (slack-team-find slack-current-team-id)
-                                         file-id)
-          (slack-file-comment-process-star-api
-           url
-           (slack-team-find slack-current-team-id)))
-      (slack-buffer-add-star slack-current-buffer (slack-get-ts)))))
+  (slack-buffer-add-star slack-current-buffer (slack-get-ts)))
 
 (defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (oref m ts)))
