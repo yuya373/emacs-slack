@@ -80,9 +80,8 @@
 (defmethod slack-buffer-display-message-compose-buffer
   ((this slack-thread-message-buffer))
   (with-slots (room team thread-ts) this
-    (let ((buf (slack-thread-message-compose-buffer :room room
-                                                    :team team
-                                                    :ts thread-ts)))
+    (let ((buf (slack-create-thread-message-compose-buffer
+                room thread-ts team)))
       (slack-buffer-display buf))))
 
 
