@@ -100,6 +100,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-pinned-items-buffer :initform nil)
    (slack-user-profile-buffer :initform nil)
    (slack-thread-message-buffer :initform nil)
+   (slack-message-share-buffer :initform nil)
    (slack-message-compose-buffer :initform nil)
    ))
 
@@ -111,6 +112,7 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (oref this slack-pinned-items-buffer)
                             (oref this slack-user-profile-buffer)
                             (oref this slack-thread-message-buffer)
+                            (oref this slack-message-share-buffer)
                             (oref this slack-message-compose-buffer))
            do (kill-buffer e)))
 
