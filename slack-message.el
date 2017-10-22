@@ -173,7 +173,9 @@
              ((and subtype (string-equal "file_mention" subtype))
               (apply #'slack-file-mention-message "file-mention"
                      (slack-collect-slots 'slack-file-mention-message payload)))
-             ((and subtype (string-equal "reply_broadcast" subtype))
+             ((or (and subtype (or (string-equal "reply_broadcast" subtype)
+                                   (string= "thread_broadcast" subtype)))
+                  (plist-get payload :reply_broadcast))
               (slack-reply-broadcast-message-create payload))
              ((plist-member payload :user)
               (apply #'slack-user-message "user-msg"
