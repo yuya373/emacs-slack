@@ -548,6 +548,7 @@
           (slack-notify-abandon-reconnect)
           (slack-ws-close team t))
       (cl-incf reconnect-count)
+      (slack-team-kill-buffers team)
       (slack-ws-close team nil)
       (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
       (cl-labels
