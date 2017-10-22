@@ -136,18 +136,6 @@
        (widen)
        ,@body)))
 
-(defun slack-get-buffer-create (room)
-  (let* ((buf-name (slack-room-buffer-name room))
-         (buffer (get-buffer buf-name)))
-    (unless buffer
-      (setq buffer (generate-new-buffer buf-name))
-      (slack-room-setup-buffer room buffer)
-      (slack-room-set-buffer room buffer))
-    buffer))
-
-(defmethod slack-buffer-set-current-room-id ((room slack-room))
-  (set (make-local-variable 'slack-current-room-id) (oref room id)))
-
 (defun slack-buffer-set-current-team-id (team)
   (set (make-local-variable 'slack-current-team-id) (oref team id)))
 
@@ -162,14 +150,6 @@
   (let ((point (slack-buffer-ts-eq (point-min) (point-max) ts)))
     (when point
       (goto-char point))))
-
-(cl-defun slack-buffer-create (room team)
-  (let ((buffer (slack-get-buffer-create room)))
-    (with-current-buffer buffer
-      (slack-buffer-set-current-room-id room)
-      (slack-buffer-set-current-team-id team)
-      (slack-buffer-enable-emojify))
-    buffer))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
@@ -214,21 +194,6 @@
                  (mapcar #'buffer-name
                          (mapcar #'window-buffer (window-list)))
                  :test #'string=)))
-
-;; (cl-defun slack-buffer-update (room msg team &key replace)
-;;   (let* ((buf-name (slack-room-buffer-name room))
-;;          (buffer (get-buffer buf-name)))
-;;     (if buffer
-;;         (progn
-;;           (slack-room-update-last-read room msg)
-;;           (if (slack-buffer-in-current-frame buffer)
-;;               (slack-room-update-mark room team msg)
-;;             (slack-room-inc-unread-count room))
-;;           (if replace (slack-buffer-replace buffer msg)
-;;             (with-current-buffer buffer (slack-buffer-insert msg team))))
-;;       (slack-room-inc-unread-count room)
-;; (and slack-buffer-create-on-notify
-;;      (slack-room-create-buffer-bg room team)))))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
@@ -287,22 +252,6 @@
                if (string= (get-text-property i 'ts)
                            ts)
                return i)))
-
-;; (defun slack-buffer-replace (buffer msg)
-;;   (with-current-buffer buffer
-;;     (slack-buffer-widen
-;;      (let ((team (slack-team-find slack-current-team-id)))
-;;        (lui-replace (slack-message-to-string msg team)
-;;                     (lambda ()
-;;                       (equal (get-text-property (point) 'ts)
-;;                              (oref msg ts))))))))
-
-;; (defun slack-buffer-delete-message (buf-name ts)
-;;   (let ((buf (get-buffer buf-name)))
-;;     (and buf
-;;          (with-current-buffer buf
-;;            (lui-delete (lambda () (equal (get-text-property (point) 'ts)
-;;                                          ts)))))))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

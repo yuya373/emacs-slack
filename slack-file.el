@@ -292,11 +292,6 @@
 
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
-(defun slack-file-create-buffer (team)
-  (funcall slack-buffer-function
-           (slack-room-with-buffer (slack-file-room-obj team) team
-             (slack-room-insert-messages (slack-file-room-obj team) buf team))))
-
 (defun slack-file-list ()
   (interactive)
   (let* ((team (slack-team-select))
@@ -521,12 +516,6 @@
                     (cons "comment" comment))
       :success #'on-file-comment-edit))))
 
-(defmethod slack-room-setup-buffer ((room slack-file-room) buf)
-  (with-current-buffer buf
-    (slack-info-mode)
-    (slack-room-insert-previous-link room buf)
-    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)))
-
 
 (defmethod slack-file-image-spec ((file slack-file))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64) file
@@ -656,15 +645,6 @@
   (with-slots (name) this
     (format "*Slack File - %s*" name)))
 
-(defmethod slack-buffer-set-current-room-id ((this slack-file))
-  (set (make-local-variable 'slack-current-file-id) (oref this id)))
-
-(defmethod slack-room-setup-buffer ((_this slack-file) buf)
-  (with-current-buffer buf
-    (slack-file-info-mode)))
-
-(defmethod slack-room-set-buffer ((_this slack-file) _buf))
-
 (define-derived-mode slack-file-info-mode lui-mode "Slack File Info"
   ""
   (setq-local default-directory slack-default-directory)
@@ -679,22 +659,7 @@
   (interactive)
   (let ((id (get-text-property (- (point) (line-beginning-position)) 'file (thing-at-point 'line))))
     (if-let* ((buf slack-current-buffer))
-        (slack-buffer-display-file buf id)
-      (let* ((line (thing-at-point 'line))
-             (team (slack-team-find slack-current-team-id)))
-        (cl-labels
-            ((open (file team)
-                   (if-let* ((buf (slack-buffer-create file team)))
-                       (progn
-                         (slack-file--display file buf team)
-                         (funcall slack-buffer-function buf)))))
-          (let ((file (slack-file-find id team)))
-            (if file
-                (with-slots (comments comments-count) file
-                  (if (<= comments-count (length comments))
-                      (open file team)
-                    (slack-file-request-info id 1 team #'open)))
-              (slack-file-request-info id 1 team #'open))))))))
+        (slack-buffer-display-file buf id))))
 
 (defun slack-file--display (file buf team)
   (with-current-buffer buf

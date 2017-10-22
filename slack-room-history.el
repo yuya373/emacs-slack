@@ -71,16 +71,6 @@
               'oldest (slack-room-prev-link-info room)
               'class '_slack-file-search-history))
 
-(defmethod slack-room-insert-previous-link ((room slack-room) buf)
-  (when (slack-room-prev-link-info room)
-    (with-current-buffer buf
-      (slack-buffer-widen
-       (let* ((inhibit-read-only t)
-              (text (slack-room-previous-link room)))
-         (goto-char (point-min))
-         (insert (format "%s\n\n" text))
-         (set-marker lui-output-marker (point)))))))
-
 (defmethod slack-room-previous-link ((room slack-room))
   (when (slack-room-prev-link-info room)
     (slack-room-propertize-load-more
@@ -92,80 +82,10 @@
                              #'slack-room-history-load)
                            map)))))
 
-(defmethod slack-room-history--collect-meta ((this _slack-room-history))
-  this)
-
-(defmethod slack-room-history--collect-meta ((this _slack-search-history))
-  (oset this channel-id (get-text-property 0 'channel-id (thing-at-point 'line))))
-
-(defmethod slack-room-history--insert ((this _slack-room-history))
-  (with-slots (team room oldest current-ts) this
-    (slack-room-with-buffer room team
-      (slack-buffer-widen
-       (let ((inhibit-read-only t)
-             (loading-message-end (slack-buffer-ts-eq (point-min) (point-max) oldest))
-             (messages (slack-room-history--collect-message this))
-             (cur-point (point)))
-         (goto-char (point-min))
-         (when loading-message-end
-           (delete-region (point-min) loading-message-end))
-
-         (if (and messages (< 0 (length messages)))
-             (slack-room-insert-previous-link room buf)
-           (set-marker lui-output-marker (point-min))
-           (lui-insert "(no more messages)\n"))
-
-         (cl-loop for m in messages
-                  do (slack-buffer-insert m team t))
-         (unless current-ts
-           (goto-char cur-point))))
-      (lui-recover-output-marker)
-      (when current-ts
-        (slack-buffer-goto current-ts)))))
-
-(defmethod slack-room-history--request ((this _slack-room-history) after-success)
-  (with-slots (team room oldest) this
-    (slack-room-history-request room team :oldest oldest :after-success after-success)))
-
-(defmethod slack-room-history--collect-message ((this _slack-room-history))
-  (with-slots (team room oldest) this
-    (cl-remove-if #'(lambda (m)
-                      (or (string< oldest (oref m ts))
-                          (string= oldest (oref m ts))))
-                  (slack-room-sort-messages (copy-sequence (oref room messages))))))
-
-(defmethod slack-room-history--collect-message ((this _slack-search-history))
-  (with-slots (team room oldest channel-id) this
-    (let* ((messages (reverse (oref room messages)))
-           (nth (slack-search-get-index room messages oldest channel-id)))
-      (if nth
-          (nreverse (nthcdr (1+ nth) messages))))))
-
-(defmethod slack-room-history--collect-message ((this _slack-file-search-history))
-  (with-slots (team room oldest) this
-    (let* ((messages (reverse (oref room messages)))
-           (nth (slack-search-get-index room messages oldest)))
-      (if nth
-          (nreverse (nthcdr (1+ nth) messages))))))
-
 (defun slack-room-history-load ()
   (interactive)
   (if-let* ((buf slack-current-buffer))
-      (slack-buffer-load-history buf)
-    (let* ((cur-point (point))
-           (class (get-text-property 0 'class (thing-at-point 'line)))
-           (team (slack-team-find slack-current-team-id))
-           (prev-messages (make-instance class
-                                         :room (slack-room-find slack-current-room-id team)
-                                         :team team
-                                         :oldest (get-text-property 0 'oldest (thing-at-point 'line))
-                                         :current-ts (let ((change (next-single-property-change cur-point 'ts)))
-                                                       (when change
-                                                         (get-text-property change 'ts))))))
-      (slack-room-history--collect-meta prev-messages)
-      (slack-room-history--request prev-messages
-                                   #'(lambda ()
-                                       (slack-room-history--insert prev-messages))))))
+      (slack-buffer-load-history buf)))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)

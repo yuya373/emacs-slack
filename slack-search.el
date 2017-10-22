@@ -403,11 +403,5 @@
                                       next-page
                                       async)))))))
 
-(defmethod slack-room-setup-buffer ((room slack-search-result) buf)
-  (with-current-buffer buf
-    (slack-info-mode)
-    (slack-room-insert-previous-link room buf)
-    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)))
-
 (provide 'slack-search)
 ;;; slack-search.el ends here
