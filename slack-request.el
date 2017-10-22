@@ -79,49 +79,49 @@
     (cl-pushnew req (oref team waiting-requests) :test #'equal)))
 
 (defmethod slack-request-retry-request ((req slack-request-request) retry-after)
-  (slack-request-suspend-request req)
-  (unless (slack-team-request-suspended-p (oref req team))
-    (slack-team-run-retry-request-timer (oref req team) retry-after)))
+  ;; (slack-request-suspend-request req)
+  (run-at-time (+ 5 retry-after) nil #'(lambda () (slack-request req)))
+  ;; (unless (slack-team-request-suspended-p (oref req team))
+  ;;   (slack-team-run-retry-request-timer (oref req team) retry-after))
+  )
 
 (defmethod slack-request ((req slack-request-request))
   (let ((team (oref req team)))
-    (if (slack-team-request-suspended-p team)
-        (slack-request-suspend-request req)
+    (with-slots (url type success error params data parser sync files headers timeout) req
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (funcall success :data data)
+                       (oset team retry-after-timer nil))
+           (on-error (&key error-thrown symbol-status response data)
+                     (let ((retry-after-sec (string-to-number
+                                             (request-response-header response "retry-after"))))
+                       (when retry-after-sec
+                         (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
+                                            retry-after-sec
+                                            url
+                                            params)
+                                    team)
+                         (slack-request-retry-request req retry-after-sec)))
 
-      (with-slots (url type success error params data parser sync files headers timeout) req
-        (cl-labels
-            ((on-success (&key data &allow-other-keys)
-                         (funcall success :data data)
-                         (oset team retry-after-timer nil))
-             (on-error (&key error-thrown symbol-status response data)
-                       (let ((retry-after-sec (request-response-header response "retry-after")))
-                         (when retry-after-sec
-                           (slack-log (format "Retrying Request After: %s second \nURL: %s\nPARAMS: %s"
-                                              retry-after-sec
-                                              url
-                                              params)
-                                      team)
-                           (slack-request-retry-request req (string-to-number retry-after-sec))))
-
-                       (when (functionp error)
-                         (funcall error
-                                  :error-thrown error-thrown
-                                  :symbol-status symbol-status
-                                  :response response
-                                  :data data))))
-          (request
-           url
-           :type type
-           :sync sync
-           :params (cons (cons "token" (oref team token))
-                         params)
-           :data data
-           :files files
-           :headers headers
-           :parser parser
-           :success #'on-success
-           :error #'on-error
-           :timeout timeout))))))
+                     (when (functionp error)
+                       (funcall error
+                                :error-thrown error-thrown
+                                :symbol-status symbol-status
+                                :response response
+                                :data data))))
+        (request
+         url
+         :type type
+         :sync sync
+         :params (cons (cons "token" (oref team token))
+                       params)
+         :data data
+         :files files
+         :headers headers
+         :parser parser
+         :success #'on-success
+         :error #'on-error
+         :timeout timeout)))))
 
 
 (cl-defmacro slack-request-handle-error ((data req-name &optional handler) &body body)
