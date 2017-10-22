@@ -60,6 +60,8 @@
            (thread (and parent (slack-message-get-thread parent team))))
       (when parent
         (slack-room-update-buffer room team parent t)
+        (if (slack-reply-broadcast-message-p message)
+            (slack-room-update-buffer room team message replace))
         (when thread
           (slack-thread-add-message thread message)
           (slack-thread-update-buffer thread message room team :replace replace))))))
