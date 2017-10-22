@@ -119,5 +119,21 @@
                                               (slack-message-star-api-params message))
                                         team))))
 
+(defmethod slack-message-delete--buffer ((this _slack-thread-message-delete))
+  (with-slots (message room team) this
+    (let* ((parent (and message (slack-room-find-thread-parent room message)))
+           (thread (and parent (slack-message-get-thread parent team))))
+      (when thread
+        (slack-thread-delete-message thread message)
+        (if-let* ((buffer (oref room buffer)))
+            (slack-buffer-message-delete buffer (oref message ts)))
+        (slack-message-update parent team t)))))
+
+(cl-defmethod slack-buffer-update
+  ((this slack-thread-message-buffer) message &key replace)
+  (if replace (slack-buffer-replace this message)
+    (with-current-buffer (slack-buffer-buffer this)
+      (slack-buffer-insert message (oref this team)))))
+
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here

@@ -84,19 +84,25 @@
                :category 'slack)))))
 
 (defmethod slack-message-delete--buffer ((this _slack-message-delete))
-  (with-slots (message room) this
-    (when (and message (oref room buffer))
-      (slack-buffer-message-delete (oref room buffer) (oref message ts)))))
+  (with-slots (message room team) this
+    (and message
+         (if-let* ((buf (slack-buffer-find 'slack-message-buffer room team)))
+             (slack-buffer-message-delete buf (oref message ts))))))
 
 (defmethod slack-message-delete--buffer ((this _slack-thread-message-delete))
   (with-slots (message room team) this
-    (let* ((parent (and message (slack-room-find-thread-parent room message)))
-           (thread (and parent (slack-message-get-thread parent team))))
-      (when thread
-        (slack-thread-delete-message thread message)
-        (if-let* ((buffer (oref room buffer)))
-            (slack-buffer-message-delete buffer (oref message ts)))
-        (slack-message-update parent team t)))))
+    (when message
+      (if-let* ((parent (slack-room-find-thread-parent room message))
+                (thread (slack-message-get-thread parent team))
+                (ts (oref message ts))
+                (buf (slack-buffer-find 'slack-thread-message-buffer
+                                        room
+                                        (oref thread thread-ts)
+                                        team)))
+          (progn
+            (slack-thread-delete-message thread message)
+            (slack-buffer-message-delete buf ts)
+            (slack-message-update parent team t))))))
 
 (provide 'slack-message-delete)
 ;;; slack-message-delete.el ends here

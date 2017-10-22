@@ -48,6 +48,30 @@
                 (slack-create-file-info-buffer team file))))
       (slack-file-request-info file-id 1 team #'open))))
 
+(defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
+  (with-slots (room team) this
+    (if-let* ((message (slack-room-find-message room ts)))
+        (cl-labels
+            ((on-delete
+              (&key data &allow-other-keys)
+              (slack-request-handle-error
+               (data "slack-message-delete"))))
+          (if (yes-or-no-p "Are you sure you want to delete this message?")
+              (slack-request
+               (slack-request-create
+                slack-message-delete-url
+                team
+                :type "POST"
+                :params (list (cons "ts" (oref message ts))
+                              (cons "channel" (oref room id)))
+                :success #'on-delete))
+            (message "Canceled"))))))
+
+(defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
+  (let ((buffer (slack-buffer-buffer this)))
+    (with-current-buffer buffer
+      (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
+                                      ts))))))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

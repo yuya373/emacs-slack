@@ -38,6 +38,22 @@
 
 (defclass _slack-thread-message-update (_slack-message-update) ())
 
+(defmethod slack-message-update--buffer ((this _slack-thread-message-update))
+  (with-slots (room team replace message) this
+    (if-let* ((parent (slack-room-find-thread-parent room message)))
+        (progn
+          (slack-room-update-buffer room team parent t)
+          (if (slack-reply-broadcast-message-p message)
+              (slack-room-update-buffer room team message replace))
+          (if-let* ((thread (slack-message-get-thread parent team)))
+              (progn
+                ;; (slack-thread-add-message thread message)
+                (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+                                                  room
+                                                  (oref thread thread-ts)
+                                                  team)))
+                    (slack-buffer-update buf message :replace replace))))))))
+
 (defmethod slack-message-update--buffer ((this _slack-message-update))
   (with-slots (room message team replace) this
     (slack-room-update-buffer room team message replace)))
@@ -53,18 +69,6 @@
                              (tracking-add-buffer
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
-
-(defmethod slack-message-update--buffer ((this _slack-thread-message-update))
-  (with-slots (room team replace message) this
-    (let* ((parent (slack-room-find-thread-parent room message))
-           (thread (and parent (slack-message-get-thread parent team))))
-      (when parent
-        (slack-room-update-buffer room team parent t)
-        (if (slack-reply-broadcast-message-p message)
-            (slack-room-update-buffer room team message replace))
-        (when thread
-          (slack-thread-add-message thread message)
-          (slack-thread-update-buffer thread message room team :replace replace))))))
 
 (defmethod slack-message-update--notify ((this _slack-message-update))
   (with-slots (notify message room team) this

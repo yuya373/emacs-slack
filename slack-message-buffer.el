@@ -109,11 +109,6 @@
     (let ((buf (slack-create-room-message-compose-buffer room team)))
       (slack-buffer-display buf))))
 
-(defmethod slack-buffer-message-delete ((this slack-message-buffer) ts)
-  (let ((buffer (slack-buffer-buffer this)))
-    (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
-                                    ts)))))
-
 (defmethod slack-buffer-update-last-read ((this slack-message-buffer) message)
   (with-slots (last-read) this
     (if (or (null last-read)

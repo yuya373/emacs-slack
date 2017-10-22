@@ -83,16 +83,6 @@
           (slack-ws-send json team)
           (puthash message-id obj sent-message))))))
 
-(defmethod slack-thread-update-buffer ((thread slack-thread) message room team &key replace)
-  (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                    room
-                                    (oref thread thread-ts)
-                                    team)))
-      (if replace
-          (slack-buffer-replace buf message)
-        (with-current-buffer (slack-buffer-buffer buf)
-          (slack-buffer-insert message team)))))
-
 (defun slack-thread-buf-name (room thread-ts)
   (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))
 
@@ -238,9 +228,10 @@
                                  messages))))
 
 (defmethod slack-thread-add-message ((thread slack-thread) msg)
-  (with-slots (messages) thread
+  (with-slots (messages reply-count) thread
     (cl-pushnew msg messages :test #'slack-message-equal)
-    (setq messages (slack-room-sort-messages (copy-sequence messages)))))
+    (setq messages (slack-room-sort-messages (copy-sequence messages)))
+    (setq reply-count (length messages))))
 
 (defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))
@@ -349,9 +340,10 @@
                                       team))))))
 
 (defmethod slack-thread-delete-message ((thread slack-thread) message)
-  (with-slots (messages) thread
+  (with-slots (messages reply-count) thread
     (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref message ts)))
-                                 messages))))
+                                 messages))
+    (setq reply-count (length messages))))
 
 (defmethod slack-thread-update-mark ((thread slack-thread) room msg team)
   (with-slots (thread-ts) thread
