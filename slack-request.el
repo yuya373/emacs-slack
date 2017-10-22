@@ -75,7 +75,8 @@
     (apply #'make-instance 'slack-request-request ret)))
 
 (defmethod slack-request-suspend-request ((req slack-request-request))
-  (cl-pushnew req (oref team waiting-requests) :test #'equal))
+  (with-slots (team) req
+    (cl-pushnew req (oref team waiting-requests) :test #'equal)))
 
 (defmethod slack-request-retry-request ((req slack-request-request) retry-after)
   (slack-request-suspend-request req)
@@ -95,9 +96,12 @@
              (on-error (&key error-thrown symbol-status response data)
                        (let ((retry-after-sec (request-response-header response "retry-after")))
                          (when retry-after-sec
-                           (slack-log (format "!!!!retry-after-sec: %s, %s" retry-after-sec (numberp retry-after-sec)) team)
-                           ;; (slack-request-retry-request req (string-to-number retry-after-sec))
-                           ))
+                           (slack-log (format "Retrying Request After: %s second \nURL: %s\nPARAMS: %s"
+                                              retry-after-sec
+                                              url
+                                              params)
+                                      team)
+                           (slack-request-retry-request req (string-to-number retry-after-sec))))
 
                        (when (functionp error)
                          (funcall error
