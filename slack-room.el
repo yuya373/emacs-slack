@@ -177,8 +177,9 @@
 
 (defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
   (let ((message (slack-room-find-message room
-                                          (oref this broadcast-thread-ts))))
-    (slack-message-thread message)))
+                                          (or (oref this broadcast-thread-ts)
+                                              (oref this thread-ts)))))
+    (slack-message-thread message room)))
 
 (defun slack-room-find-thread (room ts)
   (let ((message (slack-room-find-message room ts)))
