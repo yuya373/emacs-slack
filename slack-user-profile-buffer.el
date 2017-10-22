@@ -30,14 +30,32 @@
 (defclass slack-user-profile-buffer (slack-buffer)
   ((user-id :initarg :user-id :type string)))
 
+(defun slack-create-user-profile-buffer (team user-id)
+  (if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
+                                    user-id team)))
+      buf
+    (slack-user-profile-buffer :team team
+                               :user-id user-id)))
+
+(defmethod slack-buffer-buffer ((this slack-user-profile-buffer))
+  (if-let* ((buf (get-buffer (slack-buffer-name this))))
+      (progn
+        (slack-buffer--insert this)
+        buf)
+    (slack-buffer-init-buffer this)))
+
+(defmethod slack-buffer-name :static ((class slack-user-profile-buffer) user-id team)
+  (format "*Slack - %s : Profile - %s*" (oref team name) (slack-user-name user-id team)))
+
 (defmethod slack-buffer-name ((this slack-user-profile-buffer))
   (with-slots (user-id team) this
-    (format "%s %s" (call-next-method) (slack-user-name user-id team))))
+    (slack-buffer-name 'slack-user-profile-buffer
+                       user-id
+                       team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
-  (let ((buf (call-next-method)))
+(defmethod slack-buffer--insert ((this slack-user-profile-buffer))
+  (let ((buf (get-buffer (slack-buffer-name this))))
     (with-current-buffer buf
-      (slack-info-mode)
       (let ((inhibit-read-only t))
         (setq buffer-read-only nil)
         (erase-buffer)
@@ -46,17 +64,19 @@
           (insert (slack-user-profile-to-string user-id team)))
         (setq buffer-read-only t)
         (slack-buffer-enable-emojify)
-        (goto-char (point-min))))
+        (goto-char (point-min))))))
+
+(defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
+  (let ((buf (call-next-method)))
+    (with-current-buffer buf
+      (slack-info-mode))
+    (slack-buffer--insert this)
     buf))
 
 (defmethod slack-buffer-display-im ((this slack-user-profile-buffer))
   (with-slots (user-id team) this
     (let ((im (slack-im-find-by-user-id user-id team)))
       (slack-room-display im team))))
-
-(defun slack-create-user-profile-buffer (team user-id)
-  (slack-user-profile-buffer :team team
-                             :user-id user-id))
 
 
 
