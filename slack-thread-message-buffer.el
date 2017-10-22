@@ -35,7 +35,7 @@
 
 (defun slack-create-thread-message-buffer (room team thread-ts)
   (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                      room thread-ts team)))
+                                    room thread-ts team)))
       buf
     (slack-thread-message-buffer :room room
                                  :team team
@@ -59,15 +59,15 @@
       (goto-char lui-input-marker)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (with-slots (room thread-ts team) this
-        (if-let* ((message (slack-room-find-message room thread-ts))
-                  (thread (slack-message-thread message room)))
+        (if-let* ((message (slack-room-find-message room thread-ts)))
             (progn
               (slack-buffer-insert message team t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))
-              (cl-loop for m in (oref thread messages)
-                       do (slack-buffer-insert m team))
-              ))))
+              (let ((thread (slack-message-thread message room)))
+                (and thread
+                     (cl-loop for m in (oref thread messages)
+                              do (slack-buffer-insert m team))))))))
 
     (with-slots (room thread-ts team) this
       (slack-buffer-push-new-4 (eieio-object-class-name this)
