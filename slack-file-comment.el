@@ -103,38 +103,11 @@
 (defmethod slack-message-star-api-params ((this slack-file-comment))
   (cons "file_comment" (oref this id)))
 
-(defun slack-file-comment-edit ()
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id (slack-get-file-comment-id))
-            (team (slack-team-find slack-current-team-id)))
-      (slack-with-file file-id team
-        (slack-with-file-comment file-comment-id file
-          (let* ((bufname "*Slack - Edit File Comment*")
-                 (buf (get-buffer-create bufname)))
-            (with-current-buffer buf
-              (slack-edit-file-comment-mode)
-              (setq buffer-read-only nil)
-              (erase-buffer)
-              (setq-local slack-current-file-id file-id)
-              (setq-local slack-current-file-comment-id file-comment-id)
-              (slack-buffer-set-current-team-id team)
-              (insert (oref file-comment comment)))
-            (funcall slack-buffer-function buf))))))
-
 (defun slack-file-comment-edit-commit ()
   (interactive)
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id slack-current-file-comment-id)
-            (team (slack-team-find slack-current-team-id))
-            (comment (buffer-substring-no-properties (point-min) (point-max))))
-
-      (progn
-        (slack-file-comment-edit-request file-id
-                                         file-comment-id
-                                         comment
-                                         team)
-        (kill-buffer)
-        (if (> (count-windows) 1) (delete-window)))))
+  (if-let* ((buf slack-current-buffer)
+            (message (buffer-substring-no-properties (point-min) (point-max))))
+      (slack-buffer-send-message buf message)))
 
 (defun slack-file-comment-delete ()
   (if-let* ((file-id slack-current-file-id)

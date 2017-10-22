@@ -131,5 +131,13 @@
                                                file))
                                         team)))))
 
+(defmethod slack-buffer-display-edit-message-buffer ((this slack-file-info-buffer) _ts)
+  (with-slots (file team) this
+    (let ((buf (slack-create-edit-file-comment-buffer
+                file
+                (slack-get-file-comment-id)
+                team)))
+      (slack-buffer-display buf))))
+
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here
