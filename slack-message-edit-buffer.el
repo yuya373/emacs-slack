@@ -27,8 +27,9 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
-(defclass slack-message-edit-buffer (slack-room-buffer)
-  ((ts :initarg :ts :type string)))
+(defclass slack-message-edit-buffer (slack-message-compose-buffer)
+  ((room :initarg :room :type slack-room)
+   (ts :initarg :ts :type string)))
 
 (defun slack-buffer-find-4 (class a b team)
   (if-let* ((buf (cl-find-if #'(lambda (buf)
