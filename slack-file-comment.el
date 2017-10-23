@@ -178,7 +178,8 @@
              (text (format "commented on %s <%s|open in browser>\n%s"
                            (slack-file-link-info (oref (oref this file) id) name)
                            permalink
-                           (format "“ %s" comment)))
+                           (format "“ %s" (slack-message-unescape-string comment
+                                                                          team))))
              (header (slack-message-header-to-string this team))
              (reactions (slack-message-reaction-to-string this)))
         (slack-format-message header text reactions)))))
