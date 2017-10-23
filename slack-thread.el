@@ -64,8 +64,9 @@
       (slack-buffer-send-message buf message)))
 
 (defun slack-thread-send-message (room team message thread-ts)
-  (let ((message (slack-message-prepare-links (slack-escape-message message)
-                                              team))
+  (let ((message (slack-message-prepare-links
+                  (slack-escape-message message)
+                  team))
         (broadcast (y-or-n-p (format "Also send to %s ? "
                                      (slack-room-name room)))))
     (progn

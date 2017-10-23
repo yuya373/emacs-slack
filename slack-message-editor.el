@@ -77,7 +77,9 @@
         :type "POST"
         :params (list (cons "channel" (oref room id))
                       (cons "timestamp" ts)
-                      (cons "text" msg)
+                      (cons "text" (slack-message-prepare-links
+                                    (slack-escape-message msg)
+                                    team))
                       (cons "share_channel" share-channel-id))
         :success #'on-success)))))
 
@@ -119,7 +121,9 @@
       :type "POST"
       :params (list (cons "channel" channel)
                     (cons "ts" ts)
-                    (cons "text" text))
+                    (cons "text" (slack-message-prepare-links
+                                  (slack-escape-message text)
+                                  team)))
       :success #'on-edit))))
 
 (provide 'slack-message-editor)

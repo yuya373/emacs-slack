@@ -101,7 +101,9 @@
                     :channel channel-id
                     :type "message"
                     :user self-id
-                    :text message))
+                    :text (slack-message-prepare-links
+                           (slack-escape-message message)
+                           team)))
            (json (json-encode m))
            (obj (slack-message-create m team)))
       (slack-ws-send json team)

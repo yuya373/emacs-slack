@@ -460,7 +460,9 @@
       slack-file-comment-add-url
       team
       :params (list (cons "file" id)
-                    (cons "comment" comment)
+                    (cons "comment" (slack-message-prepare-links
+                                     (slack-escape-message comment)
+                                     team))
                     (if channel
                         (cons "channel" channel)))
       :success #'on-file-comment-add))))
@@ -513,7 +515,9 @@
       team
       :params (list (cons "id" file-comment-id)
                     (cons "file" file-id)
-                    (cons "comment" comment))
+                    (cons "comment" (slack-message-prepare-links
+                                     (slack-escape-message comment)
+                                     team)))
       :success #'on-file-comment-edit))))
 
 
