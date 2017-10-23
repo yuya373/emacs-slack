@@ -61,14 +61,29 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-file-info-mode)
-      (slack-buffer--insert this))
+      (slack-buffer-insert this))
     buf))
 
-(defmethod slack-buffer--insert ((this slack-file-info-buffer))
+(defmethod slack-buffer-insert ((this slack-file-info-buffer))
   (let ((inhibit-read-only t))
     (delete-region (point-min) lui-output-marker))
   (with-slots (file team) this
-    (lui-insert (slack-to-string file team))))
+    (lui-insert (let* ((header (slack-message-header-to-string file team))
+                       (body (slack-message-body-to-string file team))
+                       (thumb (slack-message-image-to-string file team))
+                       (reactions (slack-message-reaction-to-string file))
+                       (comments (slack-file-comments-to-string file team))
+                       (comments-count
+                        (slack-file-comments-count-to-string file)))
+                  (propertize
+                   (slack-format-message (propertize (slack-format-message header
+                                                                           body
+                                                                           thumb
+                                                                           reactions)
+                                                     'file-id (oref file id))
+                                         comments
+                                         comments-count)
+                   'ts (oref file ts))))))
 
 (defmethod slack-buffer-send-message ((this slack-file-info-buffer) message)
   (with-slots (file team) this
@@ -78,7 +93,7 @@
   (with-current-buffer (slack-buffer-buffer this)
     (let ((cur-point (point))
           (max (marker-position lui-output-marker)))
-      (slack-buffer--insert this)
+      (slack-buffer-insert this)
       (if (and (<= (point-min) cur-point)
                (< cur-point max))
           (goto-char cur-point)))))

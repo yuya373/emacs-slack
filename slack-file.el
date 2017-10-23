@@ -268,29 +268,6 @@
                         (slack-message-reaction-to-string file)
                         (slack-file-link-info (oref file id) "\n(more info)")))
 
-(defmethod slack-to-string ((file slack-file) team)
-  (let* ((header (slack-message-header-to-string file team))
-         (body (slack-message-body-to-string file team))
-         (thumb (slack-message-image-to-string file team))
-         (reactions (slack-message-reaction-to-string file))
-         ;; (initial-comment
-         ;;  (if-let* ((ic (oref file initial-comment)))
-         ;;      (slack-message-to-string ic team)
-         ;;    ""))
-         (comments (slack-file-comments-to-string file team))
-         (comments-count
-          (slack-file-comments-count-to-string file)))
-    (propertize
-     (slack-format-message (propertize (slack-format-message header
-                                                             body
-                                                             thumb
-                                                             reactions)
-                                       'file-id (oref file id))
-                           ;; initial-comment
-                           comments
-                           comments-count)
-     'ts (oref file ts))))
-
 (defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
 (defun slack-file-list ()
