@@ -30,8 +30,6 @@
 (require 'slack-message)
 (require 'slack-pinned-item)
 
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 (defvar slack-buffer-function)
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
@@ -346,10 +344,9 @@
 
 (defmacro slack-current-room-or-select (room-alist-func &optional select)
   `(if (and (not ,select)
-            (boundp 'slack-current-room-id)
-            (boundp 'slack-current-team-id))
-       (slack-room-find slack-current-room-id
-                        (slack-team-find slack-current-team-id))
+            (boundp 'slack-current-buffer)
+            (slot-boundp slack-current-buffer 'room))
+       (oref slack-current-buffer room)
      (let* ((room-alist (funcall ,room-alist-func)))
        (slack-select-from-list
            (room-alist "Select Channel: ")))))

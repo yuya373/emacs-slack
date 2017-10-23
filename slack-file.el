@@ -192,12 +192,13 @@
 
 (defun slack-file-update ()
   (interactive)
-  (let* ((line (thing-at-point 'line))
-         (page (get-text-property 0 'page line))
-         (file (get-text-property 0 'file line))
-         (team (slack-team-find slack-current-team-id)))
-    (if page
-        (slack-file-request-info file page team #'(lambda (file team) (slack-redisplay file team))))))
+  (if-let* ((buf slack-current-buffer))
+      (with-slots (file team) buf
+        (if-let* ((page (oref file page)))
+            (slack-file-request-info
+             file page team
+             #'(lambda (file team)
+                 (slack-redisplay file team)))))))
 
 (defun slack-file-request-info (file-id page team &optional after-success)
   (cl-labels
@@ -423,30 +424,6 @@
 (defmethod slack-file-comment-id ((file-comment))
   (oref file-comment id))
 
-(cl-defmacro slack-get-message-metadata (&body body)
-  `(let* ((ts (slack-get-ts))
-          (team (slack-team-find slack-current-team-id))
-          (room (slack-room-find slack-current-room-id
-                                 team)))
-     ,@body))
-
-(defun slack-file-comment-add ()
-  (interactive)
-  (slack-get-message-metadata
-   (if (and ts room)
-       (let ((message (slack-room-find-message room ts)))
-         (if (or (object-of-class-p message 'slack-file)
-                 (object-of-class-p message 'slack-file-message))
-             (let ((id (slack-file-id message))
-                   (channel (slack-file-channel message))
-                   (comment (read-from-minibuffer "Write Comment: ")))
-               (slack-file-comment-add-request id
-                                               comment
-                                               team
-                                               channel))
-           (error "Message is not a File")))
-     (error "Message can't find"))))
-
 (defun slack-file-comment-add-request (id comment team
                                           &optional channel after-success)
   (cl-labels
@@ -466,17 +443,6 @@
                     (if channel
                         (cons "channel" channel)))
       :success #'on-file-comment-add))))
-
-(defun -slack-file-comment-delete ()
-  (interactive)
-  (slack-get-message-metadata
-   (if (and ts room)
-       (let ((message (slack-room-find-message room ts)))
-         (if (or (object-of-class-p message 'slack-file-comment)
-                 (object-of-class-p message 'slack-file-comment-message))
-             (let ((id (slack-file-comment-id message))
-                   (file-id (slack-file-id message)))
-               (slack-file-comment-delete-request file-id id team)))))))
 
 (defun slack-file-comment-delete-request (file-id file-comment-id team)
   (cl-labels

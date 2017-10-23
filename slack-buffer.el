@@ -116,12 +116,6 @@
   (setq-local default-directory slack-default-directory)
   (lui-set-prompt lui-prompt-string))
 
-(defvar slack-current-room-id)
-
-(defvar slack-current-team-id)
-
-(defvar slack-current-message nil)
-
 (defcustom slack-buffer-emojify nil
   "Show emoji with `emojify' if true."
   :group 'slack)
@@ -135,9 +129,6 @@
      (save-restriction
        (widen)
        ,@body)))
-
-(defun slack-buffer-set-current-team-id (team)
-  (set (make-local-variable 'slack-current-team-id) (oref team id)))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify

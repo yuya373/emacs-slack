@@ -29,8 +29,6 @@
 (require 'slack-util)
 (require 'slack-reaction)
 
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
 (defconst slack-message-stars-add-url "https://slack.com/api/stars.add")
@@ -277,16 +275,6 @@
 
 (defmethod slack-message-star-removed ((m slack-message))
   (oset m is-starred nil))
-
-(defun slack-message-process-star-api (url team)
-  (let* ((room (and team (slack-room-find slack-current-room-id team)))
-         (ts (slack-get-ts))
-         (message (and room ts (slack-room-find-message room ts))))
-    (when message
-      (slack-message-star-api-request url
-                                      (list (cons "channel" (oref room id))
-                                            (slack-message-star-api-params message))
-                                      team))))
 
 (defun slack-message-star-api-request (url params team)
   (cl-labels

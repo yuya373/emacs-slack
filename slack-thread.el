@@ -84,38 +84,12 @@
           (slack-ws-send json team)
           (puthash message-id obj sent-message))))))
 
-(defun slack-thread-buf-name (room thread-ts)
-  (format "%s %s - %s" (slack-room-buffer-name room) "Thread" thread-ts))
-
-(defun slack-thread-get-buffer-create (room team thread-ts)
-  (let* ((buf-name (slack-thread-buf-name room thread-ts))
-         (buf (get-buffer buf-name)))
-    (when buf
-      (with-current-buffer buf (kill-buffer))
-      (setq buf nil))
-    (unless buf
-      (setq buf (generate-new-buffer buf-name))
-      (with-current-buffer buf
-        (slack-thread-mode)
-        (slack-buffer-enable-emojify)
-        (goto-char lui-input-marker)
-        (set (make-local-variable 'slack-target-ts) thread-ts)
-        (set (make-local-variable 'slack-current-team-id) (oref team id))
-        (set (make-local-variable 'slack-current-room-id) (oref room id))
-        (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
-    buf))
-
 (defun slack-thread-show-or-create ()
   (interactive)
   (if (eq major-mode 'slack-thread-mode)
       (error "Already in thread")
     (if-let* ((buf slack-current-buffer))
         (slack-buffer-display-thread buf (slack-get-ts)))))
-
-(defun slack-thread-insert-as-root-message (message team)
-  (slack-buffer-insert message team)
-  (let ((lui-time-stamp-position nil))
-    (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t)))
 
 (defmethod slack-room-replies-url ((_room slack-channel))
   "https://slack.com/api/channels.replies")
@@ -160,29 +134,7 @@
                                   room team (oref thread thread-ts))))
                         (slack-buffer-display buf))))
     (slack-thread-request-messages thread room team
-                                   :after-success #'after-success))
-
-  ;; (let* ((buf (slack-thread-get-buffer-create room team (oref thread thread-ts)))
-  ;;        (messages (slack-room-sort-messages (copy-sequence (oref thread messages)))))
-  ;;   (if (< (length messages) (oref thread reply-count))
-  ;;       (progn
-  ;;         (slack-thread-request-messages thread room team)
-  ;;         (setq messages (oref thread messages))))
-  ;;   (with-current-buffer buf
-  ;;     (slack-thread-insert-as-root-message (oref thread root) team)
-  ;;     (cl-loop for m in messages
-  ;;              do (slack-buffer-insert m team)))
-  ;;   (funcall slack-buffer-function buf)
-  ;;   (oset thread unread-count 0)
-  ;;   (let* ((msg (car (last messages)))
-  ;;          (room (and msg (slack-room-find (oref msg channel) team))))
-  ;;     (when (and msg room)
-  ;;       (slack-room-update-last-read room msg)
-  ;;       (slack-room-update-mark room team msg))
-  ;;     (when (and msg room (string< (oref thread last-read) (oref msg ts)))
-  ;;       (slack-thread-update-last-read thread msg)
-  ;;       (slack-thread-update-mark thread room msg team))))
-  )
+                                   :after-success #'after-success)))
 
 (defmethod slack-thread-to-string ((m slack-message) team)
   (with-slots (thread) m

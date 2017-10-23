@@ -33,8 +33,6 @@
 (require 'slack-message-update)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."

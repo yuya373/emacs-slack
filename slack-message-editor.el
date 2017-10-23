@@ -35,8 +35,6 @@
 (make-local-variable 'slack-target-ts)
 (defvar slack-message-edit-buffer-type)
 (make-local-variable 'slack-message-edit-buffer-type)
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 
 (defvar slack-edit-message-mode-map
   (let ((keymap (make-sparse-keymap)))

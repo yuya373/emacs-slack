@@ -30,8 +30,6 @@
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
-(defvar slack-current-team-id)
-(defvar slack-current-room-id)
 (defcustom slack-invalid-emojis '("^:flag_" "tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
   "Invalid emoji regex. Slack server treated some emojis as Invalid."
   :group 'slack)
@@ -88,12 +86,16 @@
 
 (defun slack-message-show-reaction-users ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (reaction (ignore-errors (get-text-property (point) 'reaction))))
-    (if reaction
-        (let ((user-names (slack-reaction-user-names reaction team)))
-          (message "reacted users: %s" (mapconcat #'identity user-names ", ")))
-      (message "Can't get reaction:"))))
+  (if-let* ((buf slack-current-buffer))
+      (with-slots (team) buf
+        (if-let* ((reaction (ignore-errors
+                              (get-text-property (point)
+                                                 'reaction))))
+            (let ((user-names (slack-reaction-user-names reaction
+                                                         team)))
+              (message "reacted users: %s"
+                       (mapconcat #'identity user-names ", ")))
+          (message "Can't get reaction:")))))
 
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r)

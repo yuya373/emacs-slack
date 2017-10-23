@@ -30,8 +30,6 @@
 (require 'slack-buffer)
 (require 'slack-team)
 
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack-im-history-url "https://slack.com/api/im.history")
