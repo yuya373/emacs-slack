@@ -139,5 +139,15 @@
                 team)))
       (slack-buffer-display buf))))
 
+(defmethod slack-buffer-delete-message ((this slack-file-info-buffer) _ts)
+  (with-slots (file team) this
+    (if-let* ((file-comment-id (slack-get-file-comment-id)))
+        (if (yes-or-no-p "Are you sure want to delete this comment?")
+            (slack-with-file-comment file-comment-id file
+              (slack-file-comment-delete-request (oref file id)
+                                                 file-comment-id
+                                                 team))
+          (message "Canceled")))))
+
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

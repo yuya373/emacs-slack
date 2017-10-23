@@ -42,10 +42,8 @@
 
 (defun slack-message-delete ()
   (interactive)
-  (if (eq major-mode 'slack-file-info-mode)
-      (slack-file-comment-delete)
-    (if-let* ((buf slack-current-buffer))
-        (slack-buffer-delete-message buf (slack-get-ts)))))
+  (if-let* ((buf slack-current-buffer))
+      (slack-buffer-delete-message buf (slack-get-ts))))
 
 (defclass _slack-message-delete ()
   ((room :initarg :room)

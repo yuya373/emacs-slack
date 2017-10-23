@@ -109,16 +109,6 @@
             (message (buffer-substring-no-properties (point-min) (point-max))))
       (slack-buffer-send-message buf message)))
 
-(defun slack-file-comment-delete ()
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id (slack-get-file-comment-id))
-            (team (slack-team-find slack-current-team-id)))
-      (if (yes-or-no-p "Are you sure want to delete this comment?")
-          (slack-with-file file-id team
-            (slack-with-file-comment file-comment-id file
-              (slack-file-comment-delete-request file-id file-comment-id team)))
-        (message "Canceled"))))
-
 (defun slack-file-comment-process-star-api (url team)
   (if-let* ((file-id slack-current-file-id)
             (file-comment-id (slack-get-file-comment-id)))
