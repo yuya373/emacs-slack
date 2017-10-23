@@ -57,7 +57,7 @@
       (with-slots (team items) this
         (if (< 0 (length items))
             (cl-loop for m in items
-                     do (slack-buffer-insert m team t))
+                     do (slack-buffer-insert this m t))
           (let ((inhibit-read-only t))
             (insert "No Pinned Items")))))))
 

@@ -93,6 +93,15 @@
                      (equal (get-text-property (point) 'ts)
                             (oref message ts)))))))
 
+(defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
+  (let ((lui-time-stamp-time (slack-message-time-stamp message))
+        (team (oref this team)))
+    (lui-insert-with-text-properties
+     (slack-message-to-string message team)
+     'not-tracked-p not-tracked-p
+     'ts (slack-ts message)
+     'slack-last-ts lui-time-stamp-last)))
+
 (defvar lui-prompt-string "> ")
 
 (defvar slack-mode-map
@@ -156,17 +165,6 @@
                                     'action 'lui-button-activate
                                     'lui-button-function 'browse-url
                                     'lui-button-arguments (list url)))))))
-
-(defun slack-buffer-insert (message team &optional not-tracked-p)
-  (let ((lui-time-stamp-time (slack-message-time-stamp message))
-        (beg lui-input-marker)
-        (inhibit-read-only t))
-    (let ((slack-current-message message))
-      (lui-insert-with-text-properties
-       (slack-message-to-string message team)
-       'not-tracked-p not-tracked-p
-       'ts (slack-ts message)
-       'slack-last-ts lui-time-stamp-last))))
 
 (defun slack-buffer-show-typing-p (buffer)
   (cl-case slack-typing-visibility

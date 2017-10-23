@@ -102,7 +102,7 @@
 
       (if replace (slack-buffer-replace this message)
         (with-current-buffer buffer
-          (slack-buffer-insert message team))))))
+          (slack-buffer-insert this message))))))
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
@@ -122,7 +122,7 @@
       (cl-loop for m in messages
                do (if (or (null last-read)
                           (string< last-read (oref m ts)))
-                      (slack-buffer-insert m team t)))
+                      (slack-buffer-insert this m t)))
       (when latest-message
         (slack-buffer-update-last-read this latest-message)
         (slack-buffer-update-mark this latest-message)))))
@@ -247,7 +247,7 @@
                      (lui-insert "(no more messages)\n")))
 
                  (cl-loop for m in messages
-                          do (slack-buffer-insert m team t))
+                          do (slack-buffer-insert this m t))
                  (lui-recover-output-marker)))
               (if current-ts
                   (slack-buffer-goto current-ts)

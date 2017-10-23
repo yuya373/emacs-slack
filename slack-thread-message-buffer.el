@@ -61,13 +61,13 @@
       (with-slots (room thread-ts team) this
         (if-let* ((message (slack-room-find-message room thread-ts)))
             (progn
-              (slack-buffer-insert message team t)
+              (slack-buffer-insert this message t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))
               (let ((thread (slack-message-thread message room)))
                 (and thread
                      (cl-loop for m in (oref thread messages)
-                              do (slack-buffer-insert m team))))))))
+                              do (slack-buffer-insert this m))))))))
 
     (with-slots (room thread-ts team) this
       (slack-buffer-push-new-4 (eieio-object-class-name this)
@@ -133,7 +133,7 @@
   ((this slack-thread-message-buffer) message &key replace)
   (if replace (slack-buffer-replace this message)
     (with-current-buffer (slack-buffer-buffer this)
-      (slack-buffer-insert message (oref this team)))))
+      (slack-buffer-insert this message))))
 
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here
