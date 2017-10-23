@@ -92,7 +92,9 @@
 
 (defun slack-message--send (message)
   (if-let* ((buf slack-current-buffer))
-      (slack-buffer-send-message buf message)))
+      (if-let* ((command (slack-slash-commands-parse message)))
+          (slack-buffer-execute-slash-command buf command)
+        (slack-buffer-send-message buf message))))
 
 (defun slack-message-send-internal (message channel-id team)
   (slack-message-inc-id team)

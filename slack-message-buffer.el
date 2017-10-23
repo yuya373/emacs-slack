@@ -297,5 +297,9 @@
       (let ((buf (slack-create-user-profile-buffer team user-id)))
         (slack-buffer-display buf)))))
 
+(defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
+  (with-slots (team) this
+    (slack-slash-commands-execute command team)))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
