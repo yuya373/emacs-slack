@@ -33,7 +33,8 @@
   (let ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (kill-buffer)
-      (if (> (count-windows) 1) (delete-window)))))
+      ;; (if (> (count-windows) 1) (delete-window))
+      )))
 
 
 (provide 'slack-message-compose-buffer)
