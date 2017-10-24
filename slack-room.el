@@ -285,21 +285,19 @@
                           (string= from (oref m ts))))
                   (slack-room-sort-messages (copy-sequence messages)))))
 
-(defmethod slack-room-update-mark ((room slack-room) team msg)
-  (if (slack-room-update-last-read-p room (oref msg ts))
-      (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                                  (slack-request-handle-error
-                                   (data "slack-room-update-mark"))))
-        (with-slots (ts) msg
-          (with-slots (id) room
-            (slack-request
-             (slack-request-create
-              (slack-room-update-mark-url room)
-              team
-              :type "POST"
-              :params (list (cons "channel"  id)
-                            (cons "ts"  ts))
-              :success #'on-update-mark)))))))
+(defmethod slack-room-update-mark ((room slack-room) team ts)
+  (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                              (slack-request-handle-error
+                               (data "slack-room-update-mark"))))
+    (with-slots (id) room
+      (slack-request
+       (slack-request-create
+        (slack-room-update-mark-url room)
+        team
+        :type "POST"
+        :params (list (cons "channel"  id)
+                      (cons "ts"  ts))
+        :success #'on-update-mark)))))
 
 (defun slack-room-pins-list ()
   (interactive)

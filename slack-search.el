@@ -260,7 +260,6 @@
         (funcall slack-buffer-function (slack-buffer-create selected team)))))
 
 ;; protocols
-(defmethod slack-room-update-mark ((_room slack-search-result) _team _msg))
 (defmethod slack-room-sorted-messages ((room slack-search-result))
   (copy-sequence (oref room messages)))
 

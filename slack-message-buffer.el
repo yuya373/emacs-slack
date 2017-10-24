@@ -32,10 +32,22 @@
    (last-read :initform nil :type (or null string))))
 
 
-(defmethod slack-buffer-update-mark ((this slack-message-buffer) message)
-  (with-slots (room team) this
-    (slack-room-update-mark room team message)))
-
+(defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
+  (with-slots (room team last-read) this
+    (if (or (string< last-read ts)
+            (string= last-read ts))
+        (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                                    (slack-request-handle-error
+                                     (data "slack-buffer-update-mark"))))
+          (with-slots (id) room
+            (slack-request
+             (slack-request-create
+              (slack-room-update-mark-url room)
+              team
+              :type "POST"
+              :params (list (cons "channel"  id)
+                            (cons "ts"  ts))
+              :success #'on-update-mark)))))))
 
 (defmethod slack-buffer-send-message ((this slack-message-buffer) message)
   (with-slots (room team) this
@@ -46,7 +58,8 @@
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
         (buffer (call-next-method)))
     (with-current-buffer buffer
-      (unless has-buffer
+      (if has-buffer
+          (slack-buffer-update-mark this (oref this last-read))
         (goto-char (marker-position lui-input-marker))))
     buffer))
 
@@ -97,7 +110,7 @@
     (let ((buffer (get-buffer (slack-buffer-name this))))
       (slack-buffer-update-last-read this message)
       (if (slack-buffer-in-current-frame buffer)
-          (slack-buffer-update-mark this message)
+          (slack-buffer-update-mark this (oref message ts))
         (slack-room-inc-unread-count room))
 
       (if replace (slack-buffer-replace this message)
@@ -125,7 +138,7 @@
                       (slack-buffer-insert this m t)))
       (when latest-message
         (slack-buffer-update-last-read this latest-message)
-        (slack-buffer-update-mark this latest-message)))))
+        (slack-buffer-update-mark this (oref latest-message ts))))))
 
 (defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
   (with-slots (room team) this

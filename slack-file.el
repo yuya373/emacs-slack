@@ -268,8 +268,6 @@
                         (slack-message-reaction-to-string file)
                         (slack-file-link-info (oref file id) "\n(more info)")))
 
-(defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
-
 (defun slack-file-list ()
   (interactive)
   (let* ((team (slack-team-select))
