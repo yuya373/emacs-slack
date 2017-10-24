@@ -65,6 +65,22 @@
    (pretty-type :initarg :pretty_type :type (or null string) :initform nil)
    ))
 
+(defclass slack-file-email (slack-file)
+  ((from :initarg :from :type (or null list) :initform nil)
+   (to :initarg :to :type (or null list) :initform nil)
+   ;; TODO verify type
+   (cc :initarg :cc)
+   (subject :initarg :subject :type string)
+   (plain-text :initarg :plain_text :type string)
+   (preview-plain-text :initarg :preview_plain_text :type string)))
+
+(defclass slack-file-email-from ()
+  ((address :initarg :address :type string)
+   (name :initarg :name :type string)
+   (original :initarg :original :type string)))
+
+(defclass slack-file-email-to (slack-file-email-from) ())
+
 (defun slack-merge-list (old-list new-list)
   (cl-loop for n in new-list
            do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
@@ -136,6 +152,14 @@
     (oset comment reactions reactions)
     comment))
 
+(defun slack-file-create-email-from (payload &optional to)
+  (and payload
+       (make-instance (or (and to 'slack-file-email-to)
+                          'slack-file-email-from)
+                      :original (plist-get payload :original)
+                      :name (plist-get payload :name)
+                      :address (plist-get payload :address))))
+
 (defun slack-file-create (payload)
   (plist-put payload :channels (append (plist-get payload :channels) nil))
   (plist-put payload :groups (append (plist-get payload :groups) nil))
@@ -144,7 +168,14 @@
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
   (plist-put payload :channel "F")
-  (let* ((file (apply #'slack-file "file" (slack-collect-slots 'slack-file payload)))
+  (plist-put payload :from (mapcar #'slack-file-create-email-from (plist-get payload :from)))
+  (plist-put payload :to (mapcar #'(lambda (e) (slack-file-create-email-from e 'to)) (plist-get payload :to)))
+  (let* ((file (if (string= "email" (plist-get payload :filetype))
+                   (apply #'slack-file-email "file-email"
+                          (slack-collect-slots 'slack-file-email
+                                               payload))
+                 (apply #'slack-file "file"
+                        (slack-collect-slots 'slack-file payload))))
          (initial-comment (if (plist-get payload :initial_comment)
                               (slack-file-comment-create (plist-get payload :initial_comment)
                                                          (oref file id))
@@ -268,6 +299,8 @@
                         (slack-message-image-to-string file team)
                         (slack-message-reaction-to-string file)
                         (slack-file-link-info (oref file id) "\n(more info)")))
+
+(defmethod slack-room-update-mark ((_room slack-file-room) _team _msg))
 
 (defun slack-file-list ()
   (interactive)
@@ -629,6 +662,21 @@
 (defmethod slack-file-comments-loaded-p ((this slack-file))
   (with-slots (comments comments-count) this
     (<= comments-count (length comments))))
+
+(defmethod slack-message-body-to-string ((this slack-file-email) _team)
+  (let ((from (format "From: %s" (mapconcat #'(lambda (e) (oref e original))
+                                            (oref this from)
+                                            ", ")))
+        (to (format "To: %s" (mapconcat #'(lambda (e) (oref e original))
+                                        (oref this to)
+                                        ", ")))
+        (cc (format "CC: %s" (oref this cc)))
+        (subject (format "Subject: %s" (oref this subject)))
+        (body (oref this plain-text))
+        (date (format "Date: %s" (oref this created))))
+    (mapconcat #'identity
+               (list from to cc subject date body)
+               "\n")))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
