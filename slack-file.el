@@ -62,6 +62,7 @@
    (is-starred :initarg :is_starred :initform nil)
    (mimetype :initarg :mimetype :type string :initform "")
    (title :initarg :title :type (or null string) :initform nil)
+   (pretty-type :initarg :pretty_type :type (or null string) :initform nil)
    ))
 
 (defun slack-merge-list (old-list new-list)
@@ -517,12 +518,12 @@
                         map)))
 
 (defmethod slack-file-summary ((file slack-file))
-  (with-slots (initial-comment mimetype permalink name title) file
+  (with-slots (initial-comment pretty-type mimetype permalink name title) file
     (format "uploaded%s this %s: %s <%s|open in browser>"
             (if initial-comment
                 " and commented on"
               "")
-            mimetype
+            (or pretty-type mimetype)
             (slack-file-link-info (oref file id) (or title name))
             permalink)))
 
