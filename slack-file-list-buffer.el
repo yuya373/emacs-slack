@@ -42,5 +42,7 @@
       buffer
     (slack-file-list-buffer :room room :team team)))
 
+(defmethod slack-buffer-update-mark ((_this slack-file-list-buffer) _ts))
+
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here
