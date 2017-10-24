@@ -607,12 +607,6 @@
     (if-let* ((buf slack-current-buffer))
         (slack-buffer-display-file buf id))))
 
-(defun slack-file--display (file buf team)
-  (with-current-buffer buf
-    (let ((inhibit-read-only t))
-      (delete-region (point-min) lui-output-marker))
-    (lui-insert (slack-to-string file team))))
-
 (defun slack-redisplay (file team)
   (if-let* ((buf (slack-create-file-info-buffer team file)))
       (slack-buffer-redisplay buf)))
