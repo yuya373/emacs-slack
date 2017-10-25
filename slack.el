@@ -52,6 +52,7 @@
 (require 'slack-file-comment)
 (require 'slack-attachment)
 (require 'slack-emoji)
+(require 'slack-star)
 
 (require 'slack-buffer)
 (require 'slack-message-buffer)
@@ -65,6 +66,7 @@
 (require 'slack-file-info-buffer)
 (require 'slack-thread-message-compose-buffer)
 (require 'slack-edit-file-comment-buffer)
+(require 'slack-stars-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)

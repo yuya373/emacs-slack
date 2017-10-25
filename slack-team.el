@@ -93,6 +93,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
    (websocket-nowait :initarg :websocket-nowait :initform nil)
+   (star :initform nil)
    (slack-message-buffer :initform nil :type (or null list))
    (slack-file-info-buffer :initform nil :type (or null list))
    (slack-file-list-buffer :initform nil :type (or null list))
@@ -104,6 +105,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-room-message-compose-buffer :initform nil :type (or null list))
    (slack-thread-message-compose-buffer :initform nil :type (or null list))
    (slack-edit-file-comment-buffer :initform nil :type (or null list))
+   (slack-stars-buffer :initform nil :type (or null list))
    ))
 
 (defmethod slack-team-kill-buffers ((this slack-team))
@@ -117,7 +119,8 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (oref this slack-message-share-buffer)
                             (oref this slack-room-message-compose-buffer)
                             (oref this slack-thread-message-compose-buffer)
-                            (oref this slack-edit-file-comment-buffer))
+                            (oref this slack-edit-file-comment-buffer)
+                            (oref this slack-stars-buffer))
            do (kill-buffer e)))
 
 (defun slack-team-find (id)
