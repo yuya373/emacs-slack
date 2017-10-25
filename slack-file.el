@@ -561,6 +561,9 @@
             (slack-file-link-info (oref file id) (or title name))
             permalink)))
 
+(defmethod slack-file-summary ((this slack-file-email))
+  (format "%s\n%s..." (call-next-method) (oref this preview-plain-text)))
+
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)
   (when (oref comment is-intro)
