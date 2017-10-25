@@ -93,22 +93,21 @@
                        (funcall success :data data)
                        (oset team retry-after-timer nil))
            (on-error (&key error-thrown symbol-status response data)
-                     (let ((retry-after-sec (string-to-number
-                                             (request-response-header response "retry-after"))))
-                       (when retry-after-sec
-                         (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
-                                            retry-after-sec
-                                            url
-                                            params)
-                                    team)
-                         (slack-request-retry-request req retry-after-sec)))
-
-                     (when (functionp error)
-                       (funcall error
-                                :error-thrown error-thrown
-                                :symbol-status symbol-status
-                                :response response
-                                :data data))))
+                     (if-let* ((retry-after (request-response-header response "retry-after"))
+                               (retry-after-sec (string-to-number retry-after)))
+                         (progn
+                           (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
+                                              retry-after-sec
+                                              url
+                                              params)
+                                      team)
+                           (slack-request-retry-request req retry-after-sec))
+                       (when (functionp error)
+                         (funcall error
+                                  :error-thrown error-thrown
+                                  :symbol-status symbol-status
+                                  :response response
+                                  :data data)))))
         (request
          url
          :type type
