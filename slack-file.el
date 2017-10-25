@@ -69,7 +69,7 @@
   ((from :initarg :from :type (or null list) :initform nil)
    (to :initarg :to :type (or null list) :initform nil)
    ;; TODO verify type
-   (cc :initarg :cc)
+   (cc :initarg :cc :type (or null list) :initform nil)
    (subject :initarg :subject :type string)
    (plain-text :initarg :plain_text :type string)
    (preview-plain-text :initarg :preview_plain_text :type string)))
@@ -80,6 +80,7 @@
    (original :initarg :original :type string)))
 
 (defclass slack-file-email-to (slack-file-email-from) ())
+(defclass slack-file-email-cc (slack-file-email-from) ())
 
 (defun slack-merge-list (old-list new-list)
   (cl-loop for n in new-list
@@ -152,9 +153,10 @@
     (oset comment reactions reactions)
     comment))
 
-(defun slack-file-create-email-from (payload &optional to)
+(defun slack-file-create-email-from (payload &optional type)
   (and payload
-       (make-instance (or (and to 'slack-file-email-to)
+       (make-instance (or (and (eq type 'to) 'slack-file-email-to)
+                          (and (eq type 'cc) 'slack-file-email-cc)
                           'slack-file-email-from)
                       :original (plist-get payload :original)
                       :name (plist-get payload :name)
@@ -170,6 +172,7 @@
   (plist-put payload :channel "F")
   (plist-put payload :from (mapcar #'slack-file-create-email-from (plist-get payload :from)))
   (plist-put payload :to (mapcar #'(lambda (e) (slack-file-create-email-from e 'to)) (plist-get payload :to)))
+  (plist-put payload :cc (mapcar #'(lambda (e) (slack-file-create-email-from e 'cc)) (plist-get payload :cc)))
   (let* ((file (if (string= "email" (plist-get payload :filetype))
                    (apply #'slack-file-email "file-email"
                           (slack-collect-slots 'slack-file-email
@@ -668,10 +671,12 @@
         (to (format "To: %s" (mapconcat #'(lambda (e) (oref e original))
                                         (oref this to)
                                         ", ")))
-        (cc (format "CC: %s" (oref this cc)))
+        (cc (format "CC: %s" (mapconcat #'(lambda (e) (oref e original))
+                                        (oref this cc)
+                                        ", ")))
         (subject (format "Subject: %s" (oref this subject)))
         (body (oref this plain-text))
-        (date (format "Date: %s" (oref this created))))
+        (date (format "Date: %s" (slack-message-time-to-string (oref this created)))))
     (mapconcat #'identity
                (list from to cc subject date body)
                "\n")))
