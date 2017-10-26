@@ -346,5 +346,8 @@
      (when file-comment
        ,@body)))
 
+(defmethod slack-message-get-text ((m slack-message))
+  (oref m text))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
