@@ -67,6 +67,7 @@
 (require 'slack-thread-message-compose-buffer)
 (require 'slack-edit-file-comment-buffer)
 (require 'slack-stars-buffer)
+(require 'slack-search-result-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)

@@ -235,8 +235,11 @@
 (defmethod slack-ts ((this slack-message))
   (oref this ts))
 
+(defun slack-ts-to-time (ts)
+  (seconds-to-time (string-to-number ts)))
+
 (defun slack-message-time-stamp (message)
-  (seconds-to-time (string-to-number (slack-ts message))))
+  (slack-ts-to-time (slack-ts message)))
 
 (defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
