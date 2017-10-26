@@ -163,6 +163,7 @@
                       :address (plist-get payload :address))))
 
 (defun slack-file-create (payload)
+  (setq payload (append payload nil))
   (plist-put payload :channels (append (plist-get payload :channels) nil))
   (plist-put payload :groups (append (plist-get payload :groups) nil))
   (plist-put payload :ims (append (plist-get payload :ims) nil))
@@ -170,13 +171,23 @@
   (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
   (plist-put payload :ts (number-to-string (plist-get payload :timestamp)))
   (plist-put payload :channel "F")
-  (plist-put payload :from (mapcar #'slack-file-create-email-from (plist-get payload :from)))
-  (plist-put payload :to (mapcar #'(lambda (e) (slack-file-create-email-from e 'to)) (plist-get payload :to)))
-  (plist-put payload :cc (mapcar #'(lambda (e) (slack-file-create-email-from e 'cc)) (plist-get payload :cc)))
   (let* ((file (if (string= "email" (plist-get payload :filetype))
-                   (apply #'slack-file-email "file-email"
-                          (slack-collect-slots 'slack-file-email
-                                               payload))
+                   (progn
+                     (plist-put payload :from
+                                (mapcar #'slack-file-create-email-from
+                                        (plist-get payload :from)))
+                     (plist-put payload :to
+                                (mapcar #'(lambda (e)
+                                            (slack-file-create-email-from e 'to))
+                                        (plist-get payload :to)))
+                     (plist-put payload :cc
+                                (mapcar #'(lambda (e)
+                                            (slack-file-create-email-from e 'cc))
+                                        (plist-get payload :cc)))
+                     (apply #'slack-file-email "file-email"
+                            (slack-collect-slots 'slack-file-email
+                                                 payload)))
+
                  (apply #'slack-file "file"
                         (slack-collect-slots 'slack-file payload))))
          (initial-comment (if (plist-get payload :initial_comment)
