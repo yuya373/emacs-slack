@@ -658,6 +658,10 @@
   (let* ((item (plist-get payload :item))
          (type (plist-get item :type))
          (_type (plist-get payload :type)))
+    (if-let* ((star (oref team star)))
+        (if (string= _type "star_removed")
+            (slack-star-remove star item team)
+          (slack-star-add star item team)))
     (cl-labels ((update (message) (slack-message-update message team t t)))
       (cond
        ((string= type "message")

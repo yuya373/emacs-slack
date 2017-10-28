@@ -46,9 +46,13 @@
       (with-current-buffer buf slack-current-buffer)))
 
 (defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
-  (lui-insert (propertize (slack-to-string item (oref this team))
-                          'ts (slack-ts item))
-              not-tracked-p))
+  (let ((lui-time-stamp-time (seconds-to-time
+                              (string-to-number
+                               (slack-ts
+                                (slack-star-item-message item))))))
+    (lui-insert (propertize (slack-to-string item (oref this team))
+                            'ts (slack-ts item))
+                not-tracked-p)))
 
 (defmethod slack-buffer-load-more ((this slack-stars-buffer))
   (with-slots (team) this
@@ -127,5 +131,15 @@
     (make-instance 'slack-stars-buffer
                    :team team)))
 
+(defmethod slack-buffer-remove-star ((this slack-stars-buffer) ts)
+  (with-slots (team) this
+    (with-slots (star) team
+      (slack-star-remove-star star ts team))))
+
+(defmethod slack-buffer-message-delete ((this slack-stars-buffer) ts)
+  (let ((buffer (slack-buffer-buffer this)))
+    (with-current-buffer buffer
+      (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
+                                      ts))))))
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here

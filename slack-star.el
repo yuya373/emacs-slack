@@ -60,6 +60,15 @@
 (defclass slack-star-im (slack-star-item) ;; Dh ??
   ((channel :initarg :channel :type string))) ;; ID
 
+(defmethod slack-star-item-message ((this slack-star-message))
+  (oref this message))
+
+(defmethod slack-star-item-message ((this slack-star-file))
+  (oref this file))
+
+(defmethod slack-star-item-message ((this slack-star-file-comment))
+  (oref this file-comment))
+
 (defmethod slack-ts ((this slack-star-item))
   (oref this date-create))
 
@@ -110,7 +119,7 @@
 
 (defun slack-create-star-item (payload team)
   (let ((type (plist-get payload :type))
-        (date-create (plist-get payload :date_create)))
+        (date-create (format "%s" (plist-get payload :date_create))))
     (cond
      ((string= type "message")
       (make-instance 'slack-star-message
@@ -191,6 +200,35 @@
       (slack-stars-list-request
        team nil
        #'(lambda () (slack-buffer-display (slack-create-stars-buffer team)))))))
+
+(defmethod slack-message-star-api-params ((this slack-star-item))
+  (list (slack-message-star-api-params (slack-star-item-message this))))
+
+(defmethod slack-message-star-api-params ((this slack-star-message))
+  (append (list (cons "channel" (oref this channel)))
+          (call-next-method)))
+
+(defmethod slack-star-remove-star ((this slack-star) ts team)
+  (if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
+                              (oref this items))))
+      (slack-message-star-api-request slack-message-stars-remove-url
+                                      (slack-message-star-api-params item)
+                                      team)))
+
+(defmethod slack-star-remove ((this slack-star) payload team)
+  (let ((date-create (plist-get payload :date_create)))
+    (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
+                                                          date-create))
+                                   (oref this items)))
+    (if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
+        (slack-buffer-message-delete buffer date-create))))
+
+(defmethod slack-star-add ((this slack-star) payload team)
+  (let ((item (slack-create-star-item payload team)))
+    (oset this items (append (oref this items) (list item)))
+    (if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
+        (with-current-buffer (slack-buffer-buffer buffer)
+          (slack-buffer-insert buffer item)))))
 
 (provide 'slack-star)
 ;;; slack-stars.el ends here
