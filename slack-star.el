@@ -38,24 +38,47 @@
    (page :initarg :page :type number)
    (pages :initarg :pages :type number)))
 
-(defclass slack-star-message ()
+(defclass slack-star-item ()
+  ((date-create :initarg :date-create :type string)))
+
+(defclass slack-star-message (slack-star-item)
   ((channel :initarg :channel :type string)
    (message :initarg :message :type slack-message)))
 
-(defclass slack-star-file ()
+(defclass slack-star-file (slack-star-item)
   ((file :initarg :file :type slack-file)))
 
 (defclass slack-star-file-comment (slack-star-file)
   ((file-comment :initarg :file-comment :type slack-file-comment)))
 
-(defclass slack-star-channel () ;; Ch ??
+(defclass slack-star-channel (slack-star-item) ;; Ch ??
   ((channel :initarg :channel :type string))) ;; ID
 
-(defclass slack-star-group () ;; Gh ??
+(defclass slack-star-group (slack-star-item) ;; Gh ??
   ((group :initarg :group :type string))) ;; ID
 
-(defclass slack-star-im () ;; Dh ??
+(defclass slack-star-im (slack-star-item) ;; Dh ??
   ((channel :initarg :channel :type string))) ;; ID
+
+(defmethod slack-ts ((this slack-star-item))
+  (oref this date-create))
+
+(defmethod slack-next-page ((this slack-star-paging))
+  (with-slots (pages page) this
+    (unless (< pages (1+ page))
+      (1+ page))))
+
+(defmethod slack-star-has-next-page-p ((this slack-star))
+  (slack-next-page (oref this paging)))
+
+(defmethod slack-per-page ((this slack-star-paging))
+  (oref this per-page))
+
+(defmethod slack-star-per-page ((this slack-star))
+  (slack-per-page (oref this paging)))
+
+(defmethod slack-star-items ((this slack-star))
+  (oref this items))
 
 (defmethod slack-merge ((old slack-star) new)
   (with-slots (paging items) old
@@ -86,30 +109,37 @@
           payload))
 
 (defun slack-create-star-item (payload team)
-  (let ((type (plist-get payload :type)))
+  (let ((type (plist-get payload :type))
+        (date-create (plist-get payload :date_create)))
     (cond
      ((string= type "message")
       (make-instance 'slack-star-message
+                     :date-create date-create
                      :channel (plist-get payload :channel)
                      :message (slack-message-create (plist-get payload :message)
                                                     team)))
      ((string= type "file")
       (make-instance 'slack-star-file
+                     :date-create date-create
                      :file (slack-file-create (plist-get payload :file))))
      ((string= type "file_comment")
       (make-instance 'slack-star-file-comment
+                     :date-create date-create
                      :file (slack-file-create (plist-get payload :file))
                      :file-comment (slack-file-comment-create
                                     (plist-get payload :comment)
                                     (plist-get (plist-get payload :file) :id))))
      ((string= type "channel")
       (make-instance 'slack-star-channel
+                     :date-create date-create
                      :channel (plist-get payload :channel)))
      ((string= type "im")
       (make-instance 'slack-star-im
+                     :date-create date-create
                      :channel (plist-get payload :channel)))
      ((string= type "group")
       (make-instance 'slack-star-group
+                     :date-create date-create
                      :group (plist-get payload :group))))))
 
 ;; (:per_page 20 :spill 0 :page 1 :total 61 :pages 4)

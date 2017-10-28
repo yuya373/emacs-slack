@@ -25,9 +25,11 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-team)
 (require 'slack-buffer)
 
-(defclass slack-stars-buffer (slack-buffer) ())
+(defclass slack-stars-buffer (slack-buffer)
+  ((oldest :type string :initform "")))
 
 (defmethod slack-buffer-name :static ((_class slack-stars-buffer) team)
   (format "*Slack - %s : Stars*" (oref team name)))
@@ -41,8 +43,46 @@
                              (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
-(defmethod slack-buffer-insert ((this slack-stars-buffer) item)
-  (lui-insert (slack-to-string item (oref this team))))
+(defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
+  (lui-insert (propertize (slack-to-string item (oref this team))
+                          'ts (slack-ts item))
+              not-tracked-p))
+
+(defmethod slack-buffer-load-more ((this slack-stars-buffer))
+  (with-slots (team) this
+    (let ((star (oref team star))
+          (cur-point (point)))
+      (if (slack-star-has-next-page-p star)
+          (cl-labels
+              ((after-success ()
+                              (with-current-buffer (slack-buffer-buffer this)
+                                (let ((inhibit-read-only t)
+                                      (loading-message-end (next-single-property-change (point-min)
+                                                                                        'loading-message)))
+                                  (delete-region (point-min) loading-message-end)
+                                  (set-marker lui-output-marker (point-min))
+
+                                  (let ((lui-time-stamp-position nil))
+                                    (if (slack-star-has-next-page-p (oref team star))
+                                        (slack-buffer-insert-load-more this)
+                                      (lui-insert "(no more messages)\n")))
+
+                                  (let ((items (slack-star-items (oref team star)))
+                                        (before-oldest (oref this oldest)))
+                                    (oset this oldest (slack-ts (car items)))
+                                    (cl-loop for item in items
+                                             do (and (string< (slack-ts item) before-oldest)
+                                                     (slack-buffer-insert this item t)))
+
+                                    (if-let* ((point (slack-buffer-ts-eq (point-min)
+                                                                         (point-max)
+                                                                         before-oldest)))
+                                        (goto-char point)))
+                                  (lui-recover-output-marker)))))
+            (slack-stars-list-request team
+                                      (slack-next-page (oref star paging))
+                                      #'after-success))
+        (message "No more items.")))))
 
 (defmethod slack-buffer-insert-load-more ((this slack-stars-buffer))
   (let ((str (propertize "(load more)\n"
@@ -52,12 +92,22 @@
                                      #'(lambda ()
                                          (interactive)
                                          (slack-buffer-load-more this)))
-                                   map))))
+                                   map)
+                         'loading-message t)))
     (let ((lui-time-stamp-position nil))
       (lui-insert str))))
 
+(defmethod slack-buffer-update-oldest ((this slack-stars-buffer) item)
+  (when (string< (oref this oldest) (slack-ts item))
+    (oset this oldest (slack-ts item))))
+
 (defmethod slack-buffer-init-buffer ((this slack-stars-buffer))
-  (let ((buf (generate-new-buffer (slack-buffer-name this))))
+  (let* ((buf (generate-new-buffer (slack-buffer-name this)))
+         (star (oref (oref this team) star))
+         (items (slack-star-items star))
+         (oldest-message (car items)))
+    (when oldest-message
+      (slack-buffer-update-oldest this oldest-message))
     (with-current-buffer buf
       (slack-info-mode)
       (slack-buffer-insert-load-more this)
