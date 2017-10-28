@@ -27,6 +27,12 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
+(define-derived-mode slack-thread-message-buffer-mode
+  slack-message-buffer-mode
+  "Slack Thread Message"
+  (lui-set-prompt lui-prompt-string)
+  (setq lui-input-function 'slack-thread-message--send))
+
 (defclass slack-thread-message-buffer (slack-room-buffer)
   ((thread-ts :initarg :thread-ts :type string)))
 
@@ -55,7 +61,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-thread-message-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
-      (slack-thread-mode)
+      (slack-thread-message-buffer-mode)
       (goto-char lui-input-marker)
       (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (with-slots (room thread-ts team) this

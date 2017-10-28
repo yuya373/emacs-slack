@@ -27,6 +27,10 @@
 (require 'eieio)
 (require 'slack-buffer)
 
+(define-derived-mode slack-message-compose-buffer-mode
+  slack-edit-message-mode
+  "Slack Compose Message")
+
 (defclass slack-message-compose-buffer (slack-buffer) ())
 
 (defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
@@ -34,6 +38,12 @@
     (with-current-buffer buffer
       (kill-buffer)
       (if (> (count-windows) 1) (delete-window)))))
+
+(defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
+  (let ((buf (call-next-method)))
+    (with-current-buffer buf
+      (slack-message-compose-buffer-mode))
+    buf))
 
 
 (provide 'slack-message-compose-buffer)

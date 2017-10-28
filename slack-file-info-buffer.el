@@ -27,6 +27,10 @@
 (require 'eieio)
 (require 'slack-buffer)
 
+(define-derived-mode slack-file-info-buffer-mode slack-message-buffer-mode "Slack File Info"
+  (lui-set-prompt (format "Add Comment %s" lui-prompt-string))
+  (setq lui-input-function 'slack-file-comment--add))
+
 (defclass slack-file-info-buffer (slack-buffer)
   ((file :initarg :file :type slack-file)))
 
@@ -60,7 +64,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-file-info-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-file-info-mode)
+      (slack-file-info-buffer-mode)
       (slack-buffer-insert this))
     buf))
 

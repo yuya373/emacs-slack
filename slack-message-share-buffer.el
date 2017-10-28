@@ -27,8 +27,13 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
-(defclass slack-message-share-buffer (slack-room-buffer)
-  ((ts :initarg :ts :type string)))
+(define-derived-mode slack-message-share-buffer-mode
+  slack-message-compose-buffer-mode
+  "Slack Share Message")
+
+(defclass slack-message-share-buffer (slack-message-compose-buffer)
+  ((ts :initarg :ts :type string)
+   (room :initarg :room :type slack-room)))
 
 (defun slack-create-message-share-buffer (room team ts)
   (if-let* ((buf (slack-buffer-find 'slack-message-share-buffer
@@ -53,7 +58,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-edit-message-mode))
+      (slack-message-share-buffer-mode))
     (with-slots (room ts team) this
       (slack-buffer-push-new-4 'slack-message-share-buffer
                                room ts team))

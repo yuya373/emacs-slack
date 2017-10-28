@@ -103,9 +103,10 @@
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
-      (prefix (when (cl-find major-mode '(slack-mode
-                                          slack-edit-message-mode
-                                          slack-thread-mode))
+      (prefix (when (string= "slack" (car (split-string (format "%s" major-mode))))
+                  ;; (cl-find major-mode '(slack-mode
+                  ;;                         slack-edit-message-mode
+                  ;;                         slack-thread-mode))
                 (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
                                    2)))
       (candidates (let ((content (content arg)))

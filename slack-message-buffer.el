@@ -27,6 +27,8 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
+(define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer")
+
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
    (last-read :initform nil :type (or null string))))
@@ -88,7 +90,7 @@
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
-  'slack-mode)
+  'slack-message-buffer-mode)
 
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
   (let ((buf (call-next-method)))

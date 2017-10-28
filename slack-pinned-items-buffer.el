@@ -27,6 +27,8 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
+(define-derived-mode slack-pinned-items-buffer-mode slack-buffer-mode "Slack Pinned Items")
+
 (defclass slack-pinned-items-buffer (slack-room-buffer)
   ((items :initarg :items :type list)))
 
@@ -63,7 +65,8 @@
 
 (defmethod slack-buffer-init-buffer ((this slack-pinned-items-buffer))
   (let* ((buf (call-next-method)))
-    (with-current-buffer buf (slack-info-mode))
+    (with-current-buffer buf
+      (slack-pinned-items-buffer-mode))
     (slack-pinned-items-buffer-insert-items this)
     (with-slots (room team) this
       (slack-buffer-push-new-3 'slack-pinned-items-buffer room team))

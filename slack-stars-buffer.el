@@ -28,6 +28,8 @@
 (require 'slack-team)
 (require 'slack-buffer)
 
+(define-derived-mode slack-stars-buffer-mode slack-buffer "Slack Stars Buffer")
+
 (defclass slack-stars-buffer (slack-buffer)
   ((oldest :type string :initform "")))
 
@@ -109,7 +111,7 @@
     (when oldest-message
       (slack-buffer-update-oldest this oldest-message))
     (with-current-buffer buf
-      (slack-info-mode)
+      (slack-stars-buffer-mode)
       (slack-buffer-insert-load-more this)
       (with-slots (star) (oref this team)
         (cl-loop for m in (oref star items)

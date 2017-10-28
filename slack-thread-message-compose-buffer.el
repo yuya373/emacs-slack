@@ -47,9 +47,9 @@
                        room thread-ts team)))
 
 (defmethod slack-buffer-init-buffer ((this slack-thread-message-compose-buffer))
-  (let ((buf (generate-new-buffer (slack-buffer-name this))))
+  (let ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-edit-message-mode)
+      (slack-message-compose-buffer-mode)
       (setq buffer-read-only nil)
       (erase-buffer))
     buf))

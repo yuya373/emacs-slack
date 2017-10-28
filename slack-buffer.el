@@ -28,6 +28,10 @@
 (require 'lui)
 (require 'slack-room)
 
+(define-derived-mode slack-buffer-mode lui-mode "Slack Buffer"
+  (setq-local default-directory slack-default-directory)
+  (lui-set-prompt " "))
+
 (defvar-local slack-current-buffer nil)
 
 (defclass slack-buffer ()

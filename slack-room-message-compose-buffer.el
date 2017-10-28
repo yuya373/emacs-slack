@@ -49,7 +49,6 @@
 (defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-edit-message-mode)
       (setq buffer-read-only nil)
       (erase-buffer)
       (message "C-c C-c to send edited msg"))

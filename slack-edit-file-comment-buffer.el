@@ -27,6 +27,10 @@
 (require 'eieio)
 (require 'slack-message-compose-buffer)
 
+(define-derived-mode slack-edit-file-comment-buffer-mode
+  slack-message-edit-buffer-mode
+  "Slack Edit File Comment")
+
 (defclass slack-edit-file-comment-buffer
   (slack-message-compose-buffer)
   ((file :initarg :file :type slack-file)
@@ -60,7 +64,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-edit-file-comment-buffer))
   (let ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
-      (slack-edit-file-comment-mode)
+      (slack-edit-file-comment-buffer-mode)
       (setq buffer-read-only nil)
       (erase-buffer)
       (with-slots (file file-comment-id) this

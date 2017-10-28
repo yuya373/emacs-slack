@@ -27,13 +27,15 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
+(define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack File List Buffer")
+
 (defclass slack-file-list-buffer (slack-message-buffer) ())
 
 (defmethod slack-buffer-name ((_this slack-file-list-buffer))
   (format "%s" (call-next-method)))
 
 (defmethod slack-buffer-major-mode ((this slack-file-list-buffer))
-  'slack-info-mode)
+  'slack-file-list-buffer-mode)
 
 (defmethod slack-create-message-buffer ((room slack-file-room) team)
   (if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer

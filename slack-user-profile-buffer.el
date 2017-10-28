@@ -27,6 +27,8 @@
 (require 'eieio)
 (require 'slack-buffer)
 
+(define-derived-mode slack-user-profile-buffer-mode slack-buffer-mode "Slack User Profile")
+
 (defclass slack-user-profile-buffer (slack-buffer)
   ((user-id :initarg :user-id :type string)))
 
@@ -69,7 +71,7 @@
 (defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-info-mode))
+      (slack-user-profile-buffer-mode))
     (slack-buffer--insert this)
     buf))
 

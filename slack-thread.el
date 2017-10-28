@@ -86,9 +86,9 @@
 
 (defun slack-thread-show-or-create ()
   (interactive)
-  (if (eq major-mode 'slack-thread-mode)
-      (error "Already in thread")
-    (if-let* ((buf slack-current-buffer))
+  (if-let* ((buf slack-current-buffer))
+      (if (slack-thread-message-buffer-p buf)
+          (error "Already in thread")
         (slack-buffer-display-thread buf (slack-get-ts)))))
 
 (defmethod slack-room-replies-url ((_room slack-channel))

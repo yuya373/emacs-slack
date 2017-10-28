@@ -27,6 +27,10 @@
 (require 'eieio)
 (require 'slack-message-compose-buffer)
 
+(define-derived-mode slack-message-edit-buffer-mode
+  slack-edit-message-mode
+  "Slack Edit Message")
+
 (defclass slack-message-edit-buffer (slack-message-compose-buffer)
   ((room :initarg :room :type slack-room)
    (ts :initarg :ts :type string)))
@@ -65,7 +69,7 @@
     (let* ((buf (call-next-method))
            (message (slack-room-find-message room ts)))
       (with-current-buffer buf
-        (slack-edit-message-mode)
+        (slack-message-edit-buffer-mode)
         (insert (slack-message-get-text message)))
       (with-slots (room ts team) this
         (slack-buffer-push-new-4 (eieio-object-class-name this)
