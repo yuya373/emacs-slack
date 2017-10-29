@@ -27,7 +27,9 @@
 (require 'eieio)
 (require 'slack-room-buffer)
 
-(define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer")
+(define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
+  (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
+  )
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
@@ -96,7 +98,6 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
-      (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (goto-char (point-min))
       (let ((lui-time-stamp-position nil))
         (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))

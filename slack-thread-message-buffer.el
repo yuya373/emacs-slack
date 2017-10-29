@@ -31,6 +31,7 @@
   lui-mode
   "Slack Thread Message"
   (lui-set-prompt lui-prompt-string)
+  (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (setq lui-input-function 'slack-thread-message--send))
 
 (defclass slack-thread-message-buffer (slack-room-buffer)
@@ -63,7 +64,6 @@
     (with-current-buffer buf
       (slack-thread-message-buffer-mode)
       (goto-char lui-input-marker)
-      (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
       (with-slots (room thread-ts team) this
         (if-let* ((message (slack-room-find-message room thread-ts)))
             (progn

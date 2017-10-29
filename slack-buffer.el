@@ -30,6 +30,7 @@
 
 (define-derived-mode slack-buffer-mode lui-mode "Slack Buffer"
   (setq-local default-directory slack-default-directory)
+  (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (lui-set-prompt " "))
 
 (defvar-local slack-current-buffer nil)
