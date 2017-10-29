@@ -28,7 +28,7 @@
 (require 'slack-team)
 (require 'slack-buffer)
 
-(define-derived-mode slack-stars-buffer-mode slack-buffer "Slack Stars Buffer")
+(define-derived-mode slack-stars-buffer-mode slack-buffer-mode "Slack Stars Buffer")
 
 (defclass slack-stars-buffer (slack-buffer)
   ((oldest :type string :initform "")))
@@ -54,54 +54,30 @@
                             'ts (slack-ts item))
                 not-tracked-p)))
 
-(defmethod slack-buffer-load-more ((this slack-stars-buffer))
+(defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
   (with-slots (team) this
-    (let ((star (oref team star))
-          (cur-point (point)))
-      (if (slack-star-has-next-page-p star)
-          (cl-labels
-              ((after-success ()
-                              (with-current-buffer (slack-buffer-buffer this)
-                                (let ((inhibit-read-only t)
-                                      (loading-message-end (next-single-property-change (point-min)
-                                                                                        'loading-message)))
-                                  (delete-region (point-min) loading-message-end)
-                                  (set-marker lui-output-marker (point-min))
+    (slack-star-has-next-page-p (oref team star))))
 
-                                  (let ((lui-time-stamp-position nil))
-                                    (if (slack-star-has-next-page-p (oref team star))
-                                        (slack-buffer-insert-load-more this)
-                                      (lui-insert "(no more messages)\n")))
+(defmethod slack-buffer-insert-history ((this slack-stars-buffer))
+  (with-slots (team) this
+    (let ((items (slack-star-items (oref team star)))
+          (before-oldest (oref this oldest)))
+      (oset this oldest (slack-ts (car items)))
+      (cl-loop for item in items
+               do (and (string< (slack-ts item) before-oldest)
+                       (slack-buffer-insert this item t)))
 
-                                  (let ((items (slack-star-items (oref team star)))
-                                        (before-oldest (oref this oldest)))
-                                    (oset this oldest (slack-ts (car items)))
-                                    (cl-loop for item in items
-                                             do (and (string< (slack-ts item) before-oldest)
-                                                     (slack-buffer-insert this item t)))
+      (if-let* ((point (slack-buffer-ts-eq (point-min)
+                                           (point-max)
+                                           before-oldest)))
+          (goto-char point)))))
 
-                                    (if-let* ((point (slack-buffer-ts-eq (point-min)
-                                                                         (point-max)
-                                                                         before-oldest)))
-                                        (goto-char point)))
-                                  (lui-recover-output-marker)))))
-            (slack-stars-list-request team
-                                      (slack-next-page (oref star paging))
-                                      #'after-success))
-        (message "No more items.")))))
+(defmethod slack-buffer-request-history ((this slack-stars-buffer) after-success)
+  (with-slots (team) this
+    (slack-stars-list-request team
+                              (slack-next-page (oref (oref team star) paging))
+                              after-success)))
 
-(defmethod slack-buffer-insert-load-more ((this slack-stars-buffer))
-  (let ((str (propertize "(load more)\n"
-                         'face '(:underline t :wight bold)
-                         'keymap (let ((map (make-sparse-keymap)))
-                                   (define-key map (kbd "RET")
-                                     #'(lambda ()
-                                         (interactive)
-                                         (slack-buffer-load-more this)))
-                                   map)
-                         'loading-message t)))
-    (let ((lui-time-stamp-position nil))
-      (lui-insert str))))
 
 (defmethod slack-buffer-update-oldest ((this slack-stars-buffer) item)
   (when (string< (oref this oldest) (slack-ts item))

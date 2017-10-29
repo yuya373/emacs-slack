@@ -106,6 +106,43 @@
      'ts (slack-ts message)
      'slack-last-ts lui-time-stamp-last)))
 
+(defmethod slack-buffer-insert-load-more ((this slack-buffer))
+  (let ((str (propertize "(load more)\n"
+                         'face '(:underline t :wight bold)
+                         'keymap (let ((map (make-sparse-keymap)))
+                                   (define-key map (kbd "RET")
+                                     #'(lambda ()
+                                         (interactive)
+                                         (slack-buffer-load-more this)))
+                                   map)
+                         'loading-message t)))
+    (let ((lui-time-stamp-position nil))
+      (lui-insert str))))
+
+(defmethod slack-buffer-load-more ((this slack-buffer))
+  (with-slots (team) this
+    (let ((star (oref team star))
+          (cur-point (point)))
+      (if (slack-buffer-has-next-page-p this)
+          (cl-labels
+              ((after-success ()
+                              (with-current-buffer (slack-buffer-buffer this)
+                                (let ((inhibit-read-only t)
+                                      (loading-message-end (next-single-property-change (point-min)
+                                                                                        'loading-message)))
+                                  (delete-region (point-min) loading-message-end)
+                                  (set-marker lui-output-marker (point-min))
+
+                                  (let ((lui-time-stamp-position nil))
+                                    (if (slack-buffer-has-next-page-p this)
+                                        (slack-buffer-insert-load-more this)
+                                      (lui-insert "(no more messages)\n")))
+
+                                  (slack-buffer-insert-history this)
+                                  (lui-recover-output-marker)))))
+            (slack-buffer-request-history this #'after-success))
+        (message "No more items.")))))
+
 (defvar lui-prompt-string "> ")
 
 (defvar slack-mode-map
