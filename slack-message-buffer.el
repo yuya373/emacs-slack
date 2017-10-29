@@ -197,23 +197,6 @@
   (with-slots (room team) this
     (slack-message-pins-request slack-message-pins-add-url
                                 room team ts)))
-
-(defmethod slack-buffer-copy-link ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (if-let* ((message (or (slack-room-find-message room ts)
-                           (slack-room-find-thread-message room ts)))
-              (template "https://%s.slack.com/archives/%s/p%s%s"))
-        (kill-new
-         (format template
-                 (oref team domain)
-                 (oref room id)
-                 (replace-regexp-in-string "\\." "" ts)
-                 (if (slack-message-thread-messagep message)
-                     (format "?thread_ts=%s&cid=%s"
-                             (oref message thread-ts)
-                             (oref room id))
-                   ""))))))
-
 (defmethod slack-buffer-remove-star ((this slack-message-buffer) ts)
   (with-slots (room team) this
     (if-let* ((message (slack-room-find-message room ts)))

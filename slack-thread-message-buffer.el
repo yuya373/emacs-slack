@@ -28,7 +28,7 @@
 (require 'slack-room-buffer)
 
 (define-derived-mode slack-thread-message-buffer-mode
-  slack-message-buffer-mode
+  lui-mode
   "Slack Thread Message"
   (lui-set-prompt lui-prompt-string)
   (setq lui-input-function 'slack-thread-message--send))
@@ -140,6 +140,11 @@
   (if replace (slack-buffer-replace this message)
     (with-current-buffer (slack-buffer-buffer this)
       (slack-buffer-insert this message))))
+
+(defmethod slack-buffer-display-edit-message-buffer ((this slack-thread-message-buffer) ts)
+  (with-slots (room team) this
+    (let ((buf (slack-create-edit-message-buffer room team ts)))
+      (slack-buffer-display buf))))
 
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here
