@@ -269,15 +269,18 @@
                     (cons "page" (number-to-string page)))
       :success #'on-file-info))))
 
+(defmethod slack-file-comments-count-to-string ((this slack-file))
+  (format "%s comment%s"
+          (oref this comments-count)
+          (if (< 1 (oref this comments-count))
+              "s" "")))
+
 (defmethod slack-message-body-to-string ((file slack-file) team)
   (with-slots (name title size filetype permalink) file
     (slack-message-put-text-property
      (format "name: %s\nsize: %s\ntype: %s\n%s\n%s\n"
              (or title name) size filetype permalink
-             (format "%s comment%s"
-                     (oref file comments-count)
-                     (if (< 1 (oref file comments-count))
-                         "s" ""))))))
+             (slack-file-comments-count-to-string file)))))
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
@@ -293,11 +296,11 @@
          (format "comment:\n%s"
                  (slack-message-to-string initial-comment team )))))
 
-(defmethod slack-file-comments-count-to-string ((file slack-file))
-  (with-slots (comments-count comments) file
-    (if (> comments-count (length comments))
-        (slack-file-more-comments-string file)
-      "")))
+;; (defmethod slack-file-comments-count-to-string ((file slack-file))
+;;   (with-slots (comments-count comments) file
+;;     (if (> comments-count (length comments))
+;;         (slack-file-more-comments-string file)
+;;       "")))
 
 (defmethod slack-team-display-image-inlinep ((_file slack-file) team)
   (slack-team-display-file-image-inlinep team))
@@ -307,12 +310,31 @@
       (slack-message-render-image file team)
     (slack-message-view-image-to-string file team)))
 
+(defmethod slack-message-to-string ((this slack-file-email) team)
+  (with-slots (preview-plain-text from subject) this
+    (slack-format-message (slack-message-header-to-string this team)
+                          (format "Subject: %s" subject)
+                          (format "From: %s" (mapconcat #'identity
+                                                        (mapcar #'(lambda (e) (oref e original))
+                                                                from)
+                                                        ", "))
+                          preview-plain-text
+                          (slack-file-comments-count-to-string this)
+                          (slack-message-reaction-to-string this)
+                          (slack-file-link-info (oref this id) "\n(more info)"))))
+
 (defmethod slack-message-to-string ((file slack-file) team)
-  (slack-format-message (slack-message-header-to-string file team)
-                        (slack-message-body-to-string file team)
-                        (slack-message-image-to-string file team)
-                        (slack-message-reaction-to-string file)
-                        (slack-file-link-info (oref file id) "\n(more info)")))
+  (with-slots (title name pretty-type mimetype) file
+    (slack-format-message (slack-message-header-to-string file team)
+                          (format "%s%s" (or title name) (or (and pretty-type
+                                                                  (format ": %s" pretty-type))
+                                                             (format ": %s" mimetype)))
+                          (slack-file-comments-count-to-string file)
+                          (slack-message-image-to-string file team)
+                          (slack-message-reaction-to-string file)
+                          (slack-file-link-info (oref file id) "\n(more info)")
+                          ))
+  )
 
 (defun slack-file-list ()
   (interactive)
