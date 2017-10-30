@@ -720,7 +720,8 @@
                                         (oref this cc)
                                         ", ")))
         (subject (format "Subject: %s" (oref this subject)))
-        (body (format "\n%s" (oref this plain-text)))
+        (body (propertize (format "\n%s" (oref this plain-text))
+                          'slack-defer-face #'slack-put-email-body-overlay))
         (date (format "Date: %s" (slack-message-time-to-string (oref this created)))))
     (mapconcat #'identity
                (list from to cc subject date body)

@@ -212,6 +212,8 @@
   (let ((overlay (make-overlay start (1+ end))))
     (overlay-put overlay 'face 'slack-preview-face)))
 
+(defalias 'slack-put-email-body-overlay 'slack-put-preview-overlay)
+
 (defun slack-add-face-lazy ()
   (let* ((start (or (get-text-property (point-min) 'slack-defer-face)
                     (next-single-property-change (point-min) 'slack-defer-face)))
