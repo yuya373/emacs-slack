@@ -29,6 +29,7 @@
 
 (define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
+  (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   )
 
 (defclass slack-message-buffer (slack-room-buffer)

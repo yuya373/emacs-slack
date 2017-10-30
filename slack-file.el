@@ -318,7 +318,8 @@
                                                         (mapcar #'(lambda (e) (oref e original))
                                                                 from)
                                                         ", "))
-                          preview-plain-text
+                          (propertize preview-plain-text
+                                      'slack-defer-face #'slack-put-preview-overlay)
                           (slack-file-comments-count-to-string this)
                           (slack-message-reaction-to-string this)
                           (slack-file-link-info (oref this id) "\n(more info)"))))
@@ -595,7 +596,9 @@
             permalink)))
 
 (defmethod slack-file-summary ((this slack-file-email))
-  (format "%s\n%s..." (call-next-method) (oref this preview-plain-text)))
+  (format "%s\n%s" (call-next-method)
+          (propertize (format "%s..." (oref this preview-plain-text))
+                      'slack-defer-face #'slack-put-preview-overlay)))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)

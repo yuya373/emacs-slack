@@ -31,6 +31,7 @@
 (define-derived-mode slack-buffer-mode lui-mode "Slack Buffer"
   (setq-local default-directory slack-default-directory)
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
+  (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (lui-set-prompt " "))
 
 (defvar-local slack-current-buffer nil)
@@ -192,6 +193,34 @@
   (let ((point (slack-buffer-ts-eq (point-min) (point-max) ts)))
     (when point
       (goto-char point))))
+
+(defface slack-preview-face
+  (let* ((default-bg (or (face-background 'default) "unspecified-bg"))
+         (light-bg (if (equal default-bg "unspecified-bg")
+                       "unspecified-bg"
+                     (color-darken-name default-bg 3)))
+         (dark-bg (if (equal default-bg "unspecified-bg")
+                      "unspecified-bg"
+                    (color-lighten-name default-bg 3))))
+    `((default :inherit (fixed-pitch shadow) :slant normal :weight normal)
+      (((type graphic) (class color) (background dark)) (:background ,dark-bg))
+      (((type graphic) (class color) (background light)) (:background ,light-bg))))
+  "Used preview text and code blocks"
+  :group 'slack)
+
+(defun slack-put-preview-overlay (start end)
+  (let ((overlay (make-overlay start (1+ end))))
+    (overlay-put overlay 'face 'slack-preview-face)))
+
+(defun slack-add-face-lazy ()
+  (let* ((start (or (get-text-property (point-min) 'slack-defer-face)
+                    (next-single-property-change (point-min) 'slack-defer-face)))
+         (end (and start (next-single-property-change start 'slack-defer-face))))
+    (when (and start end)
+      (let ((face-or-func (get-text-property start 'slack-defer-face)))
+        (if (functionp face-or-func)
+            (funcall face-or-func start end)
+          (add-text-properties start end (list 'face face)))))))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
