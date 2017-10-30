@@ -714,7 +714,7 @@
                                         (oref this cc)
                                         ", ")))
         (subject (format "Subject: %s" (oref this subject)))
-        (body (oref this plain-text))
+        (body (format "\n%s" (oref this plain-text)))
         (date (format "Date: %s" (slack-message-time-to-string (oref this created)))))
     (mapconcat #'identity
                (list from to cc subject date body)
