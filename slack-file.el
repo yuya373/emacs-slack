@@ -596,9 +596,15 @@
             permalink)))
 
 (defmethod slack-file-summary ((this slack-file-email))
-  (format "%s\n%s" (call-next-method)
-          (propertize (format "%s..." (oref this preview-plain-text))
-                      'slack-defer-face #'slack-put-preview-overlay)))
+  (with-slots (preview-plain-text plain-text) this
+    (let ((has-more (< (length preview-plain-text)
+                       (length plain-text))))
+      (format "%s\n%s" (call-next-method)
+              (propertize (format "%s%s" preview-plain-text
+                                  (or (and has-more "...")
+                                      ""))
+                          'slack-defer-face #'slack-put-preview-overlay
+                          'slack-disable-buttonize has-more)))))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)

@@ -224,18 +224,21 @@
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
-    (ignore-errors (while (re-search-forward regex nil t)
-                     (let ((url-begin (match-beginning 1))
-                           (url (concat (match-string 1) (match-string 2)))
-                           (replace (match-string 3)))
-                       (replace-match replace nil)
-
-                       (make-button (1- url-begin)
-                                    (+ (1- url-begin) (length replace))
-                                    'type 'lui-button
-                                    'action 'lui-button-activate
-                                    'lui-button-function 'browse-url
-                                    'lui-button-arguments (list url)))))))
+    (ignore-errors
+      (while (re-search-forward regex nil t)
+        (let* ((url-begin (match-beginning 1))
+               (cur-point (point))
+               (disabled (get-text-property cur-point 'slack-disable-buttonize)))
+          (unless disabled
+            (let ((url (concat (match-string 1) (match-string 2)))
+                  (replace (match-string 3)))
+              (replace-match replace nil)
+              (make-button (1- url-begin)
+                           (+ (1- url-begin) (length replace))
+                           'type 'lui-button
+                           'action 'lui-button-activate
+                           'lui-button-function 'browse-url
+                           'lui-button-arguments (list url)))))))))
 
 (defun slack-buffer-show-typing-p (buffer)
   (cl-case slack-typing-visibility
