@@ -599,7 +599,7 @@
   (with-slots (preview-plain-text plain-text) this
     (let ((has-more (< (length preview-plain-text)
                        (length plain-text))))
-      (format "%s\n%s" (call-next-method)
+      (format "%s\n\n%s" (call-next-method)
               (propertize (format "%s%s" preview-plain-text
                                   (or (and has-more "...")
                                       ""))
