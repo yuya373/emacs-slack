@@ -42,7 +42,7 @@
               (oref file id))))
 
 (defun slack-create-file-info-buffer (team file)
-  (if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                        file
                                        team)))
       (progn
@@ -160,7 +160,7 @@
 
 (defmethod slack-buffer-delete-message ((this slack-file-info-buffer) _ts)
   (with-slots (file team) this
-    (if-let* ((file-comment-id (slack-get-file-comment-id)))
+    (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
         (if (yes-or-no-p "Are you sure want to delete this comment?")
             (slack-with-file-comment file-comment-id file
               (slack-file-comment-delete-request (oref file id)

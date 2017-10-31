@@ -31,7 +31,7 @@
   ((room :initarg :room :type slack-room)))
 
 (defmethod slack-buffer-name :static ((class slack-room-buffer) room team)
-  (if-let* ((room-name (slack-room-name room)))
+  (slack-if-let* ((room-name (slack-room-name room)))
       (format  "*Slack - %s : %s"
                (oref team name)
                room-name)))
@@ -50,7 +50,7 @@
 
 (defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (slack-room-find-message room ts)))
+    (slack-if-let* ((message (slack-room-find-message room ts)))
         (cl-labels
             ((on-delete
               (&key data &allow-other-keys)
@@ -75,7 +75,7 @@
 
 (defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (or (slack-room-find-message room ts)
+    (slack-if-let* ((message (or (slack-room-find-message room ts)
                            (slack-room-find-thread-message room ts)))
               (template "https://%s.slack.com/archives/%s/p%s%s"))
         (kill-new

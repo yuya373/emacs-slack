@@ -41,7 +41,7 @@
                        room team)))
 
 (defmethod slack-buffer-buffer ((this slack-pinned-items-buffer))
-  (if-let* ((buf (get-buffer (slack-buffer-name this))))
+  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (progn
         (slack-pinned-items-buffer-insert-items this)
         buf)
@@ -89,7 +89,7 @@
             ((string= type "file_comment")
              (slack-file-comment-create (plist-get item :comment)
                                         (plist-get (plist-get item :file) :id))))))))
-    (if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer room team)))
+    (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer room team)))
         (progn
           (oset buf items (mapcar #'create-item items))
           buf)

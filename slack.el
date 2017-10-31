@@ -28,8 +28,10 @@
 (require 'subr-x)
 (require 'oauth2)
 
-(when (not (fboundp 'if-let*))
-  (defalias 'if-let* #'if-let))
+(defalias 'slack-if-let*
+  (if (fboundp 'if-let*)
+      'if-let*
+    'if-let))
 
 (require 'slack-team)
 (require 'slack-channel)
@@ -190,7 +192,7 @@ never means never show typing indicator."
                     (slack-room-info-request room team)))
               rooms))
        (kill-slack-buffer (sb)
-                          (if-let* ((buffer-name (and sb (slack-buffer-name sb))))
+                          (slack-if-let* ((buffer-name (and sb (slack-buffer-name sb))))
                               (when (get-buffer buffer-name)
                                 (kill-buffer buffer-name))))
        (delete-existing-buffer

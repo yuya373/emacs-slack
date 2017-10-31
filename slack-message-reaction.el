@@ -52,9 +52,9 @@
 
 (defun slack-message-add-reaction ()
   (interactive)
-  (if-let* ((buf slack-current-buffer)
+  (slack-if-let* ((buf slack-current-buffer)
             (reaction (slack-message-reaction-input)))
-      (if-let* ((file-comment-id (slack-get-file-comment-id)))
+      (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
           (slack-buffer-add-reaction-to-file-comment buf reaction file-comment-id)
         (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))))
 
@@ -86,9 +86,9 @@
 
 (defun slack-message-show-reaction-users ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (with-slots (team) buf
-        (if-let* ((reaction (ignore-errors
+        (slack-if-let* ((reaction (ignore-errors
                               (get-text-property (point)
                                                  'reaction))))
             (let ((user-names (slack-reaction-user-names reaction

@@ -38,7 +38,7 @@
   'slack-file-list-buffer-mode)
 
 (defmethod slack-create-message-buffer ((room slack-file-room) team)
-  (if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
                                        room
                                        team)))
       buffer

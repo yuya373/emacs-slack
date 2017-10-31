@@ -93,7 +93,7 @@
                        (funcall success :data data)
                        (oset team retry-after-timer nil))
            (on-error (&key error-thrown symbol-status response data)
-                     (if-let* ((retry-after (request-response-header response "retry-after"))
+                     (slack-if-let* ((retry-after (request-response-header response "retry-after"))
                                (retry-after-sec (string-to-number retry-after)))
                          (progn
                            (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"

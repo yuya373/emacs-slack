@@ -82,7 +82,7 @@
 
 (defun slack-room-history-load ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-load-history buf)))
 
 (defmethod slack-room-history-url ((_room slack-channel))

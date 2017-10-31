@@ -217,7 +217,7 @@
                                           (define-key map (kbd "RET")
                                             #'(lambda ()
                                                 (interactive)
-                                                (if-let* ((buf slack-current-buffer))
+                                                (slack-if-let* ((buf slack-current-buffer))
                                                   (slack-buffer-display-im buf))))
                                           map))))
     (format "%s\n%s\n\n%s" header body dm-button)))

@@ -33,14 +33,14 @@
   ((user-id :initarg :user-id :type string)))
 
 (defun slack-create-user-profile-buffer (team user-id)
-  (if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
+  (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
                                     user-id team)))
       buf
     (slack-user-profile-buffer :team team
                                :user-id user-id)))
 
 (defmethod slack-buffer-buffer ((this slack-user-profile-buffer))
-  (if-let* ((buf (get-buffer (slack-buffer-name this))))
+  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (progn
         (slack-buffer--insert this)
         buf)

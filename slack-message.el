@@ -210,12 +210,12 @@
 
 (defun slack-message-pins-add ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-pins-add buf (slack-get-ts))))
 
 (defun slack-message-pins-remove ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-pins-remove buf (slack-get-ts))))
 
 (defun slack-message-pins-request (url room team ts)
@@ -245,7 +245,7 @@
   (slack-user--find (slack-message-sender-id m) team))
 
 (defmethod slack-message-redisplay ((message slack-message) room)
-  (if-let* ((buf (oref room buffer)))
+  (slack-if-let* ((buf (oref room buffer)))
       (slack-buffer-replace buf message)))
 
 (cl-defmethod slack-message-render-image ((message slack-message) team)
@@ -325,7 +325,7 @@
   (cons "timestamp" (oref m ts)))
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type)
-  (if-let* ((old-reaction (slack-reaction-find m reaction)))
+  (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
       (slack-reaction-join old-reaction reaction)
     (slack-reaction-push m reaction)))
 

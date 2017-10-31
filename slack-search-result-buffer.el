@@ -46,7 +46,7 @@
     (slack-buffer-name (eieio-object-class-name this) search-result team)))
 
 (defun slack-create-search-result-buffer (search-result team)
-  (if-let* ((buffer (slack-buffer-find 'slack-search-result-buffer
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-search-result-buffer
                                        search-result
                                        team)))
       buffer
@@ -95,7 +95,7 @@
                do (and (string< (slack-ts match) before-oldest)
                        (slack-buffer-insert this match)))
 
-      (if-let* ((point (slack-buffer-ts-eq (point-min)
+      (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
                                            (point-max)
                                            before-oldest)))
           (goto-char point)))))

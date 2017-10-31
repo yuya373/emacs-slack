@@ -50,7 +50,7 @@
 
 (defun slack-message-share ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-share-message buf (slack-get-ts))))
 
 (defun slack-message-share--send (team room ts msg)
@@ -83,7 +83,7 @@
 
 (defun slack-message-write-another-buffer ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-message-compose-buffer buf)))
 
 (defmethod slack-message-get-user-id ((m slack-user-message))
@@ -91,7 +91,7 @@
 
 (defun slack-message-edit ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-edit-message-buffer buf (slack-get-ts))))
 
 
@@ -104,7 +104,7 @@
 
 (defun slack-message-send-from-buffer ()
   (interactive)
-  (if-let* ((buf slack-current-buffer)
+  (slack-if-let* ((buf slack-current-buffer)
             (text (buffer-substring-no-properties (point-min) (point-max))))
       (slack-buffer-send-message buf text)))
 

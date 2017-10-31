@@ -91,8 +91,8 @@
   (slack-link-channels (slack-link-users message team) team))
 
 (defun slack-message--send (message)
-  (if-let* ((buf slack-current-buffer))
-      (if-let* ((command (slack-slash-commands-parse message)))
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-if-let* ((command (slack-slash-commands-parse message)))
           (slack-buffer-execute-slash-command buf command)
         (slack-buffer-send-message buf message))))
 
@@ -146,7 +146,7 @@
 
 (defun slack-message-embed-channel ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (with-slots (team) buf
         (slack-select-from-list
             ((slack-channel-names team) "Select Channel: ")
@@ -154,7 +154,7 @@
 
 (defun slack-message-embed-mention ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (with-slots (team) buf
         (let* ((pre-defined (list (list "here" :name "here")
                                   (list "channel" :name "channel")))

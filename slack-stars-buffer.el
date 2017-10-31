@@ -40,7 +40,7 @@
   (slack-buffer-name 'slack-stars-buffer (oref this team)))
 
 (defmethod slack-buffer-find :static ((class slack-stars-buffer) team)
-  (if-let* ((buf (cl-find-if #'(lambda (e) (string= (buffer-name e)
+  (slack-if-let* ((buf (cl-find-if #'(lambda (e) (string= (buffer-name e)
                                                     (slack-buffer-name class team)))
                              (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
@@ -67,7 +67,7 @@
                do (and (string< (slack-ts item) before-oldest)
                        (slack-buffer-insert this item t)))
 
-      (if-let* ((point (slack-buffer-ts-eq (point-min)
+      (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
                                            (point-max)
                                            before-oldest)))
           (goto-char point)))))
@@ -102,7 +102,7 @@
     buf))
 
 (defun slack-create-stars-buffer (team)
-  (if-let* ((buf (slack-buffer-find 'slack-stars-buffer team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-stars-buffer team)))
       buf
     (make-instance 'slack-stars-buffer
                    :team team)))
@@ -117,5 +117,9 @@
     (with-current-buffer buffer
       (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
                                       ts))))))
+
+(defmethod slack-buffer-display-file ((this slack-stars-buffer) file-id)
+  (error "Implement this"))
+
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here

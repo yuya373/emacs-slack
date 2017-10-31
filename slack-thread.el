@@ -56,11 +56,11 @@
 
 (defun slack-thread-start ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-start-thread buf (slack-get-ts))))
 
 (defun slack-thread-message--send (message)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-send-message buf message)))
 
 (defun slack-thread-send-message (room team message thread-ts)
@@ -86,7 +86,7 @@
 
 (defun slack-thread-show-or-create ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (if (slack-thread-message-buffer-p buf)
           (error "Already in thread")
         (slack-buffer-display-thread buf (slack-get-ts)))))
@@ -324,7 +324,7 @@
 
 (defun slack-room-unread-threads ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-unread-threads buf)))
 
 (defmethod slack-thread-update-last-read ((thread slack-thread) msg)

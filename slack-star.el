@@ -209,7 +209,7 @@
           (call-next-method)))
 
 (defmethod slack-star-remove-star ((this slack-star) ts team)
-  (if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
+  (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
                               (oref this items))))
       (slack-message-star-api-request slack-message-stars-remove-url
                                       (slack-message-star-api-params item)
@@ -220,13 +220,13 @@
     (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
                                                           date-create))
                                    (oref this items)))
-    (if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
+    (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
         (slack-buffer-message-delete buffer date-create))))
 
 (defmethod slack-star-add ((this slack-star) payload team)
   (let ((item (slack-create-star-item payload team)))
     (oset this items (append (oref this items) (list item)))
-    (if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
+    (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
         (with-current-buffer (slack-buffer-buffer buffer)
           (slack-buffer-insert buffer item)))))
 

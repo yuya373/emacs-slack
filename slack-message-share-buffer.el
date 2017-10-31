@@ -36,7 +36,7 @@
    (room :initarg :room :type slack-room)))
 
 (defun slack-create-message-share-buffer (room team ts)
-  (if-let* ((buf (slack-buffer-find 'slack-message-share-buffer
+  (slack-if-let* ((buf (slack-buffer-find 'slack-message-share-buffer
                                     room ts team)))
       buf
     (slack-message-share-buffer :room room :team team :ts ts)))

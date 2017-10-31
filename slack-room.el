@@ -301,7 +301,7 @@
 
 (defun slack-room-pins-list ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-pins-list buf)))
 
 (defun slack-select-rooms ()
@@ -443,7 +443,7 @@
 
 (defun slack-room-user-select ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-user-profile buf)))
 
 (defun slack-select-unread-rooms ()

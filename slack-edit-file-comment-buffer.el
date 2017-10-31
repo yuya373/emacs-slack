@@ -37,7 +37,7 @@
    (file-comment-id :initarg :file-comment-id :type string)))
 
 (defun slack-create-edit-file-comment-buffer (file file-comment-id team)
-  (if-let* ((buf (slack-buffer-find 'slack-edit-file-comment-buffer
+  (slack-if-let* ((buf (slack-buffer-find 'slack-edit-file-comment-buffer
                                     file
                                     file-comment-id
                                     team)))

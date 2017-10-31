@@ -53,7 +53,7 @@
     buf))
 
 (defmethod slack-buffer-find :static ((class slack-buffer) room team)
-  (if-let* ((buf (cl-find-if
+  (slack-if-let* ((buf (cl-find-if
                   #'(lambda (buf)
                       (string= (buffer-name buf)
                                (slack-buffer-name class room team)))
@@ -71,7 +71,7 @@
   "*Slack*")
 
 (defun slack-message-buffer-on-killed ()
-  (if-let* ((buf slack-current-buffer)
+  (slack-if-let* ((buf slack-current-buffer)
             (class (eieio-object-class-name buf))
             (cb (current-buffer)))
       (set-slot-value (oref buf team) class
@@ -79,7 +79,7 @@
                                     (slot-value (oref buf team) class)))))
 
 (defmethod slack-buffer-init-buffer :after (this)
-  (if-let* ((buf (get-buffer (slack-buffer-name this))))
+  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (progn
         (with-current-buffer buf
           (slack-buffer-enable-emojify)

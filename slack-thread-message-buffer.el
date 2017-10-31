@@ -41,7 +41,7 @@
   (slack-buffer-find-4 class room ts team))
 
 (defun slack-create-thread-message-buffer (room team thread-ts)
-  (if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                     room thread-ts team)))
       buf
     (slack-thread-message-buffer :room room
@@ -65,7 +65,7 @@
       (slack-thread-message-buffer-mode)
       (goto-char lui-input-marker)
       (with-slots (room thread-ts team) this
-        (if-let* ((message (slack-room-find-message room thread-ts)))
+        (slack-if-let* ((message (slack-room-find-message room thread-ts)))
             (progn
               (slack-buffer-insert this message t)
               (let ((lui-time-stamp-position nil))
@@ -111,7 +111,7 @@
 
 (defmethod slack-buffer-add-star ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (slack-room-find-message room ts)))
+    (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-add-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
@@ -119,7 +119,7 @@
 
 (defmethod slack-buffer-remove-star ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (slack-room-find-message room ts)))
+    (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-remove-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
@@ -131,7 +131,7 @@
            (thread (and parent (slack-message-get-thread parent team))))
       (when thread
         (slack-thread-delete-message thread message)
-        (if-let* ((buffer (oref room buffer)))
+        (slack-if-let* ((buffer (oref room buffer)))
             (slack-buffer-message-delete buffer (oref message ts)))
         (slack-message-update parent team t)))))
 

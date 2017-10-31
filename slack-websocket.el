@@ -462,7 +462,7 @@
   (cl-labels
       ((build-file-payload (payload)
                        (let ((file (plist-get payload :file)))
-                         (if-let* ((initial-comment (plist-get file :initial_comment)))
+                         (slack-if-let* ((initial-comment (plist-get file :initial_comment)))
                              (plist-put file :comments (list initial-comment))
                            file))))
     (let ((file (slack-file-create (build-file-payload payload))))
@@ -658,7 +658,7 @@
   (let* ((item (plist-get payload :item))
          (type (plist-get item :type))
          (_type (plist-get payload :type)))
-    (if-let* ((star (oref team star)))
+    (slack-if-let* ((star (oref team star)))
         (if (string= _type "star_removed")
             (slack-star-remove star item team)
           (slack-star-add star item team)))

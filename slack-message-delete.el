@@ -40,7 +40,7 @@
 
 (defun slack-message-delete ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-delete-message buf (slack-get-ts))))
 
 (defclass _slack-message-delete ()
@@ -82,13 +82,13 @@
 (defmethod slack-message-delete--buffer ((this _slack-message-delete))
   (with-slots (message room team) this
     (and message
-         (if-let* ((buf (slack-buffer-find 'slack-message-buffer room team)))
+         (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team)))
              (slack-buffer-message-delete buf (oref message ts))))))
 
 (defmethod slack-message-delete--buffer ((this _slack-thread-message-delete))
   (with-slots (message room team) this
     (when message
-      (if-let* ((parent (slack-room-find-thread-parent room message))
+      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
                 (thread (slack-message-get-thread parent team))
                 (ts (oref message ts))
                 (buf (slack-buffer-find 'slack-thread-message-buffer
