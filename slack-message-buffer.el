@@ -157,9 +157,9 @@
       (slack-buffer-display buf))))
 
 (defmethod slack-create-message-buffer ((room slack-room) team)
-  (if-let* ((buffer (slack-buffer-find 'slack-message-buffer
-                                       room
-                                       team)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer
+                                             room
+                                             team)))
       buffer
     (slack-message-buffer :room room :team team)))
 
@@ -202,7 +202,7 @@
                                 room team ts)))
 (defmethod slack-buffer-remove-star ((this slack-message-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (slack-room-find-message room ts)))
+    (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-remove-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
@@ -210,7 +210,7 @@
 
 (defmethod slack-buffer-add-star ((this slack-message-buffer) ts)
   (with-slots (room team) this
-    (if-let* ((message (slack-room-find-message room ts)))
+    (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-add-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
@@ -234,9 +234,9 @@
                (let ((inhibit-read-only t))
                  (goto-char (point-min))
 
-                 (if-let* ((loading-message-end (slack-buffer-ts-eq (point-min)
-                                                                    (point-max)
-                                                                    oldest)))
+                 (slack-if-let* ((loading-message-end (slack-buffer-ts-eq (point-min)
+                                                                          (point-max)
+                                                                          oldest)))
                      (delete-region (point-min) loading-message-end)
                    (message "loading-message-end not found, oldest: %s" oldest))
 

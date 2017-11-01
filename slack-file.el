@@ -238,9 +238,9 @@
 
 (defun slack-file-update ()
   (interactive)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (with-slots (file team) buf
-        (if-let* ((page (oref file page)))
+        (slack-if-let* ((page (oref file page)))
             (slack-file-request-info
              file page team
              #'(lambda (file team)
@@ -677,17 +677,17 @@
   (setq lui-input-function 'slack-file-comment--add))
 
 (defun slack-file-comment--add (message)
-  (if-let* ((buf slack-current-buffer))
+  (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-send-message buf message)))
 
 (defun slack-file-display ()
   (interactive)
   (let ((id (get-text-property (- (point) (line-beginning-position)) 'file (thing-at-point 'line))))
-    (if-let* ((buf slack-current-buffer))
+    (slack-if-let* ((buf slack-current-buffer))
         (slack-buffer-display-file buf id))))
 
 (defun slack-redisplay (file team)
-  (if-let* ((buf (slack-create-file-info-buffer team file)))
+  (slack-if-let* ((buf (slack-create-file-info-buffer team file)))
       (slack-buffer-redisplay buf)))
 
 (defmethod slack-message-star-added ((this slack-file))
