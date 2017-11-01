@@ -70,7 +70,9 @@
            (message (slack-room-find-message room ts)))
       (with-current-buffer buf
         (slack-message-edit-buffer-mode)
-        (insert (slack-message-get-text message)))
+        (insert (slack-message-unescape-string
+                 (slack-message-get-text message)
+                 team)))
       (with-slots (room ts team) this
         (slack-buffer-push-new-4 (eieio-object-class-name this)
                                  room

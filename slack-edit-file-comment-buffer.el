@@ -69,7 +69,9 @@
       (erase-buffer)
       (with-slots (file file-comment-id) this
         (slack-with-file-comment file-comment-id file
-          (insert (oref file-comment comment)))))
+          (insert (slack-message-unescape-string
+                   (oref file-comment comment)
+                   (oref this team))))))
     buf))
 
 (defmethod slack-buffer-send-message ((this slack-edit-file-comment-buffer) message)
