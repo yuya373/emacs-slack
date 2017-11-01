@@ -52,6 +52,9 @@
       (slack-message-compose-buffer-mode)
       (setq buffer-read-only nil)
       (erase-buffer))
+    (with-slots (room thread-ts team) this
+      (slack-buffer-push-new-4 'slack-thread-message-compose-buffer
+                               room thread-ts team))
     buf))
 
 (defun slack-create-thread-message-compose-buffer (room ts team)

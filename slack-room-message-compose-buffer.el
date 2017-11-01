@@ -52,6 +52,9 @@
       (setq buffer-read-only nil)
       (erase-buffer)
       (message "C-c C-c to send edited msg"))
+    (with-slots (room team) this
+      (slack-buffer-push-new-3 'slack-room-message-compose-buffer
+                               room team))
     buf))
 
 (defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
