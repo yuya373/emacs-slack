@@ -107,6 +107,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-edit-file-comment-buffer :initform nil :type (or null list))
    (slack-stars-buffer :initform nil :type (or null list))
    (slack-search-result-buffer :initform nil :type (or null list))
+   (slack-file-comment-compose-buffer :initform nil :type (or null list))
    ))
 
 (defmethod slack-team-kill-buffers ((this slack-team))
@@ -122,7 +123,10 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (oref this slack-thread-message-compose-buffer)
                             (oref this slack-edit-file-comment-buffer)
                             (oref this slack-stars-buffer)
-                            (oref this slack-search-result-buffer))
+                            (oref this slack-search-result-buffer)
+                            (oref this slack-search-result-buffer)
+                            (oref this slack-stars-buffer)
+                            (oref this slack-file-comment-compose-buffer))
            do (kill-buffer e)))
 
 (defun slack-team-find (id)

@@ -93,6 +93,11 @@
   (with-slots (file team) this
     (slack-file-comment-add-request (oref file id) message team)))
 
+(defmethod slack-buffer-display-message-compose-buffer ((this slack-file-info-buffer))
+  (with-slots (file team) this
+    (let ((buffer (slack-create-file-comment-compose-buffer file team)))
+      (slack-buffer-display buffer))))
+
 (defmethod slack-buffer-redisplay ((this slack-file-info-buffer))
   (with-current-buffer (slack-buffer-buffer this)
     (let ((cur-point (point))
