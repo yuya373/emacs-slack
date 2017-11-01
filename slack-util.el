@@ -103,7 +103,7 @@
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
-      (prefix (when (string= "slack" (car (split-string (format "%s" major-mode))))
+      (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
                   ;; (cl-find major-mode '(slack-mode
                   ;;                         slack-edit-message-mode
                   ;;                         slack-thread-mode))
