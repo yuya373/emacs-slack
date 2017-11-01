@@ -118,8 +118,5 @@
       (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
                                       ts))))))
 
-(defmethod slack-buffer-display-file ((this slack-stars-buffer) file-id)
-  (error "Implement this"))
-
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here
