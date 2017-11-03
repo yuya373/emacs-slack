@@ -42,7 +42,7 @@
 
 (defun slack-create-thread-message-buffer (room team thread-ts)
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                    room thread-ts team)))
+                                          room thread-ts team)))
       buf
     (slack-thread-message-buffer :room room
                                  :team team
@@ -145,6 +145,12 @@
   (with-slots (room team) this
     (let ((buf (slack-create-edit-message-buffer room team ts)))
       (slack-buffer-display buf))))
+
+(defmethod slack-buffer-share-message ((this slack-thread-message-buffer) ts)
+  (with-slots (room team) this
+    (let ((buf (slack-create-message-share-buffer room team ts)))
+      (slack-buffer-display buf))))
+
 
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here
