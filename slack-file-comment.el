@@ -184,13 +184,14 @@
   (oref (oref m comment) comment))
 
 (defmethod slack-message-changed--copy ((this slack-file-comment-message) other)
-  (let ((changed (call-next-method)))
-    (with-slots ((old-comment comment) text) this
-      (let ((new-comment (oref other comment)))
-        (unless (string= (oref old-comment comment) (oref new-comment comment))
-          (oset old-comment comment (oref new-comment comment))
-          (setq changed t))))
-    changed))
+  (when (slack-file-comment-message-p other)
+    (let ((changed (call-next-method)))
+      (with-slots ((old-comment comment) text) this
+        (let ((new-comment (oref other comment)))
+          (unless (string= (oref old-comment comment) (oref new-comment comment))
+            (oset old-comment comment (oref new-comment comment))
+            (setq changed t))))
+      changed)))
 
 (defmethod slack-ts ((this slack-file-comment))
   (number-to-string (oref this timestamp)))
