@@ -741,7 +741,7 @@
                  (slack-file-update-comment file comment team edited-at)
                  (slack-redisplay file team)))
       (if file (update file)
-        (slack-file-info-request file-id team :after-success #'update)))))
+        (slack-file-request-info file-id team :after-success #'update)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
