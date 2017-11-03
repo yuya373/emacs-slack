@@ -89,8 +89,12 @@
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
            (buf (slack-create-thread-message-buffer room team ts)))
-      (if (object-of-class-p message 'slack-reply-broadcast-message)
-          (error "Can't start thread from broadcasted message"))
+      (when (slack-reply-broadcast-message-p message)
+        (error "Can't start thread from broadcasted message"))
+      (when (slack-file-comment-message-p message)
+        (error "Can't start thread from file comment message"))
+      (when (slack-file-share-message-p message)
+        (error "Can't start thread from file share message"))
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
