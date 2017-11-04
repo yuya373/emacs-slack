@@ -65,7 +65,12 @@
       (slack-buffer-init-buffer this)))
 
 (defmethod slack-buffer-display ((this slack-buffer))
-  (funcall slack-buffer-function (slack-buffer-buffer this)))
+  (condition-case err
+      (funcall slack-buffer-function (slack-buffer-buffer this))
+    (error (progn
+             (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
+                 (kill-buffer buf))
+             (signal (car err) (cdr err))))))
 
 (defmethod slack-buffer-name ((this slack-buffer))
   "*Slack*")
