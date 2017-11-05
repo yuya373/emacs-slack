@@ -81,5 +81,10 @@
                              (oref room id))
                    ""))))))
 
+(defmethod slack-buffer--replace ((this slack-room-buffer) ts)
+  (with-slots (room) this
+    (slack-if-let* ((message (slack-room-find-message room ts)))
+        (slack-buffer-replace this message))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

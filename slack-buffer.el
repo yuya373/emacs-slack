@@ -32,6 +32,7 @@
   (setq-local default-directory slack-default-directory)
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
+  (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (lui-set-prompt " "))
 
 (defvar-local slack-current-buffer nil)
@@ -82,6 +83,34 @@
       (set-slot-value (oref buf team) class
                       (cl-remove-if #'(lambda (e) (equal e cb))
                                     (slot-value (oref buf team) class)))))
+
+(defun slack-buffer-replace-image (buffer ts)
+  (with-current-buffer buffer
+    (slack-buffer--replace slack-current-buffer ts)))
+
+(defun slack-display-image ()
+  (goto-char (point-min))
+  (while (re-search-forward "\\[Image\\]" (point-max) t)
+    (slack-if-let* ((spec (get-text-property (1- (point)) 'slack-image-spec))
+                    (end (point))
+                    (beg (previous-single-property-change end 'slack-image-spec))
+                    (cur-buffer (current-buffer))
+                    (url (car spec))
+                    (ts (get-text-property beg 'ts))
+                    (path (slack-image-path url))
+                    (token (oref (oref slack-current-buffer team) token)))
+        (cl-labels
+            ((on-success ()
+                         (slack-buffer-replace-image cur-buffer ts))
+             (on-error (status-code error _status url)
+                       (message "[Error Download Image: %s, %s, %s]"
+                                status-code error url)))
+          (unless (file-exists-p path)
+            (slack-url-copy-file url
+                                 path
+                                 :success #'on-success
+                                 :error #'on-error
+                                 :token token))))))
 
 (defmethod slack-buffer-init-buffer :after (this)
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))

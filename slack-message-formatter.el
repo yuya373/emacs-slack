@@ -182,29 +182,11 @@
 (defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
 
-(defmethod slack-message-image-to-string ((m slack-message) team)
-  (if (slack-team-display-image-inlinep m team)
-      (let ((room (slack-room-find (oref m channel) team)))
-        (cl-labels
-            ((redisplay (_image) (slack-message-redisplay m room))
-             (render-image (attachment)
-                           (slack-mapconcat-images
-                            (slack-image-slice
-                             (slack-image-create attachment :success #'redisplay :error #'redisplay)))))
-          #'render-image))
-    (cl-labels
-        ((render-button (attachment) (slack-message-view-image-to-string attachment team)))
-      #'render-button)))
-
 (defmethod slack-message-attachment-body ((m slack-message) team)
-  (cl-labels
-      ((attachment-to-string (attachment)
-                             (slack-message-to-string attachment
-                                                      (slack-message-image-to-string m team))))
-    (with-slots (attachments) m
-      (let ((body (mapconcat #'attachment-to-string attachments "\n\t-\n")))
-        (if (< 0 (length body))
-            (slack-message-unescape-string (format "\n%s" body) team))))))
+  (with-slots (attachments) m
+    (let ((body (mapconcat #'slack-message-to-string attachments "\n\t-\n")))
+      (if (< 0 (length body))
+          (slack-message-unescape-string (format "\n%s" body) team)))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text) m

@@ -50,7 +50,12 @@
    (channel-name :initarg :channel_name :initform nil)
    (from-url :initarg :from_url :initform nil)))
 
-(defmethod slack-message-to-string ((attachment slack-attachment) image-renderer)
+(defmethod slack-image-spec ((this slack-attachment))
+  (with-slots (image-url image-height image-width) this
+    (when image-url
+      (list image-url image-width image-height slack-image-max-height))))
+
+(defmethod slack-message-to-string ((attachment slack-attachment))
   (with-slots
       (fallback text ts color from-url footer fields pretext) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
@@ -78,8 +83,7 @@
                                         (or (and ts (format "|%s" (slack-message-time-to-string ts)))
                                             ""))
                                 'face 'slack-attachment-footer))))
-           (image (when (functionp image-renderer)
-                    (funcall image-renderer attachment))))
+           (image (slack-image-string (slack-image-spec attachment))))
       (if (and (slack-string-blankp header)
                (slack-string-blankp pretext)
                (slack-string-blankp body)
@@ -94,25 +98,6 @@
                 (or (and footer (format "\n\t%s" footer)) "")
                 (or (and image (format "\n%s" image)) ""))
         ))))
-
-(defmethod slack-message-has-imagep ((attachment slack-attachment))
-  (oref attachment image-url))
-
-(cl-defmethod slack-image-create ((attachment slack-attachment) &key success error)
-  (with-slots (image-url image-height image-width) attachment
-    (when image-url
-      (let ((path (slack-image-path image-url)))
-        (when path
-          (cl-labels
-              ((create-image () (slack-image--create path :height image-height :width image-width))
-               (on-success () (funcall success (create-image)))
-               (on-error () (funcall error (create-image))))
-            (if (file-exists-p path) (create-image)
-              (progn
-                (slack-url-copy-file image-url path
-                                     :success #'on-success
-                                     :error #'on-error)
-                nil))))))))
 
 (defmethod slack-attachment-header ((attachment slack-attachment))
   (with-slots (title title-link author-name author-subname) attachment
@@ -131,25 +116,6 @@
 
 (defmethod slack-attachment-to-alert ((a slack-attachment))
   (oref a fallback))
-
-(defmethod slack-open-image ((attachment slack-attachment) team)
-  (cl-labels
-      ((render (image)
-               (funcall slack-buffer-function
-                        (slack-render-image image team))))
-    (render (slack-image-create attachment
-                                :success #'render
-                                :error #'render))))
-
-(defmethod slack-message-view-image-to-string ((attachment slack-attachment) team)
-  (and (slack-message-has-imagep attachment)
-       (cl-labels
-           ((open-image () (interactive) (slack-open-image attachment team)))
-         (propertize "[View Image]"
-                     'face '(:underline t)
-                     'keymap (let ((keymap (make-sparse-keymap)))
-                               (define-key keymap (kbd "RET") #'open-image)
-                               keymap)))))
 
 (provide 'slack-attachment)
 ;;; slack-attachment.el ends here

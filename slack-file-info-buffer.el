@@ -29,6 +29,7 @@
 
 (define-derived-mode slack-file-info-buffer-mode lui-mode "Slack File Info"
   (lui-set-prompt (format "Add Comment %s" lui-prompt-string))
+  (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (setq lui-input-function 'slack-file-comment--add))
 
 (defclass slack-file-info-buffer (slack-buffer)
@@ -82,7 +83,7 @@
   (with-slots (file team) this
     (lui-insert (let* ((header (slack-message-header-to-string file team))
                        (body (slack-message-body-to-string file team))
-                       (thumb (slack-message-image-to-string file team))
+                       (thumb (slack-message-large-image-to-string file))
                        (reactions (slack-message-reaction-to-string file))
                        (comments (slack-file-comments-to-string file team))
                        (comments-count
@@ -105,15 +106,6 @@
   (with-slots (file team) this
     (let ((buffer (slack-create-file-comment-compose-buffer file team)))
       (slack-buffer-display buffer))))
-
-(defmethod slack-buffer-redisplay ((this slack-file-info-buffer))
-  (with-current-buffer (slack-buffer-buffer this)
-    (let ((cur-point (point))
-          (max (marker-position lui-output-marker)))
-      (slack-buffer-insert this)
-      (if (and (<= (point-min) cur-point)
-               (< cur-point max))
-          (goto-char cur-point)))))
 
 (defmethod slack-buffer-add-reaction-to-message
   ((this slack-file-info-buffer) reaction _ts)
@@ -180,6 +172,11 @@
                                                  file-comment-id
                                                  team))
           (message "Canceled")))))
+
+(defmethod slack-buffer--replace ((this slack-file-info-buffer) _ts)
+  (slack-if-let* ((buffer (get-buffer (slack-buffer-name this))))
+      (with-current-buffer buffer
+        (slack-buffer-insert this))))
 
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

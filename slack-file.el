@@ -63,6 +63,11 @@
    (mimetype :initarg :mimetype :type string :initform "")
    (title :initarg :title :type (or null string) :initform nil)
    (pretty-type :initarg :pretty_type :type (or null string) :initform nil)
+   (is-public :initarg :is_public :initform nil)
+   (url :initarg :url :initform "" :type string)
+   (url-download :initarg :url_download :initform "" :type string)
+   (url-private :initarg :url_private :initform "" :type string)
+   (url-private-download :initarg :url_private_download :initform "" :type string)
    ))
 
 (defclass slack-file-email (slack-file)
@@ -305,10 +310,11 @@
 (defmethod slack-team-display-image-inlinep ((_file slack-file) team)
   (slack-team-display-file-image-inlinep team))
 
-(defmethod slack-message-image-to-string ((file slack-file) team)
-  (if (slack-team-display-image-inlinep file team)
-      (slack-message-render-image file team)
-    (slack-message-view-image-to-string file team)))
+(defmethod slack-message-image-to-string ((file slack-file))
+  (slack-image-string (slack-file-thumb-image-spec file)))
+
+(defmethod slack-message-large-image-to-string ((file slack-file))
+  (slack-image-string (slack-file-image-spec file)))
 
 (defmethod slack-message-to-string ((this slack-file-email) team)
   (with-slots (preview-plain-text from subject) this
@@ -327,15 +333,15 @@
 (defmethod slack-message-to-string ((file slack-file) team)
   (with-slots (title name pretty-type mimetype) file
     (slack-format-message (slack-message-header-to-string file team)
-                          (format "%s%s" (or title name) (or (and pretty-type
-                                                                  (format ": %s" pretty-type))
-                                                             (format ": %s" mimetype)))
+                          (format "%s%s"
+                                  (or title name)
+                                  (or (and pretty-type
+                                           (format ": %s" pretty-type))
+                                      (format ": %s" mimetype)))
                           (slack-file-comments-count-to-string file)
-                          (slack-message-image-to-string file team)
+                          (slack-message-image-to-string file)
                           (slack-message-reaction-to-string file)
-                          (slack-file-link-info (oref file id) "\n(more info)")
-                          ))
-  )
+                          (slack-file-link-info (oref file id) "\n(more info)"))))
 
 (defun slack-file-list ()
   (interactive)
@@ -531,7 +537,7 @@
       :success #'on-file-comment-edit))))
 
 
-(defmethod slack-file-image-spec ((file slack-file))
+(defmethod slack-file-thumb-image-spec ((file slack-file))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64) file
     (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
         (and thumb-160 (list thumb-160 nil nil))
@@ -539,37 +545,11 @@
         (and thumb-64 (list thumb-64 nil nil))
         (list nil nil nil))))
 
-(defmethod slack-message-has-imagep ((file slack-file))
-  (cl-destructuring-bind (url _width _height) (slack-file-image-spec file)
-    url))
-
-(cl-defmethod slack-image-create ((file slack-file) &key success error token)
-  (cl-destructuring-bind (url width height) (slack-file-image-spec file)
-    (when url
-      (let ((path (slack-image-path url)))
-        (when path
-          (cl-labels
-              ((create-image () (slack-image--create path :width width :height height))
-               (on-success () (funcall success (create-image)))
-               (on-error () (funcall error (create-image))))
-            (if (file-exists-p path)
-                (create-image)
-              (progn
-                (slack-url-copy-file url path
-                                     :success #'on-success
-                                     :error #'on-error
-                                     :token token)
-                nil))))))))
-
-(defmethod slack-open-image ((file slack-file) team)
-  (cl-labels
-      ((render (image)
-               (funcall slack-buffer-function
-                        (slack-render-image image team))))
-    (render (slack-image-create file
-                                :success #'render
-                                :error #'render
-                                :token (oref team token)))))
+(defmethod slack-file-image-spec ((this slack-file))
+  (with-slots (is-public url-download url-private-download) this
+    (list url-private-download
+          nil
+          nil)))
 
 (defmethod slack-file-channel-ids ((file slack-file))
   (append (oref file channels)
@@ -685,10 +665,6 @@
   (let ((id (get-text-property (- (point) (line-beginning-position)) 'file (thing-at-point 'line))))
     (slack-if-let* ((buf slack-current-buffer))
         (slack-buffer-display-file buf id))))
-
-(defun slack-redisplay (file team)
-  (slack-if-let* ((buf (slack-create-file-info-buffer team file)))
-      (slack-buffer-redisplay buf)))
 
 (defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
