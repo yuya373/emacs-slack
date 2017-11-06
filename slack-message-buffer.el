@@ -32,6 +32,7 @@
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-pre-output-hook 'slack-search-code-block nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
+  (setq-local lui-max-buffer-size nil)
   )
 
 (defclass slack-message-buffer (slack-room-buffer)
