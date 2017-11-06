@@ -243,10 +243,10 @@
              (size (image-size image t))
              (height (cdr size))
              (width (car size))
-             (h (min height slack-image-max-height))
-             (w (if (< slack-image-max-height height)
+             (h (min height max-height))
+             (w (if (< max-height height)
                     (ceiling
-                     (* (/ (float slack-image-max-height) height)
+                     (* (/ (float max-height) height)
                         width))
                   width)))
         (create-image (or file data) 'imagemagick data :height h :width w))
