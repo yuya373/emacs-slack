@@ -107,9 +107,24 @@
       (funcall (slack-buffer-major-mode this))
       (slack-buffer-set-current-buffer this)
       (goto-char (point-min))
+
       (let ((lui-time-stamp-position nil))
         (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))
-      (slack-buffer-insert-latest-messages this))
+
+      (with-slots (room team last-read) this
+        (let* ((messages (slack-room-sorted-messages room))
+               (latest-message (car (last messages)))
+               (oldest-message (car messages)))
+          (cl-loop for m in messages
+                   do (if (or (null last-read)
+                              (string< last-read (oref m ts)))
+                          (slack-buffer-insert this m t)))
+          (when latest-message
+            (slack-buffer-update-last-read this latest-message)
+            (slack-buffer-update-mark this (oref latest-message ts)))
+          (when oldest-message
+            (slack-buffer-update-oldest this oldest-message))))
+      )
     (with-slots (room team) this
       (let* ((class (eieio-object-class-name this)))
         (slack-buffer-push-new-3 class room team)))
@@ -138,18 +153,6 @@
     (if (or (null last-read)
             (string< last-read (oref message ts)))
         (setq last-read (oref message ts)))))
-
-(defmethod slack-buffer-insert-latest-messages ((this slack-message-buffer))
-  (with-slots (room team last-read) this
-    (let* ((messages (slack-room-sorted-messages room))
-           (latest-message (car (last messages))))
-      (cl-loop for m in messages
-               do (if (or (null last-read)
-                          (string< last-read (oref m ts)))
-                      (slack-buffer-insert this m t)))
-      (when latest-message
-        (slack-buffer-update-last-read this latest-message)
-        (slack-buffer-update-mark this (oref latest-message ts))))))
 
 (defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
   (with-slots (room team) this
@@ -223,7 +226,8 @@
                                         team))))
 
 (defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
-  (when (and message (string< (oref message ts) (oref this oldest)))
+  (when (and message (or (null (oref this oldest))
+                         (string< (oref message ts) (oref this oldest))))
     (oset this oldest (oref message ts))))
 
 (defmethod slack-buffer-load-history ((this slack-message-buffer))
