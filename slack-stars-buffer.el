@@ -92,6 +92,7 @@
       (slack-buffer-update-oldest this oldest-message))
     (with-current-buffer buf
       (slack-stars-buffer-mode)
+      (slack-buffer-set-current-buffer this)
       (slack-buffer-insert-load-more this)
       (with-slots (star) (oref this team)
         (cl-loop for m in (oref star items)

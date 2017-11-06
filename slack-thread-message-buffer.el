@@ -63,6 +63,7 @@
   (let* ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
       (slack-thread-message-buffer-mode)
+      (slack-buffer-set-current-buffer this)
       (goto-char lui-input-marker)
       (with-slots (room thread-ts team) this
         (slack-if-let* ((message (slack-room-find-message room thread-ts)))

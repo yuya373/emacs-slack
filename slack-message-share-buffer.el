@@ -58,7 +58,8 @@
 (defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-message-share-buffer-mode))
+      (slack-message-share-buffer-mode)
+      (slack-buffer-set-current-buffer this))
     (with-slots (room ts team) this
       (slack-buffer-push-new-4 'slack-message-share-buffer
                                room ts team))

@@ -66,7 +66,8 @@
 (defmethod slack-buffer-init-buffer ((this slack-pinned-items-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-pinned-items-buffer-mode))
+      (slack-pinned-items-buffer-mode)
+      (slack-buffer-set-current-buffer this))
     (slack-pinned-items-buffer-insert-items this)
     (with-slots (room team) this
       (slack-buffer-push-new-3 'slack-pinned-items-buffer room team))

@@ -65,6 +65,7 @@
   (let ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
       (slack-edit-file-comment-buffer-mode)
+      (slack-buffer-set-current-buffer this)
       (setq buffer-read-only nil)
       (erase-buffer)
       (with-slots (file file-comment-id) this

@@ -105,6 +105,7 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
+      (slack-buffer-set-current-buffer this)
       (goto-char (point-min))
       (let ((lui-time-stamp-position nil))
         (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))

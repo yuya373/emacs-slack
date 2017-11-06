@@ -71,7 +71,8 @@
 (defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
-      (slack-user-profile-buffer-mode))
+      (slack-user-profile-buffer-mode)
+      (slack-buffer-set-current-buffer this))
     (slack-buffer--insert this)
     buf))
 

@@ -117,9 +117,11 @@
       (progn
         (with-current-buffer buf
           (slack-buffer-enable-emojify)
-          (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t)
-          (setq slack-current-buffer this))
+          (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t))
         buf)))
+
+(defmethod slack-buffer-set-current-buffer ((this slack-buffer))
+  (setq-local slack-current-buffer this))
 
 
 (defmethod slack-buffer-init-buffer ((this slack-buffer))

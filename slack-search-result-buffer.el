@@ -110,6 +110,7 @@
   (let ((buffer (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buffer
       (slack-search-result-buffer-mode)
+      (slack-buffer-set-current-buffer this)
       (with-slots (search-result) this
         (let ((lui-time-stamp-position nil))
           (if (slack-search-has-next-page-p search-result)

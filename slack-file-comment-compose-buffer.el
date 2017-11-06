@@ -45,6 +45,7 @@
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-message-compose-buffer)
+      (slack-buffer-set-current-buffer this)
       (setq buffer-read-only nil)
       (erase-buffer))
     (with-slots (file team) this
