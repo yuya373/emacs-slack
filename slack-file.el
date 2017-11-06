@@ -550,9 +550,8 @@
     (list url-private-download
           nil
           nil
-          ;; (/ (frame-pixel-height) 2)
-          (frame-pixel-height)
-          )))
+          nil
+          (floor (* 0.9 (frame-pixel-width))))))
 
 (defmethod slack-file-channel-ids ((file slack-file))
   (append (oref file channels)

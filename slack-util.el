@@ -187,19 +187,23 @@
            (file-name-extension image-url))
    slack-profile-image-file-directory))
 
-(cl-defun slack-image--create (path &key (width nil) (height nil) (max-height nil))
-  (if (image-type-available-p 'imagemagick)
-      (slack-image-shrink (apply #'create-image (append (list path 'imagemagick nil)
-                                                        (if height (list :height height))
-                                                        (if width (list :width width))))
-                          max-height)
-    (create-image path)))
+(cl-defun slack-image--create (path &key (width nil) (height nil) (max-height nil) (max-width nil))
+  (let ((image (apply #'create-image (append (list path 'imagemagick nil)
+                                             (if height (list :height height))
+                                             (if width (list :width width))
+                                             (if max-height
+                                                 (list :max-height max-height))
+                                             (if max-width
+                                                 (list :max-width max-width))))))
+    (if (image-type-available-p 'imagemagick)
+        (slack-image-shrink image max-height)
+      image)))
 
 (defun slack-image-exists-p (image-spec)
   (file-exists-p (slack-image-path (car image-spec))))
 
 (defun slack-image-string (spec)
-  "SPEC: (list url width height)"
+  "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
   (if spec
       (slack-if-let* ((path (slack-image-path (car spec))))
           (if (file-exists-p path)
@@ -208,7 +212,8 @@
                 (slack-image--create path
                                      :width (cadr spec)
                                      :height (caddr spec)
-                                     :max-height (cadddr spec))))
+                                     :max-height (cadddr spec)
+                                     :max-width (cadr (cdddr spec)))))
             (propertize "[Image]" 'slack-image-spec spec))
         "")
     ""))
