@@ -708,7 +708,11 @@
 
 (defun slack-redisplay (file team)
   (if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
-      (slack-buffer--replace buffer nil)))
+      (slack-buffer--replace buffer nil))
+  (if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
+                                       (slack-file-room-obj team)
+                                       team)))
+      (slack-buffer-replace buffer file)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
