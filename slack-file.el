@@ -706,5 +706,9 @@
                (list from to cc subject date body)
                "\n")))
 
+(defun slack-redisplay (file team)
+  (if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
+      (slack-buffer--replace buffer nil)))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
