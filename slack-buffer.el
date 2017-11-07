@@ -85,8 +85,9 @@
                                     (slot-value (oref buf team) class)))))
 
 (defun slack-buffer-replace-image (buffer ts)
-  (with-current-buffer buffer
-    (slack-buffer--replace slack-current-buffer ts)))
+  (and (buffer-live-p buffer)
+       (with-current-buffer buffer
+         (slack-buffer--replace slack-current-buffer ts))))
 
 (defun slack-display-image ()
   (goto-char (point-min))
