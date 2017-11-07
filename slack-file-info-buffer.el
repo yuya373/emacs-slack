@@ -27,7 +27,7 @@
 (require 'eieio)
 (require 'slack-buffer)
 
-(define-derived-mode slack-file-info-buffer-mode lui-mode "Slack File Info"
+(define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
   (lui-set-prompt (format "Add Comment %s" lui-prompt-string))
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (setq lui-input-function 'slack-file-comment--add))

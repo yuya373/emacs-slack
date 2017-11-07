@@ -280,12 +280,23 @@
           (if (< 1 (oref this comments-count))
               "s" "")))
 
+(defmethod slack-file-gdoc-p ((this slack-file))
+  (string= (oref this filetype) "gdoc"))
+
+(defmethod slack-file-gdoc-to-string ((this slack-file))
+  (with-slots (pretty-type name title url-private permalink) this
+    (let ((title (propertize (format "<%s|%s>" permalink (or title name))
+                             'face '(:weight bold)))
+          (description (format "<%s|%s>" url-private pretty-type)))
+      (slack-format-message title description))))
+
 (defmethod slack-message-body-to-string ((file slack-file) team)
-  (with-slots (name title size filetype permalink) file
-    (slack-message-put-text-property
-     (format "name: %s\nsize: %s\ntype: %s\n%s\n%s\n"
-             (or title name) size filetype permalink
-             (slack-file-comments-count-to-string file)))))
+  (cond
+   ((slack-file-gdoc-p file) (slack-file-gdoc-to-string file))
+   (t (with-slots (name title size filetype permalink) file
+        (slack-message-put-text-property
+         (format "name: %s\nsize: %s\ntype: %s\n%s\n"
+                 (or title name) size filetype permalink))))))
 
 (defmethod slack-file-comments-to-string ((file slack-file) team)
   (with-slots (comments) file
