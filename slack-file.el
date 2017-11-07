@@ -313,6 +313,10 @@
 (defmethod slack-message-image-to-string ((file slack-file))
   (slack-image-string (slack-file-thumb-image-spec file)))
 
+(defmethod slack-file-image-p ((this slack-file))
+  (string= (car (split-string (oref this mimetype) "/"))
+           "image"))
+
 (defmethod slack-message-large-image-to-string ((file slack-file))
   (slack-image-string (slack-file-image-spec file)))
 

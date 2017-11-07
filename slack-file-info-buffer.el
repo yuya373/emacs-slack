@@ -84,7 +84,9 @@
   (with-slots (file team) this
     (lui-insert (let* ((header (slack-message-header-to-string file team))
                        (body (slack-message-body-to-string file team))
-                       (thumb (slack-message-large-image-to-string file))
+                       (thumb (or (and (slack-file-image-p file)
+                                       (slack-message-large-image-to-string file))
+                                  (slack-message-image-to-string file)))
                        (reactions (slack-message-reaction-to-string file))
                        (comments (slack-file-comments-to-string file team))
                        (comments-count
