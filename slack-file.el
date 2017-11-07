@@ -57,6 +57,9 @@
    (thumb-360-w :initarg :thumb_360_w :initform nil)
    (thumb-360-h :initarg :thumb_360_h :initform nil)
    (thumb-160 :initarg :thumb_160 :initform nil)
+   (thumb-pdf :initarg :thumb_pdf :initform nil)
+   (thumb-pdf-w :initarg :thumb_pdf_w :initform nil)
+   (thumb-pdf-h :initarg :thumb_pdf_h :initform nil)
    (original-w :initarg :original_w :initform nil)
    (original-h :initarg :original_h :initform nil)
    (is-starred :initarg :is_starred :initform nil)
@@ -553,11 +556,12 @@
 
 
 (defmethod slack-file-thumb-image-spec ((file slack-file))
-  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64) file
+  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
     (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
         (and thumb-160 (list thumb-160 nil nil))
         (and thumb-80 (list thumb-80 nil nil))
         (and thumb-64 (list thumb-64 nil nil))
+        (and thumb-pdf (list thumb-pdf thumb-pdf-w thumb-pdf-h))
         (list nil nil nil))))
 
 (defmethod slack-file-image-spec ((this slack-file))
