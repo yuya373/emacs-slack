@@ -188,14 +188,15 @@
    slack-profile-image-file-directory))
 
 (cl-defun slack-image--create (path &key (width nil) (height nil) (max-height nil) (max-width nil))
-  (let ((image (apply #'create-image (append (list path 'imagemagick nil)
-                                             (if height (list :height height))
-                                             (if width (list :width width))
-                                             (if max-height
-                                                 (list :max-height max-height))
-                                             (if max-width
-                                                 (list :max-width max-width))))))
-    (if (image-type-available-p 'imagemagick)
+  (let* ((imagemagick-available-p (image-type-available-p 'imagemagick))
+         (image (apply #'create-image (append (list path (and imagemagick-available-p 'imagemagick) nil)
+                                              (if height (list :height height))
+                                              (if width (list :width width))
+                                              (if max-height
+                                                  (list :max-height max-height))
+                                              (if max-width
+                                                  (list :max-width max-width))))))
+    (if imagemagick-available-p
         (slack-image-shrink image max-height)
       image)))
 
