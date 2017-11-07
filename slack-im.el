@@ -129,6 +129,11 @@
                                           (plist-get data :ims)))
                 (if after-success
                     (funcall after-success team))
+                (slack-request-dnd-team-info team)
+                (mapc #'(lambda (room)
+                          (unless (slack-room-hiddenp room)
+                            (slack-room-info-request room team)))
+                      (oref team ims))
                 (message "Slack Im List Updated"))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
@@ -222,11 +227,7 @@
                                      team
                                      'slack-im)))
 
-    (oset new-room messages (oref room messages))
-    (oset team ims
-          (cons new-room
-                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team ims))))))
+    (slack-merge room new-room)))
 
 (defmethod slack-room-info-request-params ((room slack-im))
   (list (cons "user" (oref room user))

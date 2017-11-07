@@ -99,10 +99,15 @@
                   (data "slack-group-list-update")
                   (slack-merge-list (oref team groups)
                                     (mapcar #'(lambda (g)
-                                      (slack-room-create g team 'slack-group))
-                                  (plist-get data :groups)))
+                                                (slack-room-create
+                                                 g team 'slack-group))
+                                            (plist-get data :groups)))
                   (if after-success
                       (funcall after-success team))
+                  (mapc #'(lambda (room)
+                            (unless (slack-room-hiddenp room)
+                              (slack-room-info-request room team)))
+                        (oref team groups))
                   (message "Slack Group List Updated"))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update
@@ -276,12 +281,7 @@
   (let ((new-room (slack-room-create (plist-get data :group)
                                      team
                                      'slack-group)))
-
-    (oset new-room messages (oref room messages))
-    (oset team groups
-          (cons new-room
-                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team groups))))))
+    (slack-merge room new-room)))
 
 (defmethod slack-room-history-url ((_room slack-group))
   slack-group-history-url)

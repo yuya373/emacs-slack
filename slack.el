@@ -128,7 +128,7 @@ never means never show typing indicator."
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 (defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
 
-(defun slack-authorize (team &optional error-callback)
+(defun slack-authorize (team &optional error-callback success-callback)
   (let ((authorize-request (oref team authorize-request)))
     (if (and authorize-request (not (request-response-done-p authorize-request)))
         (slack-log "Authorize Already Requested" team)
@@ -144,7 +144,9 @@ never means never show typing indicator."
                        (slack-log (format "Slack Authorize Failed: %s" error-thrown)
                                   team)))
            (on-success (&key data &allow-other-keys)
-                       (slack-on-authorize data team)))
+                       (if success-callback
+                           (funcall success-callback data)
+                         (slack-on-authorize data team))))
         (let ((request (slack-request
                         (slack-request-create
                          slack-rtm-connect-url
@@ -155,75 +157,30 @@ never means never show typing indicator."
           (oset team authorize-request request))))))
 
 (defun slack-update-team (data team)
-  (cl-labels
-      ((create-rooms
-        (datum team class)
-        (mapcar #'(lambda (data)
-                    (slack-room-create data team class))
-                (append datum nil)))
-       (create-open-rooms
-        (datum team class)
-        (mapcar #'(lambda (data)
-                    (slack-room-create data team class))
-                (append
-                 (cl-remove-if #'(lambda (data) (eq (plist-get data :is_open) json-false)) datum)
-                 nil))))
-    (let ((self (plist-get data :self))
-          (team-data (plist-get data :team)))
-      (oset team id (plist-get team-data :id))
-      (oset team name (plist-get team-data :name))
-      (oset team self self)
-      (oset team self-id (plist-get self :id))
-      (oset team self-name (plist-get self :name))
-      (oset team ws-url (plist-get data :url))
-      (oset team domain (plist-get team-data :domain))
-      team)))
+  (let ((self (plist-get data :self))
+        (team-data (plist-get data :team)))
+    (oset team id (plist-get team-data :id))
+    (oset team name (plist-get team-data :name))
+    (oset team self self)
+    (oset team self-id (plist-get self :id))
+    (oset team self-name (plist-get self :name))
+    (oset team ws-url (plist-get data :url))
+    (oset team domain (plist-get team-data :domain))
+    team))
 
 (cl-defun slack-on-authorize (data team)
   (oset team authorize-request nil)
-  (cl-labels
-      ((update-room-info
-        (team rooms)
-        (mapc #'(lambda (room)
-                  (unless (slack-room-hiddenp room)
-                    (slack-room-info-request room team)))
-              rooms))
-       (kill-slack-buffer (sb)
-                          (slack-if-let* ((buffer-name (and sb (slack-buffer-name sb))))
-                              (when (get-buffer buffer-name)
-                                (kill-buffer buffer-name))))
-       (delete-existing-buffer
-        (rooms)
-        (mapc #'(lambda (room)
-                  (kill-slack-buffer (oref room buffer))
-                  (mapc #'kill-slack-buffer (oref room thread-message-buffers)))
-              rooms)))
-    (slack-request-handle-error
-     (data "slack-authorize")
-     (slack-log (format "Slack Authorization Finished" (oref team name)) team)
-     (let ((team (slack-update-team data team)))
-       (slack-channel-list-update
-        team #'(lambda (team)
-                 (let ((channels (oref team channels)))
-                   (update-room-info team channels)
-                   (delete-existing-buffer channels))))
-       (slack-group-list-update
-        team #'(lambda (team)
-                 (let ((groups (oref team groups)))
-                   (update-room-info team groups)
-                   (delete-existing-buffer groups))))
-       (slack-im-list-update
-        team #'(lambda (team)
-                 (slack-request-dnd-team-info
-                  team
-                  #'(lambda (team)
-                      (let ((ims (oref team ims)))
-                        (update-room-info team ims)
-                        (delete-existing-buffer ims))))))
-       (slack-bot-list-update team)
-       (slack-request-emoji team)
-       (slack-update-modeline)
-       (slack-ws-open team)))))
+  (slack-request-handle-error
+   (data "slack-authorize")
+   (slack-log (format "Slack Authorization Finished" (oref team name)) team)
+   (let ((team (slack-update-team data team)))
+     (slack-channel-list-update team)
+     (slack-group-list-update team)
+     (slack-im-list-update team)
+     (slack-bot-list-update team)
+     (slack-request-emoji team)
+     (slack-update-modeline)
+     (slack-ws-open team))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)

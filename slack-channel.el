@@ -92,8 +92,11 @@
 
                   (if after-success
                       (funcall after-success team))
-                  (message "Slack Channel List Updated")
-                  )))
+                  (mapc #'(lambda (room)
+                            (unless (slack-room-hiddenp room)
+                              (slack-room-info-request room team)))
+                        (oref team channels))
+                  (message "Slack Channel List Updated"))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
                               team
@@ -252,11 +255,7 @@
                                      team
                                      'slack-channel)))
 
-    (oset new-room messages (oref room messages))
-    (oset team channels
-          (cons new-room
-                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team channels))))))
+    (slack-merge room new-room)))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
