@@ -47,15 +47,24 @@
 (defvar slack-buffer-function)
 
 (defclass slack-group (slack-room)
-  ((name :initarg :name :type string)
-   (is-group :initarg :is_group)
-   (creator :initarg :creator)
-   (is-archived :initarg :is_archived)
-   (is-mpim :initarg :is_mpim)
-   (members :initarg :members :type list)
-   (topic :initarg :topic)
-   (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
-   (purpose :initarg :purpose)))
+  ((is-group :initarg :is_group :initform nil)
+   (creator :initarg :creator :initform "")
+   (is-archived :initarg :is_archived :initform nil)
+   (is-mpim :initarg :is_mpim :initform nil)
+   (members :initarg :members :type list :initform '())
+   (topic :initarg :topic :initform nil)
+   (purpose :initarg :purpose :initform nil)))
+
+(defmethod slack-merge ((this slack-group) other)
+  (call-next-method)
+  (with-slots (is-group creator is-archived is-mpim members topic purpose) this
+    (setq is-group (oref other is-group))
+    (setq creator (oref other creator))
+    (setq is-archived (oref other is-archived))
+    (setq is-mpim (oref other is-mpim))
+    (setq members (oref other members))
+    (setq topic (oref other topic))
+    (setq purpose (oref other purpose))))
 
 (defun slack-group-names (team &optional filter)
   (with-slots (groups) team
@@ -88,11 +97,10 @@
                  (&key data &allow-other-keys)
                  (slack-request-handle-error
                   (data "slack-group-list-update")
-                  (with-slots (groups) team
-                    (setq groups
-                          (mapcar #'(lambda (g)
+                  (slack-merge-list (oref team groups)
+                                    (mapcar #'(lambda (g)
                                       (slack-room-create g team 'slack-group))
-                                  (plist-get data :groups))))
+                                  (plist-get data :groups)))
                   (if after-success
                       (funcall after-success team))
                   (message "Slack Group List Updated"))))

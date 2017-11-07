@@ -34,23 +34,32 @@
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
 (defclass slack-room ()
-  ((name :initarg :name :type string)
+  ((name :initarg :name :type (or null string) :initform nil)
    (id :initarg :id)
    (created :initarg :created)
-   (has-pins :initarg :has_pins)
-   (last-read :initarg :last_read :type string :initform "0")
    (latest :initarg :latest)
-   (oldest :initarg :oldest)
-   (unread-count :initarg :unread_count)
+   (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
-   (team-id :initarg :team-id)
-   (buffer :initform nil :type (or null slack-buffer))
-   (thread-message-buffers :initform '() :type list)))
+   (team-id :initarg :team-id)))
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
 (defgeneric slack-room-update-mark-url (room))
+
+(defmethod slack-equalp ((this slack-room) other)
+  (string= (oref this id)
+           (oref other id)))
+
+(defmethod slack-merge ((this slack-room) other)
+  "except MESSAGES"
+  (oset this name (oref other name))
+  (oset this id (oref other id))
+  (oset this created (oref other created))
+  (oset this latest (oref other latest))
+  (oset this unread-count (oref other unread-count))
+  (oset this unread-count-display (oref other unread-count-display))
+  (oset this team-id (oref other team-id)))
 
 (defun slack-room-create (payload team class)
   (cl-labels
@@ -168,21 +177,6 @@
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
 
-(defmethod slack-room-update-last-read-p ((room slack-room) ts)
-  (not (string> (oref room last-read) ts)))
-
-(defmethod slack-room-update-last-read ((room slack-room) msg)
-  (if (slack-room-update-last-read-p room (oref msg ts))
-      (oset room last-read (oref msg ts))))
-
-
-(defmethod slack-room-latest-messages ((room slack-room) messages)
-  (with-slots (last-read) room
-    (cl-remove-if #'(lambda (m)
-                      (or (string< (oref m ts) last-read)
-                          (string= (oref m ts) last-read)))
-                  messages)))
-
 (defun slack-room-sort-messages (messages)
   (cl-sort messages
            #'string<
@@ -211,17 +205,8 @@
             (string< (oref latest ts) (oref message ts)))
         (setq latest message))))
 
-(defmethod slack-room-set-oldest ((room slack-room) sorted-messages)
-  (let ((oldest (and (slot-boundp room 'oldest) (oref room oldest)))
-        (maybe-oldest (car sorted-messages)))
-    (if oldest
-        (when (string< (oref maybe-oldest ts) (oref oldest ts))
-          (oset room oldest maybe-oldest))
-      (oset room oldest maybe-oldest))))
-
 (defmethod slack-room-push-message ((room slack-room) message)
   (with-slots (messages) room
-    (slack-room-set-oldest room (list message))
     (setq messages
           (cl-remove-if #'(lambda (n) (slack-message-equal message n))
                         messages))
@@ -231,7 +216,6 @@
   (let* ((sorted (slack-room-sort-messages messages))
          (oldest (car sorted))
          (latest (car (last sorted))))
-    (oset room oldest oldest)
     (oset room messages sorted)
     (oset room latest latest)))
 
@@ -358,9 +342,6 @@
     team
     :params (list (cons "channel" id))
     :success success)))
-
-(defmethod slack-room-reset-last-read ((room slack-room))
-  (oset room last-read "0"))
 
 (defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
