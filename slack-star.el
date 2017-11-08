@@ -253,10 +253,10 @@
                 (insert-star payload file)
               (slack-file-request-info file-id 1 team
                                        #'(lambda (file _team)
-                                           (insert-star payload file)))))))
-    (let ((item (create-star payload)))
-      (append-star-item item)
-      (insert-to-buffer item))))
+                                           (insert-star payload file))))))
+      (let ((item (create-star payload)))
+        (append-star-item item)
+        (insert-to-buffer item)))))
 
 (provide 'slack-star)
 ;;; slack-stars.el ends here
