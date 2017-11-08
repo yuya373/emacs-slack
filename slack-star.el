@@ -120,10 +120,12 @@
 (defun slack-create-star-item (payload team)
   (let* ((type (plist-get payload :type))
          (date-create (format "%s" (plist-get payload :date_create)))
-         (file (if (and (plist-get payload :file)
-                        (or (not (slack-file-p (plist-get payload :file)))
-                            (not (slack-file-email-p (plist-get payload :file)))))
-                   (slack-file-create (plist-get payload :file))))
+         (file-payload (plist-get payload :file))
+         (file (and file-payload
+                    (if (or (slack-file-p file-payload)
+                            (slack-file-email-p file-payload))
+                        file-payload
+                      (slack-file-create file-payload))))
          (file-id (and file (oref file id))))
     (cond
      ((string= type "message")
