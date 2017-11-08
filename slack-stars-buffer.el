@@ -50,9 +50,10 @@
                               (string-to-number
                                (slack-ts
                                 (slack-star-item-message item))))))
-    (lui-insert (propertize (slack-to-string item (oref this team))
-                            'ts (slack-ts item))
-                not-tracked-p)))
+    (lui-insert-with-text-properties
+     (slack-to-string item (oref this team))
+     'ts (slack-ts item)
+     'not-tracked-p not-tracked-p)))
 
 (defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
   (with-slots (team) this
@@ -114,10 +115,12 @@
       (slack-star-remove-star star ts team))))
 
 (defmethod slack-buffer-message-delete ((this slack-stars-buffer) ts)
-  (let ((buffer (slack-buffer-buffer this)))
+  (let ((buffer (slack-buffer-buffer this))
+        (inhibit-read-only t))
     (with-current-buffer buffer
-      (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
-                                      ts))))))
+      (slack-if-let* ((beg (slack-buffer-ts-eq (point-min) (point-max) ts))
+                      (end (next-single-property-change beg 'ts)))
+          (delete-region beg end)))))
 
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here
