@@ -280,6 +280,8 @@
                  (message "Error Fetching Image: %s %s %s, url: %s"
                           (request-response-status-code response)
                           error-thrown symbol-status url)
+                 (if (file-exists-p newname)
+                     (delete-file newname))
                  (case (request-response-status-code response)
                    (403 nil)
                    (404 nil)
