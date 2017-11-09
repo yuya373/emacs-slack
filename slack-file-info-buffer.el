@@ -79,27 +79,38 @@
     buf))
 
 (defmethod slack-buffer-insert ((this slack-file-info-buffer))
-  (let ((inhibit-read-only t))
-    (delete-region (point-min) lui-output-marker))
-  (with-slots (file team) this
-    (lui-insert (let* ((header (slack-message-header-to-string file team))
-                       (body (slack-message-body-to-string file team))
-                       (thumb (or (and (slack-file-image-p file)
-                                       (slack-message-large-image-to-string file))
-                                  (slack-message-image-to-string file)))
-                       (reactions (slack-message-reaction-to-string file))
-                       (comments (slack-file-comments-to-string file team))
-                       (comments-count
-                        (slack-file-comments-count-to-string file)))
-                  (propertize
-                   (slack-format-message (propertize (slack-format-message header
-                                                                           body
-                                                                           thumb
-                                                                           reactions)
-                                                     'file-id (oref file id))
-                                         comments
-                                         comments-count)
-                   'ts (oref file ts))))))
+  (let ((inhibit-read-only t)
+        (cur-point (point)))
+    (delete-region (point-min) lui-output-marker)
+    (with-slots (file team) this
+      (let* ((header (slack-message-header-to-string file team))
+             (body (slack-message-body-to-string file team))
+             (thumb (or (and (slack-file-image-p file)
+                             (slack-message-large-image-to-string file))
+                        (slack-message-image-to-string file)))
+             (reactions (slack-message-reaction-to-string file))
+
+             (comments-count
+              (slack-file-comments-count-to-string file)))
+
+        (lui-insert-with-text-properties
+         (slack-format-message header
+                               body
+                               thumb
+                               reactions
+                               comments-count)
+
+
+         'file-id (oref file id)
+         'ts (slack-ts file)))
+
+      (let ((comments (slack-file-comments-to-string file team)))
+        (mapc #'(lambda (comment)
+                  (lui-insert-with-text-properties
+                   (slack-message-to-string comment team)
+                   'file-comment-id (oref comment id)
+                   'ts (oref comment timestamp)))
+              (oref file comments))))))
 
 (defmethod slack-buffer-send-message ((this slack-file-info-buffer) message)
   (with-slots (file team) this
