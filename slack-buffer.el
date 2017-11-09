@@ -190,17 +190,17 @@
                 (slack-create-file-info-buffer team file))))
       (slack-file-request-info file-id 1 team #'open))))
 
-(defmethod slack-buffer-cant-cant-execute ((this slack-buffer))
+(defmethod slack-buffer-cant-execute ((this slack-buffer))
   (message "Can't execute this command from %s" (eieio-object-class-name this)))
 
 (defmethod slack-buffer-display-pins-list ((this slack-buffer))
-  (slack-buffer-cant-cant-execute this))
+  (slack-buffer-cant-execute this))
 (defmethod slack-buffer-pins-add ((this slack-buffer) ts)
-  (slack-buffer-cant-cant-execute this))
+  (slack-buffer-cant-execute this))
 (defmethod slack-buffer-pins-remove ((this slack-buffer) ts)
-  (slack-buffer-cant-cant-execute this))
+  (slack-buffer-cant-execute this))
 (defmethod slack-buffer-display-user-profile ((this slack-buffer))
-  (slack-buffer-cant-cant-execute this))
+  (slack-buffer-cant-execute this))
 
 (defvar lui-prompt-string "> ")
 
