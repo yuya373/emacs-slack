@@ -201,6 +201,8 @@
   (slack-buffer-cant-execute this))
 (defmethod slack-buffer-display-user-profile ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(defmethod slack-buffer-copy-link ((this slack-buffer) ts)
+  (slack-buffer-cant-execute this))
 
 (defvar lui-prompt-string "> ")
 
