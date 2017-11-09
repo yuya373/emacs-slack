@@ -160,11 +160,12 @@
 
 (defmethod slack-buffer-display-edit-message-buffer ((this slack-file-info-buffer) _ts)
   (with-slots (file team) this
-    (let ((buf (slack-create-edit-file-comment-buffer
+    (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
+        (let ((buf (slack-create-edit-file-comment-buffer
                 file
                 (slack-get-file-comment-id)
                 team)))
-      (slack-buffer-display buf))))
+          (slack-buffer-display buf)))))
 
 (defmethod slack-buffer-delete-message ((this slack-file-info-buffer) _ts)
   (with-slots (file team) this
