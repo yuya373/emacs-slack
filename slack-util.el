@@ -291,14 +291,20 @@
                                  url)))))
        (parser () (mm-write-region (point-min) (point-max)
                                    newname nil nil nil 'binary t)))
-    (request
-     url
-     :success #'on-success
-     :error #'on-error
-     :parser #'parser
-     :sync sync
-     :headers (when (and token (string-prefix-p "https" url))
-                (list (cons "Authorization" (format "Bearer %s" token)))))))
+    (let* ((url-obj (url-generic-parse-url url))
+           (need-token-p (and url-obj
+                              (string-match-p "slack"
+                                              (url-host url-obj))))
+           (use-https-p (and url-obj
+                             (string= "https" (url-type url-obj)))))
+      (request
+       url
+       :success #'on-success
+       :error #'on-error
+       :parser #'parser
+       :sync sync
+       :headers (if (and token use-https-p need-token-p)
+                    (list (cons "Authorization" (format "Bearer %s" token))))))))
 
 (defun slack-render-image (image team)
   (let ((buf (get-buffer-create
