@@ -661,88 +661,85 @@
                                       (oref team users))))))
 
 ;; [star_added event | Slack](https://api.slack.com/events/star_added)
-(cl-defun slack-ws-handle-star (payload team &key
-                                        (on-add-to-message nil)
-                                        (on-remove-from-message nil)
-                                        (on-add-to-file-comment-message nil)
-                                        (on-remove-from-file-comment-message nil)
-                                        (on-add-to-file-message nil)
-                                        (on-remove-from-file-message nil))
+(defun slack-ws-handle-star-added (payload team)
   (let* ((item (plist-get payload :item))
-         (type (plist-get item :type))
-         (_type (plist-get payload :type)))
+         (item-type (plist-get item :type)))
     (slack-if-let* ((star (oref team star)))
-        (if (string= _type "star_removed")
-            (slack-star-remove star item team)
-          (slack-star-add star item team)))
-    (cl-labels ((update (message) (slack-message-update message team t t)))
+        (slack-star-remove star item team))
+    (cl-labels
+        ((update-message (message)
+                         (slack-message-star-added message)
+                         (slack-message-update message team t t)))
       (cond
-       ((string= type "message")
-        (let* ((room (slack-room-find (plist-get item :channel) team))
-               (ts (plist-get (plist-get item :message) :ts))
-               (message (slack-room-find-message room ts)))
-          (when message
-            (funcall (or on-add-to-message on-remove-from-message) message)
-            (update message))))
-       ((string= type "file_comment")
+       ((string= item-type "file_comment")
         (let* ((file-id (plist-get (plist-get item :file) :id))
-               (file (slack-file-find file-id team))
                (comment-id (plist-get (plist-get item :comment) :id)))
-          (when file
+          (slack-with-file file-id team
             (slack-with-file-comment comment-id file
-              (when (string= _type "star_removed")
-                (slack-message-star-removed file-comment))
-              (when (string= _type "star_added")
-                (slack-message-star-added file-comment)))
-            (slack-redisplay file team)
+              (slack-message-star-added file-comment)
+              (slack-message-update file-comment file team))
+
             (cl-loop for channel in (slack-file-channel-ids file)
-                     do (let* ((channel (slack-room-find channel team))
-                               (message (and channel
-                                             (slack-room-find-file-comment-message
-                                              channel comment-id))))
-                          (when message
-                            (funcall (or on-add-to-file-comment-message
-                                         on-remove-from-file-comment-message)
-                                     message)
-                            (update message)))))))
-       ((string= type "file")
+                     do (slack-if-let* ((channel (slack-room-find channel team))
+                                        (message (slack-room-find-file-comment-message
+                                                  channel comment-id)))
+                            (update-message message))))))
+       ((string= item-type "file")
         (let* ((file-id (plist-get (plist-get item :file) :id)))
           (slack-with-file file-id team
-            (when (string= _type "star_removed")
-              (slack-message-star-removed file))
-            (when (string= _type "star_added")
-              (slack-message-star-added file))
-            (slack-redisplay file team)
-            (cl-loop for channel in (slack-file-channel-ids file)
-                     do (let* ((channel (slack-room-find channel team))
-                               (message (and channel
-                                             (slack-room-find-file-share-message
-                                              channel (oref file id)))))
-                          (when message
-                            (funcall (or on-add-to-file-message
-                                         on-remove-from-file-message)
-                                     message)
-                            (update message)))))))))))
+            (slack-message-star-added file)
+            (slack-message-update file team)
 
-(defun slack-ws-handle-star-added (payload team)
-  (cl-labels
-      ((on-add-to-message (message)
-                          (slack-message-star-added message)))
-    (slack-ws-handle-star
-     payload team
-     :on-add-to-message #'on-add-to-message
-     :on-add-to-file-comment-message #'on-add-to-message
-     :on-add-to-file-message #'on-add-to-message)))
+            (cl-loop for channel in (slack-file-channel-ids file)
+                     do (slack-if-let* ((channel (slack-room-find channel team))
+                                        (message (slack-room-find-file-share-message
+                                                  channel (oref file id))))
+                            (update-message message))))))
+       ((string= item-type "message")
+        (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
+                        (ts (plist-get (plist-get item :message) :ts))
+                        (message (slack-room-find-message room ts)))
+            (update-message message)))))))
 
 (defun slack-ws-handle-star-removed (payload team)
-  (cl-labels
-      ((on-remove-from-message (message)
-                               (slack-message-star-removed message)))
-    (slack-ws-handle-star
-     payload team
-     :on-remove-from-message #'on-remove-from-message
-     :on-remove-from-file-comment-message #'on-remove-from-message
-     :on-remove-from-file-message #'on-remove-from-message)))
+  (let* ((item (plist-get payload :item))
+         (item-type (plist-get item :type)))
+    (slack-if-let* ((star (oref team star)))
+        (slack-star-remove star item team))
+    (cl-labels
+        ((update-message (message)
+                         (slack-message-star-removed message)
+                         (slack-message-update message team t t)))
+      (cond
+       ((string= item-type "file_comment")
+        (let* ((file-id (plist-get (plist-get item :file) :id))
+               (comment-id (plist-get (plist-get item :comment) :id)))
+          (slack-with-file file-id team
+            (slack-with-file-comment comment-id file
+              (slack-message-star-removed file-comment)
+              (slack-message-update file-comment file team))
+
+            (cl-loop for channel in (slack-file-channel-ids file)
+                     do (slack-if-let* ((channel (slack-room-find channel team))
+                                        (message (slack-room-find-file-comment-message
+                                                  channel comment-id)))
+                            (update-message message))))))
+       ((string= item-type "file")
+        (let* ((file-id (plist-get (plist-get item :file) :id)))
+          (slack-with-file file-id team
+            (slack-message-star-removed file)
+            (slack-message-update file team)
+
+            (cl-loop for channel in (slack-file-channel-ids file)
+                     do (slack-if-let* ((channel (slack-room-find channel team))
+                                        (message (slack-room-find-file-share-message
+                                                  channel (oref file id))))
+                            (update-message message))))))
+       ((string= item-type "message")
+        (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
+                        (ts (plist-get (plist-get item :message) :ts))
+                        (message (slack-room-find-message room ts)))
+            (update-message message)))))))
 
 (defun slack-ws-handle-file-comment-edited (payload team)
   (let* ((file-id (plist-get (plist-get payload :file) :id))

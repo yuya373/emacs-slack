@@ -223,7 +223,7 @@
                                       team)))
 
 (defmethod slack-star-remove ((this slack-star) payload team)
-  (let ((date-create (plist-get payload :date_create)))
+  (let ((date-create (format "%s" (plist-get payload :date_create))))
     (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
                                                           date-create))
                                    (oref this items)))
