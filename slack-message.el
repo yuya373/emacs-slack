@@ -324,5 +324,33 @@
 (defmethod slack-message-get-text ((m slack-message))
   (oref m text))
 
+(defmethod slack-thread-message-update-buffer ((message slack-message)
+                                               room team replace)
+  (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
+      (progn
+        (slack-room-update-buffer room team parent t)
+        (if (slack-reply-broadcast-message-p message)
+            (slack-room-update-buffer room team message replace))
+        (slack-if-let* ((thread (slack-message-get-thread parent team)))
+            (progn
+              ;; (slack-thread-add-message thread message)
+              (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+                                                      room
+                                                      (oref thread thread-ts)
+                                                      team)))
+                  (slack-buffer-update buf message :replace replace)))))))
+
+(defmethod slack-message-update ((message slack-message) team &optional replace no-notify)
+  (slack-if-let* ((room (slack-room-find (oref message channel) team)))
+      (progn
+        (slack-room-push-message room message)
+        (slack-room-update-latest room message)
+        (if (slack-message-thread-messagep message)
+            (slack-thread-message-update-buffer message room team replace))
+        (slack-room-update-buffer room team message replace)
+        (unless no-notify
+          (slack-message-notify message room team))
+        (slack-update-modeline))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

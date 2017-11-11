@@ -30,7 +30,6 @@
 (require 'slack-room)
 (require 'slack-thread)
 (require 'slack-buffer)
-(require 'slack-message-update)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 

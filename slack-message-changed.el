@@ -27,7 +27,6 @@
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-message)
-(require 'slack-message-update)
 (require 'slack-thread)
 
 (defun slack-message-changed (payload team)

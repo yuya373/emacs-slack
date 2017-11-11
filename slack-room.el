@@ -503,5 +503,17 @@
          :after-success #'(lambda ()
                             (open (slack-create-message-buffer room team))))))))
 
+(defmethod slack-room-update-buffer ((this slack-room) team message replace)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
+      (slack-buffer-update buffer message :replace replace)
+    (slack-room-inc-unread-count this)
+    (and slack-buffer-create-on-notify
+         (slack-room-history-request
+          this team
+          :after-success #'(lambda ()
+                             (tracking-add-buffer
+                              (slack-buffer-buffer
+                               (slack-create-message-buffer this team))))))))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
