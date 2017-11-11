@@ -612,20 +612,21 @@
   (when (oref comment is-intro)
     (oset file initial-comment comment))
   (slack-merge-list (oref file comments) (list comment))
-  (cl-loop for channel in (slack-file-channel-ids file)
-           do (let* ((room (slack-room-find channel team))
-                     (message (if (oref comment is-intro)
-                                  (slack-room-find-file-share-message
-                                   room (oref file id))
-                                (slack-room-find-file-comment-message
-                                 room (oref comment id)))))
-                (when message
-                  (oset message file file)
-                  (oset message edited-at edited-at)
-                  (if (oref comment is-intro)
-                      (oset message text (slack-file-summary file))
-                    (oset message comment comment))
-                  (slack-message-update message team t)))))
+  ;; (cl-loop for channel in (slack-file-channel-ids file)
+  ;;          do (let* ((room (slack-room-find channel team))
+  ;;                    (message (if (oref comment is-intro)
+  ;;                                 (slack-room-find-file-share-message
+  ;;                                  room (oref file id))
+  ;;                               (slack-room-find-file-comment-message
+  ;;                                room (oref comment id)))))
+  ;;               (when message
+  ;;                 (oset message file file)
+  ;;                 (oset message edited-at edited-at)
+  ;;                 (if (oref comment is-intro)
+  ;;                     (oset message text (slack-file-summary file))
+  ;;                   (oset message comment comment))
+  ;;                 (slack-message-update message team t))))
+  )
 
 (defmethod slack-reaction-find ((this slack-file) reaction)
   (slack-reaction--find (oref this reactions) reaction))
@@ -724,8 +725,8 @@
                "\n")))
 
 (defun slack-redisplay (file team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
-      (slack-buffer--replace buffer nil))
+  ;; (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
+  ;;     (slack-buffer--replace buffer nil))
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
                                              (slack-file-room-obj team)
                                              team)))
@@ -734,6 +735,7 @@
 (defmethod slack-find-file-comment ((this slack-file) file-comment-id)
   (cl-find-if #'(lambda (e) (string= (oref e id) file-comment-id))
               (append (oref this comments) (list (oref this initial-comment)))))
+
 
 (defmethod slack-message-update ((this slack-file) team &rest _args)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
@@ -761,3 +763,5 @@
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
+
+;; [2017-11-11 20:58:38] (:type file_comment_added :comment (:id Fc7ZJJ8N86 :created 1510401518 :timestamp 1510401518 :user U1013370U :is_intro :json-false :comment jaja) :file_id F7YJYDFV1 :user_id U1013370U :file (:id F7YJYDFV1) :event_ts 1510401518.000012 :ts 1510401518.000012)

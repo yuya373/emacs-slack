@@ -752,7 +752,8 @@
     (cl-labels
         ((update (file)
                  (slack-file-update-comment file comment team edited-at)
-                 (slack-redisplay file team)))
+                 (slack-with-file-comment (oref comment id) file
+                   (slack-message-update file-comment file team))))
       (if file (update file)
         (slack-file-request-info file-id team :after-success #'update)))))
 
