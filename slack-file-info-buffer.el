@@ -89,11 +89,12 @@
 
            (comments-count
             (slack-file-comments-count-to-string file)))
-      (slack-format-message header
-                            body
-                            thumb
-                            reactions
-                            comments-count))))
+      (propertize (slack-format-message header
+                                        body
+                                        thumb
+                                        reactions
+                                        comments-count)
+                  'file-id (oref file id)))))
 
 (defmethod slack-buffer-insert ((this slack-file-info-buffer))
   (delete-region (point-min) lui-output-marker)
@@ -105,7 +106,6 @@
      (slack-buffer-file-to-string this)
      ;; saved-text-properties not working??
      'file-id (oref file id)
-     'file-comment-id (oref file id)
      'ts (slack-ts file))
 
     (let ((comments (slack-file-comments-to-string file team)))
@@ -212,7 +212,7 @@
                   (lui-delete #'pred))))
           (lui-replace
            (slack-buffer-file-to-string this)
-           #'(lambda () (let ((id (get-text-property (point) 'file-comment-id)))
+           #'(lambda () (let ((id (get-text-property (point) 'file-id)))
                           (equal id (oref file id))))))))))
 
 (defmethod slack-buffer-insert-file-comment ((this slack-file-info-buffer) comment-id)
