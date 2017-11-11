@@ -26,6 +26,8 @@
 
 (require 'eieio)
 (require 'lui)
+(require 'slack-channel)
+(require 'slack-im)
 (require 'slack-message)
 
 (defvar lui-prompt-string "> ")
