@@ -751,5 +751,13 @@
         (oset buffer file this)
         (slack-buffer-insert-file-comment buffer file-comment-id))))
 
+(defmethod slack-file-delete-comment ((this slack-file) file-comment-id team)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             this
+                                             team)))
+      (progn
+        (oset buffer file this)
+        (slack-buffer-update buffer file-comment-id))))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here

@@ -608,8 +608,7 @@
          (comment-id (plist-get payload :comment)))
     (when file
       (slack-delete-comment file comment-id)
-      (slack-redisplay file team)
-      (slack-message-update file team t))))
+      (slack-file-delete-comment file comment-id team))))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((subscription (plist-get payload :subscription))

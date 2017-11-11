@@ -203,12 +203,13 @@
     (let ((buffer (get-buffer (slack-buffer-name this))))
       (with-current-buffer buffer
         (if file-comment-id
-            (let* ((comment (slack-find-file-comment file file-comment-id))
-                   (text (slack-message-to-string comment team)))
-              (lui-replace text
-                           #'(lambda ()
-                               (let ((id (get-text-property (point) 'file-comment-id)))
-                                 (equal id file-comment-id)))))
+            (let* ((comment (slack-find-file-comment file file-comment-id)))
+              (cl-labels
+                  ((pred () (let ((id (get-text-property (point) 'file-comment-id)))
+                              (equal id file-comment-id))))
+                (if comment
+                    (lui-replace (slack-message-to-string comment team) #'pred)
+                  (lui-delete #'pred))))
           (lui-replace
            (slack-buffer-file-to-string this)
            #'(lambda () (let ((id (get-text-property (point) 'file-comment-id)))
