@@ -131,7 +131,6 @@
   (let ((file (slack-file-create (plist-get payload :file))))
     (oset m file file)
     (slack-file-set-channel file (plist-get payload :channel))
-    (slack-file-pushnew file team)
     m))
 
 (defmethod slack-message-set-file-comment ((m slack-message) _payload)
@@ -316,10 +315,9 @@
 
 (defmacro slack-with-file-comment (id file &rest body)
   (declare (indent 2) (debug t))
-  `(let ((file-comment (cl-find-if #'(lambda (e) (string= ,id (oref e id)))
-                                   (oref ,file comments))))
-     (when file-comment
-       ,@body)))
+  `(cl-loop for file-comment in (oref ,file comments)
+            do (when (string= ,id (oref file-comment id))
+                 ,@body)))
 
 (defmethod slack-message-get-text ((m slack-message))
   (oref m text))

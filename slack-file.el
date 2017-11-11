@@ -90,12 +90,12 @@
 (defclass slack-file-email-to (slack-file-email-from) ())
 (defclass slack-file-email-cc (slack-file-email-from) ())
 
-(defun slack-merge-list (old-list new-list)
-  (cl-loop for n in new-list
-           do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
-                                   old-list)))
-                (if o (slack-merge o n)
-                  (push n old-list)))))
+(defmacro slack-merge-list (old-list new-list)
+  `(cl-loop for n in ,new-list
+            do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
+                                    ,old-list)))
+                 (if o (slack-merge o n)
+                   (push n ,old-list)))))
 
 (defmethod slack-merge ((old slack-reaction) new)
   (with-slots (count users) old
@@ -103,17 +103,21 @@
     (setq users (cl-remove-duplicates (append users (oref new users))
                                       :test #'string=))))
 
+(defmethod slack-merge ((old string) _new) old)
+(defmethod slack-equalp ((old string) new) (string= old new))
+
 (defmethod slack-merge ((old slack-file) new)
   (cl-labels
       ((slack-merge-string-list
         (new old)
         (cl-remove-duplicates (append new old) :test #'string=)))
-    (with-slots (channels groups ims reactions comments comments-count initial-comment) old
-      (setq channels (slack-merge-string-list channels (oref new channels)))
-      (setq groups (slack-merge-string-list groups (oref new groups)))
-      (setq ims (slack-merge-string-list ims (oref new ims)))
-      (slack-merge-list reactions (oref new reactions))
-      (slack-merge-list comments (oref new comments))
+
+    (slack-merge-list (oref old reactions) (oref new reactions))
+    (slack-merge-list (oref old comments) (oref new comments))
+    (slack-merge-list (oref old channels) (oref new channels))
+    (slack-merge-list (oref old groups) (oref new groups))
+    (slack-merge-list (oref old ims) (oref new ims))
+    (with-slots (comments-count initial-comment) old
       (setq comments-count (oref new comments-count))
       (setq initial-comment (oref new initial-comment)))))
 
@@ -213,16 +217,15 @@
 (defmethod slack-message-equal ((f slack-file) other)
   (string= (oref f id) (oref other id)))
 
+(defmethod slack-equalp ((old slack-file) new)
+  (string= (oref old id) (oref new id)))
+
 (defmethod slack-file-pushnew ((f slack-file) team)
   (let ((room (slack-file-room-obj team)))
-    (with-slots (messages) room
-      (let ((old (slack-file-find (oref f id) team)))
-        (if old
-            (slack-merge old f)
-          (push f messages)
-          (setq messages (slack-room-sorted-messages room))
-          (oset room oldest (car messages))
-          (oset room latest (car (last messages))))))))
+    (slack-merge-list (oref room messages) (list f))
+    (oset room messages (slack-room-sort-messages (oref room messages)))
+    (oset room oldest (car (oref room messages)))
+    (oset room latest (car (last (oref room messages))))))
 
 (defmethod slack-message-body ((file slack-file) team)
   (with-slots (initial-comment) file
@@ -259,14 +262,11 @@
       ((on-file-info (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-file-info"))
-                     (let ((paging (plist-get data :paging))
-                           (comments (plist-get data :comments))
-                           (file (slack-file-create (plist-get data :file))))
-                       (oset file comments (mapcar
-                                            #'(lambda (c) (slack-file-comment-create c (oref file id)))
-                                            comments))
+                     (let* ((paging (plist-get data :paging))
+                            (comments (plist-get data :comments))
+                            (file (slack-file-create (plist-put (plist-get data :file)
+                                                                :comments comments))))
                        (slack-file-pushnew file team)
-                       (slack-message-update file team t)
                        (if after-success
                            (funcall after-success file team)))))
     (slack-request
@@ -631,9 +631,8 @@
   (slack-reaction--find (oref this reactions) reaction))
 
 (defmethod slack-reaction-delete ((this slack-file) reaction)
-  (with-slots (reactions) this
-    (setq reactions
-          (slack-reaction--delete reactions reaction))))
+  (oset this reactions
+        (slack-reaction--delete (oref this reactions) reaction)))
 
 (defmethod slack-reaction-push ((this slack-file) reaction)
   (push reaction (oref this reactions)))
@@ -731,6 +730,26 @@
                                              (slack-file-room-obj team)
                                              team)))
       (slack-buffer-replace buffer file)))
+
+(defmethod slack-find-file-comment ((this slack-file) file-comment-id)
+  (cl-find-if #'(lambda (e) (string= (oref e id) file-comment-id))
+              (append (oref this comments) (list (oref this initial-comment)))))
+
+(defmethod slack-message-update ((this slack-file) team &rest _args)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             this
+                                             team)))
+      (progn
+        (oset buffer file this)
+        (slack-buffer-update buffer))))
+
+(defmethod slack-file-insert-comment ((this slack-file) file-comment-id team)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             this
+                                             team)))
+      (progn
+        (oset buffer file this)
+        (slack-buffer-insert-file-comment buffer file-comment-id))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

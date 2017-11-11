@@ -44,8 +44,8 @@
 
 (defun slack-create-file-info-buffer (team file)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
-                                       file
-                                       team)))
+                                             file
+                                             team)))
       (progn
         (oset buffer file file)
         buffer)
@@ -78,39 +78,43 @@
       (slack-buffer-insert this))
     buf))
 
+(defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
+  (with-slots (file team) this
+    (let* ((header (slack-message-header-to-string file team))
+           (body (slack-message-body-to-string file team))
+           (thumb (or (and (slack-file-image-p file)
+                           (slack-message-large-image-to-string file))
+                      (slack-message-image-to-string file)))
+           (reactions (slack-message-reaction-to-string file))
+
+           (comments-count
+            (slack-file-comments-count-to-string file)))
+      (slack-format-message header
+                            body
+                            thumb
+                            reactions
+                            comments-count))))
+
 (defmethod slack-buffer-insert ((this slack-file-info-buffer))
-  (let ((inhibit-read-only t)
-        (cur-point (point)))
-    (delete-region (point-min) lui-output-marker)
-    (with-slots (file team) this
-      (let* ((header (slack-message-header-to-string file team))
-             (body (slack-message-body-to-string file team))
-             (thumb (or (and (slack-file-image-p file)
-                             (slack-message-large-image-to-string file))
-                        (slack-message-image-to-string file)))
-             (reactions (slack-message-reaction-to-string file))
+  (delete-region (point-min) lui-output-marker)
+  (with-slots (file team) this
+    (let ((lui-time-stamp-position nil))
+      (lui-insert "" t))
 
-             (comments-count
-              (slack-file-comments-count-to-string file)))
+    (lui-insert-with-text-properties
+     (slack-buffer-file-to-string this)
+     ;; saved-text-properties not working??
+     'file-id (oref file id)
+     'file-comment-id (oref file id)
+     'ts (slack-ts file))
 
-        (lui-insert-with-text-properties
-         (slack-format-message header
-                               body
-                               thumb
-                               reactions
-                               comments-count)
-
-
-         'file-id (oref file id)
-         'ts (slack-ts file)))
-
-      (let ((comments (slack-file-comments-to-string file team)))
-        (mapc #'(lambda (comment)
-                  (lui-insert-with-text-properties
-                   (slack-message-to-string comment team)
-                   'file-comment-id (oref comment id)
-                   'ts (oref comment timestamp)))
-              (oref file comments))))))
+    (let ((comments (slack-file-comments-to-string file team)))
+      (mapc #'(lambda (comment)
+                (lui-insert-with-text-properties
+                 (slack-message-to-string comment team)
+                 'file-comment-id (oref comment id)
+                 'ts (slack-ts comment)))
+            (oref file comments)))))
 
 (defmethod slack-buffer-send-message ((this slack-file-info-buffer) message)
   (with-slots (file team) this
@@ -173,9 +177,9 @@
   (with-slots (file team) this
     (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
         (let ((buf (slack-create-edit-file-comment-buffer
-                file
-                (slack-get-file-comment-id)
-                team)))
+                    file
+                    (slack-get-file-comment-id)
+                    team)))
           (slack-buffer-display buf)))))
 
 (defmethod slack-buffer-delete-message ((this slack-file-info-buffer) _ts)
@@ -192,6 +196,33 @@
   (slack-if-let* ((buffer (get-buffer (slack-buffer-name this))))
       (with-current-buffer buffer
         (slack-buffer-insert this))))
+
+(defmethod slack-buffer-update ((this slack-file-info-buffer)
+                                &optional file-comment-id)
+  (with-slots (file team) this
+    (let ((buffer (get-buffer (slack-buffer-name this))))
+      (with-current-buffer buffer
+        (if file-comment-id
+            (let* ((comment (slack-find-file-comment file file-comment-id))
+                   (text (slack-message-to-string comment team)))
+              (lui-replace text
+                           #'(lambda ()
+                               (let ((id (get-text-property (point) 'file-comment-id)))
+                                 (equal id file-comment-id)))))
+          (lui-replace
+           (slack-buffer-file-to-string this)
+           #'(lambda () (let ((id (get-text-property (point) 'file-comment-id)))
+                          (equal id (oref file id))))))))))
+
+(defmethod slack-buffer-insert-file-comment ((this slack-file-info-buffer) comment-id)
+  (with-slots (file team) this
+    (let ((buffer (get-buffer (slack-buffer-name this)))
+          (comment (slack-find-file-comment file comment-id)))
+      (with-current-buffer buffer
+        (lui-insert-with-text-properties
+         (slack-message-to-string comment team)
+         'file-comment-id (oref comment id)
+         'ts (slack-ts comment))))))
 
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

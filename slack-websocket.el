@@ -350,11 +350,12 @@
                                                                               file-id)))
                                 (update-message message))))
               (slack-message-append-reaction file-comment reaction)
-              ()))))
+              (slack-message-update file-comment file team)))))
        ((string= item-type "file")
-        (let ((file-id (plist-get payload :file)))
+        (let ((file-id (plist-get item :file)))
           (slack-with-file file-id team
-            (slack-message-append-reaction file reaction))))
+            (slack-message-append-reaction file reaction)
+            (slack-message-update file team))))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
@@ -386,11 +387,13 @@
                                                             reaction
                                                             item-type)
                                 (slack-message-update message team t t)))))
-            (slack-message-pop-reaction file-comment reaction)))))
+            (slack-message-pop-reaction file-comment reaction)
+            (slack-message-update file-comment file team)))))
      ((string= item-type "file")
       (let ((file-id (plist-get item :file)))
         (slack-with-file file-id team
-          (slack-message-append-reaction file reaction))))
+          (slack-message-pop-reaction file reaction)
+          (slack-message-update file team))))
      ((string= item-type "message")
       (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                       (message (slack-room-find-message room (plist-get item :ts))))
@@ -597,8 +600,7 @@
                                              file-id)))
     (slack-with-file file-id team
       (slack-add-comment file comment)
-      (slack-redisplay file team)
-      (slack-message-update file team t))))
+      (slack-file-insert-comment file (oref comment id) team))))
 
 (defun slack-ws-handle-file-comment-deleted (payload team)
   (let* ((file-id (plist-get payload :file_id))

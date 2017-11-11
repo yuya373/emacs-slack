@@ -77,9 +77,8 @@
   (string= (oref c id) (oref other id)))
 
 (defmethod slack-merge ((old slack-file-comment) new)
-  (with-slots (comment reactions) old
-    (setq comment (oref new comment))
-    (setq reactions (slack-merge-list reactions (oref new reactions)))))
+  (slack-merge-list (oref old reactions) (oref new reactions))
+  (oset old comment (oref new comment)))
 
 (defmethod slack-message-body ((comment slack-file-comment) team)
   (slack-message-unescape-string (oref comment comment) team))
@@ -196,6 +195,14 @@
 
 (defmethod slack-ts ((this slack-file-comment))
   (number-to-string (oref this timestamp)))
+
+(defmethod slack-message-update ((this slack-file-comment) file team)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             file
+                                             team)))
+      (progn
+        (oset buffer file file)
+        (slack-buffer-update buffer (oref this id)))))
 
 (provide 'slack-file-comment)
 ;;; slack-file-comment.el ends here
