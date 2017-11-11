@@ -188,6 +188,7 @@
     (let ((changed (call-next-method)))
       (with-slots ((old-comment comment) text) this
         (let ((new-comment (oref other comment)))
+          (oset old-comment reactions (oref new-comment reactions))
           (unless (string= (oref old-comment comment) (oref new-comment comment))
             (oset old-comment comment (oref new-comment comment))
             (setq changed t))))

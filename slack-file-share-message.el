@@ -133,5 +133,11 @@
                                    reaction)
     (slack-message--pop-reaction m reaction)))
 
+(defmethod slack-message-changed--copy ((this slack-file-share-message) other)
+  (let ((changed (call-next-method)))
+    (let ((new-file (oref other file)))
+      (oset this file new-file))
+    changed))
+
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here
