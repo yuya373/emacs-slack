@@ -734,7 +734,9 @@
 
 (defmethod slack-find-file-comment ((this slack-file) file-comment-id)
   (cl-find-if #'(lambda (e) (string= (oref e id) file-comment-id))
-              (append (oref this comments) (list (oref this initial-comment)))))
+              (cl-remove-if #'null
+                            (append (oref this comments)
+                                    (list (oref this initial-comment))))))
 
 
 (defmethod slack-message-update ((this slack-file) team &rest _args)
