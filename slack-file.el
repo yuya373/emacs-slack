@@ -225,7 +225,6 @@
   (let ((room (slack-file-room-obj team)))
     (slack-merge-list (oref room messages) (list f))
     (oset room messages (slack-room-sort-messages (oref room messages)))
-    (oset room oldest (car (oref room messages)))
     (oset room latest (car (last (oref room messages))))))
 
 (defmethod slack-message-body ((file slack-file) team)
