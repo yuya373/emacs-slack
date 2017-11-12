@@ -342,7 +342,7 @@
 
 (defmacro slack-current-room-or-select (room-alist-func &optional select)
   `(if (and (not ,select)
-            (boundp 'slack-current-buffer)
+            (bound-and-true-p slack-current-buffer)
             (slot-boundp slack-current-buffer 'room))
        (oref slack-current-buffer room)
      (let* ((room-alist (funcall ,room-alist-func)))
