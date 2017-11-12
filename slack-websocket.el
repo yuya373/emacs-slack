@@ -311,9 +311,9 @@
                   (new-message-payload (plist-put message-payload :edited-at ts))
                   (new-message (slack-message-create new-message-payload
                                                      team
-                                                     :room room))
-                  (changedp (slack-message-changed--copy base new-message)))
-      (slack-message-update base team t (not changedp))))
+                                                     :room room)))
+      (slack-message-update base team t
+                            (not (slack-message-changed--copy base new-message)))))
 
 
 (defun slack-ws-delete-message (payload team)

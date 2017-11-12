@@ -79,33 +79,6 @@
 (defmethod slack-message-star-api-params ((m slack-file-share-message))
   (slack-message-star-api-params (oref m file)))
 
-(defmethod slack-message-changed--copy ((this slack-file-share-message) other)
-  (let ((changed (call-next-method)))
-    (with-slots (file) this
-      (with-slots (comments initial-comment) file
-        (let ((new-comments (oref (oref other file) comments)))
-          (unless (or (eq (length comments)
-                          (length new-comments))
-                      (cl-find-if #'(lambda (c)
-                                      (let ((old (cl-find-if #'(lambda (o)
-                                                                 (slack-equalp o c))
-                                                             comments)))
-                                        (if old
-                                            (not (string= (oref old comment)
-                                                          (oref c comment)))
-                                          t)))
-                                  new-comments))
-            (setq comments new-comments)
-            (setq changed t)))
-        (let ((new-initial-comment (oref (oref other file) initial-comment)))
-          (when (or (and (not initial-comment) new-initial-comment)
-                    (and (and initial-comment new-initial-comment)
-                         (not (string= (oref initial-comment comment)
-                                       (oref new-initial-comment comment)))))
-            (setq initial-comment new-initial-comment)
-            (setq changed t)))))
-    changed))
-
 (defmethod slack-reaction-find ((this slack-file-share-message) reaction)
   (slack-reaction-find (oref this file) reaction))
 
