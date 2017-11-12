@@ -296,11 +296,18 @@
      ((and subtype (string= subtype "message_changed"))
       (slack-message-changed payload team))
      ((and subtype (string= subtype "message_deleted"))
-      (slack-message-deleted payload team))
+      (slack-ws-delete-message payload team))
      ((and subtype (string= subtype "message_replied"))
       (slack-thread-update-state payload team))
      (t
       (slack-ws-update-message payload team)))))
+
+(defun slack-ws-delete-message (payload team)
+  (slack-if-let* ((room-id (plist-get payload :channel))
+                  (room (slack-room-find room-id team))
+                  (ts (plist-get payload :deleted_ts))
+                  (message (slack-room-find-message room ts)))
+      (slack-message-deleted message room team)))
 
 (defun slack-ws-update-message (payload team)
   (let ((m (slack-message-create payload team))

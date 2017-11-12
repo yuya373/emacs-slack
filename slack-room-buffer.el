@@ -27,6 +27,8 @@
 (require 'eieio)
 (require 'slack-buffer)
 
+(defconst slack-message-delete-url "https://slack.com/api/chat.delete")
+
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
 

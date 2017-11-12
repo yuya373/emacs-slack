@@ -29,6 +29,10 @@
 (require 'slack-util)
 (require 'slack-reaction)
 
+(defcustom slack-message-custom-delete-notifier nil
+  "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :group 'slack)
+
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
 (defconst slack-message-pins-remove-url "https://slack.com/api/pins.remove")
 (defconst slack-message-stars-add-url "https://slack.com/api/stars.add")
@@ -349,6 +353,37 @@
         (unless no-notify
           (slack-message-notify message room team))
         (slack-update-modeline))))
+
+(defun slack-message-delete ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-delete-message buf (slack-get-ts))))
+
+(defmethod slack-message-deleted ((message slack-message) room team)
+  (if (slack-message-thread-messagep message)
+      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
+                      (thread (slack-message-get-thread parent team)))
+          (progn
+            (slack-thread-delete-message thread message)
+            (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
+                                                       room
+                                                       (oref thread thread-ts)
+                                                       team)))
+                (slack-buffer-message-delete buffer (oref message ts)))
+            (slack-message-update parent team t)))
+    (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
+                                            room
+                                            team)))
+        (slack-buffer-message-delete buf (oref message ts))))
+
+  (if slack-message-custom-delete-notifier
+      (funcall slack-message-custom-delete-notifier message room team)
+    (alert "message deleted"
+           :icon slack-alert-icon
+           :title (format "\\[%s] from %s"
+                          (slack-room-display-name room)
+                          (slack-message-sender-name message team))
+           :category 'slack)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
