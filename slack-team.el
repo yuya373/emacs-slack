@@ -110,24 +110,25 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-file-comment-compose-buffer :initform nil :type (or null list))
    ))
 
-(defmethod slack-team-kill-buffers ((this slack-team))
-  (cl-loop for e in (append (oref this slack-message-buffer)
-                            (oref this slack-file-info-buffer)
-                            (oref this slack-file-list-buffer)
-                            (oref this slack-message-edit-buffer)
-                            (oref this slack-pinned-items-buffer)
-                            (oref this slack-user-profile-buffer)
-                            (oref this slack-thread-message-buffer)
-                            (oref this slack-message-share-buffer)
-                            (oref this slack-room-message-compose-buffer)
-                            (oref this slack-thread-message-compose-buffer)
-                            (oref this slack-edit-file-comment-buffer)
-                            (oref this slack-stars-buffer)
-                            (oref this slack-search-result-buffer)
-                            (oref this slack-search-result-buffer)
-                            (oref this slack-stars-buffer)
-                            (oref this slack-file-comment-compose-buffer))
-           do (kill-buffer e)))
+(cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
+  (let* ((l (list 'slack-message-buffer
+                  'slack-file-info-buffer
+                  'slack-file-list-buffer
+                  'slack-message-edit-buffer
+                  'slack-pinned-items-buffer
+                  'slack-user-profile-buffer
+                  'slack-thread-message-buffer
+                  'slack-message-share-buffer
+                  'slack-room-message-compose-buffer
+                  'slack-thread-message-compose-buffer
+                  'slack-edit-file-comment-buffer
+                  'slack-search-result-buffer
+                  'slack-stars-buffer
+                  'slack-file-comment-compose-buffer))
+         (slots (cl-remove-if #'(lambda (e) (cl-find e except)) l)))
+    (cl-loop for slot in slots
+             do (cl-loop for buffer in (slot-value this slot)
+                         do (kill-buffer buffer)))))
 
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))

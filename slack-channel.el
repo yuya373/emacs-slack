@@ -96,7 +96,7 @@
                             (unless (slack-room-hiddenp room)
                               (slack-room-info-request room team)))
                         (oref team channels))
-                  (message "Slack Channel List Updated"))))
+                  (slack-log "Slack Channel List Updated" team))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
                               team

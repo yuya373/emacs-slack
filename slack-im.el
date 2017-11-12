@@ -134,7 +134,7 @@
                           (unless (slack-room-hiddenp room)
                             (slack-room-info-request room team)))
                       (oref team ims))
-                (message "Slack Im List Updated"))))
+                (slack-log "Slack Im List Updated" team))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             team

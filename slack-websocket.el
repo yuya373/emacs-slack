@@ -583,7 +583,7 @@
           (slack-notify-abandon-reconnect team)
           (slack-ws-close team t))
       (cl-incf reconnect-count)
-      (slack-team-kill-buffers team)
+      ;; (slack-team-kill-buffers team)
       (slack-ws-close team nil)
       (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
       (cl-labels
@@ -601,7 +601,19 @@
                          (oset team self-name (plist-get self-data :name))
                          (slack-channel-list-update team)
                          (slack-group-list-update team)
+                         (slack-im-list-update team)
                          (slack-bot-list-update team)
+                         (cl-loop for buffer in (oref team slack-message-buffer)
+                                  do (slack-if-let*
+                                         ((live-p (buffer-live-p buffer))
+                                          (slack-buffer (with-current-buffer buffer
+                                                          (and (bound-and-true-p
+                                                                slack-current-buffer)
+                                                               slack-current-buffer))))
+                                         (slack-buffer-load-missing-messages
+                                          slack-buffer)))
+                         (slack-team-kill-buffers team
+                                                  :except '(slack-message-buffer))
                          (slack-ws-open team))))
         (slack-authorize team #'on-error #'on-success)))))
 

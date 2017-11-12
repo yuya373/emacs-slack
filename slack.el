@@ -135,15 +135,16 @@ never means never show typing indicator."
       (cl-labels
           ((on-error (&key error-thrown symbol-status response data)
                      (oset team authorize-request nil)
-                     (if (functionp error-callback)
-                         (funcall error-callback
-                                  :error-thrown error-thrown
-                                  :symbol-status symbol-status
-                                  :response response
-                                  :data data)
-                       (slack-log (format "Slack Authorize Failed: %s" error-thrown)
-                                  team)))
+                     (slack-log (format "Slack Authorize Failed: %s" error-thrown)
+                                team)
+                     (when (functionp error-callback)
+                       (funcall error-callback
+                                :error-thrown error-thrown
+                                :symbol-status symbol-status
+                                :response response
+                                :data data)))
            (on-success (&key data &allow-other-keys)
+                       (oset team authorize-request nil)
                        (if success-callback
                            (funcall success-callback data)
                          (slack-on-authorize data team))))
@@ -169,7 +170,6 @@ never means never show typing indicator."
     team))
 
 (cl-defun slack-on-authorize (data team)
-  (oset team authorize-request nil)
   (slack-request-handle-error
    (data "slack-authorize")
    (slack-log (format "Slack Authorization Finished" (oref team name)) team)

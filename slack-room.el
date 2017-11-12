@@ -193,11 +193,13 @@
     (slack-room-sort-messages (copy-sequence messages))))
 
 (defmethod slack-room-set-prev-messages ((room slack-room) prev-messages)
-  (slack-room-set-messages
-   room
-   (cl-delete-duplicates (append (oref room messages)
-                                 prev-messages)
-                         :test #'slack-message-equal)))
+  (slack-room-set-messages room
+                           (append (oref room messages)
+                                   prev-messages)))
+
+(defmethod slack-room-append-messages ((room slack-room) messages)
+  (slack-room-set-messages room
+                           (append messages (oref room messages))))
 
 (defmethod slack-room-update-latest ((room slack-room) message)
   (with-slots (latest) room
@@ -213,7 +215,9 @@
     (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
-  (let* ((sorted (slack-room-sort-messages messages))
+  (let* ((sorted (slack-room-sort-messages
+                  (cl-delete-duplicates messages
+                                        :test #'slack-message-equal)))
          (oldest (car sorted))
          (latest (car (last sorted))))
     (oset room messages sorted)
@@ -453,7 +457,7 @@
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
 
-(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest after-success async)
+(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest after-success async)
   (cl-labels
       ((on-request-update
         (&key data &allow-other-keys)
@@ -464,7 +468,8 @@
                  (cl-loop for data in datum
                           collect (slack-message-create data team :room room))))
            (if oldest (slack-room-set-prev-messages room messages)
-             (slack-room-set-messages room messages))
+             (if latest (slack-room-append-messages room messages)
+               (slack-room-set-messages room messages)))
            (if (and after-success (functionp after-success))
                (funcall after-success))))))
     (slack-request
@@ -472,7 +477,8 @@
       (slack-room-history-url room)
       team
       :params (list (cons "channel" (oref room id))
-                    (if oldest (cons "latest" oldest)))
+                    (if oldest (cons "latest" oldest))
+                    (if latest (cons "oldest" latest)))
       :success #'on-request-update))))
 
 (provide 'slack-room)

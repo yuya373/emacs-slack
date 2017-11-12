@@ -108,7 +108,7 @@
                             (unless (slack-room-hiddenp room)
                               (slack-room-info-request room team)))
                         (oref team groups))
-                  (message "Slack Group List Updated"))))
+                  (slack-log "Slack Group List Updated" team))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update
                               team
