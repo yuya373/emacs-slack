@@ -195,7 +195,8 @@
 (defmethod slack-buffer--replace ((this slack-file-info-buffer) _ts)
   (slack-if-let* ((buffer (get-buffer (slack-buffer-name this))))
       (with-current-buffer buffer
-        (slack-buffer-insert this))))
+        (let ((inhibit-read-only t))
+          (slack-buffer-insert this)))))
 
 (defmethod slack-buffer-update ((this slack-file-info-buffer)
                                 &optional file-comment-id)
