@@ -663,8 +663,6 @@
 (defun slack-ws-handle-star-added (payload team)
   (let* ((item (plist-get payload :item))
          (item-type (plist-get item :type)))
-    (slack-if-let* ((star (oref team star)))
-        (slack-star-remove star item team))
     (cl-labels
         ((update-message (message)
                          (slack-message-star-added message)
@@ -698,13 +696,14 @@
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (ts (plist-get (plist-get item :message) :ts))
                         (message (slack-room-find-message room ts)))
-            (update-message message)))))))
+            (update-message message)))))
+    (slack-if-let* ((star (oref team star)))
+        (slack-star-add star item team))))
+
 
 (defun slack-ws-handle-star-removed (payload team)
   (let* ((item (plist-get payload :item))
          (item-type (plist-get item :type)))
-    (slack-if-let* ((star (oref team star)))
-        (slack-star-remove star item team))
     (cl-labels
         ((update-message (message)
                          (slack-message-star-removed message)
@@ -738,7 +737,10 @@
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (ts (plist-get (plist-get item :message) :ts))
                         (message (slack-room-find-message room ts)))
-            (update-message message)))))))
+            (update-message message)))))
+
+    (slack-if-let* ((star (oref team star)))
+        (slack-star-remove star item team))))
 
 (defun slack-ws-handle-file-comment-edited (payload team)
   (let* ((file-id (plist-get (plist-get payload :file) :id))
@@ -755,3 +757,4 @@
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
+
