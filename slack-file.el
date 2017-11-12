@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-room)
 
+(defconst slack-file-history-url "https://slack.com/api/files.list")
 (defconst slack-file-list-url "https://slack.com/api/files.list")
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
 (defconst slack-file-delete-url "https://slack.com/api/files.delete")

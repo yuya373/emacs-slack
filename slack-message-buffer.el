@@ -102,6 +102,17 @@
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
   'slack-message-buffer-mode)
 
+(defmethod slack-buffer-previous-link ((this slack-message-buffer))
+  (propertize "(load more message)"
+              'face '(:underline t)
+              'keymap (let ((map (make-sparse-keymap)))
+                        (define-key map (kbd "RET")
+                          #'(lambda ()
+                              (interactive)
+                              (slack-if-let* ((buf slack-current-buffer))
+                                  (slack-buffer-load-history buf))))
+                        map)))
+
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
@@ -110,7 +121,7 @@
       (goto-char (point-min))
 
       (let ((lui-time-stamp-position nil))
-        (lui-insert (format "%s\n" (slack-room-previous-link (oref this room))) t))
+        (lui-insert (format "%s\n" (slack-buffer-previous-link this)) t))
 
       (with-slots (room team last-read) this
         (let* ((messages (slack-room-sorted-messages room))
@@ -255,7 +266,7 @@
 
                  (let ((lui-time-stamp-position nil))
                    (if (and messages (< 0 (length messages)))
-                       (lui-insert (format "%s\n"(slack-room-previous-link room)))
+                       (lui-insert (format "%s\n" (slack-buffer-previous-link this)))
                      (lui-insert "(no more messages)\n")))
 
                  (cl-loop for m in messages

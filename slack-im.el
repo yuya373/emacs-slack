@@ -32,6 +32,7 @@
 
 (defvar slack-buffer-function)
 
+(defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-im-list-url "https://slack.com/api/im.list")
@@ -231,6 +232,9 @@
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
+
+(defmethod slack-room-history-url ((_room slack-im))
+  slack-im-history-url)
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

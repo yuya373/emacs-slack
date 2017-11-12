@@ -29,6 +29,7 @@
 (require 'slack-util)
 (require 'slack-buffer)
 
+(defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
@@ -272,8 +273,10 @@
     (oset team groups
           (cons new-room
                 (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team groups))))
-    ))
+                              (oref team groups))))))
+
+(defmethod slack-room-history-url ((_room slack-group))
+  slack-group-history-url)
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

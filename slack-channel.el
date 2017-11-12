@@ -31,6 +31,7 @@
 
 (defvar slack-buffer-function)
 
+(defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
@@ -246,6 +247,9 @@
           (cons new-room
                 (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
                               (oref team channels))))))
+
+(defmethod slack-room-history-url ((_room slack-channel))
+  slack-channel-history-url)
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
