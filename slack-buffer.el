@@ -397,5 +397,15 @@
                            ts)
                return i)))
 
+(defun slack--get-channel-id ()
+  (interactive)
+  (with-current-buffer (current-buffer)
+    (slack-if-let* ((buffer slack-current-buffer)
+                    (boundp (slot-boundp buffer 'room))
+                    (room (oref buffer room)))
+        (progn
+          (kill-new (oref room id))
+          (message "%s" (oref room id))))))
+
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
