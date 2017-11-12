@@ -39,12 +39,19 @@
 
 (defmethod slack-create-message-buffer ((room slack-file-room) team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
-                                       room
-                                       team)))
+                                             room
+                                             team)))
       buffer
     (slack-file-list-buffer :room room :team team)))
 
 (defmethod slack-buffer-update-mark ((_this slack-file-list-buffer) _ts))
+
+(cl-defmethod slack-buffer-update ((this slack-file-list-buffer) message &key replace)
+  (with-slots (room team) this
+    (let ((buffer (get-buffer (slack-buffer-name this))))
+      (if replace (slack-buffer-replace this message)
+        (with-current-buffer buffer
+          (slack-buffer-insert this message))))))
 
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here

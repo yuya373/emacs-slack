@@ -149,6 +149,8 @@
          ((or (string= type "bot_added")
               (string= type "bot_changed"))
           (slack-ws-handle-bot decoded-payload team))
+         ((string= type "file_created")
+          (slack-ws-handle-file-created decoded-payload team))
          ((or (string= type "file_deleted")
               (string= type "file_unshared"))
           (slack-ws-handle-file-deleted decoded-payload team))
@@ -291,9 +293,6 @@
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
     (cond
-     ((and subtype (string= subtype "file_share"))
-      (slack-ws-handle-file-share payload team)
-      (slack-ws-update-message payload team))
      ((and subtype (string= subtype "message_changed"))
       (slack-message-changed payload team))
      ((and subtype (string= subtype "message_deleted"))
@@ -473,15 +472,15 @@
     (with-slots (bots) team
       (push bot bots))))
 
-(defun slack-ws-handle-file-share (payload team)
-  (cl-labels
-      ((build-file-payload (payload)
-                       (let ((file (plist-get payload :file)))
-                         (slack-if-let* ((initial-comment (plist-get file :initial_comment)))
-                             (plist-put file :comments (list initial-comment))
-                           file))))
-    (let ((file (slack-file-create (build-file-payload payload))))
-      (slack-file-pushnew file team))))
+(defun slack-ws-handle-file-created (payload team)
+  (slack-if-let* ((file-id (plist-get (plist-get payload :file) :id))
+                  (room (slack-file-room-obj team))
+                  (buffer (slack-buffer-find 'slack-file-list-buffer
+                                             room
+                                             team)))
+      (slack-file-request-info file-id 1 team
+                               #'(lambda (file _team)
+                                   (slack-buffer-update buffer file)))))
 
 (defun slack-ws-handle-file-deleted (payload team)
   (let ((file-id (plist-get payload :file_id))
