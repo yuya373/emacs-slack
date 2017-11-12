@@ -602,10 +602,10 @@
       (slack-file-insert-comment file (oref comment id) team))))
 
 (defun slack-ws-handle-file-comment-deleted (payload team)
-  (let* ((file-id (plist-get payload :file_id))
-         (file (slack-file-find file-id team))
+  (let* ((file-id (plist-get (plist-get payload :file)
+                             :id))
          (comment-id (plist-get payload :comment)))
-    (when file
+    (slack-with-file file-id team
       (slack-delete-comment file comment-id)
       (slack-file-delete-comment file comment-id team))))
 
