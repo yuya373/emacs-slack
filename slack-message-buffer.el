@@ -37,7 +37,7 @@
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
-   (last-read :initform nil :type (or null string))))
+   (last-read :initform "0" :type string)))
 
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
@@ -121,8 +121,8 @@
                                (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
-            (slack-buffer-update-last-read this latest-message)
-            (slack-buffer-update-mark this (oref latest-message ts)))
+            (slack-buffer-update-mark this (oref latest-message ts))
+            (slack-buffer-update-last-read this latest-message))
           (when oldest-message
             (slack-buffer-update-oldest this oldest-message))))
       )

@@ -464,8 +464,7 @@
                  (cl-loop for data in datum
                           collect (slack-message-create data team :room room))))
            (if oldest (slack-room-set-prev-messages room messages)
-             (slack-room-set-messages room messages)
-             (slack-room-reset-last-read room))
+             (slack-room-set-messages room messages))
            (if (and after-success (functionp after-success))
                (funcall after-success))))))
     (slack-request
