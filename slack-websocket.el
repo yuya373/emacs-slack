@@ -294,13 +294,27 @@
   (let ((subtype (plist-get payload :subtype)))
     (cond
      ((and subtype (string= subtype "message_changed"))
-      (slack-message-changed payload team))
+      (slack-ws-change-message payload team))
      ((and subtype (string= subtype "message_deleted"))
       (slack-ws-delete-message payload team))
      ((and subtype (string= subtype "message_replied"))
       (slack-thread-update-state payload team))
      (t
       (slack-ws-update-message payload team)))))
+
+(defun slack-ws-change-message (payload team)
+  (slack-if-let* ((room-id (plist-get payload :channel))
+                  (room (slack-room-find room-id team))
+                  (message-payload (plist-get payload :message))
+                  (ts (plist-get message-payload :ts))
+                  (base (slack-room-find-message room ts))
+                  (new-message-payload (plist-put message-payload :edited-at ts))
+                  (new-message (slack-message-create new-message-payload
+                                                     team
+                                                     :room room))
+                  (changedp (slack-message-changed--copy base new-message)))
+      (slack-message-update base team t (not changedp))))
+
 
 (defun slack-ws-delete-message (payload team)
   (slack-if-let* ((room-id (plist-get payload :channel))

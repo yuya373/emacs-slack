@@ -46,7 +46,6 @@
 (require 'slack-search)
 (require 'slack-reminder)
 (require 'slack-thread)
-(require 'slack-message-changed)
 (require 'slack-file-share-message)
 (require 'slack-file-comment)
 (require 'slack-attachment)
