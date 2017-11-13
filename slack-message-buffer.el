@@ -102,17 +102,6 @@
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
   'slack-message-buffer-mode)
 
-(defmethod slack-buffer-previous-link ((this slack-message-buffer))
-  (propertize "(load more message)"
-              'face '(:underline t)
-              'keymap (let ((map (make-sparse-keymap)))
-                        (define-key map (kbd "RET")
-                          #'(lambda ()
-                              (interactive)
-                              (slack-if-let* ((buf slack-current-buffer))
-                                  (slack-buffer-load-history buf))))
-                        map)))
-
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
@@ -120,8 +109,7 @@
       (slack-buffer-set-current-buffer this)
       (goto-char (point-min))
 
-      (let ((lui-time-stamp-position nil))
-        (lui-insert (format "%s\n" (slack-buffer-previous-link this)) t))
+      (slack-buffer-insert-load-more this)
 
       (with-slots (room team last-read) this
         (let* ((messages (slack-room-sorted-messages room))
@@ -242,7 +230,26 @@
                          (string< (oref message ts) (oref this oldest))))
     (oset this oldest (oref message ts))))
 
-(defmethod slack-buffer-load-history ((this slack-message-buffer))
+(defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
+  (with-slots (room team last-read) this
+    (let ((latest (oref (oref room latest) ts)))
+      (cl-labels
+          ((after-success ()
+                          (let* ((messages (slack-room-sorted-messages room))
+                                 (latest-message (car (last messages)))
+                                 (buffer (slack-buffer-buffer this)))
+                            (with-current-buffer buffer
+                              (cl-loop for m in messages
+                                       do (if (string< last-read (oref m ts))
+                                              (slack-buffer-insert this m t))))
+                            (when latest-message
+                              (slack-buffer-update-mark this (oref latest-message ts))
+                              (slack-buffer-update-last-read this latest-message)))))
+        (slack-room-history-request room team
+                                    :latest latest
+                                    :after-success #'after-success)))))
+
+(defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
     (let ((current-ts (let ((change (next-single-property-change (point) 'ts)))
                         (when change
@@ -263,10 +270,9 @@
                    (message "loading-message-end not found, oldest: %s" oldest))
 
                  (set-marker lui-output-marker (point-min))
-
-                 (let ((lui-time-stamp-position nil))
-                   (if (and messages (< 0 (length messages)))
-                       (lui-insert (format "%s\n" (slack-buffer-previous-link this)))
+                 (if (and messages (< 0 (length messages)))
+                     (slack-buffer-insert-load-more this)
+                   (let ((lui-time-stamp-position nil))
                      (lui-insert "(no more messages)\n")))
 
                  (cl-loop for m in messages

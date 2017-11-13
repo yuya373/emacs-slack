@@ -160,25 +160,25 @@
 
 (defmethod slack-buffer-load-more ((this slack-buffer))
   (with-slots (team) this
-    (let ((star (oref team star))
-          (cur-point (point)))
+    (let ((cur-point (point)))
       (if (slack-buffer-has-next-page-p this)
           (cl-labels
-              ((after-success ()
-                              (with-current-buffer (slack-buffer-buffer this)
-                                (let ((inhibit-read-only t)
-                                      (loading-message-end (next-single-property-change (point-min)
-                                                                                        'loading-message)))
-                                  (delete-region (point-min) loading-message-end)
-                                  (set-marker lui-output-marker (point-min))
+              ((after-success
+                ()
+                (with-current-buffer (slack-buffer-buffer this)
+                  (let ((inhibit-read-only t)
+                        (loading-message-end (next-single-property-change (point-min)
+                                                                          'loading-message)))
+                    (delete-region (point-min) loading-message-end)
+                    (set-marker lui-output-marker (point-min))
 
-                                  (let ((lui-time-stamp-position nil))
-                                    (if (slack-buffer-has-next-page-p this)
-                                        (slack-buffer-insert-load-more this)
-                                      (lui-insert "(no more messages)\n")))
+                    (if (slack-buffer-has-next-page-p this)
+                        (slack-buffer-insert-load-more this)
+                      (let ((lui-time-stamp-position nil))
+                        (lui-insert "(no more messages)\n")))
 
-                                  (slack-buffer-insert-history this)
-                                  (lui-recover-output-marker)))))
+                    (slack-buffer-insert-history this)
+                    (lui-recover-output-marker)))))
             (slack-buffer-request-history this #'after-success))
         (message "No more items.")))))
 
