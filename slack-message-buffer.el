@@ -263,9 +263,8 @@
                (let ((inhibit-read-only t))
                  (goto-char (point-min))
 
-                 (slack-if-let* ((loading-message-end (slack-buffer-ts-eq (point-min)
-                                                                          (point-max)
-                                                                          oldest)))
+                 (slack-if-let* ((loading-message-end
+                                  (slack-buffer-loading-message-end-point this)))
                      (delete-region (point-min) loading-message-end)
                    (message "loading-message-end not found, oldest: %s" oldest))
 

@@ -158,6 +158,9 @@
     (let ((lui-time-stamp-position nil))
       (lui-insert str))))
 
+(defmethod slack-buffer-loading-message-end-point ((this slack-buffer))
+  (next-single-property-change (point-min) 'loading-message))
+
 (defmethod slack-buffer-load-more ((this slack-buffer))
   (with-slots (team) this
     (let ((cur-point (point)))
@@ -167,8 +170,8 @@
                 ()
                 (with-current-buffer (slack-buffer-buffer this)
                   (let ((inhibit-read-only t)
-                        (loading-message-end (next-single-property-change (point-min)
-                                                                          'loading-message)))
+                        (loading-message-end
+                         (slack-buffer-loading-message-end-point this)))
                     (delete-region (point-min) loading-message-end)
                     (set-marker lui-output-marker (point-min))
 
