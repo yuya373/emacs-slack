@@ -457,7 +457,7 @@
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
 
-(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest after-success async)
+(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest count after-success async)
   (cl-labels
       ((on-request-update
         (&key data &allow-other-keys)
@@ -478,7 +478,8 @@
       team
       :params (list (cons "channel" (oref room id))
                     (if oldest (cons "latest" oldest))
-                    (if latest (cons "oldest" latest)))
+                    (if latest (cons "oldest" latest))
+                    (cons "count" (number-to-string (or count 100))))
       :success #'on-request-update))))
 
 (provide 'slack-room)

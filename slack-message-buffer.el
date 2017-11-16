@@ -248,6 +248,7 @@
                               (slack-buffer-update-last-read this latest-message)))))
         (slack-room-history-request room team
                                     :latest latest
+                                    :count 1000
                                     :after-success #'after-success)))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
