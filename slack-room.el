@@ -440,9 +440,10 @@
                                        'slack-message-buffer)
                                    room team)))
       (if buf (open buf)
+        (message "No Message in %s, fetching from server..." (slack-room-name room))
         (slack-room-history-request
          room team
-         :after-success #'(lambda ()
+         :after-success #'(lambda (&rest _ignore)
                             (open (slack-create-message-buffer room team))))))))
 
 (defmethod slack-room-update-buffer ((this slack-room) team message replace)
@@ -452,7 +453,7 @@
     (and slack-buffer-create-on-notify
          (slack-room-history-request
           this team
-          :after-success #'(lambda ()
+          :after-success #'(lambda (&rest _ignore)
                              (tracking-add-buffer
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
@@ -463,15 +464,15 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-room-request-update")
-         (let* ((datum (plist-get data :messages))
-                (messages
-                 (cl-loop for data in datum
-                          collect (slack-message-create data team :room room))))
+         (let ((messages
+                 (cl-loop for message in (plist-get data :messages)
+                          collect (slack-message-create message team :room room)))
+               (has-more (not (eq :json-false (plist-get data :has_more)))))
            (if oldest (slack-room-set-prev-messages room messages)
              (if latest (slack-room-append-messages room messages)
                (slack-room-set-messages room messages)))
            (if (and after-success (functionp after-success))
-               (funcall after-success))))))
+               (funcall after-success has-more))))))
     (slack-request
      (slack-request-create
       (slack-room-history-url room)

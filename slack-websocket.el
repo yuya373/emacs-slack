@@ -264,7 +264,7 @@
         (im)
         (slack-room-history-request
          im team
-         :after-success #'(lambda ()
+         :after-success #'(lambda (&rest _ignore)
                             (slack-log (format "Direct Message Channel with %s is Open"
                                                (slack-user-name (oref im user) team))
                                        team))
