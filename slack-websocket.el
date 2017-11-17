@@ -612,8 +612,11 @@
                                                                slack-current-buffer))))
                                          (slack-buffer-load-missing-messages
                                           slack-buffer)))
-                         (slack-team-kill-buffers team
-                                                  :except '(slack-message-buffer))
+                         (slack-team-kill-buffers
+                          team :except '(slack-message-buffer
+                                         slack-message-edit-buffer
+                                         slack-message-share-buffer
+                                         slack-room-message-compose-buffer))
                          (slack-ws-open team))))
         (slack-authorize team #'on-error #'on-success)))))
 
