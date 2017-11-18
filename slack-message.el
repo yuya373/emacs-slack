@@ -348,8 +348,8 @@
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
         (if (slack-message-thread-messagep message)
-            (slack-thread-message-update-buffer message room team replace))
-        (slack-room-update-buffer room team message replace)
+            (slack-thread-message-update-buffer message room team replace)
+          (slack-room-update-buffer room team message replace))
         (unless no-notify
           (slack-message-notify message room team))
         (slack-update-modeline))))
