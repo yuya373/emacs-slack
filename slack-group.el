@@ -278,5 +278,8 @@
 (defmethod slack-room-history-url ((_room slack-group))
   slack-group-history-url)
 
+(defmethod slack-room-replies-url ((_room slack-group))
+  "https://slack.com/api/groups.replies")
+
 (provide 'slack-group)
 ;;; slack-group.el ends here

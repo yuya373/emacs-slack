@@ -201,9 +201,8 @@
 (defmethod slack-message-get-thread ((parent slack-message) team)
   (let ((thread (oref parent thread)))
     (unless thread
-      (setq thread (slack-thread-create parent team))
-      (oset parent thread thread))
-    thread))
+      (oset parent thread (slack-thread-create parent team)))
+    (oref parent thread)))
 
 (defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
@@ -335,7 +334,6 @@
             (slack-room-update-buffer room team message replace))
         (slack-if-let* ((thread (slack-message-get-thread parent team)))
             (progn
-              ;; (slack-thread-add-message thread message)
               (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                                       room
                                                       (oref thread thread-ts)

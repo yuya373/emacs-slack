@@ -236,5 +236,8 @@
 (defmethod slack-room-history-url ((_room slack-im))
   slack-im-history-url)
 
+(defmethod slack-room-replies-url ((_room slack-im))
+  "https://slack.com/api/im.replies")
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

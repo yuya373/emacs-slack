@@ -251,5 +251,8 @@
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
 
+(defmethod slack-room-replies-url ((_room slack-channel))
+  "https://slack.com/api/channels.replies")
+
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
