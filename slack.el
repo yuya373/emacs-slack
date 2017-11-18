@@ -254,7 +254,9 @@ never means never show typing indicator."
                (slack-team-kill-buffers team)
                (slack-ws-close team)
                (when (slack-team-need-token-p team)
-                 (slack-request-token team))
+                 (slack-request-token team)
+                 (kill-new (oref team token))
+                 (message "Your Token is added to kill ring."))
                (slack-authorize team)))
     (if team
         (start team)
