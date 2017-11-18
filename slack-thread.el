@@ -151,7 +151,7 @@
           (propertize text
                       'face '(:underline t)
                       'keymap (let ((map (make-sparse-keymap)))
-                                (define-key map (kbd "RET") #'slack-thread-show-messages)
+                                (define-key map (kbd "RET") #'slack-thread-show-or-create)
                                 map)))
       "")))
 
