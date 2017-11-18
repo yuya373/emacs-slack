@@ -53,7 +53,7 @@
 (defun slack-message-add-reaction ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
-            (reaction (slack-message-reaction-input)))
+                  (reaction (slack-message-reaction-input)))
       (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
           (slack-buffer-add-reaction-to-file-comment buf reaction file-comment-id)
         (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))))
@@ -89,8 +89,8 @@
   (slack-if-let* ((buf slack-current-buffer))
       (with-slots (team) buf
         (slack-if-let* ((reaction (ignore-errors
-                              (get-text-property (point)
-                                                 'reaction))))
+                                    (get-text-property (point)
+                                                       'reaction))))
             (let ((user-names (slack-reaction-user-names reaction
                                                          team)))
               (message "reacted users: %s"
@@ -119,13 +119,11 @@
       reaction)))
 
 (defun slack-message-reaction-add (reaction ts room team)
-  (let ((message (or (slack-room-find-message room ts)
-                     (slack-room-find-thread-message room ts))))
-    (when message
+  (slack-if-let* ((message (slack-room-find-message room ts)))
       (let ((params (list (cons "channel" (oref room id))
                           (slack-message-get-param-for-reaction message)
                           (cons "name" reaction))))
-        (slack-message-reaction-add-request params team)))))
+        (slack-message-reaction-add-request params team))))
 
 (defun slack-message-reaction-add-request (params team)
   (cl-labels ((on-reaction-add
@@ -141,13 +139,11 @@
       :success #'on-reaction-add))))
 
 (defun slack-message-reaction-remove (reaction ts room team)
-  (let ((message (or (slack-room-find-message room ts)
-                     (slack-room-find-thread-message room ts))))
-    (when message
+  (slack-if-let* ((message (slack-room-find-message room ts)))
       (let ((params (list (cons "channel" (oref room id))
                           (slack-message-get-param-for-reaction message)
                           (cons "name" reaction))))
-        (slack-message-reaction-remove-request params team)))))
+        (slack-message-reaction-remove-request params team))))
 
 (defun slack-message-reaction-remove-request (params team)
   (cl-labels ((on-reaction-remove

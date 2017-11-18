@@ -69,15 +69,14 @@
 
 (defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
   (with-slots (room team) this
-    (slack-if-let* ((message (or (slack-room-find-message room ts)
-                           (slack-room-find-thread-message room ts)))
-              (template "https://%s.slack.com/archives/%s/p%s%s"))
+    (slack-if-let* ((message (slack-room-find-message room ts))
+                    (template "https://%s.slack.com/archives/%s/p%s%s"))
         (kill-new
          (format template
                  (oref team domain)
                  (oref room id)
                  (replace-regexp-in-string "\\." "" ts)
-                 (if (slack-message-thread-messagep message)
+                 (if (slack-thread-message-p message)
                      (format "?thread_ts=%s&cid=%s"
                              (oref message thread-ts)
                              (oref room id))

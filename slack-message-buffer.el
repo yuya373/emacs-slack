@@ -116,8 +116,9 @@
                (latest-message (car (last messages)))
                (oldest-message (car messages)))
           (cl-loop for m in messages
-                   do (if (or (null last-read)
-                              (string< last-read (oref m ts)))
+                   do (if (and (or (null last-read)
+                                   (string< last-read (oref m ts)))
+                               (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
             (slack-buffer-update-last-read this latest-message)

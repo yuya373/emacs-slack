@@ -347,7 +347,7 @@
       (progn
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
-        (if (slack-message-thread-messagep message)
+        (if (slack-thread-message-p message)
             (slack-thread-message-update-buffer message room team replace)
           (slack-room-update-buffer room team message replace))
         (unless no-notify
@@ -360,7 +360,7 @@
       (slack-buffer-delete-message buf (slack-get-ts))))
 
 (defmethod slack-message-deleted ((message slack-message) room team)
-  (if (slack-message-thread-messagep message)
+  (if (slack-thread-message-p message)
       (slack-if-let* ((parent (slack-room-find-thread-parent room message))
                       (thread (slack-message-get-thread parent team)))
           (progn
@@ -394,6 +394,20 @@
       (setq attachments (oref other attachments))
       (setq edited-at (oref other edited-at)))
     changed))
+
+(defmethod slack-thread-message-p ((this slack-message))
+  (and (oref this thread-ts)
+       (not (string= (oref this ts) (oref this thread-ts)))))
+
+(defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
+  nil)
+
+(defmethod slack-message-thread-parentp ((m slack-message))
+  (let* ((thread (oref m thread))
+         (thread-ts (or (and thread (oref thread thread-ts))
+                        (oref m thread-ts))))
+    (and thread-ts (string= (oref m ts) thread-ts))))
+
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

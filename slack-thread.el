@@ -157,8 +157,7 @@
 
 (defmethod slack-thread-create ((m slack-message) team &optional payload)
   (let* ((replies (and payload (append (plist-get payload :replies) nil)))
-         (reply-count (and payload (plist-get payload :reply_count))
-                      )
+         (reply-count (and payload (plist-get payload :reply_count)))
          (unread-count (and payload (plist-get payload :unread_count)))
          (last-read (and payload (plist-get payload :last_read)))
          (thread (make-instance 'slack-thread
@@ -187,15 +186,6 @@
     (cl-pushnew msg messages :test #'slack-message-equal)
     (setq messages (slack-room-sort-messages (copy-sequence messages)))
     (setq reply-count (length messages))))
-
-(defmethod slack-message-thread-parentp ((m slack-message))
-  (let* ((thread (oref m thread))
-         (thread-ts (or (and thread (oref thread thread-ts))
-                        (oref m thread-ts))))
-    (and thread-ts (string= (oref m ts) thread-ts))))
-
-(defmethod slack-message-thread-messagep ((m slack-message))
-  (and (oref m thread-ts) (not (slack-message-thread-parentp m))))
 
 (defun slack-thread-update-state (payload team)
   (let* ((room (slack-room-find (plist-get payload :channel) team))

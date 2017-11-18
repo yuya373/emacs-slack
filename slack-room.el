@@ -105,14 +105,6 @@
               (oref room messages)
               :from-end t))
 
-(defun slack-room-find-thread-message (room ts)
-  (cl-find-if #'(lambda (th) (and th (string= ts (oref th ts))))
-              (apply #'append (mapcar #'(lambda (m)
-                                          (if (oref m thread)
-                                              (oref (oref m thread) messages)))
-                                      (oref room messages)))
-              :from-end t))
-
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
 
@@ -199,7 +191,7 @@
 (defun slack-room-reject-thread-message (messages)
   (cl-remove-if #'(lambda (m) (and (not (eq (eieio-object-class-name m)
                                             'slack-reply-broadcast-message))
-                                   (slack-message-thread-messagep m)))
+                                   (slack-thread-message-p m)))
                 messages))
 
 (defmethod slack-room-sorted-messages ((room slack-room))
@@ -212,40 +204,6 @@
    (cl-delete-duplicates (append (oref room messages)
                                  prev-messages)
                          :test #'slack-message-equal)))
-
-(defun slack-room-gather-thread-messages (messages)
-  (cl-labels
-      ((groupby-thread-ts (messages acc)
-                          (cl-loop for m in messages
-                                   do (let ((thread-ts (oref m thread-ts)))
-                                        (when (and thread-ts (not (slack-message-thread-parentp m)))
-                                          (puthash thread-ts
-                                                   (cons m (gethash thread-ts acc))
-                                                   acc))))
-                          acc)
-       (make-threads (table acc)
-                     (cl-loop for key being the hash-keys in table using (hash-value value)
-                              do (let ((parent (cl-find-if #'(lambda (m)
-                                                               (string= key (oref m ts)))
-                                                           messages)))
-                                   (when parent
-                                     (slack-thread-set-messages (oref parent thread) value)
-                                     (push parent acc))))
-                     acc)
-       (remove-duplicates (threads messages)
-                          (let ((ret))
-                            (dolist (message messages)
-                              (if (or (eq (eieio-object-class-name message)
-                                          'slack-reply-broadcast-message)
-                                      (and (not (oref message thread-ts))
-                                           (not (slack-message-thread-parentp message))))
-                                  (push message ret)))
-                            (setq ret (append ret threads))
-                            ret)))
-    (let ((thread-messages (groupby-thread-ts messages (make-hash-table :test 'equal))))
-      (if (< 0 (length (hash-table-keys thread-messages)))
-          (remove-duplicates (make-threads thread-messages nil) messages)
-        messages))))
 
 (defmethod slack-room-update-latest ((room slack-room) message)
   (with-slots (latest) room
@@ -270,8 +228,7 @@
     (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
-  (let* ((sorted (slack-room-sort-messages
-                  (slack-room-gather-thread-messages messages)))
+  (let* ((sorted (slack-room-sort-messages messages))
          (oldest (car sorted))
          (latest (car (last sorted))))
     (oset room oldest oldest)
