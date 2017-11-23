@@ -28,6 +28,7 @@
 (require 'slack-buffer)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
+(defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
 
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
@@ -71,16 +72,21 @@
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts))
                     (template "https://%s.slack.com/archives/%s/p%s%s"))
-        (kill-new
-         (format template
-                 (oref team domain)
-                 (oref room id)
-                 (replace-regexp-in-string "\\." "" ts)
-                 (if (slack-thread-message-p message)
-                     (format "?thread_ts=%s&cid=%s"
-                             (oref message thread-ts)
-                             (oref room id))
-                   ""))))))
+        (cl-labels
+            ((on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-get-permalink")
+                          (let ((permalink (plist-get data :permalink)))
+                            (kill-new permalink)
+                            (message "Link Copied to Clipboard")))))
+          (slack-request
+           (slack-request-create
+            slack-get-permalink-url
+            team
+            :type "POST"
+            :params (list (cons "channel" (oref room id))
+                          (cons "message_ts" ts))
+            :success #'on-success))))))
 
 (defmethod slack-buffer--replace ((this slack-room-buffer) ts)
   (with-slots (room) this
