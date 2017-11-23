@@ -103,8 +103,8 @@ use `slack-change-current-team' to change `slack-current-team'"
   (slack-ws-close team))
 
 (defmethod slack-team-equalp ((team slack-team) other)
-  (with-slots (client-id) team
-    (string= client-id (oref other client-id))))
+  (with-slots (token) team
+    (string= token (oref other token))))
 
 (defmethod slack-team-name ((team slack-team))
   (oref team name))
