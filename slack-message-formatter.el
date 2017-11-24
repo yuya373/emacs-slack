@@ -176,8 +176,9 @@
   (with-slots (text) m
     (slack-message-unescape-string text team)))
 
-(defmethod slack-message-body ((m slack-reply-broadcast-message) _team)
-  (format "Replied to a thread: \n%s" (oref m text)))
+(defmethod slack-message-body ((m slack-reply-broadcast-message) team)
+  (format "Replied to a thread: \n%s"
+          (slack-message-unescape-string (oref m text) team)))
 
 (defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
