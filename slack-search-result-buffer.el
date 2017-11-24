@@ -27,7 +27,8 @@
 (require 'eieio)
 (require 'slack-buffer)
 
-(define-derived-mode slack-search-result-buffer-mode slack-buffer-mode "Slack Search Result")
+(define-derived-mode slack-search-result-buffer-mode slack-buffer-mode "Slack Search Result"
+  (remove-hook 'lui-post-output-hook 'slack-display-image t))
 
 (defclass slack-search-result-buffer (slack-buffer)
   ((search-result :initarg :search-result :type slack-search-result)))
