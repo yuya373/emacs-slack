@@ -161,6 +161,22 @@
 (defmethod slack-buffer-loading-message-end-point ((this slack-buffer))
   (next-single-property-change (point-min) 'loading-message))
 
+(defmethod slack-buffer-delete-load-more-string ((this slack-buffer))
+  (let ((loading-message-end
+         (slack-buffer-loading-message-end-point this)))
+    (delete-region (point-min) loading-message-end)))
+
+(defmethod slack-buffer-prepare-marker-for-history ((_this slack-buffer))
+  (set-marker lui-output-marker (point-min)))
+
+(defmethod slack-buffer-insert--history ((this slack-buffer))
+  (if (slack-buffer-has-next-page-p this)
+      (slack-buffer-insert-load-more this)
+    (let ((lui-time-stamp-position nil))
+      (lui-insert "(no more messages)\n")))
+
+  (slack-buffer-insert-history this))
+
 (defmethod slack-buffer-load-more ((this slack-buffer))
   (with-slots (team) this
     (let ((cur-point (point)))
@@ -169,18 +185,10 @@
               ((after-success
                 ()
                 (with-current-buffer (slack-buffer-buffer this)
-                  (let ((inhibit-read-only t)
-                        (loading-message-end
-                         (slack-buffer-loading-message-end-point this)))
-                    (delete-region (point-min) loading-message-end)
-                    (set-marker lui-output-marker (point-min))
-
-                    (if (slack-buffer-has-next-page-p this)
-                        (slack-buffer-insert-load-more this)
-                      (let ((lui-time-stamp-position nil))
-                        (lui-insert "(no more messages)\n")))
-
-                    (slack-buffer-insert-history this)
+                  (let ((inhibit-read-only t))
+                    (slack-buffer-delete-load-more-string this)
+                    (slack-buffer-prepare-marker-for-history this)
+                    (slack-buffer-insert--history this)
                     (lui-recover-output-marker)))))
             (slack-buffer-request-history this #'after-success))
         (message "No more items.")))))

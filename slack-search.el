@@ -27,6 +27,16 @@
 (require 'eieio)
 (require 'slack-room)
 
+(defface slack-search-result-message-header-face
+  '((t (:weight bold :height 1.1 :underline t)))
+  "Face used to search message header."
+  :group 'slack)
+;; (:inherit (markdown-code-face font-lock-constant-face))
+(defface slack-search-result-message-username-face
+  '((t (:inherit slack-message-output-header :underline nil)))
+  ""
+  :group 'slack)
+
 (defclass slack-search-paging ()
   ((count :initarg :count :type number)
    (total :initarg :total :type number)
@@ -72,8 +82,21 @@
   (oset this sort (oref other sort))
   (oset this sort-dir (oref other sort-dir))
   (oset this total (oref other total))
-  (oset this matches (append (oref other matches) (oref this matches)))
+  (oset this matches (append (oref this matches) (oref other matches)))
   (oset this paging (oref other paging)))
+
+(defmethod slack-message-to-string ((this slack-search-message) team)
+  (with-slots (channel username) this
+    (let* ((room (slack-room-find (oref channel id) team))
+           (header (propertize (format "%s%s"
+                                       (if (slack-channel-p room)
+                                           "#" "@")
+                                       (slack-room-name room))
+                               'face 'slack-search-result-message-header-face)))
+      (propertize (format "%s\n%s"
+                          header
+                          (slack-message-to-string (oref this message) team))
+                  'ts (slack-ts this)))))
 
 (defmethod slack-ts ((this slack-search-message))
   (slack-ts (oref this message)))
@@ -137,8 +160,8 @@
 
 (defun slack-search-create-result (payload sort sort-dir team)
   (let* ((messages (plist-get payload :messages))
-         (matches (reverse (mapcar #'(lambda (e) (slack-search-create-message e team))
-                                   (plist-get messages :matches))))
+         (matches (mapcar #'(lambda (e) (slack-search-create-message e team))
+                          (plist-get messages :matches)))
          (paging (slack-search-create-paging
                   (plist-get messages :paging))))
     (make-instance 'slack-search-result
@@ -194,7 +217,7 @@
                                    :query query)))
       (cl-labels
           ((after-success ()
-                          (let ((buffer (slack-create-search-result-buffer search-result team)))
+                          (let ((buffer (slack-create-search-result-buffer instance team)))
                             (slack-buffer-display buffer))))
         (slack-search-request instance #'after-success team)))))
 
@@ -211,10 +234,14 @@
                    (slack-request-handle-error
                     (data "slack-search-request")
                     (let ((search-result
-                           (slack-search-create-result data
-                                                       (oref this sort)
-                                                       (oref this sort-dir)
-                                                       team)))
+                           (if (slack-file-search-result-p this)
+                               (slack-search-create-file-result data
+                                                                (oref this sort)
+                                                                (oref this sort-dir))
+                             (slack-search-create-result data
+                                                         (oref this sort)
+                                                         (oref this sort-dir)
+                                                         team))))
                       (slack-merge this search-result)
                       (funcall after-success)))))
     (with-slots (query sort sort-dir) this
