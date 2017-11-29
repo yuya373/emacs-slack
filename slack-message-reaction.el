@@ -30,8 +30,6 @@
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
-(defvar slack-current-team-id)
-(defvar slack-current-room-id)
 (defcustom slack-invalid-emojis '("^:flag_" "tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
   "Invalid emoji regex. Slack server treated some emojis as Invalid."
   :group 'slack)
@@ -54,19 +52,11 @@
 
 (defun slack-message-add-reaction ()
   (interactive)
-  (let ((reaction (slack-message-reaction-input))
-        (team (slack-team-find slack-current-team-id)))
-    (if-let* ((file-comment-id (slack-get-file-comment-id)))
-        (slack-file-comment-add-reaction file-comment-id
-                                         reaction
-                                         team)
-      (if-let* ((file-id (slack-get-file-id)))
-          (slack-file-add-reaction file-id
-                                   reaction
-                                   team)
-        (let ((ts (slack-get-ts))
-              (room (slack-room-find slack-current-room-id team)))
-          (slack-message-reaction-add reaction ts room team))))))
+  (slack-if-let* ((buf slack-current-buffer)
+                  (reaction (slack-message-reaction-input)))
+      (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
+          (slack-buffer-add-reaction-to-file-comment buf reaction file-comment-id)
+        (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))))
 
 (defun slack-file-comment-remove-reaction (file-comment-id file-id team)
   (slack-with-file file-id team
@@ -89,35 +79,23 @@
 
 (defun slack-message-remove-reaction ()
   (interactive)
-  (let ((team (slack-team-find slack-current-team-id)))
-    (if (eq major-mode 'slack-file-info-mode)
-        (if-let* ((file-id slack-current-file-id)
-                  (file-comment-id (slack-get-file-comment-id)))
-            (slack-file-comment-remove-reaction file-comment-id
-                                                file-id
-                                                team)
-          (slack-file-remove-reaction file-id team))
-      (let* ((room (slack-room-find slack-current-room-id
-                                    team))
-             (ts (slack-get-ts))
-             (msg (slack-room-find-message room ts))
-             (reactions (if (and
-                             (slack-file-share-message-p msg)
-                             (slack-get-file-comment-id))
-                            (slack-message-reactions
-                             (oref (oref msg file) initial-comment))
-                          (slack-message-reactions msg)))
-             (reaction (slack-message-reaction-select reactions)))
-        (slack-message-reaction-remove reaction ts room team)))))
+  (slack-buffer-remove-reaction-from-message
+   slack-current-buffer
+   (slack-get-ts)
+   (slack-get-file-comment-id)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)
-  (let* ((team (slack-team-find slack-current-team-id))
-         (reaction (ignore-errors (get-text-property (point) 'reaction))))
-    (if reaction
-        (let ((user-names (slack-reaction-user-names reaction team)))
-          (message "reacted users: %s" (mapconcat #'identity user-names ", ")))
-      (message "Can't get reaction:"))))
+  (slack-if-let* ((buf slack-current-buffer))
+      (with-slots (team) buf
+        (slack-if-let* ((reaction (ignore-errors
+                                    (get-text-property (point)
+                                                       'reaction))))
+            (let ((user-names (slack-reaction-user-names reaction
+                                                         team)))
+              (message "reacted users: %s"
+                       (mapconcat #'identity user-names ", ")))
+          (message "Can't get reaction:")))))
 
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r)
@@ -141,13 +119,11 @@
       reaction)))
 
 (defun slack-message-reaction-add (reaction ts room team)
-  (let ((message (or (slack-room-find-message room ts)
-                     (slack-room-find-thread-message room ts))))
-    (when message
+  (slack-if-let* ((message (slack-room-find-message room ts)))
       (let ((params (list (cons "channel" (oref room id))
                           (slack-message-get-param-for-reaction message)
                           (cons "name" reaction))))
-        (slack-message-reaction-add-request params team)))))
+        (slack-message-reaction-add-request params team))))
 
 (defun slack-message-reaction-add-request (params team)
   (cl-labels ((on-reaction-add
@@ -163,13 +139,11 @@
       :success #'on-reaction-add))))
 
 (defun slack-message-reaction-remove (reaction ts room team)
-  (let ((message (or (slack-room-find-message room ts)
-                     (slack-room-find-thread-message room ts))))
-    (when message
+  (slack-if-let* ((message (slack-room-find-message room ts)))
       (let ((params (list (cons "channel" (oref room id))
                           (slack-message-get-param-for-reaction message)
                           (cons "name" reaction))))
-        (slack-message-reaction-remove-request params team)))))
+        (slack-message-reaction-remove-request params team))))
 
 (defun slack-message-reaction-remove-request (params team)
   (cl-labels ((on-reaction-remove

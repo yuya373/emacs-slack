@@ -77,9 +77,8 @@
   (string= (oref c id) (oref other id)))
 
 (defmethod slack-merge ((old slack-file-comment) new)
-  (with-slots (comment reactions) old
-    (setq comment (oref new comment))
-    (setq reactions (slack-merge-list reactions (oref new reactions)))))
+  (slack-merge-list (oref old reactions) (oref new reactions))
+  (oset old comment (oref new comment)))
 
 (defmethod slack-message-body ((comment slack-file-comment) team)
   (slack-message-unescape-string (oref comment comment) team))
@@ -103,51 +102,14 @@
 (defmethod slack-message-star-api-params ((this slack-file-comment))
   (cons "file_comment" (oref this id)))
 
-(defun slack-file-comment-edit ()
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id (slack-get-file-comment-id))
-            (team (slack-team-find slack-current-team-id)))
-      (slack-with-file file-id team
-        (slack-with-file-comment file-comment-id file
-          (let* ((bufname "*Slack - Edit File Comment*")
-                 (buf (get-buffer-create bufname)))
-            (with-current-buffer buf
-              (slack-edit-file-comment-mode)
-              (setq buffer-read-only nil)
-              (erase-buffer)
-              (setq-local slack-current-file-id file-id)
-              (setq-local slack-current-file-comment-id file-comment-id)
-              (slack-buffer-set-current-team-id team)
-              (insert (oref file-comment comment)))
-            (funcall slack-buffer-function buf))))))
-
 (defun slack-file-comment-edit-commit ()
   (interactive)
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id slack-current-file-comment-id)
-            (team (slack-team-find slack-current-team-id))
-            (comment (buffer-substring-no-properties (point-min) (point-max))))
-
-      (progn
-        (slack-file-comment-edit-request file-id
-                                         file-comment-id
-                                         comment
-                                         team)
-        (kill-buffer)
-        (if (> (count-windows) 1) (delete-window)))))
-
-(defun slack-file-comment-delete ()
-  (if-let* ((file-id slack-current-file-id)
-            (file-comment-id (slack-get-file-comment-id))
-            (team (slack-team-find slack-current-team-id)))
-      (if (yes-or-no-p "Are you sure want to delete this comment?")
-          (slack-with-file file-id team
-            (slack-with-file-comment file-comment-id file
-              (slack-file-comment-delete-request file-id file-comment-id team)))
-        (message "Canceled"))))
+  (slack-if-let* ((buf slack-current-buffer)
+            (message (buffer-substring-no-properties (point-min) (point-max))))
+      (slack-buffer-send-message buf message)))
 
 (defun slack-file-comment-process-star-api (url team)
-  (if-let* ((file-id slack-current-file-id)
+  (slack-if-let* ((file-id slack-current-file-id)
             (file-comment-id (slack-get-file-comment-id)))
       (slack-with-file file-id team
         (slack-with-file-comment file-comment-id file
@@ -205,7 +167,8 @@
              (text (format "commented on %s <%s|open in browser>\n%s"
                            (slack-file-link-info (oref (oref this file) id) name)
                            permalink
-                           (format "“ %s" comment)))
+                           (format "“ %s" (slack-message-unescape-string comment
+                                                                          team))))
              (header (slack-message-header-to-string this team))
              (reactions (slack-message-reaction-to-string this)))
         (slack-format-message header text reactions)))))
@@ -220,16 +183,26 @@
   (oref (oref m comment) comment))
 
 (defmethod slack-message-changed--copy ((this slack-file-comment-message) other)
-  (let ((changed (call-next-method)))
-    (with-slots ((old-comment comment) text) this
-      (let ((new-comment (oref other comment)))
-        (unless (string= (oref old-comment comment) (oref new-comment comment))
-          (oset old-comment comment (oref new-comment comment))
-          (setq changed t))))
-    changed))
+  (when (slack-file-comment-message-p other)
+    (let ((changed (call-next-method)))
+      (with-slots ((old-comment comment) text) this
+        (let ((new-comment (oref other comment)))
+          (oset old-comment reactions (oref new-comment reactions))
+          (unless (string= (oref old-comment comment) (oref new-comment comment))
+            (oset old-comment comment (oref new-comment comment))
+            (setq changed t))))
+      changed)))
 
 (defmethod slack-ts ((this slack-file-comment))
   (number-to-string (oref this timestamp)))
+
+(defmethod slack-message-update ((this slack-file-comment) file team)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             file
+                                             team)))
+      (progn
+        (oset buffer file file)
+        (slack-buffer-update buffer (oref this id)))))
 
 (provide 'slack-file-comment)
 ;;; slack-file-comment.el ends here

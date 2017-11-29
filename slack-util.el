@@ -103,9 +103,10 @@
        (content (str) (substring str 1 nil)))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
-      (prefix (when (cl-find major-mode '(slack-mode
-                                          slack-edit-message-mode
-                                          slack-thread-mode))
+      (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
+                  ;; (cl-find major-mode '(slack-mode
+                  ;;                         slack-edit-message-mode
+                  ;;                         slack-thread-mode))
                 (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
                                    2)))
       (candidates (let ((content (content arg)))
@@ -186,19 +187,45 @@
            (file-name-extension image-url))
    slack-profile-image-file-directory))
 
-(cl-defun slack-image--create (path &key (width nil) (height nil))
-  (if (image-type-available-p 'imagemagick)
-      (slack-image-shrink (apply #'create-image (append (list path 'imagemagick nil)
-                                                        (if height (list :height height))
-                                                        (if width (list :width width)))))
-    (create-image path)))
+(cl-defun slack-image--create (path &key (width nil) (height nil) (max-height nil) (max-width nil))
+  (let* ((imagemagick-available-p (image-type-available-p 'imagemagick))
+         (image (apply #'create-image (append (list path (and imagemagick-available-p 'imagemagick) nil)
+                                              (if height (list :height height))
+                                              (if width (list :width width))
+                                              (if max-height
+                                                  (list :max-height max-height))
+                                              (if max-width
+                                                  (list :max-width max-width))))))
+    (if imagemagick-available-p
+        (slack-image-shrink image max-height)
+      image)))
+
+(defun slack-image-exists-p (image-spec)
+  (file-exists-p (slack-image-path (car image-spec))))
+
+(defun slack-image-string (spec)
+  "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
+  (if spec
+      (slack-if-let* ((path (slack-image-path (car spec))))
+          (if (file-exists-p path)
+              (slack-mapconcat-images
+               (slack-image-slice
+                (slack-image--create path
+                                     :width (cadr spec)
+                                     :height (caddr spec)
+                                     :max-height (cadddr spec)
+                                     :max-width (cadr (cdddr spec)))))
+            (propertize "[Image]" 'slack-image-spec spec))
+        "")
+    ""))
 
 (defun slack-image-path (image-url)
-  (expand-file-name
-   (concat (md5 image-url)
-           "."
-           (file-name-extension image-url))
-   slack-image-file-directory))
+  (and image-url
+       (expand-file-name
+        (concat (md5 image-url)
+                "."
+                (file-name-extension image-url))
+        slack-image-file-directory)))
 
 (defun slack-image-slice (image)
   (when image
@@ -213,19 +240,19 @@
                                  image))
         (list image)))))
 
-(defun slack-image-shrink (image)
+(defun slack-image-shrink (image &optional max-height)
   (unless (image-type-available-p 'imagemagick)
     (error "Need Imagemagick"))
-  (if slack-image-max-height
+  (if max-height
       (let* ((data (plist-get (cdr image) :data))
              (file (plist-get (cdr image) :file))
              (size (image-size image t))
              (height (cdr size))
              (width (car size))
-             (h (min height slack-image-max-height))
-             (w (if (< slack-image-max-height height)
+             (h (min height max-height))
+             (w (if (< max-height height)
                     (ceiling
-                     (* (/ (float slack-image-max-height) height)
+                     (* (/ (float max-height) height)
                         width))
                   width)))
         (create-image (or file data) 'imagemagick data :height h :width w))
@@ -253,22 +280,33 @@
                  (message "Error Fetching Image: %s %s %s, url: %s"
                           (request-response-status-code response)
                           error-thrown symbol-status url)
+                 (if (file-exists-p newname)
+                     (delete-file newname))
                  (case (request-response-status-code response)
                    (403 nil)
                    (404 nil)
-                   (t (progn
-                        (url-copy-file url newname)
-                        (when (functionp error) (funcall error))))))
+                   (t (when (functionp error)
+                        (funcall error
+                                 (request-response-status-code response)
+                                 error-thrown
+                                 symbol-status
+                                 url)))))
        (parser () (mm-write-region (point-min) (point-max)
                                    newname nil nil nil 'binary t)))
-    (request
-     url
-     :success #'on-success
-     :error #'on-error
-     :parser #'parser
-     :sync sync
-     :headers (when (and token (string-prefix-p "https" url))
-                (list (cons "Authorization" (format "Bearer %s" token)))))))
+    (let* ((url-obj (url-generic-parse-url url))
+           (need-token-p (and url-obj
+                              (string-match-p "slack"
+                                              (url-host url-obj))))
+           (use-https-p (and url-obj
+                             (string= "https" (url-type url-obj)))))
+      (request
+       url
+       :success #'on-success
+       :error #'on-error
+       :parser #'parser
+       :sync sync
+       :headers (if (and token use-https-p need-token-p)
+                    (list (cons "Authorization" (format "Bearer %s" token))))))))
 
 (defun slack-render-image (image team)
   (let ((buf (get-buffer-create

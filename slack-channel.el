@@ -31,6 +31,7 @@
 
 (defvar slack-buffer-function)
 
+(defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
@@ -62,11 +63,12 @@
 
 (defun slack-channel-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              for channels = (oref team channels)
-              nconc channels))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         for channels = (oref team channels)
+                         nconc channels))))
+    (slack-room-display room team)))
 
 (defun slack-channel-list-update (&optional team after-success)
   (interactive)
@@ -245,6 +247,12 @@
           (cons new-room
                 (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
                               (oref team channels))))))
+
+(defmethod slack-room-history-url ((_room slack-channel))
+  slack-channel-history-url)
+
+(defmethod slack-room-replies-url ((_room slack-channel))
+  "https://slack.com/api/channels.replies")
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

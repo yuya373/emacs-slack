@@ -28,8 +28,10 @@
 (require 'subr-x)
 (require 'oauth2)
 
-(when (not (fboundp 'if-let*))
-  (defalias 'if-let* #'if-let))
+(defalias 'slack-if-let*
+  (if (fboundp 'if-let*)
+      'if-let*
+    'if-let))
 
 (require 'slack-team)
 (require 'slack-channel)
@@ -44,14 +46,27 @@
 (require 'slack-search)
 (require 'slack-reminder)
 (require 'slack-thread)
-(require 'slack-message-update)
-(require 'slack-message-changed)
-(require 'slack-message-delete)
-(require 'slack-room-history)
 (require 'slack-file-share-message)
 (require 'slack-file-comment)
 (require 'slack-attachment)
 (require 'slack-emoji)
+(require 'slack-star)
+
+(require 'slack-buffer)
+(require 'slack-message-buffer)
+(require 'slack-message-edit-buffer)
+(require 'slack-message-share-buffer)
+(require 'slack-thread-message-buffer)
+(require 'slack-room-message-compose-buffer)
+(require 'slack-pinned-items-buffer)
+(require 'slack-user-profile-buffer)
+(require 'slack-file-list-buffer)
+(require 'slack-file-info-buffer)
+(require 'slack-thread-message-compose-buffer)
+(require 'slack-edit-file-comment-buffer)
+(require 'slack-search-result-buffer)
+(require 'slack-stars-buffer)
+(require 'slack-file-comment-compose-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)
@@ -173,12 +188,15 @@ never means never show typing indicator."
                   (unless (slack-room-hiddenp room)
                     (slack-room-info-request room team)))
               rooms))
+       (kill-slack-buffer (sb)
+                          (slack-if-let* ((buffer-name (and sb (slack-buffer-name sb))))
+                              (when (get-buffer buffer-name)
+                                (kill-buffer buffer-name))))
        (delete-existing-buffer
         (rooms)
         (mapc #'(lambda (room)
-                  (let ((bufname (slack-room-buffer-name room)))
-                    (when (get-buffer bufname)
-                      (kill-buffer bufname))))
+                  (kill-slack-buffer (oref room buffer))
+                  (mapc #'kill-slack-buffer (oref room thread-message-buffers)))
               rooms)))
     (slack-request-handle-error
      (data "slack-authorize")
@@ -233,9 +251,12 @@ never means never show typing indicator."
   (interactive)
   (cl-labels ((start
                (team)
+               (slack-team-kill-buffers team)
                (slack-ws-close team)
                (when (slack-team-need-token-p team)
-                 (slack-request-token team))
+                 (slack-request-token team)
+                 (kill-new (oref team token))
+                 (message "Your Token is added to kill ring."))
                (slack-authorize team)))
     (if team
         (start team)
@@ -244,15 +265,6 @@ never means never show typing indicator."
                    do (start team))
         (slack-start (call-interactively #'slack-register-team))))
     (slack-enable-modeline)))
-
-(defun slack-redisplay-message ()
-  (interactive)
-  (let* ((ts (slack-get-ts))
-         (team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id team))
-         (message (slack-room-find-message room ts)))
-    (slack-message-redisplay message room)))
-
 
 (provide 'slack)
 ;;; slack.el ends here

@@ -30,8 +30,6 @@
 (require 'slack-message)
 (require 'slack-pinned-item)
 
-(defvar slack-current-room-id)
-(defvar slack-current-team-id)
 (defvar slack-buffer-function)
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 
@@ -47,7 +45,8 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
    (team-id :initarg :team-id)
-   (buffer :initform nil)))
+   (buffer :initform nil :type (or null slack-buffer))
+   (thread-message-buffers :initform '() :type list)))
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
@@ -73,41 +72,6 @@
           " : "
           (slack-room-display-name room)))
 
-(defmacro slack-room-with-buffer (room team &rest body)
-  (declare (indent 2) (debug t))
-  `(let ((buf (slack-buffer-create ,room ,team)))
-     (with-current-buffer buf
-       ,@body)
-     buf))
-
-(cl-defun slack-room-create-buffer (room team &key update)
-  (cl-labels
-      ((open ()
-             (funcall slack-buffer-function
-                      (slack-room-with-buffer room team
-                        (slack-room-insert-messages room buf team)))))
-    (with-slots (messages) room
-      (if (or update (< (length messages) 1) (not (slack-room-has-buffer-p room)))
-          (progn
-            (slack-log (format "There is no message in %s. fetching from server..."
-                               (slack-room-name room))
-                       team)
-            (slack-room-history-request room team :after-success #'open)
-            )
-        (open)))))
-
-(cl-defun slack-room-create-buffer-bg (room team)
-  (cl-labels
-      ((create-buffer ()
-                      (tracking-add-buffer
-                       (slack-room-with-buffer room team
-                         (slack-room-insert-messages room buf team)))))
-    (if (< (length (oref room messages)) 1)
-        (slack-room-history-request room team
-                                    :after-success #'(lambda () (create-buffer))
-                                    :async t)
-      (create-buffer))))
-
 (cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."
   (declare (indent 2) (debug t))
@@ -127,10 +91,7 @@
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
                  rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
-    (slack-select-from-list
-        (alist "Select Channel: ")
-        (slack-room-create-buffer selected
-                                  (slack-team-find (oref selected team-id))))))
+    (slack-select-from-list (alist "Select Channel: "))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
   (slack-request
@@ -139,46 +100,27 @@
     team
     :success success)))
 
-(defun slack-room-update-messages ()
-  (interactive)
-  (unless (and (boundp 'slack-current-room-id)
-               (boundp 'slack-current-team-id))
-    (error "Call From Slack Room Buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id team))
-         (cur-point (point)))
-    (slack-room-history-request room team)
-    (slack-room-with-buffer room team
-      (slack-buffer-widen
-       (let ((inhibit-read-only t))
-         (delete-region (point-min) (marker-position lui-output-marker))))
-      (slack-room-insert-previous-link room buf)
-      (slack-room-insert-messages room buf team)
-      (goto-char cur-point))))
-
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
               (oref room messages)
               :from-end t))
 
-(defun slack-room-find-thread-message (room ts)
-  (cl-find-if #'(lambda (th) (and th (string= ts (oref th ts))))
-              (apply #'append (mapcar #'(lambda (m)
-                                          (if (oref m thread)
-                                              (oref (oref m thread) messages)))
-                                      (oref room messages)))
-              :from-end t))
-
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
+
+(defmethod slack-message-thread ((this slack-message) _room)
+  (oref this thread))
+
+(defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
+  (let ((message (slack-room-find-message room
+                                          (or (oref this broadcast-thread-ts)
+                                              (oref this thread-ts)))))
+    (slack-message-thread message room)))
 
 (defun slack-room-find-thread (room ts)
   (let ((message (slack-room-find-message room ts)))
     (when message
-      (if (object-of-class-p message 'slack-reply-broadcast-message)
-          (progn
-            (setq message (slack-room-find-message room (oref message broadcast-thread-ts)))))
-      (and message (oref message thread)))))
+      (slack-message-thread message room))))
 
 (defmethod slack-room-team ((room slack-room))
   (slack-team-find (oref room team-id)))
@@ -233,6 +175,7 @@
   (if (slack-room-update-last-read-p room (oref msg ts))
       (oset room last-read (oref msg ts))))
 
+
 (defmethod slack-room-latest-messages ((room slack-room) messages)
   (with-slots (last-read) room
     (cl-remove-if #'(lambda (m)
@@ -246,7 +189,9 @@
            :key #'(lambda (m) (oref m ts))))
 
 (defun slack-room-reject-thread-message (messages)
-  (cl-remove-if #'(lambda (m) (slack-message-thread-messagep m))
+  (cl-remove-if #'(lambda (m) (and (not (eq (eieio-object-class-name m)
+                                            'slack-reply-broadcast-message))
+                                   (slack-thread-message-p m)))
                 messages))
 
 (defmethod slack-room-sorted-messages ((room slack-room))
@@ -259,38 +204,6 @@
    (cl-delete-duplicates (append (oref room messages)
                                  prev-messages)
                          :test #'slack-message-equal)))
-
-(defun slack-room-gather-thread-messages (messages)
-  (cl-labels
-      ((groupby-thread-ts (messages acc)
-                          (cl-loop for m in messages
-                                   do (let ((thread-ts (oref m thread-ts)))
-                                        (when (and thread-ts (not (slack-message-thread-parentp m)))
-                                          (puthash thread-ts
-                                                   (cons m (gethash thread-ts acc))
-                                                   acc))))
-                          acc)
-       (make-threads (table acc)
-                     (cl-loop for key being the hash-keys in table using (hash-value value)
-                              do (let ((parent (cl-find-if #'(lambda (m)
-                                                               (string= key (oref m ts)))
-                                                           messages)))
-                                   (when parent
-                                     (slack-thread-set-messages (oref parent thread) value)
-                                     (push parent acc))))
-                     acc)
-       (remove-duplicates (threads messages)
-                          (let ((ret))
-                            (dolist (message messages)
-                              (if (and (not (oref message thread-ts))
-                                       (not (slack-message-thread-parentp message)))
-                                  (push message ret)))
-                            (setq ret (append ret threads))
-                            ret)))
-    (let ((thread-messages (groupby-thread-ts messages (make-hash-table :test 'equal))))
-      (if (< 0 (length (hash-table-keys thread-messages)))
-          (remove-duplicates (make-threads thread-messages nil) messages)
-        messages))))
 
 (defmethod slack-room-update-latest ((room slack-room) message)
   (with-slots (latest) room
@@ -315,8 +228,7 @@
     (push message messages)))
 
 (defmethod slack-room-set-messages ((room slack-room) messages)
-  (let* ((sorted (slack-room-sort-messages
-                  (slack-room-gather-thread-messages messages)))
+  (let* ((sorted (slack-room-sort-messages messages))
          (oldest (car sorted))
          (latest (car (last sorted))))
     (oset room oldest oldest)
@@ -330,95 +242,33 @@
                           (string= from (oref m ts))))
                   (slack-room-sort-messages (copy-sequence messages)))))
 
-(defmethod slack-room-update-mark ((room slack-room) team msg)
-  (if (slack-room-update-last-read-p room (oref msg ts))
-      (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                                  (slack-request-handle-error
-                                   (data "slack-room-update-mark"))))
-        (with-slots (ts) msg
-          (with-slots (id) room
-            (slack-request
-             (slack-request-create
-              (slack-room-update-mark-url room)
-              team
-              :type "POST"
-              :params (list (cons "channel"  id)
-                            (cons "ts"  ts))
-              :success #'on-update-mark)))))))
+(defmethod slack-room-update-mark ((room slack-room) team ts)
+  (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                              (slack-request-handle-error
+                               (data "slack-room-update-mark"))))
+    (with-slots (id) room
+      (slack-request
+       (slack-request-create
+        (slack-room-update-mark-url room)
+        team
+        :type "POST"
+        :params (list (cons "channel"  id)
+                      (cons "ts"  ts))
+        :success #'on-update-mark)))))
 
 (defun slack-room-pins-list ()
   (interactive)
-  (unless (and (bound-and-true-p slack-current-room-id)
-               (bound-and-true-p slack-current-team-id))
-    (error "Call from slack room buffer"))
-  (let* ((team (slack-team-find slack-current-team-id))
-         (room (slack-room-find slack-current-room-id
-                                team))
-         (channel (oref room id)))
-    (cl-labels ((on-pins-list (&key data &allow-other-keys)
-                              (slack-request-handle-error
-                               (data "slack-room-pins-list")
-                               (slack-room-on-pins-list
-                                (plist-get data :items)
-                                room team))))
-      (slack-request
-       (slack-request-create
-        slack-room-pins-list-url
-        team
-        :params (list (cons "channel" channel))
-        :success #'on-pins-list)))))
-(defun slack-room-on-pins-list (items room team)
-  (cl-labels
-      ((buffer-name (room)
-                    (concat "*Slack - Pinned Items*"
-                            " : "
-                            (slack-room-display-name room)))
-       (create-message-from-item
-        (item)
-
-        (let ((type (plist-get item :type)))
-          (slack-pinned-item-create (cond
-                                     ((string= type "message")
-                                      (slack-message-create (plist-get item :message)
-                                                            team :room room))
-                                     ((string= type "file")
-                                      (or (slack-file-find (plist-get (plist-get item :file) :id) team)
-                                          (slack-file-create (plist-get item :file))))
-                                     ((string= type "file_comment")
-                                      (slack-file-comment-create (plist-get item :comment)
-                                                                 (plist-get (plist-get item :file) :id))))))))
-    (let* ((messages (mapcar #'create-message-from-item items))
-           (header-face '(:underline t :weight bold))
-           (buf-header (propertize "Pinned Items\n" 'face header-face))
-           (buf-name (buffer-name room))
-           (buf (let ((buf (generate-new-buffer buf-name)))
-                  (with-current-buffer buf
-                    (unless (eq major-mode 'slack-info-mode)
-                      (slack-info-mode))
-                    (slack-buffer-set-current-team-id team)
-                    (slack-buffer-set-current-room-id room)
-                    (slack-buffer-enable-emojify))
-                  buf)))
-
-      (with-current-buffer buf
-        (let ((inhibit-read-only t))
-          (delete-region (point-min) lui-output-marker))
-        (let ((lui-time-stamp-position nil))
-          (lui-insert buf-header t))
-        (if (< 0 (length messages))
-            (cl-loop for m in messages
-                     do (slack-buffer-insert m team t))
-          (let ((inhibit-read-only t))
-            (insert "No Pinned Items"))))
-      (funcall slack-buffer-function buf))))
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-pins-list buf)))
 
 (defun slack-select-rooms ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              append (with-slots (groups ims channels) team
-                       (append ims groups channels))))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (append ims groups channels))))))
+    (slack-room-display room team)))
 
 (defun slack-create-room (url team success)
   (slack-request
@@ -449,10 +299,9 @@
 
 (defmacro slack-current-room-or-select (room-alist-func &optional select)
   `(if (and (not ,select)
-            (boundp 'slack-current-room-id)
-            (boundp 'slack-current-team-id))
-       (slack-room-find slack-current-room-id
-                        (slack-team-find slack-current-team-id))
+            (bound-and-true-p slack-current-buffer)
+            (slot-boundp slack-current-buffer 'room))
+       (oref slack-current-buffer room)
      (let* ((room-alist (funcall ,room-alist-func)))
        (slack-select-from-list
            (room-alist "Select Channel: ")))))
@@ -526,43 +375,6 @@
         (find-by-name (oref team channels) name)
         (find-by-name (oref team ims) name))))
 
-(defmethod slack-room-setup-buffer ((room slack-room) buf)
-  (with-current-buffer buf
-    (slack-mode)
-    (slack-room-insert-previous-link room buf)
-    (goto-char lui-input-marker)
-    (add-hook 'kill-buffer-hook 'slack-room-kill-buffer nil t)
-    (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)))
-
-(defun slack-room-kill-buffer ()
-  (when (bound-and-true-p slack-current-room-id)
-    (let ((room (slack-room-find slack-current-room-id
-                                 (slack-team-find slack-current-team-id))))
-      (oset room buffer nil))))
-
-(defmethod slack-room-set-buffer ((room slack-room) buf)
-  (oset room buffer buf))
-
-(defmethod slack-room-has-buffer-p ((room slack-room))
-  (oref room buffer))
-
-(defmethod slack-room-insert-messages ((room slack-room) buf team)
-  (let* ((sorted (slack-room-sorted-messages room))
-         (thread-rejected (slack-room-reject-thread-message sorted))
-         (messages (if (slack-room-has-buffer-p room)
-                       (slack-room-latest-messages room thread-rejected)
-                     thread-rejected))
-         (latest-message (and (car (last sorted)))))
-    (if messages
-        (progn
-          (with-current-buffer buf
-            (cl-loop for m in messages
-                     do (slack-buffer-insert m team t)))
-          (slack-room-update-last-read room latest-message)
-          (slack-room-update-mark room team latest-message))
-      (unless (eq 0 (oref room unread-count-display))
-        (slack-room-update-mark room team latest-message)))))
-
 (defmethod slack-room-info-request-params ((room slack-room))
   (list (cons "channel" (oref room id))))
 
@@ -588,32 +400,21 @@
 
 (defun slack-room-user-select ()
   (interactive)
-  (let* ((team (and (bound-and-true-p slack-current-team-id)
-                    (slack-team-find slack-current-team-id)))
-         (room (and team (bound-and-true-p slack-current-room-id)
-                    (slack-room-find slack-current-room-id team))))
-    (if (and team room)
-        (let* ((members (cl-remove-if
-                         #'(lambda (e)
-                             (or (slack-user-self-p e team)
-                                 (slack-user-hidden-p
-                                  (slack-user--find e team))))
-                         (slack-room-get-members room)))
-               (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
-                                   members))
-               (user-id (if (eq 1 (length members))
-                            (car members)
-                          (slack-select-from-list (user-alist "Select User: ")))))
-          (slack-user--display-profile user-id team)))))
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-user-profile buf)))
 
 (defun slack-select-unread-rooms ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              append (with-slots (groups ims channels) team
-                       (cl-remove-if #'(lambda (room) (not (< 0 (oref room unread-count-display))))
-                                     (append ims groups channels)))))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (cl-remove-if
+                                   #'(lambda (room)
+                                       (not (< 0 (oref room
+                                                       unread-count-display))))
+                                   (append ims groups channels)))))))
+    (slack-room-display room team)))
 
 (defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
@@ -643,6 +444,56 @@
                                    (slot-boundp m 'file)
                                    (string= file-id (oref (oref m file) id))))
                 messages)))
+
+(defun slack-room-display (room team)
+  (cl-labels
+      ((open (buf)
+             (slack-buffer-display buf)))
+    (let* ((buf (slack-buffer-find (or (and (eq (eieio-object-class-name room)
+                                                'slack-file-room)
+                                            'slack-file-list-buffer)
+                                       'slack-message-buffer)
+                                   room team)))
+      (if buf (open buf)
+        (slack-room-history-request
+         room team
+         :after-success #'(lambda ()
+                            (open (slack-create-message-buffer room team))))))))
+
+(defmethod slack-room-update-buffer ((this slack-room) team message replace)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
+      (slack-buffer-update buffer message :replace replace)
+    (slack-room-inc-unread-count this)
+    (and slack-buffer-create-on-notify
+         (slack-room-history-request
+          this team
+          :after-success #'(lambda ()
+                             (tracking-add-buffer
+                              (slack-buffer-buffer
+                               (slack-create-message-buffer this team))))))))
+
+(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest after-success async)
+  (cl-labels
+      ((on-request-update
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-room-request-update")
+         (let* ((datum (plist-get data :messages))
+                (messages
+                 (cl-loop for data in datum
+                          collect (slack-message-create data team :room room))))
+           (if oldest (slack-room-set-prev-messages room messages)
+             (slack-room-set-messages room messages)
+             (slack-room-reset-last-read room))
+           (if (and after-success (functionp after-success))
+               (funcall after-success))))))
+    (slack-request
+     (slack-request-create
+      (slack-room-history-url room)
+      team
+      :params (list (cons "channel" (oref room id))
+                    (if oldest (cons "latest" oldest)))
+      :success #'on-request-update))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

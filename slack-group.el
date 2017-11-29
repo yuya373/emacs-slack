@@ -29,6 +29,7 @@
 (require 'slack-util)
 (require 'slack-buffer)
 
+(defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-list-url "https://slack.com/api/groups.list")
@@ -73,11 +74,12 @@
 
 (defun slack-group-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              for groups = (oref team groups)
-              nconc groups))))
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         for groups = (oref team groups)
+                         nconc groups))))
+    (slack-room-display room team)))
 
 (defun slack-group-list-update (&optional team after-success)
   (interactive)
@@ -271,8 +273,13 @@
     (oset team groups
           (cons new-room
                 (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team groups))))
-    ))
+                              (oref team groups))))))
+
+(defmethod slack-room-history-url ((_room slack-group))
+  slack-group-history-url)
+
+(defmethod slack-room-replies-url ((_room slack-group))
+  "https://slack.com/api/groups.replies")
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

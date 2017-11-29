@@ -32,22 +32,11 @@
    (user :initarg :user :initform nil)))
 
 
-(defmethod slack-message-image-to-string ((m slack-file-share-message) team)
-  (if (slack-team-display-image-inlinep m team)
-      (slack-message-render-image m team)
-    (slack-message-view-image-to-string m team)))
-
-(cl-defmethod slack-image-create ((m slack-file-share-message) &key success error token)
-  (slack-image-create (oref m file) :success success :error error :token token))
+(defmethod slack-message-image-to-string ((m slack-file-share-message))
+  (slack-image-string (slack-file-thumb-image-spec (oref m file))))
 
 (defmethod slack-team-display-image-inlinep ((m slack-file-share-message) team)
   (slack-team-display-image-inlinep (oref m file) team))
-
-(defmethod slack-message-has-imagep ((m slack-file-share-message))
-  (slack-message-has-imagep (oref m file)))
-
-(defmethod slack-open-image ((m slack-file-share-message) team)
-  (slack-open-image (oref m file) team))
 
 (defmethod slack-message-to-string ((m slack-file-share-message) team)
   (cl-labels
@@ -55,11 +44,11 @@
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
            (body (slack-file-summary (oref m file)))
-           (thumb (slack-message-image-to-string m team))
+           (thumb (slack-message-image-to-string m))
            (reactions (slack-message-reaction-to-string m))
            (thread (slack-thread-to-string m team))
-           (initial-comment (if-let* ((initial-comment
-                                       (oref (oref m file) initial-comment)))
+           (initial-comment (slack-if-let* ((initial-comment
+                                             (oref (oref m file) initial-comment)))
                                 (propertize
                                  (format "\n“ %s%s"
                                          (slack-message-body initial-comment team)
@@ -77,7 +66,7 @@
   (get-text-property 0 'file-comment-id (thing-at-point 'line)))
 
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
-  (if-let* ((file-comment-id (slack-get-file-comment-id)))
+  (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
       (cons "file_comment" file-comment-id)
     (cons "file" (oref (oref m file) id))))
 
@@ -89,33 +78,6 @@
 
 (defmethod slack-message-star-api-params ((m slack-file-share-message))
   (slack-message-star-api-params (oref m file)))
-
-(defmethod slack-message-changed--copy ((this slack-file-share-message) other)
-  (let ((changed (call-next-method)))
-    (with-slots (file) this
-      (with-slots (comments initial-comment) file
-        (let ((new-comments (oref (oref other file) comments)))
-          (unless (or (eq (length comments)
-                          (length new-comments))
-                      (cl-find-if #'(lambda (c)
-                                      (let ((old (cl-find-if #'(lambda (o)
-                                                                 (slack-equalp o c))
-                                                             comments)))
-                                        (if old
-                                            (not (string= (oref old comment)
-                                                          (oref c comment)))
-                                          t)))
-                                  new-comments))
-            (setq comments new-comments)
-            (setq changed t)))
-        (let ((new-initial-comment (oref (oref other file) initial-comment)))
-          (when (or (and (not initial-comment) new-initial-comment)
-                    (and (and initial-comment new-initial-comment)
-                         (not (string= (oref initial-comment comment)
-                                       (oref new-initial-comment comment)))))
-            (setq initial-comment new-initial-comment)
-            (setq changed t)))))
-    changed))
 
 (defmethod slack-reaction-find ((this slack-file-share-message) reaction)
   (slack-reaction-find (oref this file) reaction))
@@ -129,11 +91,11 @@
 (defmethod slack-message-append-reaction ((m slack-file-share-message) reaction
                                           &optional type)
   (if (string= type "file_comment")
-      (if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
-                                                   reaction)))
+      (slack-if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
+                                                         reaction)))
           (slack-reaction-join old-reaction reaction)
         (slack-reaction-push (oref (oref m file) initial-comment) reaction))
-    (if-let* ((old-reaction (slack-reaction-find m reaction)))
+    (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
         (slack-reaction-join old-reaction reaction)
       (slack-reaction-push m reaction))))
 
@@ -143,6 +105,12 @@
       (slack-message--pop-reaction (oref (oref m file) initial-comment)
                                    reaction)
     (slack-message--pop-reaction m reaction)))
+
+(defmethod slack-message-changed--copy ((this slack-file-share-message) other)
+  (let ((changed (call-next-method)))
+    (let ((new-file (oref other file)))
+      (oset this file new-file))
+    changed))
 
 (provide 'slack-file-share-message)
 ;;; slack-file-share-message.el ends here

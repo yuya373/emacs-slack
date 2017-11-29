@@ -32,6 +32,7 @@
 
 (defvar slack-buffer-function)
 
+(defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-im-list-url "https://slack.com/api/im.list")
@@ -93,12 +94,14 @@
 
 (defun slack-im-select ()
   (interactive)
-  (let ((team (slack-team-select)))
-    (slack-room-select
-     (cl-loop for team in (list team)
-              for ims = (cl-remove-if #'(lambda (im) (not (oref im is-open)))
-                                      (oref team ims))
-              nconc ims))))
+  (let* ((team (slack-team-select))
+         (candidates (cl-loop for team in (list team)
+                              for ims = (cl-remove-if #'(lambda (im)
+                                                          (not (oref im is-open)))
+                                                      (oref team ims))
+                              nconc ims))
+         (room (slack-room-select candidates)))
+    (slack-room-display room team)))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
@@ -229,6 +232,12 @@
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
+
+(defmethod slack-room-history-url ((_room slack-im))
+  slack-im-history-url)
+
+(defmethod slack-room-replies-url ((_room slack-im))
+  "https://slack.com/api/im.replies")
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

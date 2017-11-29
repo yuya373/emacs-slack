@@ -49,7 +49,7 @@
 (defun slack-slash-commands-find (command)
   (cdr (cl-assoc command slack-slash-commands-map :test #'string=)))
 
-(defun slack-slack-commands-execute (command team)
+(defun slack-slash-commands-execute (command team)
   (let ((command (car command))
         (args (cdr command)))
     (funcall (slack-slash-commands-find command) team args)))
