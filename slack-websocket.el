@@ -524,7 +524,7 @@
     (setq ping-timer nil)))
 
 (defvar slack-disconnected-timer nil)
-(defun slack-notify-abandon-reconnect ()
+(defun slack-notify-abandon-reconnect (team)
   (unless slack-disconnected-timer
     (setq slack-disconnected-timer
           (run-with-idle-timer 5 t
@@ -545,7 +545,7 @@
       (reconnect-count (reconnect-max reconnect-count-max)) team
     (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
         (progn
-          (slack-notify-abandon-reconnect)
+          (slack-notify-abandon-reconnect team)
           (slack-ws-close team t))
       (cl-incf reconnect-count)
       (slack-ws-close team nil)
