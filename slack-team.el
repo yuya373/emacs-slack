@@ -113,7 +113,7 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defun slack-register-team (&rest plist)
   "PLIST must contain :name :client-id :client-secret with value.
 setting :token will reduce your configuration step.
-you will notified when receive message with channel included in subscribed-chennels.
+you will notified when receive message with channel included in subscribed-channels.
 if :default is t and `slack-prefer-current-team' is t, skip selecting team when channels listed.
 you can change current-team with `slack-change-current-team'"
   (interactive
