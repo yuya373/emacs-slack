@@ -28,10 +28,9 @@
 (require 'slack-room-buffer)
 
 (define-derived-mode slack-thread-message-buffer-mode
-  lui-mode
+  slack-buffer-mode
   "Slack Thread Message"
   (lui-set-prompt lui-prompt-string)
-  (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (setq lui-input-function 'slack-thread-message--send))
 
 (defclass slack-thread-message-buffer (slack-room-buffer)
