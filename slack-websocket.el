@@ -28,6 +28,7 @@
 (require 'slack-message)
 (require 'slack-team)
 (require 'slack-reply)
+(defconst slack-api-test-url "https://slack.com/api/api.test")
 
 (defclass slack-typing ()
   ((room :initarg :room :initform nil)
@@ -38,7 +39,7 @@
   ((limit :initarg :limit :initform nil)
    (user-name :initarg :user-name :initform nil)))
 
-(defun slack-ws-open (team)
+(defun slack-ws-open (team &optional ws-url)
   (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
       (slack-log "Websocket is Already Open" team)
     (cl-labels
@@ -51,7 +52,7 @@
                    (oset team ws-conn nil)
                    (oset team connected nil)))
       (oset team ws-conn
-            (websocket-open (oref team ws-url)
+            (websocket-open (or ws-url (oref team ws-url))
                             :on-message #'on-message
                             :on-open #'on-open
                             :on-close #'on-close
@@ -189,7 +190,13 @@
           (slack-ws-handle-star-added decoded-payload team))
          ((string= type "star_removed")
           (slack-ws-handle-star-removed decoded-payload team))
+         ((string= type "reconnect_url")
+          (slack-ws-handle-reconnect-url decoded-payload team)
+          )
          )))))
+
+(defun slack-ws-handle-reconnect-url (payload team)
+  (oset team reconnect-url (plist-get payload :url)))
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
@@ -575,6 +582,20 @@
         (cancel-timer slack-disconnected-timer)
         (setq slack-disconnected-timer nil))))
 
+(defun slack-request-api-test (team &optional after-success)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-api-test")
+                    (if after-success
+                        (funcall after-success)))))
+    (slack-request
+     (slack-request-create
+      slack-api-test-url
+      team
+      :type "POST"
+      :success #'on-success))))
+
 (defun slack-ws-reconnect (team &optional force)
   (with-slots
       (reconnect-count (reconnect-max reconnect-count-max)) team
@@ -586,39 +607,48 @@
       ;; (slack-team-kill-buffers team)
       (slack-ws-close team nil)
       (slack-log (format "Slack Websocket Try To Reconnect %s/%s" reconnect-count reconnect-max) team)
-      (cl-labels
-          ((on-error (&key error-thrown &allow-other-keys)
-                     (slack-log (format "Slack Reconnect Failed: %s" (cdr error-thrown)) team))
-           (on-success (data)
-                       (let ((team-data (plist-get data :team))
-                             (self-data (plist-get data :self)))
-                         (oset team ws-url (plist-get data :url))
-                         (oset team domain (plist-get team-data :domain))
-                         (oset team id (plist-get team-data :id))
-                         (oset team name (plist-get team-data :name))
-                         (oset team self self-data)
-                         (oset team self-id (plist-get self-data :id))
-                         (oset team self-name (plist-get self-data :name))
-                         (slack-channel-list-update team)
-                         (slack-group-list-update team)
-                         (slack-im-list-update team)
-                         (slack-bot-list-update team)
-                         (cl-loop for buffer in (oref team slack-message-buffer)
-                                  do (slack-if-let*
-                                         ((live-p (buffer-live-p buffer))
-                                          (slack-buffer (with-current-buffer buffer
-                                                          (and (bound-and-true-p
-                                                                slack-current-buffer)
-                                                               slack-current-buffer))))
-                                         (slack-buffer-load-missing-messages
-                                          slack-buffer)))
-                         (slack-team-kill-buffers
-                          team :except '(slack-message-buffer
-                                         slack-message-edit-buffer
-                                         slack-message-share-buffer
-                                         slack-room-message-compose-buffer))
-                         (slack-ws-open team))))
-        (slack-authorize team #'on-error #'on-success)))))
+
+      (let ((reconnect-url (oref team reconnect-url)))
+        (if (< 0 (length reconnect-url))
+            (cl-labels
+                ((after-success ()
+                                (slack-ws-open team reconnect-url)))
+              (slack-request-api-test team #'after-success))))
+
+      ;; (cl-labels
+      ;;     ((on-error (&key error-thrown &allow-other-keys)
+      ;;                (slack-log (format "Slack Reconnect Failed: %s" (cdr error-thrown)) team))
+      ;;      (on-success (data)
+      ;;                  (let ((team-data (plist-get data :team))
+      ;;                        (self-data (plist-get data :self)))
+      ;;                    (oset team ws-url (plist-get data :url))
+      ;;                    (oset team domain (plist-get team-data :domain))
+      ;;                    (oset team id (plist-get team-data :id))
+      ;;                    (oset team name (plist-get team-data :name))
+      ;;                    (oset team self self-data)
+      ;;                    (oset team self-id (plist-get self-data :id))
+      ;;                    (oset team self-name (plist-get self-data :name))
+      ;;                    (slack-channel-list-update team)
+      ;;                    (slack-group-list-update team)
+      ;;                    (slack-im-list-update team)
+      ;;                    (slack-bot-list-update team)
+      ;;                    (cl-loop for buffer in (oref team slack-message-buffer)
+      ;;                             do (slack-if-let*
+      ;;                                    ((live-p (buffer-live-p buffer))
+      ;;                                     (slack-buffer (with-current-buffer buffer
+      ;;                                                     (and (bound-and-true-p
+      ;;                                                           slack-current-buffer)
+      ;;                                                          slack-current-buffer))))
+      ;;                                    (slack-buffer-load-missing-messages
+      ;;                                     slack-buffer)))
+      ;;                    (slack-team-kill-buffers
+      ;;                     team :except '(slack-message-buffer
+      ;;                                    slack-message-edit-buffer
+      ;;                                    slack-message-share-buffer
+      ;;                                    slack-room-message-compose-buffer))
+      ;;                    (slack-ws-open team))))
+      ;;   (slack-authorize team #'on-error #'on-success))
+      )))
 
 (defun slack-ws-cancel-reconnect-timer (team)
   (with-slots (reconnect-timer) team
