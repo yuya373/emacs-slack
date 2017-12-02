@@ -147,7 +147,7 @@
 
 (defmethod slack-buffer-insert-load-more ((this slack-buffer))
   (let ((str (propertize "(load more)\n"
-                         'face '(:underline t :wight bold)
+                         'face '(:underline t :weight bold)
                          'keymap (let ((map (make-sparse-keymap)))
                                    (define-key map (kbd "RET")
                                      #'(lambda ()
