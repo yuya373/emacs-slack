@@ -113,6 +113,13 @@
         (slack-log-websocket-payload decoded-payload team))
       (when decoded-payload
         (cond
+         ((string= type "error")
+          ;; (:type error :error (:msg Socket URL has expired :code 1))
+          (defun slack-ws-handle-error (payload team)
+            (let ((code (plist-get payload :code)))
+              (cond
+               ((eq 1 code) ))))
+          (slack-ws-handle-error decoded-payload team))
          ((string= type "pong")
           (slack-ws-handle-pong decoded-payload team))
          ((string= type "hello")
