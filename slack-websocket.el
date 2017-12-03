@@ -485,10 +485,8 @@
                                  rooms))))
     (let* ((c (plist-get payload :channel)))
       (if (plist-get c :is_channel)
-          (let ((channel (slack-room-create c team 'slack-channel)))
-            (with-slots (channels) team
-              (setq channels
-                    (replace-room channel channels)))
+          (let ((channel (slack-room-find (plist-get c :id) team)))
+            (slack-room-info-request channel team)
             (slack-log (format "Joined channel %s"
                                (slack-room-display-name channel))
                        team))
