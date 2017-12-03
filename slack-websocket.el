@@ -98,6 +98,16 @@
       (cl-loop for msg in candidate
                do (sleep-for 1) (slack-ws-send msg team)))))
 
+;; (:type error :error (:msg Socket URL has expired :code 1))
+(defun slack-ws-handle-error (payload team)
+  (let* ((err (plist-get payload :error))
+         (code (plist-get err :code)))
+    (cond
+     ((eq 1 code)
+      (slack-authorize-for-reconnect team))
+     (t (slack-log (format "Unknown Error: %s, MSG: %s"
+                           code (plist-get err :msg))
+                   team)))))
 
 (defun slack-ws-on-message (_websocket frame team)
   ;; (message "%s" (slack-request-parse-payload
@@ -114,11 +124,6 @@
       (when decoded-payload
         (cond
          ((string= type "error")
-          ;; (:type error :error (:msg Socket URL has expired :code 1))
-          (defun slack-ws-handle-error (payload team)
-            (let ((code (plist-get payload :code)))
-              (cond
-               ((eq 1 code) ))))
           (slack-ws-handle-error decoded-payload team))
          ((string= type "pong")
           (slack-ws-handle-pong decoded-payload team))
@@ -598,6 +603,46 @@
       :type "POST"
       :success #'on-success))))
 
+(defun slack-on-authorize-for-reconnect (data team)
+  (let ((team-data (plist-get data :team))
+        (self-data (plist-get data :self)))
+    (oset team ws-url (plist-get data :url))
+    (oset team domain (plist-get team-data :domain))
+    (oset team id (plist-get team-data :id))
+    (oset team name (plist-get team-data :name))
+    (oset team self self-data)
+    (oset team self-id (plist-get self-data :id))
+    (oset team self-name (plist-get self-data :name))
+    (slack-channel-list-update team)
+    (slack-group-list-update team)
+    (slack-im-list-update team)
+    (slack-bot-list-update team)
+    (cl-loop for buffer in (oref team slack-message-buffer)
+             do (slack-if-let*
+                    ((live-p (buffer-live-p buffer))
+                     (slack-buffer (with-current-buffer buffer
+                                     (and (bound-and-true-p
+                                           slack-current-buffer)
+                                          slack-current-buffer))))
+                    (slack-buffer-load-missing-messages
+                     slack-buffer)))
+    (slack-team-kill-buffers
+     team :except '(slack-message-buffer
+                    slack-message-edit-buffer
+                    slack-message-share-buffer
+                    slack-room-message-compose-buffer))
+    (slack-ws-open team)))
+
+(defun slack-authorize-for-reconnect (team)
+  (cl-labels
+      ((on-error (&key error-thrown &allow-other-keys)
+                 (slack-log (format "Slack Reconnect Failed: %s"
+                                    (cdr error-thrown))
+                            team))
+       (on-success (data)
+                   (slack-on-authorize-for-reconnect data team)))
+    (slack-authorize team #'on-error #'on-success)))
+
 (defun slack-ws-reconnect (team &optional force)
   (with-slots
       (reconnect-count (reconnect-max reconnect-count-max)) team
@@ -615,42 +660,8 @@
             (cl-labels
                 ((after-success ()
                                 (slack-ws-open team reconnect-url)))
-              (slack-request-api-test team #'after-success))))
-
-      ;; (cl-labels
-      ;;     ((on-error (&key error-thrown &allow-other-keys)
-      ;;                (slack-log (format "Slack Reconnect Failed: %s" (cdr error-thrown)) team))
-      ;;      (on-success (data)
-      ;;                  (let ((team-data (plist-get data :team))
-      ;;                        (self-data (plist-get data :self)))
-      ;;                    (oset team ws-url (plist-get data :url))
-      ;;                    (oset team domain (plist-get team-data :domain))
-      ;;                    (oset team id (plist-get team-data :id))
-      ;;                    (oset team name (plist-get team-data :name))
-      ;;                    (oset team self self-data)
-      ;;                    (oset team self-id (plist-get self-data :id))
-      ;;                    (oset team self-name (plist-get self-data :name))
-      ;;                    (slack-channel-list-update team)
-      ;;                    (slack-group-list-update team)
-      ;;                    (slack-im-list-update team)
-      ;;                    (slack-bot-list-update team)
-      ;;                    (cl-loop for buffer in (oref team slack-message-buffer)
-      ;;                             do (slack-if-let*
-      ;;                                    ((live-p (buffer-live-p buffer))
-      ;;                                     (slack-buffer (with-current-buffer buffer
-      ;;                                                     (and (bound-and-true-p
-      ;;                                                           slack-current-buffer)
-      ;;                                                          slack-current-buffer))))
-      ;;                                    (slack-buffer-load-missing-messages
-      ;;                                     slack-buffer)))
-      ;;                    (slack-team-kill-buffers
-      ;;                     team :except '(slack-message-buffer
-      ;;                                    slack-message-edit-buffer
-      ;;                                    slack-message-share-buffer
-      ;;                                    slack-room-message-compose-buffer))
-      ;;                    (slack-ws-open team))))
-      ;;   (slack-authorize team #'on-error #'on-success))
-      )))
+              (slack-request-api-test team #'after-success))
+          (slack-authorize-for-reconnect team))))))
 
 (defun slack-ws-cancel-reconnect-timer (team)
   (with-slots (reconnect-timer) team
