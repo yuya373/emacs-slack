@@ -437,9 +437,13 @@
             (slack-reaction-notify payload team room)))))))
 
 (defun slack-ws-handle-channel-created (payload team)
-  ;; (let ((id (plist-get (plist-get payload :channel) :id)))
-  ;;   (slack-channel-create-from-info id team))
-  )
+  (let ((channel (slack-room-create (plist-get payload :channel)
+                                    team 'slack-channel)))
+    (push channel (oref team channels))
+    (slack-room-info-request channel team)
+    (slack-log (format "Created channel %s"
+                       (slack-room-display-name channel))
+               team)))
 
 (defun slack-ws-handle-room-archive (payload team)
   (let* ((id (plist-get payload :channel))
