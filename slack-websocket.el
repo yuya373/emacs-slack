@@ -149,9 +149,10 @@
          ((or (string= type "channel_rename")
               (string= type "group_rename"))
           (slack-ws-handle-room-rename decoded-payload team))
-         ((or (string= type "channel_joined")
-              (string= type "group_joined"))
-          (slack-ws-handle-room-joined decoded-payload team))
+         ((string= type "channel_joined")
+          (slack-ws-handle-channel-joined decoded-payload team))
+         ((string= type "group_joined")
+          (slack-ws-handle-group-joined decoded-payload team))
          ((string= type "presence_change")
           (slack-ws-handle-presence-change decoded-payload team))
          ((or (string= type "bot_added")
@@ -475,27 +476,20 @@
                        old-name
                        new-name)
                team)))
+(defun slack-ws-handle-group-joined (payload team)
+  (let ((group (slack-room-create (plist-get payload :channel) team 'slack-group)))
+    (push group (oref team groups))
+    (slack-room-info-request group team)
+    (slack-log (format "Joined group %s"
+                       (slack-room-display-name group))
+               team)))
 
-(defun slack-ws-handle-room-joined (payload team)
-  (cl-labels
-      ((replace-room (room rooms)
-                     (cons room (cl-delete-if
-                                 #'(lambda (r)
-                                     (slack-room-equal-p room r))
-                                 rooms))))
-    (let* ((c (plist-get payload :channel)))
-      (if (plist-get c :is_channel)
-          (let ((channel (slack-room-find (plist-get c :id) team)))
-            (slack-room-info-request channel team)
-            (slack-log (format "Joined channel %s"
-                               (slack-room-display-name channel))
-                       team))
-        (let ((group (slack-room-create c team 'slack-group)))
-          (push group (oref team groups))
-          (slack-room-info-request channel team)
-          (slack-log (format "Joined group %s"
-                             (slack-room-display-name group))
-                     team))))))
+(defun slack-ws-handle-channel-joined (payload team)
+  (let ((channel (slack-room-find (plist-get (plist-get payload :channel) :id) team)))
+    (slack-room-info-request channel team)
+    (slack-log (format "Joined channel %s"
+                       (slack-room-display-name channel))
+               team)))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
