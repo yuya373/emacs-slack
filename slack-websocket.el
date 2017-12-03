@@ -491,9 +491,8 @@
                                (slack-room-display-name channel))
                        team))
         (let ((group (slack-room-create c team 'slack-group)))
-          (with-slots (groups) team
-            (setq groups
-                  (replace-room group groups)))
+          (push group (oref team groups))
+          (slack-room-info-request channel team)
           (slack-log (format "Joined group %s"
                              (slack-room-display-name group))
                      team))))))
