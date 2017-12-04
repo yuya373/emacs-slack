@@ -104,6 +104,7 @@
          (code (plist-get err :code)))
     (cond
      ((eq 1 code)
+      (slack-ws-close team nil)
       (slack-authorize-for-reconnect team))
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))
