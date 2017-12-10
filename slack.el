@@ -27,6 +27,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'oauth2)
+(require 'color)
 
 (defalias 'slack-if-let*
   (if (fboundp 'if-let*)
