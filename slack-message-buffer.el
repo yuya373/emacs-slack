@@ -240,22 +240,28 @@
                                                        :count 100
                                                        :after-success #'after-success))
          (after-success (has-more)
-                        (if has-more
-                            (let* ((messages (slack-room-sorted-messages room))
-                                   (latest-message (car (last messages))))
-                              (request-messages (oref latest-message ts)))
-                          (let* ((messages (slack-room-sorted-messages room))
-                                 (latest-message (car (last messages)))
-                                 (buffer (slack-buffer-buffer this)))
-                            (with-current-buffer buffer
-                              (cl-loop for m in messages
-                                       do (if (string< last-read (oref m ts))
-                                              (slack-buffer-insert this m t))))
-                            (when latest-message
-                              (slack-buffer-update-mark this (oref latest-message ts))
-                              (slack-buffer-update-last-read this latest-message))))))
-      (let ((latest (oref (oref room latest) ts)))
-        (request-messages latest)))))
+                        (let* ((messages (slack-room-sorted-messages room))
+                               (oldest-message (car messages))
+                               (latest-message (car (last messages))))
+                          (if has-more
+                              (request-messages (oref oldest-message ts))
+                            (progn
+                              (with-current-buffer (buffer (slack-buffer-buffer this))
+                                (let ((inhibit-read-only t))
+                                  (delete-region (point-min)
+                                                 (marker-position lui-output-marker)))
+                                (slack-buffer-prepare-marker-for-history this)
+                                (slack-buffer-insert-load-more this)
+                                (cl-loop for m in messages
+                                         do (slack-buffer-insert this m t)))
+                              (when latest-message
+                                (slack-buffer-update-last-read this
+                                                               latest-message))
+                              (when oldest-message
+                                (slack-buffer-update-oldest this
+                                                            oldest-message)))))))
+      (oset room messages nil)
+      (request-messages (oref this oldest)))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
