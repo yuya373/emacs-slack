@@ -237,7 +237,7 @@
         ((request-messages (latest)
                            (slack-room-history-request room team
                                                        :latest latest
-                                                       :count 1
+                                                       :count 100
                                                        :after-success #'after-success))
          (after-success (has-more)
                         (if has-more
