@@ -41,8 +41,14 @@
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 
 (defclass slack-im (slack-room)
-  ((user :initarg :user)
+  ((user :initarg :user :initform "")
    (is-open :initarg :is_open :initform t)))
+
+(defmethod slack-merge ((this slack-im) other)
+  (call-next-method)
+  (with-slots (user is-open) this
+    (setq user (oref other user))
+    (setq is-open (oref other is-open))))
 
 (defmethod slack-room-open-p ((room slack-im))
   (oref room is-open))
@@ -117,13 +123,18 @@
                 (data "slack-im-update-room-list")
                 (mapc #'(lambda (u) (slack-user-pushnew u team))
                       (append users nil))
-                (oset team ims
-                      (mapcar #'(lambda (d)
-                                  (slack-room-create d team 'slack-im))
-                              (plist-get data :ims)))
+                (slack-merge-list (oref team ims)
+                                  (mapcar #'(lambda (d)
+                                              (slack-room-create d team 'slack-im))
+                                          (plist-get data :ims)))
                 (if after-success
                     (funcall after-success team))
-                (message "Slack Im List Updated"))))
+                (slack-request-dnd-team-info team)
+                (mapc #'(lambda (room)
+                          (unless (slack-room-hiddenp room)
+                            (slack-room-info-request room team)))
+                      (oref team ims))
+                (slack-log "Slack Im List Updated" team))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             team
@@ -216,11 +227,7 @@
                                      team
                                      'slack-im)))
 
-    (oset new-room messages (oref room messages))
-    (oset team ims
-          (cons new-room
-                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team ims))))))
+    (slack-merge room new-room)))
 
 (defmethod slack-room-info-request-params ((room slack-im))
   (list (cons "user" (oref room user))

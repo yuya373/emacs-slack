@@ -360,5 +360,12 @@
                                  (nth 4 now) (nth 5 now) (nth 8 now)))))))
   time)
 
+(defmacro slack-merge-list (old-list new-list)
+  `(cl-loop for n in ,new-list
+            do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
+                                    ,old-list)))
+                 (if o (slack-merge o n)
+                   (push n ,old-list)))))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here

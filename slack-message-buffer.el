@@ -37,7 +37,7 @@
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
-   (last-read :initform nil :type (or null string))))
+   (last-read :initform "0" :type string)))
 
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
@@ -121,8 +121,8 @@
                                (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
-            (slack-buffer-update-last-read this latest-message)
-            (slack-buffer-update-mark this (oref latest-message ts)))
+            (slack-buffer-update-mark this (oref latest-message ts))
+            (slack-buffer-update-last-read this latest-message))
           (when oldest-message
             (slack-buffer-update-oldest this oldest-message))))
       )
@@ -233,22 +233,35 @@
 
 (defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
   (with-slots (room team last-read) this
-    (let ((latest (oref (oref room latest) ts)))
-      (cl-labels
-          ((after-success ()
-                          (let* ((messages (slack-room-sorted-messages room))
-                                 (latest-message (car (last messages)))
-                                 (buffer (slack-buffer-buffer this)))
-                            (with-current-buffer buffer
-                              (cl-loop for m in messages
-                                       do (if (string< last-read (oref m ts))
-                                              (slack-buffer-insert this m t))))
-                            (when latest-message
-                              (slack-buffer-update-mark this (oref latest-message ts))
-                              (slack-buffer-update-last-read this latest-message)))))
-        (slack-room-history-request room team
-                                    :latest latest
-                                    :after-success #'after-success)))))
+    (cl-labels
+        ((request-messages (latest)
+                           (slack-room-history-request room team
+                                                       :latest latest
+                                                       :count 100
+                                                       :after-success #'after-success))
+         (after-success (has-more)
+                        (let* ((messages (slack-room-sorted-messages room))
+                               (oldest-message (car messages))
+                               (latest-message (car (last messages))))
+                          (if has-more
+                              (request-messages (oref oldest-message ts))
+                            (progn
+                              (with-current-buffer (buffer (slack-buffer-buffer this))
+                                (let ((inhibit-read-only t))
+                                  (delete-region (point-min)
+                                                 (marker-position lui-output-marker)))
+                                (slack-buffer-prepare-marker-for-history this)
+                                (slack-buffer-insert-load-more this)
+                                (cl-loop for m in messages
+                                         do (slack-buffer-insert this m t)))
+                              (when latest-message
+                                (slack-buffer-update-last-read this
+                                                               latest-message))
+                              (when oldest-message
+                                (slack-buffer-update-oldest this
+                                                            oldest-message)))))))
+      (oset room messages nil)
+      (request-messages (oref this oldest)))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
@@ -281,15 +294,14 @@
               (if current-ts
                   (slack-buffer-goto current-ts)
                 (goto-char cur-point))))
-           (after-success
-            ()
-            (let ((messages (cl-remove-if #'(lambda (e)
-                                              (or (string< oldest e)
-                                                  (string= oldest e)))
-                                          (slack-room-sorted-messages room)
-                                          :key #'(lambda (e) (oref e ts)))))
-              (update-buffer messages)
-              (slack-buffer-update-oldest this (car messages)))))
+           (after-success (&rest _ignore)
+                          (let ((messages (cl-remove-if #'(lambda (e)
+                                                            (or (string< oldest e)
+                                                                (string= oldest e)))
+                                                        (slack-room-sorted-messages room)
+                                                        :key #'(lambda (e) (oref e ts)))))
+                            (update-buffer messages)
+                            (slack-buffer-update-oldest this (car messages)))))
         (slack-room-history-request room team
                                     :oldest oldest
                                     :after-success #'after-success)))))

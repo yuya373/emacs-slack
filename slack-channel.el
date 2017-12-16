@@ -46,8 +46,14 @@
 (defconst slack-channel-info-url "https://slack.com/api/channels.info")
 
 (defclass slack-channel (slack-group)
-  ((is-member :initarg :is_member)
-   (num-members :initarg :num_members)))
+  ((is-member :initarg :is_member :initform nil)
+   (num-members :initarg :num_members :initform 0)))
+
+(defmethod slack-merge ((this slack-channel) other)
+  (call-next-method)
+  (with-slots (is-member num-members) this
+    (setq is-member (oref other is-member))
+    (setq num-members (oref other num-members))))
 
 (defmethod slack-room-buffer-name ((room slack-channel))
   (concat slack-channel-buffer-name
@@ -77,13 +83,20 @@
                  (&key data &allow-other-keys)
                  (slack-request-handle-error
                   (data "slack-channel-list-update")
-                  (oset team channels
-                        (mapcar #'(lambda (d)
-                                    (slack-room-create d team 'slack-channel))
-                                (plist-get data :channels)))
+                  (slack-merge-list (oref team channels)
+                                    (mapcar #'(lambda (d)
+                                                (slack-room-create d
+                                                                   team
+                                                                   'slack-channel))
+                                            (plist-get data :channels)))
+
                   (if after-success
                       (funcall after-success team))
-                  (message "Slack Channel List Updated"))))
+                  (mapc #'(lambda (room)
+                            (unless (slack-room-hiddenp room)
+                              (slack-room-info-request room team)))
+                        (oref team channels))
+                  (slack-log "Slack Channel List Updated" team))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
                               team
@@ -242,11 +255,7 @@
                                      team
                                      'slack-channel)))
 
-    (oset new-room messages (oref room messages))
-    (oset team channels
-          (cons new-room
-                (cl-remove-if #'(lambda (e) (slack-room-equal-p e new-room))
-                              (oref team channels))))))
+    (slack-merge room new-room)))
 
 (defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
