@@ -42,7 +42,8 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user :initform "")
-   (is-open :initarg :is_open :initform t)))
+   (is-open :initarg :is_open :initform t)
+   (is-user-deleted :initarg :is_user_deleted :initform nil)))
 
 (defmethod slack-merge ((this slack-im) other)
   (call-next-method)
@@ -51,7 +52,8 @@
     (setq is-open (oref other is-open))))
 
 (defmethod slack-room-open-p ((room slack-im))
-  (oref room is-open))
+  (oref room is-open)
+  (not (oref room is-user-deleted)))
 
 (defmethod slack-im-user-presence ((room slack-im))
   (with-slots (team-id) room

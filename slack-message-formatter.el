@@ -212,7 +212,8 @@
                  (text)
                  (concat "@" (or
                               (slack-message-replace-user-name text)
-                              (slack-user-name (match-string 1 text) team)
+                              (let ((user (slack-user--find (match-string 1 text) team)))
+                                (plist-get user :name))
                               (match-string 1 text)))))
       (replace-regexp-in-string user-regexp
                                 #'unescape-user-id

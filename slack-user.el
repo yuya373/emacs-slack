@@ -57,9 +57,11 @@
         (plist-get user :id))))
 
 (defun slack-user-name (id team)
-  (let ((user (slack-user--find id team)))
-    (if user
-        (plist-get user :name))))
+  (slack-if-let* ((user (slack-user--find id team))
+                  (profile (slack-user-profile user)))
+      (if (oref team full-and-display-names)
+          (plist-get profile :real_name_normalized)
+        (plist-get user :display_name_normalized))))
 
 (defun slack-user-status (id team)
   (let* ((user (slack-user--find id team))
