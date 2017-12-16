@@ -59,7 +59,7 @@
 (defun slack-user-name (id team)
   (slack-if-let* ((user (slack-user--find id team))
                   (profile (slack-user-profile user)))
-      (if (eq (oref team name-display-style) 'full-and-display-name)
+      (if (oref team full-and-display-names)
           (plist-get profile :real_name_normalized)
         (plist-get user :display_name_normalized))))
 
