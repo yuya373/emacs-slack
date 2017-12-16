@@ -32,7 +32,9 @@ Emacs client for [Slack](https://slack.com/)
    :client-id "aaaaaaaaaaa.00000000000"
    :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
    :token "aaaa-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
-   :subscribed-channels '(test-rename rrrrr))
+   :subscribed-channels '(test-rename rrrrr)
+   :full-and-display-names t
+   )
 
   (slack-register-team
    :name "test"
