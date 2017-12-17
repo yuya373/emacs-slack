@@ -578,7 +578,7 @@
                           #'slack-file-display)
                         map)))
 
-(defmethod slack-file-summary ((file slack-file))
+(defmethod slack-file-summary ((file slack-file) _ts)
   (with-slots (initial-comment pretty-type mimetype permalink name title) file
     (format "uploaded%s this %s: %s <%s|open in browser>"
             (if initial-comment
@@ -588,16 +588,28 @@
             (slack-file-link-info (oref file id) (or title name))
             permalink)))
 
-(defmethod slack-file-summary ((this slack-file-email))
-  (with-slots (preview-plain-text plain-text) this
-    (let ((has-more (< (length preview-plain-text)
-                       (length plain-text))))
-      (format "%s\n\n%s" (call-next-method)
-              (propertize (format "%s%s" preview-plain-text
-                                  (or (and has-more "...")
-                                      ""))
-                          'slack-defer-face #'slack-put-preview-overlay
-                          'slack-disable-buttonize has-more)))))
+(defmethod slack-file-summary ((this slack-file-email) ts)
+  (with-slots (preview-plain-text plain-text is-expanded) this
+    (let* ((has-more (< (length preview-plain-text)
+                        (length plain-text)))
+           (body (or (and is-expanded plain-text)
+                     (or (and has-more (format "%s…" preview-plain-text))
+                         preview-plain-text))))
+      (format "%s\n\n%s\n\n%s"
+              (call-next-method)
+              (propertize body
+                          'slack-defer-face #'slack-put-preview-overlay)
+              (propertize (or (and is-expanded "Collapse ↑")
+                              "+ Click to expand inline")
+                          'face '(:underline t)
+                          'keymap (let ((map (make-sparse-keymap)))
+                                    (define-key map (kbd "RET")
+                                      #'(lambda ()
+                                          (interactive)
+                                          (slack-buffer-toggle-email-expand
+                                           slack-current-buffer
+                                           ts)))
+                                    map))))))
 
 (defmethod slack-file-update-comment ((file slack-file) comment team
                                       &optional edited-at)

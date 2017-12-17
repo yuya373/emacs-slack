@@ -93,5 +93,13 @@
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-buffer-replace this message))))
 
+(defmethod slack-buffer-toggle-email-expand ((this slack-room-buffer) ts)
+  (with-slots (room) this
+    (slack-if-let* ((message (slack-room-find-message room ts)))
+        (progn
+          (with-slots (file) message
+            (oset file is-expanded (not (oref file is-expanded))))
+          (slack-buffer-update this message :replace t)))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

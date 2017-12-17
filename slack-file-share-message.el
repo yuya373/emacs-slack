@@ -43,7 +43,7 @@
       ((redisplay () (slack-message-redisplay m (slack-room-find (oref m channel) team))))
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
-           (body (slack-file-summary (oref m file)))
+           (body (slack-file-summary (oref m file) (slack-ts m)))
            (thumb (slack-message-image-to-string m))
            (reactions (slack-message-reaction-to-string m))
            (thread (slack-thread-to-string m team))
