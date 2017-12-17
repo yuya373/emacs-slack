@@ -81,7 +81,8 @@
    (cc :initarg :cc :type (or null list) :initform nil)
    (subject :initarg :subject :type string)
    (plain-text :initarg :plain_text :type string)
-   (preview-plain-text :initarg :preview_plain_text :type string)))
+   (preview-plain-text :initarg :preview_plain_text :type string)
+   (is-expanded :initform nil :type boolean)))
 
 (defclass slack-file-email-from ()
   ((address :initarg :address :type string)
