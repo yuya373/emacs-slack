@@ -244,7 +244,7 @@
                                (oldest-message (car messages))
                                (latest-message (car (last messages))))
                           (if has-more
-                              (request-messages (oref oldest-message ts))
+                              (request-messages (oref latest-message ts))
                             (progn
                               (with-current-buffer (buffer (slack-buffer-buffer this))
                                 (let ((inhibit-read-only t))
