@@ -246,7 +246,7 @@
                           (if has-more
                               (request-messages (oref latest-message ts))
                             (progn
-                              (with-current-buffer (buffer (slack-buffer-buffer this))
+                              (with-current-buffer (slack-buffer-buffer this)
                                 (let ((inhibit-read-only t))
                                   (delete-region (point-min)
                                                  (marker-position lui-output-marker)))
