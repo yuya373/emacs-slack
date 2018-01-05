@@ -93,6 +93,9 @@
        ,@body
        selected)))
 
+(defmethod slack-room-hidden-p ((room slack-room))
+  (slack-room-hiddenp room))
+
 (defun slack-room-hiddenp (room)
   (or (not (slack-room-member-p room))
       (slack-room-archived-p room)

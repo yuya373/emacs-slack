@@ -262,5 +262,8 @@
 (defmethod slack-room-replies-url ((_room slack-channel))
   "https://slack.com/api/channels.replies")
 
+(defmethod slack-room-hidden-p ((room slack-channel))
+  (slack-room-archived-p room))
+
 (provide 'slack-channel)
 ;;; slack-channel.el ends here
