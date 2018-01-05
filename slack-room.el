@@ -103,7 +103,7 @@
 
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
-                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
+                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
     (slack-select-from-list (alist "Select Channel: "))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
