@@ -265,5 +265,8 @@
 (defmethod slack-room-hidden-p ((room slack-channel))
   (slack-room-archived-p room))
 
+(defmethod slack-room-member-p ((this slack-channel))
+  (oref this is-member))
+
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

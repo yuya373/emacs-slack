@@ -43,8 +43,9 @@
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
   (with-slots (room team last-read) this
-    (if (or (string< last-read ts)
-            (string= last-read ts))
+    (if (and  (slack-room-member-p room)
+              (or (string< last-read ts)
+                  (string= last-read ts)) )
         (cl-labels ((on-update-mark (&key data &allow-other-keys)
                                     (slack-request-handle-error
                                      (data "slack-buffer-update-mark"))))

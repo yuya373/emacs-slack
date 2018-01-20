@@ -487,5 +487,8 @@
                     (cons "count" (number-to-string (or count 100))))
       :success #'on-request-update))))
 
+(defmethod slack-room-member-p ((this slack-room))
+  t)
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
