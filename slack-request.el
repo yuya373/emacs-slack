@@ -57,7 +57,8 @@
    (sync :initarg :sync :initform nil)
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
-   (timeout :initarg :timeout :initform `,slack-request-timeout)))
+   (timeout :initarg :timeout :initform `,slack-request-timeout)
+   (next-retry-at :initform 0.0 :type float)))
 
 (cl-defun slack-request-create
     (url team &key type success error params data parser sync files headers timeout)
@@ -79,12 +80,32 @@
   (with-slots (team) req
     (cl-pushnew req (oref team waiting-requests) :test #'equal)))
 
-(defmethod slack-request-retry-request ((req slack-request-request) retry-after)
-  ;; (slack-request-suspend-request req)
-  (run-at-time (+ 5 retry-after) nil #'(lambda () (slack-request req)))
-  ;; (unless (slack-team-request-suspended-p (oref req team))
-  ;;   (slack-team-run-retry-request-timer (oref req team) retry-after))
-  )
+(defun slack-perform-retry-request (team)
+  (let ((do '())
+        (skip '())
+        (current (time-to-seconds))
+        (retries (oref team retries)))
+    (cl-loop for req in retries
+             do (if (< (oref req next-retry-at) current)
+                    (push req do)
+                  (push req skip)))
+    (when (< 0 (length retries))
+      (slack-log (format "Retry Worker TEAM: %s, ALL: %s, DO: %s, SKIP: %s"
+                         (oref team name)
+                         (length retries)
+                         (length do)
+                         (length skip))
+                 team))
+    (oset team retries skip)
+    (cl-loop for req in do
+             do (slack-request req))))
+
+(defmethod slack-request-retry-request ((req slack-request-request) retry-after team)
+  (unless (timerp (oref team retry-worker))
+    (oset team retry-worker
+          (run-with-idle-timer 1 t #'(lambda () (slack-perform-retry-request team)))))
+  (oset req next-retry-at (+ retry-after (time-to-seconds)))
+  (push req (oref team retries)))
 
 (defmethod slack-request ((req slack-request-request))
   (let ((team (oref req team)))
@@ -92,17 +113,22 @@
       (cl-labels
           ((on-success (&key data &allow-other-keys)
                        (funcall success :data data)
-                       (oset team retry-after-timer nil))
+                       (oset team retry-after-timer nil)
+                       (slack-log
+                        (format "Request Finished. URL: %s, PARAMS: %s"
+                                url
+                                params)
+                        team))
            (on-error (&key error-thrown symbol-status response data)
                      (slack-if-let* ((retry-after (request-response-header response "retry-after"))
-                               (retry-after-sec (string-to-number retry-after)))
+                                     (retry-after-sec (string-to-number retry-after)))
                          (progn
+                           (slack-request-retry-request req retry-after-sec team)
                            (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
                                               retry-after-sec
                                               url
                                               params)
-                                      team)
-                           (slack-request-retry-request req retry-after-sec))
+                                      team))
                        (when (functionp error)
                          (funcall error
                                   :error-thrown error-thrown

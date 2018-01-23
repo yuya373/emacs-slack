@@ -110,6 +110,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-file-comment-compose-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
+   (retries :initform nil :type (or null list))
+   (retry-worker :initform nil)
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
