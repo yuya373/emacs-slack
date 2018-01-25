@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'json)
 (require 'request)
+(require 'slack-util)
 
 (defcustom slack-request-timeout 10
   "Request Timeout in seconds."

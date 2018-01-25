@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-room-buffer)
 
 (define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack File List Buffer")

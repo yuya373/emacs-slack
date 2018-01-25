@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'lui)
+(require 'slack-util)
 (require 'slack-room)
 
 (define-derived-mode slack-buffer-mode lui-mode "Slack Buffer"

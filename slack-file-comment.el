@@ -23,6 +23,7 @@
 ;;
 
 ;;; Code:
+(require 'slack-util)
 (require 'slack-message)
 
 (define-derived-mode slack-edit-file-comment-mode

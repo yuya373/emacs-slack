@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'json)
+(require 'slack-util)
 (require 'slack-websocket)
 (require 'slack-im)
 (require 'slack-group)

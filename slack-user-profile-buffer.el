@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-buffer)
 
 (define-derived-mode slack-user-profile-buffer-mode slack-buffer-mode "Slack User Profile")

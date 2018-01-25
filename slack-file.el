@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-room)
 
 (defconst slack-file-history-url "https://slack.com/api/files.list")

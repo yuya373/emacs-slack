@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'lui)
+(require 'slack-util)
 (require 'slack-request)
 (require 'slack-message)
 (require 'slack-pinned-item)

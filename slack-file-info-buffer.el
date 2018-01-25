@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-buffer)
 
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"

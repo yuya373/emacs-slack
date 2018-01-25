@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-room-buffer)
 
 (define-derived-mode slack-pinned-items-buffer-mode slack-buffer-mode "Slack Pinned Items")
