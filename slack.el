@@ -29,11 +29,7 @@
 (require 'oauth2)
 (require 'color)
 
-(defalias 'slack-if-let*
-  (if (fboundp 'if-let*)
-      'if-let*
-    'if-let))
-
+(require 'slack-util)
 (require 'slack-team)
 (require 'slack-channel)
 (require 'slack-im)

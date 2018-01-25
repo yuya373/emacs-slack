@@ -40,6 +40,11 @@
   "Max Height of image.  nil is unlimited.  integer."
   :group 'slack)
 
+(defalias 'slack-if-let*
+  (if (fboundp 'if-let*)
+      'if-let*
+    'if-let))
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
