@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 
 (defconst slack-stars-list-url "https://slack.com/api/stars.list")
 

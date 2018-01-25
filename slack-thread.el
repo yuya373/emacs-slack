@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'lui)
+(require 'slack-util)
 (require 'slack-channel)
 (require 'slack-im)
 (require 'slack-message)

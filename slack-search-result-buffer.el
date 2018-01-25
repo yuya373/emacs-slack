@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-buffer)
 
 (define-derived-mode slack-search-result-buffer-mode slack-buffer-mode "Slack Search Result"

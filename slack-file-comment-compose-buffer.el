@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-message-compose-buffer)
 
 (defclass slack-file-comment-compose-buffer

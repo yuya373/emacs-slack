@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-buffer)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")

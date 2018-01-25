@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-message-compose-buffer)
 
 (define-derived-mode slack-edit-file-comment-buffer-mode

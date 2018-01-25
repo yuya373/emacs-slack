@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'slack-util)
 (require 'slack-message)
 (require 'slack-reaction)
 (require 'slack-room)
