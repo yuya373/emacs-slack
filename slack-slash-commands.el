@@ -55,7 +55,9 @@
     (funcall (slack-slash-commands-find command) team args)))
 
 (defun slack-slash-commands-active (team _args)
-  (slack-request-set-active team))
+  ;; https://api.slack.com/docs/presence-and-status#user_presence
+  ;; Setting presence back to auto indicates that the automatic status should be used instead. There's no way to force a user status to active.
+  (slack-request-set-presence team "auto"))
 
 (defun slack-slash-commands-away (team _args)
   (slack-request-set-presence team))
