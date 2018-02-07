@@ -51,12 +51,17 @@
                   (oset team connected t))
          (on-close (_websocket)
                    (oset team ws-conn nil)
-                   (oset team connected nil)))
+                   (oset team connected nil))
+         (on-error (_websocket type err)
+                   (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
+                                      type err)
+                              team)))
       (oset team ws-conn
             (websocket-open (or ws-url (oref team ws-url))
                             :on-message #'on-message
                             :on-open #'on-open
                             :on-close #'on-close
+                            :on-error #'on-error
                             :nowait (oref team websocket-nowait))))))
 
 (cl-defun slack-ws-close (&optional team (close-reconnection t))
