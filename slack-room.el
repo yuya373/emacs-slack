@@ -367,7 +367,7 @@
 (defmethod slack-room-info-request-params ((room slack-room))
   (list (cons "channel" (oref room id))))
 
-(defmethod slack-room-info-request ((room slack-room) team)
+(defmethod slack-room-create-info-request ((room slack-room) team)
   (cl-labels
       ((on-success
         (&key data &allow-other-keys)
@@ -377,12 +377,15 @@
                    (if (not (string= e "user_disabled"))
                        (message "Failed to request slack-room-info-request: %s" e))))
          (slack-room-update-info room data team))))
-    (slack-request
-     (slack-request-create
-      (slack-room-get-info-url room)
-      team
-      :params (slack-room-info-request-params room)
-      :success #'on-success))))
+    (slack-request-create
+     (slack-room-get-info-url room)
+     team
+     :params (slack-room-info-request-params room)
+     :success #'on-success)))
+
+(defmethod slack-room-info-request ((room slack-room) team)
+  (slack-request
+   (slack-room-create-info-request room team)))
 
 (defmethod slack-room-get-members ((room slack-room))
   (oref room members))

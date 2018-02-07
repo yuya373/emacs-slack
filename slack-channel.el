@@ -93,7 +93,10 @@
                   (if after-success
                       (funcall after-success team))
                   (mapc #'(lambda (room)
-                            (slack-room-info-request room team))
+                            (slack-request-retry-request
+                             (slack-room-create-info-request room team)
+                             1
+                             team))
                         (oref team channels))
                   (slack-log "Slack Channel List Updated" team))))
       (slack-room-list-update slack-channel-list-url
