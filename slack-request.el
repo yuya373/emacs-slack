@@ -81,24 +81,48 @@
     (cl-pushnew req (oref team waiting-requests) :test #'equal)))
 
 (defun slack-perform-retry-request (team)
-  (let ((do '())
-        (skip '())
-        (current (time-to-seconds))
-        (retries (oref team retries)))
-    (cl-loop for req in retries
-             do (if (< (oref req next-retry-at) current)
-                    (push req do)
-                  (push req skip)))
-    (when (< 0 (length retries))
-      (slack-log (format "Retry Worker TEAM: %s, ALL: %s, DO: %s, SKIP: %s"
-                         (oref team name)
-                         (length retries)
-                         (length do)
-                         (length skip))
-                 team))
-    (oset team retries skip)
-    (cl-loop for req in do
-             do (slack-request req))))
+  (cl-labels
+      ((next-retry-at (req) (oref req next-retry-at))
+       (remove-same-request
+        (retries)
+        (let ((get-requests '())
+              (other '())
+              (uniq-get-requests '()))
+
+          (dolist (req retries)
+            (if (string= "GET" (oref req type))
+                (push req get-requests)
+              (push req other)))
+
+          (dolist (req (cl-sort get-requests #'< :key #'next-retry-at))
+            (unless (cl-find-if #'(lambda (r) (and (string= (oref r url)
+                                                            (oref req url))
+                                                   (equalp (oref r params)
+                                                           (oref req params))))
+                                uniq-get-requests)
+              (push req uniq-get-requests)))
+          (cl-sort (append uniq-get-requests other)
+                   #'<
+                   :key #'next-retry-at))))
+    (let ((do '())
+          (skip '())
+          (current (time-to-seconds))
+          (retries (remove-same-request (oref team retries))))
+      (cl-loop for req in retries
+               do (if (and (< (next-retry-at req) current)
+                           (< (length do) 10))
+                      (push req do)
+                    (push req skip)))
+      (when (< 0 (length retries))
+        (slack-log (format "Retry Worker TEAM: %s, ALL: %s, DO: %s, SKIP: %s"
+                           (oref team name)
+                           (length retries)
+                           (length do)
+                           (length skip))
+                   team))
+      (oset team retries skip)
+      (cl-loop for req in do
+               do (slack-request req)))))
 
 (defmethod slack-request-retry-request ((req slack-request-request) retry-after team)
   (unless (timerp (oref team retry-worker))
