@@ -153,6 +153,10 @@
                                               url
                                               params)
                                       team))
+                       (slack-log (format "Request Failed. URL: %s, PARAMS: %s"
+                                          url
+                                          params)
+                                  team)
                        (when (functionp error)
                          (funcall error
                                   :error-thrown error-thrown
