@@ -76,13 +76,14 @@
                                    nil
                                  value)))))))
 
-(cl-defun slack-log (msg team &key (logger #'message))
+(cl-defun slack-log (msg team &key (logger nil))
   (let ((log (format "[%s] %s - %s"
                      (format-time-string "%Y-%m-%d %H:%M:%S")
                      msg
                      (oref team name)))
         (buf (get-buffer-create (slack-log-buffer-name team))))
-    (funcall logger log)
+    (when (functionp logger)
+      (funcall logger log))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (save-excursion
