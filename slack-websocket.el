@@ -57,12 +57,19 @@
                                       type err)
                               team)))
       (oset team ws-conn
-            (websocket-open (or ws-url (oref team ws-url))
-                            :on-message #'on-message
-                            :on-open #'on-open
-                            :on-close #'on-close
-                            :on-error #'on-error
-                            :nowait (oref team websocket-nowait))))))
+            (condition-case error-var
+                (websocket-open (or ws-url (oref team ws-url))
+                                :on-message #'on-message
+                                :on-open #'on-open
+                                :on-close #'on-close
+                                :on-error #'on-error
+                                :nowait (oref team websocket-nowait))
+              (error
+               (slack-log (format "An Error occured while opening websocket connection: %s"
+                                  error-var)
+                          team)
+               (slack-ws-close team)
+               nil))))))
 
 (cl-defun slack-ws-close (&optional team (close-reconnection t))
   (interactive)
