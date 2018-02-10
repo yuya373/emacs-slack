@@ -80,58 +80,67 @@
   (with-slots (team) req
     (cl-pushnew req (oref team waiting-requests) :test #'equal)))
 
-(defun slack-perform-retry-request (team)
-  (cl-labels
-      ((next-retry-at (req) (oref req next-retry-at))
-       (remove-same-request
-        (retries)
-        (let ((get-requests '())
-              (other '())
-              (uniq-get-requests '()))
+(defmethod slack-equalp ((this slack-request-request) other)
+  (and (string= "GET" (oref this type))
+       (string= "GET" (oref other type))
+       (string= (oref this url)
+                (oref other url))
+       (equalp (oref this params)
+               (oref other params))))
 
-          (dolist (req retries)
-            (if (string= "GET" (oref req type))
-                (push req get-requests)
-              (push req other)))
+;; (defun slack-perform-retry-request (team)
+;;   (cl-labels
+;;       ((execute-at (req) (oref req execute-at))
+;;        (remove-same-request
+;;         (retries)
+;;         (let ((get-requests '())
+;;               (other '())
+;;               (uniq-get-requests '()))
 
-          (dolist (req (cl-sort get-requests #'< :key #'next-retry-at))
-            (unless (cl-find-if #'(lambda (r) (and (string= (oref r url)
-                                                            (oref req url))
-                                                   (equalp (oref r params)
-                                                           (oref req params))))
-                                uniq-get-requests)
-              (push req uniq-get-requests)))
-          (cl-sort (append uniq-get-requests other)
-                   #'<
-                   :key #'next-retry-at))))
-    (let ((do '())
-          (skip '())
-          (current (time-to-seconds))
-          (retries (remove-same-request (oref team retries))))
-      (cl-loop for req in retries
-               do (if (and (< (next-retry-at req) current)
-                           (< (length do) 10))
-                      (push req do)
-                    (push req skip)))
-      (when (< 0 (length retries))
-        (slack-log (format "Retry Worker TEAM: %s, ALL: %s, DO: %s, SKIP: %s"
-                           (oref team name)
-                           (length retries)
-                           (length do)
-                           (length skip))
-                   team))
-      (oset team retries skip)
-      (cl-loop for req in do
-               do (slack-request req)))))
+;;           (dolist (req retries)
+;;             (if (string= "GET" (oref req type))
+;;                 (push req get-requests)
+;;               (push req other)))
+
+;;           (dolist (req (cl-sort get-requests #'<
+;;                                 :key #'execute-at))
+;;             (unless (cl-find-if #'(lambda (r) (slack-equalp req r))
+;;                                 uniq-get-requests)
+;;               (push req uniq-get-requests)))
+;;           (cl-sort (append uniq-get-requests other)
+;;                    #'<
+;;                    :key #'execute-at))))
+;;     (let ((do '())
+;;           (skip '())
+;;           (current (time-to-seconds))
+;;           (retries (remove-same-request (oref team retries))))
+;;       (cl-loop for req in retries
+;;                do (if (and (< (execute-at req) current)
+;;                            (< (length do) 10))
+;;                       (push req do)
+;;                     (push req skip)))
+;;       (when (< 0 (length retries))
+;;         (slack-log (format "Retry Worker TEAM: %s, ALL: %s, DO: %s, SKIP: %s"
+;;                            (oref team name)
+;;                            (length retries)
+;;                            (length do)
+;;                            (length skip))
+;;                    team))
+;;       (oset team retries skip)
+;;       (cl-loop for req in do
+;;                do (slack-request req)))))
 
 (defmethod slack-request-retry-request ((req slack-request-request) retry-after team)
-  (unless (timerp (oref team retry-worker))
-    (oset team retry-worker
-          (run-with-idle-timer 1 t #'(lambda () (slack-perform-retry-request team)))))
-  (oset req next-retry-at (+ retry-after (time-to-seconds)))
-  (push req (oref team retries)))
+  ;; (unless (timerp (oref team retry-worker))
+  ;;   (oset team retry-worker
+  ;;         (run-with-idle-timer 1 t #'(lambda () (slack-perform-retry-request team)))))
+  (oset req execute-at (+ retry-after (time-to-seconds)))
+  (slack-request-worker-push req)
+  ;; (push req (oref team retries))
+  )
 
-(defmethod slack-request ((req slack-request-request))
+(cl-defmethod slack-request ((req slack-request-request)
+                             &key (on-success nil) (on-error nil))
   (let ((team (oref req team)))
     (with-slots (url type success error params data parser sync files headers timeout) req
       (cl-labels
@@ -142,7 +151,9 @@
                         (format "Request Finished. URL: %s, PARAMS: %s"
                                 url
                                 params)
-                        team))
+                        team)
+                       (when (functionp on-success)
+                         (funcall on-success)))
            (on-error (&key error-thrown symbol-status response data)
                      (slack-if-let* ((retry-after (request-response-header response "retry-after"))
                                      (retry-after-sec (string-to-number retry-after)))
@@ -162,7 +173,9 @@
                                   :error-thrown error-thrown
                                   :symbol-status symbol-status
                                   :response response
-                                  :data data)))))
+                                  :data data))
+                       (when (functionp on-error)
+                         (funcall on-error)))))
         (request
          url
          :type type
