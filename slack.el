@@ -208,10 +208,6 @@ never means never show typing indicator."
                (team)
                (slack-team-kill-buffers team)
                (slack-ws-close team)
-               ;; (when (timerp (oref team retry-worker))
-               ;;   (cancel-timer (oref team retry-worker))
-               ;;   (oset team retry-worker nil))
-
                (when (slack-team-need-token-p team)
                  (slack-request-token team)
                  (kill-new (oref team token))

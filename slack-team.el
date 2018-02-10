@@ -110,8 +110,6 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-file-comment-compose-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
-   ;; (retries :initform nil :type (or null list))
-   ;; (retry-worker :initform nil)
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
@@ -302,14 +300,6 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-request-suspended-p ((team slack-team))
   (oref team retry-after-timer))
-
-(defmethod slack-team-run-retry-request-timer ((team slack-team) retry-after-sec)
-  (cl-labels ((do-request ()
-                          (with-slots (waiting-requests) team
-                            (mapc #'slack-request waiting-requests)
-                            (setq waiting-requests nil))))
-    (oset team retry-after-timer
-          (run-at-time retry-after-sec nil #'do-request))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
