@@ -133,8 +133,7 @@
                     (funcall after-success team))
                 (slack-request-dnd-team-info team)
                 (mapc #'(lambda (room)
-                          (unless (slack-room-hiddenp room)
-                            (slack-room-info-request room team)))
+                          (slack-room-info-request room team))
                       (oref team ims))
                 (slack-log "Slack Im List Updated" team))))
     (slack-room-list-update slack-im-list-url

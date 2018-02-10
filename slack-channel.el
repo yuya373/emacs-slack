@@ -93,8 +93,7 @@
                   (if after-success
                       (funcall after-success team))
                   (mapc #'(lambda (room)
-                            (unless (slack-room-hiddenp room)
-                              (slack-room-info-request room team)))
+                            (slack-room-info-request room team))
                         (oref team channels))
                   (slack-log "Slack Channel List Updated" team))))
       (slack-room-list-update slack-channel-list-url
@@ -262,6 +261,12 @@
 
 (defmethod slack-room-replies-url ((_room slack-channel))
   "https://slack.com/api/channels.replies")
+
+(defmethod slack-room-hidden-p ((room slack-channel))
+  (slack-room-archived-p room))
+
+(defmethod slack-room-member-p ((this slack-channel))
+  (oref this is-member))
 
 (provide 'slack-channel)
 ;;; slack-channel.el ends here

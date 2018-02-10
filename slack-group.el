@@ -105,8 +105,7 @@
                   (if after-success
                       (funcall after-success team))
                   (mapc #'(lambda (room)
-                            (unless (slack-room-hiddenp room)
-                              (slack-room-info-request room team)))
+                            (slack-room-info-request room team))
                         (oref team groups))
                   (slack-log "Slack Group List Updated" team))))
       (slack-room-list-update slack-group-list-url

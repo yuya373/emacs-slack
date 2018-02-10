@@ -93,6 +93,9 @@
        ,@body
        selected)))
 
+(defmethod slack-room-hidden-p ((room slack-room))
+  (slack-room-hiddenp room))
+
 (defun slack-room-hiddenp (room)
   (or (not (slack-room-member-p room))
       (slack-room-archived-p room)
@@ -100,7 +103,7 @@
 
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
-                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hiddenp rs)))))
+                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
     (slack-select-from-list (alist "Select Channel: "))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
@@ -483,6 +486,9 @@
                     (if latest (cons "oldest" latest))
                     (cons "count" (number-to-string (or count 100))))
       :success #'on-request-update))))
+
+(defmethod slack-room-member-p ((this slack-room))
+  t)
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
