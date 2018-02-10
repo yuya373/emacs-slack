@@ -58,7 +58,7 @@
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
    (timeout :initarg :timeout :initform `,slack-request-timeout)
-   (next-retry-at :initform 0.0 :type float)))
+   (execute-at :initform 0.0 :type float)))
 
 (cl-defun slack-request-create
     (url team &key type success error params data parser sync files headers timeout)
