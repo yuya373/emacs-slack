@@ -99,6 +99,12 @@
     (oset slack-request-worker-instance timer
           (slack-request-worker-create-timer slack-request-worker-instance))))
 
+(defun slack-request-worker-quit ()
+  "Cancel timer and remove `slack-request-worker-instance'."
+  (when (and slack-request-worker-instance
+             (timerp (oref slack-request-worker-instance timer)))
+    (cancel-timer (oref slack-request-worker-instance timer)))
+  (setq slack-request-worker-instance nil))
 
 (provide 'slack-request-worker)
 ;;; slack-request-worker.el ends here
