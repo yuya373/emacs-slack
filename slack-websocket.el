@@ -609,7 +609,7 @@
 
 
 (defun slack-ws-ping-timeout (team)
-  (slack-log "Slack Websocket PING Timeout." team)
+  (slack-log "Slack Websocket PING Timeout." team :level 'warn)
   (slack-ws-close team)
   (when (oref team reconnect-auto)
     (if (timerp (oref team reconnect-timer))
@@ -728,7 +728,9 @@ TEAM is one of `slack-teams'"
         (slack-log (format "Slack Websocket Try To Reconnect %s/%s"
                            reconnect-count
                            reconnect-max)
-                   team)))))
+                   team
+                   :level 'warn
+                   )))))
 
 (defun slack-ws-cancel-reconnect-timer (team)
   (with-slots (reconnect-timer) team
