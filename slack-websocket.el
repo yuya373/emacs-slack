@@ -55,7 +55,8 @@
          (on-error (_websocket type err)
                    (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                       type err)
-                              team)))
+                              team
+                              :level 'error)))
       (oset team ws-conn
             (condition-case error-var
                 (websocket-open (or ws-url (oref team ws-url))
@@ -67,7 +68,8 @@
               (error
                (slack-log (format "An Error occured while opening websocket connection: %s"
                                   error-var)
-                          team)
+                          team
+                          :level 'error)
                (slack-ws-close team)
                nil))))))
 
@@ -102,7 +104,8 @@
                 (cl-remove-if #'(lambda (p) (string= payload p))
                               waiting-send)))
       (websocket-closed (slack-ws-reconnect team))
-      (websocket-illegal-frame (slack-log "Sent illegal frame." team)
+      (websocket-illegal-frame (slack-log "Sent illegal frame." team
+                                          :level 'error)
                                (slack-ws-close team))
       (error (slack-ws-reconnect team)))))
 
@@ -636,7 +639,7 @@
                                #'(lambda ()
                                    (slack-log
                                     "Reconnect Count Exceeded. Manually invoke `slack-start'."
-                                    team))))))
+                                    team :level 'error))))))
 
 (defun slack-cancel-notify-adandon-reconnect ()
   (if (and slack-disconnected-timer
