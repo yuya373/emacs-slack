@@ -77,7 +77,9 @@
     (apply #'make-instance 'slack-request-request ret)))
 
 (defmethod slack-equalp ((this slack-request-request) other)
-  (and (string= "GET" (oref this type))
+  (and (string= (oref (oref this team) id)
+                (oref (oref other team) id))
+       (string= "GET" (oref this type))
        (string= "GET" (oref other type))
        (string= (oref this url)
                 (oref other url))
