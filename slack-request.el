@@ -102,7 +102,7 @@
                         (format "Request Finished. URL: %s, PARAMS: %s"
                                 url
                                 params)
-                        team)
+                        team :level 'trace)
                        (when (functionp on-success)
                          (funcall on-success)))
            (on-error (&key error-thrown symbol-status response data)
@@ -115,10 +115,14 @@
                                               url
                                               params)
                                       team))
-                       (slack-log (format "Request Failed. URL: %s, PARAMS: %s"
+                       (slack-log (format "Request Failed. URL: %s, PARAMS: %s, ERROR-THROWN: %s, SYMBOL-STATUS: %s, DATA: %s"
                                           url
-                                          params)
-                                  team)
+                                          params
+                                          error-thrown
+                                          symbol-status
+                                          data)
+                                  team
+                                  :level 'error)
                        (when (functionp error)
                          (funcall error
                                   :error-thrown error-thrown
