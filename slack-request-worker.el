@@ -54,41 +54,42 @@
 
 (defun slack-request-worker-execute ()
   "Pop request from queue until `slack-request-worker-max-request-limit', and execute."
-  (let ((do '())
-        (skip '())
-        (current (time-to-seconds))
-        (limit (- slack-request-worker-max-request-limit
-                  (oref slack-request-worker-instance
-                        current-request-count))))
+  (when slack-request-worker-instance
+    (let ((do '())
+          (skip '())
+          (current (time-to-seconds))
+          (limit (- slack-request-worker-max-request-limit
+                    (oref slack-request-worker-instance
+                          current-request-count))))
 
-    (cl-loop for req in (reverse (oref slack-request-worker-instance queue))
-             do (if (and (< (oref req execute-at) current)
-                         (< (length do) limit))
-                    (push req do)
-                  (push req skip)))
+      (cl-loop for req in (reverse (oref slack-request-worker-instance queue))
+               do (if (and (< (oref req execute-at) current)
+                           (< (length do) limit))
+                      (push req do)
+                    (push req skip)))
 
-    ;; (message "[WORKER] QUEUE: %s, LIMIT: %s, CURRENT: %s, DO: %s, SKIP: %s"
-    ;;          (length (oref slack-request-worker-instance queue))
-    ;;          slack-request-worker-max-request-limit
-    ;;          (oref slack-request-worker-instance current-request-count)
-    ;;          (length do)
-    ;;          (length skip))
+      ;; (message "[WORKER] QUEUE: %s, LIMIT: %s, CURRENT: %s, DO: %s, SKIP: %s"
+      ;;          (length (oref slack-request-worker-instance queue))
+      ;;          slack-request-worker-max-request-limit
+      ;;          (oref slack-request-worker-instance current-request-count)
+      ;;          (length do)
+      ;;          (length skip))
 
-    (oset slack-request-worker-instance queue skip)
+      (oset slack-request-worker-instance queue skip)
 
-    (cl-labels
-        ((decl-request-count
-          ()
-          (cl-decf (oref slack-request-worker-instance
-                         current-request-count))))
-      (cl-loop for req in do
-               do (progn
-                    (cl-incf (oref slack-request-worker-instance
-                                   current-request-count))
-                    (slack-request req
-                                   :on-success #'decl-request-count
-                                   :on-error #'decl-request-count
-                                   ))))))
+      (cl-labels
+          ((decl-request-count
+            ()
+            (cl-decf (oref slack-request-worker-instance
+                           current-request-count))))
+        (cl-loop for req in do
+                 do (progn
+                      (cl-incf (oref slack-request-worker-instance
+                                     current-request-count))
+                      (slack-request req
+                                     :on-success #'decl-request-count
+                                     :on-error #'decl-request-count
+                                     )))))))
 
 (defmethod slack-request-worker-push ((req slack-request-request))
   (unless slack-request-worker-instance
