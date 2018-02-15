@@ -89,9 +89,12 @@
                   (slack-log "Slack Websocket Closed" team)))))
     (if (listp team)
         (progn
-          (mapc #'close team))
-      (close team))
-    (slack-request-worker-quit)))
+          (mapc #'close team)
+          (slack-request-worker-quit))
+      (close team)
+      (slack-request-worker-remove-request team)
+      )
+    ))
 
 
 (defun slack-ws-send (payload team)

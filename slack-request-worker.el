@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-team)
 
 (defcustom slack-request-worker-max-request-limit 30
   "Max request count perform simultaneously."
@@ -106,6 +107,15 @@
              (timerp (oref slack-request-worker-instance timer)))
     (cancel-timer (oref slack-request-worker-instance timer)))
   (setq slack-request-worker-instance nil))
+
+(defmethod slack-request-worker-remove-request ((team slack-team))
+  "Remove request from TEAM in queue."
+  (when slack-request-worker-instance
+    (oset slack-request-worker-instance
+          queue
+          (cl-remove-if #'(lambda (req) (string= (oref (oref req team) id)
+                                                 (oref team id)))
+                        (oref slack-request-worker-instance queue)))))
 
 (provide 'slack-request-worker)
 ;;; slack-request-worker.el ends here
