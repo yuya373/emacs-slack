@@ -88,7 +88,6 @@ use `slack-change-current-team' to change `slack-current-team'"
    (display-profile-image :initarg :display-profile-image :initform nil)
    (display-attachment-image-inline :initarg :display-attachment-image-inline :initform nil)
    (display-file-image-inline :initarg :display-file-image-inline :initform nil)
-   (retry-after-timer :initform nil)
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
@@ -297,9 +296,6 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
-
-(defmethod slack-team-request-suspended-p ((team slack-team))
-  (oref team retry-after-timer))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

@@ -97,7 +97,6 @@
       (cl-labels
           ((on-success (&key data &allow-other-keys)
                        (funcall success :data data)
-                       (oset team retry-after-timer nil)
                        (slack-log
                         (format "Request Finished. URL: %s, PARAMS: %s"
                                 url
