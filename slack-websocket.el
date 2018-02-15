@@ -154,7 +154,7 @@
           (slack-cancel-notify-adandon-reconnect)
           (slack-ws-set-ping-timer team)
           (slack-ws-resend team)
-          (slack-log "Slack Websocket Is Ready!" team))
+          (slack-log "Slack Websocket Is Ready!" team :level 'info))
          ((plist-get decoded-payload :reply_to)
           (slack-ws-handle-reply decoded-payload team))
          ((string= type "message")
