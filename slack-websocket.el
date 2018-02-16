@@ -51,10 +51,14 @@
                   (oset team connected t)
                   (slack-log "WebSocket on-open"
                              team :level 'debug))
-         (on-close (_websocket)
+         (on-close (websocket)
                    (oset team ws-conn nil)
                    (oset team connected nil)
-                   (slack-ws-close team)
+                   (when (eq 'connecting
+                             (websocket-ready-state websocket))
+                     (slack-ws-close team t)
+                     (slack-ws-set-reconnect-timer team))
+
                    (slack-log "Websocket on-close"
                               team :level 'debug))
          (on-error (_websocket type err)
