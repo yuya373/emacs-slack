@@ -105,17 +105,20 @@
 (defun slack-ws-send (payload team)
   (with-slots (waiting-send ws-conn) team
     (push payload waiting-send)
-    (condition-case _e
-        (progn
-          (websocket-send-text ws-conn payload)
-          (setq waiting-send
-                (cl-remove-if #'(lambda (p) (string= payload p))
-                              waiting-send)))
-      (websocket-closed (slack-ws-reconnect team))
-      (websocket-illegal-frame (slack-log "Sent illegal frame." team
-                                          :level 'error)
-                               (slack-ws-close team))
-      (error (slack-ws-reconnect team)))))
+    (if (websocket-openp ws-conn)
+        (condition-case err
+            (progn
+              (websocket-send-text ws-conn payload)
+              (setq waiting-send
+                    (cl-remove-if #'(lambda (p) (string= payload p))
+                                  waiting-send)))
+          (error
+           (slack-log (format "Error in `slack-ws-send`: %s" err)
+                      team :level 'debug)
+           (slack-ws-close team)
+           (slack-ws-reconnect team)))
+      (slack-ws-close team)
+      (slack-ws-reconnect team))))
 
 (defun slack-ws-resend (team)
   (with-slots (waiting-send) team
