@@ -48,10 +48,14 @@
                      (slack-ws-on-message websocket frame team))
          (on-open (_websocket)
                   (oset team reconnect-count 0)
-                  (oset team connected t))
+                  (oset team connected t)
+                  (slack-log "WebSocket on-open"
+                             team :level 'debug))
          (on-close (_websocket)
                    (oset team ws-conn nil)
-                   (oset team connected nil))
+                   (oset team connected nil)
+                   (slack-log "Websocket on-close"
+                              team :level 'debug))
          (on-error (_websocket type err)
                    (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                       type err)
