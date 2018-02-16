@@ -220,10 +220,11 @@ One of 'info, 'debug"
   (if websocket-debug
       (progn
         (let* ((team (slack-team-select))
-               (websocket (oref team ws-conn))
-               (buf (websocket-get-debug-buffer-create websocket)))
-          (funcall slack-buffer-function buf)))
-
+               (websocket (oref team ws-conn)))
+          (if websocket
+              (funcall slack-buffer-function
+                       (websocket-get-debug-buffer-create websocket))
+            (error "Websocket is not connected"))))
     (error "`websocket-debug` is not t")))
 
 (defun slack-log-open-event-buffer ()
