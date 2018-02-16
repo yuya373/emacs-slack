@@ -215,6 +215,17 @@ One of 'info, 'debug"
                           payload)))
         (setq buffer-read-only t)))))
 
+(defun slack-log-open-websocket-buffer ()
+  (interactive)
+  (if websocket-debug
+      (progn
+        (let* ((team (slack-team-select))
+               (websocket (oref team ws-conn))
+               (buf (websocket-get-debug-buffer-create websocket)))
+          (funcall slack-buffer-function buf)))
+
+    (error "`websocket-debug` is not t")))
+
 (defun slack-log-open-event-buffer ()
   (interactive)
   (let* ((team (slack-team-select))
