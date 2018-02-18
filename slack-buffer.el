@@ -144,7 +144,9 @@
      (slack-message-to-string message team)
      'not-tracked-p not-tracked-p
      'ts (slack-ts message)
-     'slack-last-ts lui-time-stamp-last)))
+     'slack-last-ts lui-time-stamp-last)
+    (lui-insert "" t)
+    ))
 
 (defmethod slack-buffer-insert-load-more ((this slack-buffer))
   (let ((str (propertize "(load more)\n"

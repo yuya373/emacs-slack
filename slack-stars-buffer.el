@@ -54,7 +54,8 @@
     (lui-insert-with-text-properties
      (slack-to-string item (oref this team))
      'ts (slack-ts item)
-     'not-tracked-p not-tracked-p)))
+     'not-tracked-p not-tracked-p)
+    (lui-insert "" t)))
 
 (defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
   (with-slots (team) this
