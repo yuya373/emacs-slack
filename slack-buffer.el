@@ -137,6 +137,12 @@
                      (equal (get-text-property (point) 'ts)
                             (oref message ts)))))))
 
+(defun slack-buffer-subscribe-cursor-event (window prev-point type)
+  (message "WINDOW: %s, PREV-POINT: %s, TYPE: %s"
+           window
+           prev-point
+           type))
+
 (defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
         (team (oref this team)))
@@ -144,7 +150,8 @@
      (slack-message-to-string message team)
      'not-tracked-p not-tracked-p
      'ts (slack-ts message)
-     'slack-last-ts lui-time-stamp-last)
+     'slack-last-ts lui-time-stamp-last
+     'cursor-sensor-functions '(slack-buffer-subscribe-cursor-event))
     (lui-insert "" t)
     ))
 
