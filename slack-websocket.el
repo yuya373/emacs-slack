@@ -59,7 +59,8 @@
                      (slack-ws-close team t)
                      (slack-ws-set-reconnect-timer team))
 
-                   (slack-log "Websocket on-close"
+                   (slack-log (format "Websocket on-close: STATE: %s"
+                                      (websocket-ready-state websocket))
                               team :level 'debug))
          (on-error (_websocket type err)
                    (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
