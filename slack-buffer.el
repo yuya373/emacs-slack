@@ -138,6 +138,10 @@
                             (oref message ts)))))))
 
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (progn
+        (and (eq type 'entered)
+             (slack-buffer-update-mark-smart buffer))))
   (message "WINDOW: %s, PREV-POINT: %s, TYPE: %s"
            window
            prev-point

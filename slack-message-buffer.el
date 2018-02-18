@@ -44,6 +44,10 @@
   ((oldest :initform nil :type (or null string))
    (last-read :initform "0" :type string)))
 
+(defmethod slack-buffer-update-mark-smart ((this slack-message-buffer))
+  (let* ((ts (slack-get-ts)))
+    (if (string< (oref this last-read) ts)
+        (slack-buffer-update-mark this ts))))
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
   (with-slots (room team last-read) this
