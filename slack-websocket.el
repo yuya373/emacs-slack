@@ -626,7 +626,7 @@
 (defun slack-ws-handle-file-deleted (payload team)
   (let ((file-id (plist-get payload :file_id))
         (room (slack-file-room-obj team)))
-    (with-slots (messages last-read) room
+    (with-slots (messages) room
       (setq messages (cl-remove-if #'(lambda (f)
                                        (string= file-id (oref f id)))
                                    messages)))))
