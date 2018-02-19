@@ -126,6 +126,7 @@
 
       (slack-buffer-insert-load-more this)
 
+      ;; TODO use latest instead of last-read
       (with-slots (room team last-read) this
         (let* ((messages (slack-room-sorted-messages room))
                (latest-message (car (last messages)))
@@ -248,6 +249,7 @@
     (oset this oldest (oref message ts))))
 
 (defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
+  ;; TODO use latest instead of last-read
   (with-slots (room team last-read) this
     (cl-labels
         ((request-messages (latest)
@@ -271,8 +273,9 @@
                                 (cl-loop for m in messages
                                          do (slack-buffer-insert this m t)))
                               (when latest-message
-                                (slack-buffer-update-last-read this
-                                                               latest-message))
+                                ;; (slack-buffer-update-last-read this
+                                ;;                                latest-message)
+                                )
                               (when oldest-message
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
