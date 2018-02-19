@@ -47,9 +47,11 @@
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer))
   (let* ((ts (slack-get-ts)))
-    (if (string< (oref this last-read) ts)
-        (slack-buffer-update-mark-request this ts
-                                  #'(lambda () (oset this last-read ts))))))
+    (when (string< (oref this last-read) ts)
+      (slack-log (format "update mark to %s" ts)
+                 (oref this team))
+      (slack-buffer-update-mark-request this ts
+                                        #'(lambda () (oset this last-read ts))))))
 
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team last-read) this
