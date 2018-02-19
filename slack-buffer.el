@@ -141,7 +141,7 @@
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
         (and (eq type 'entered)
-             (slack-buffer-update-mark-smart buffer))))
+             (slack-buffer-update-mark buffer))))
   (message "WINDOW: %s, PREV-POINT: %s, TYPE: %s"
            window
            prev-point

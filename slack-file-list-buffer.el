@@ -45,8 +45,6 @@
       buffer
     (slack-file-list-buffer :room room :team team)))
 
-(defmethod slack-buffer-update-mark ((_this slack-file-list-buffer) _ts))
-
 (cl-defmethod slack-buffer-update ((this slack-file-list-buffer) message &key replace)
   (with-slots (room team) this
     (let ((buffer (get-buffer (slack-buffer-name this))))
