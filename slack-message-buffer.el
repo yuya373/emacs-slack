@@ -155,7 +155,6 @@
   (with-slots (room team) this
     (let ((buffer (get-buffer (slack-buffer-name this))))
       ;; (slack-buffer-update-last-read this message)
-      (slack-room-inc-unread-count room)
       ;; (if (slack-buffer-in-current-frame buffer)
       ;;     (slack-buffer-update-mark-request this (oref message ts))
       ;;   (slack-room-inc-unread-count room))

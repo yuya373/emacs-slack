@@ -348,7 +348,9 @@
         (slack-room-update-latest room message)
         (if (slack-thread-message-p message)
             (slack-thread-message-update-buffer message room team replace)
-          (slack-room-update-buffer room team message replace))
+          (slack-room-update-buffer room team message replace)
+          (slack-room-inc-unread-count room))
+
         (unless no-notify
           (slack-message-notify message room team))
         (slack-update-modeline))))
