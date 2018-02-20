@@ -40,9 +40,28 @@
   ((limit :initarg :limit :initform nil)
    (user-name :initarg :user-name :initform nil)))
 
+(defun slack-ws-set-connect-timeout-timer (team)
+  (slack-ws-cancel-connect-timeout-timer team)
+  (cl-labels
+      ((on-timeout ()
+                   (slack-log (format "websocket open timeout")
+                              team)
+                   (slack-ws-close team t)
+                   (slack-ws-set-reconnect-timer team)))
+    (oset team websocket-connect-timeout-timer
+          (run-at-time (oref team websocket-connect-timeout-sec)
+                       nil
+                       #'on-timeout))))
+
+(defun slack-ws-cancel-connect-timeout-timer (team)
+  (when (timerp (oref team websocket-connect-timeout-timer))
+    (cancel-timer (oref team websocket-connect-timeout-timer))
+    (oset team websocket-connect-timeout-timer nil)))
+
 (defun slack-ws-open (team &optional ws-url)
   (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
       (slack-log "Websocket is Already Open" team)
+    (slack-ws-set-connect-timeout-timer team)
     (cl-labels
         ((on-message (websocket frame)
                      (slack-ws-on-message websocket frame team))
@@ -165,6 +184,7 @@
          ((string= type "pong")
           (slack-ws-handle-pong decoded-payload team))
          ((string= type "hello")
+          (slack-ws-cancel-connect-timeout-timer team)
           (slack-ws-cancel-reconnect-timer team)
           (slack-cancel-notify-adandon-reconnect)
           (slack-ws-set-ping-timer team)
@@ -634,13 +654,6 @@
   (when (oref team reconnect-auto)
     (slack-ws-set-reconnect-timer team)))
 
-(defun slack-ws-set-reconnect-timer (team)
-  (if (timerp (oref team reconnect-timer))
-      (cancel-timer (oref team reconnect-timer)))
-  (oset team reconnect-timer
-        (run-at-time t (oref team reconnect-after-sec)
-                     #'slack-ws-reconnect team)))
-
 (defun slack-ws-cancel-ping-check-timers (team)
   (maphash #'(lambda (key value)
                (if (timerp value)
@@ -754,6 +767,12 @@ TEAM is one of `slack-teams'"
                    team
                    :level 'warn
                    )))))
+
+(defun slack-ws-set-reconnect-timer (team)
+  (slack-ws-cancel-reconnect-timer team)
+  (oset team reconnect-timer
+        (run-at-time t (oref team reconnect-after-sec)
+                     #'slack-ws-reconnect team)))
 
 (defun slack-ws-cancel-reconnect-timer (team)
   (with-slots (reconnect-timer) team
