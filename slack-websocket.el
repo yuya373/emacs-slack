@@ -73,11 +73,6 @@
          (on-close (websocket)
                    (oset team ws-conn nil)
                    (oset team connected nil)
-                   (when (eq 'connecting
-                             (websocket-ready-state websocket))
-                     (slack-ws-close team t)
-                     (slack-ws-set-reconnect-timer team))
-
                    (slack-log (format "Websocket on-close: STATE: %s"
                                       (websocket-ready-state websocket))
                               team :level 'debug))
