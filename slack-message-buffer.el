@@ -43,6 +43,7 @@
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
+   (latest :initform nil :type (or null string))
    (last-read :initform "0" :type string)))
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer))
@@ -129,19 +130,17 @@
 
       (slack-buffer-insert-load-more this)
 
-      ;; TODO use latest instead of last-read
-      (with-slots (room team last-read) this
+      (with-slots (room team latest) this
         (let* ((messages (slack-room-sorted-messages room))
                (latest-message (car (last messages)))
                (oldest-message (car messages)))
           (cl-loop for m in messages
-                   do (if (and (or (null last-read)
-                                   (string< last-read (oref m ts)))
+                   do (if (and (or (null latest)
+                                   (string< latest (oref m ts)))
                                (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
-          ;; (when latest-message
-          ;;   (slack-buffer-update-mark-request this (oref latest-message ts))
-          ;;   (slack-buffer-update-last-read this latest-message))
+          (when latest-message
+            (slack-buffer-update-lastest this (oref latest-message ts)))
           (when oldest-message
             (slack-buffer-update-oldest this oldest-message))))
       )
@@ -168,11 +167,11 @@
     (let ((buf (slack-create-room-message-compose-buffer room team)))
       (slack-buffer-display buf))))
 
-(defmethod slack-buffer-update-last-read ((this slack-message-buffer) message)
-  (with-slots (last-read) this
-    (if (or (null last-read)
-            (string< last-read (oref message ts)))
-        (setq last-read (oref message ts)))))
+(defmethod slack-buffer-update-lastest ((this slack-message-buffer) latest)
+  (with-slots ((prev-latest latest)) this
+    (if (or (null prev-latest)
+            (string< prev-latest latest))
+        (setq prev-latest latest))))
 
 (defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
   (with-slots (room team) this
