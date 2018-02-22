@@ -44,11 +44,13 @@
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
    (latest :initform nil :type (or null string))
-   (last-read :initform "0" :type string)))
+   (last-read :initform nil :type (or null string))))
+
 
 (defmethod slack-buffer-update-mark ((this slack-message-buffer))
   (let* ((ts (slack-get-ts)))
-    (when (string< (oref this last-read) ts)
+    (when (or (null (oref this last-read))
+              (string< (oref this last-read) ts))
       (slack-log (format "update mark to %s" ts)
                  (oref this team))
       (slack-buffer-update-mark-request this ts
@@ -57,7 +59,8 @@
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team last-read) this
     (if (and  (slack-room-member-p room)
-              (or (string< last-read ts)
+              (or (null last-read)
+                  (string< last-read ts)
                   (string= last-read ts)) )
         (cl-labels ((on-update-mark (&key data &allow-other-keys)
                                     (slack-request-handle-error
@@ -83,11 +86,9 @@
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
         (buffer (call-next-method)))
     (with-current-buffer buffer
-      (goto-char (marker-position lui-input-marker))
-      ;; (if has-buffer
-      ;;     ;; (slack-buffer-update-mark-request this (oref this last-read))
-      ;;     (goto-char (marker-position lui-input-marker)))
-      )
+      (if (oref this last-read)
+          (slack-buffer-goto (oref this last-read))
+        (goto-char (marker-position lui-input-marker))))
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
@@ -271,7 +272,8 @@
                                 (slack-buffer-prepare-marker-for-history this)
                                 (slack-buffer-insert-load-more this)
                                 (cl-loop for m in messages
-                                         do (slack-buffer-insert this m t)))
+                                         do (slack-buffer-insert this m t))
+                                (slack-buffer-goto (oref this last-read)))
                               (when oldest-message
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
