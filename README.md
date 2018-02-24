@@ -14,7 +14,7 @@ Emacs client for [Slack](https://slack.com/)
   - Required if you want to show emoji.
 
 ## Configure
-[How to get token](#how-to-get-token)
+[How to get token](#how-to-get-token-the-easy-way)
 
 ```elisp
 ;; I'm using use-package and el-get and evil
@@ -77,8 +77,9 @@ Emacs client for [Slack](https://slack.com/)
 ## How to get token (the easy way)
 
 1. Log into the Slack team you're interested in with a web browser
-1. Open DevTools
-1. Ctrl-F to find, "xoxs-", copy it
+2. Open DevTools
+3. Open Network tab
+4. Search for (Ctrl-F) "xoxs-" and copy `token` from Query String Parameters
 
 ## How to get token (the harder yet officially sanctioned way)
 
