@@ -14,7 +14,7 @@ Emacs client for [Slack](https://slack.com/)
   - Required if you want to show emoji.
 
 ## Configure
-[How to get token](#how-to-get-token)
+[How to get token](#how-to-get-token-the-easy-way)
 
 ```elisp
 ;; I'm using use-package and el-get and evil
