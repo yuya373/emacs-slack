@@ -618,10 +618,19 @@
       (setq messages (cl-remove-if #'(lambda (f)
                                        (string= file-id (oref f id)))
                                    messages)))))
+
+(defun slack-ws-cancel-ping-timer (team)
+  (with-slots (ping-timer) team
+    (if (timerp ping-timer)
+        (cancel-timer ping-timer))
+    (setq ping-timer nil)))
+
 (defun slack-ws-set-ping-timer (team)
-  (unless (oref team ping-timer)
-    (cl-labels ((ping () (slack-ws-ping team)))
-      (oset team ping-timer (run-at-time t 10 #'ping)))))
+  (slack-ws-cancel-ping-timer team)
+  (cl-labels ((ping ()
+                    (slack-ws-ping team)
+                    (slack-ws-set-ping-timer team)))
+    (oset team ping-timer (run-at-time 10 nil #'ping))))
 
 (defun slack-ws-current-time-str ()
   (number-to-string (time-to-seconds (current-time))))
@@ -655,12 +664,6 @@
                    (cancel-timer value)))
            (oref team ping-check-timers))
   (slack-team-init-ping-check-timers team))
-
-(defun slack-ws-cancel-ping-timer (team)
-  (with-slots (ping-timer) team
-    (if (timerp ping-timer)
-        (cancel-timer ping-timer))
-    (setq ping-timer nil)))
 
 (defvar slack-disconnected-timer nil)
 (defun slack-notify-abandon-reconnect (team)
@@ -765,9 +768,14 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-set-reconnect-timer (team)
   (slack-ws-cancel-reconnect-timer team)
-  (oset team reconnect-timer
-        (run-at-time t (oref team reconnect-after-sec)
-                     #'slack-ws-reconnect team)))
+  (cl-labels
+      ((on-timeout ()
+                   (slack-ws-reconnect team)
+                   (slack-ws-set-reconnect-timer team)))
+    (oset team reconnect-timer
+          (run-at-time (oref team reconnect-after-sec)
+                       nil
+                       #'on-timeout))))
 
 (defun slack-ws-cancel-reconnect-timer (team)
   (with-slots (reconnect-timer) team

@@ -50,8 +50,15 @@
     (cl-pushnew req (oref this queue)
                 :test #'slack-equalp)))
 
-(defmethod slack-request-worker-create-timer ((_this slack-request-worker))
-  (run-at-time t 1 #'slack-request-worker-execute))
+(defun slack-request-worker-set-timer ()
+  (cl-labels
+      ((on-timeout ()
+                   (slack-request-worker-execute)
+                   (when (timerp slack-request-worker-instance)
+                     (cancel-timer slack-request-worker-instance))
+                   (slack-request-worker-set-timer)))
+    (oset slack-request-worker-instance timer
+          (run-at-time 1 nil #'on-timeout))))
 
 (defun slack-request-worker-execute ()
   "Pop request from queue until `slack-request-worker-max-request-limit', and execute."
@@ -98,8 +105,7 @@
           (slack-request-worker-create)))
   (slack-request-worker-push slack-request-worker-instance req)
   (unless (oref slack-request-worker-instance timer)
-    (oset slack-request-worker-instance timer
-          (slack-request-worker-create-timer slack-request-worker-instance))))
+    (slack-request-worker-set-timer)))
 
 (defun slack-request-worker-quit ()
   "Cancel timer and remove `slack-request-worker-instance'."
