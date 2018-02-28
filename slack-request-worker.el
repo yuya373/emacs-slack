@@ -117,11 +117,22 @@
 (defmethod slack-request-worker-remove-request ((team slack-team))
   "Remove request from TEAM in queue."
   (when slack-request-worker-instance
-    (oset slack-request-worker-instance
-          queue
-          (cl-remove-if #'(lambda (req) (string= (oref (oref req team) id)
-                                                 (oref team id)))
-                        (oref slack-request-worker-instance queue)))))
+    (let ((to-remove '())
+          (new-queue '())
+          (all (oref slack-request-worker-instance queue)))
+
+      (dolist (req all)
+        (if (string= (oref (oref req team) id)
+                     (oref team id))
+            (push req to-remove)
+          (push req new-queue)))
+
+      (oset slack-request-worker-instance queue new-queue)
+      (slack-log (format "Remove Request from Worker, ALL: %s, REMOVED: %s, NEW-QUEUE: %s"
+                         (length all)
+                         (length to-remove)
+                         (length new-queue))
+                 team :level 'debug))))
 
 (provide 'slack-request-worker)
 ;;; slack-request-worker.el ends here
