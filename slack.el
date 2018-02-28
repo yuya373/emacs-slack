@@ -180,7 +180,7 @@ never means never show typing indicator."
                    (slack-bot-list-update team)
                    (slack-request-emoji team)
                    (slack-update-modeline)))
-       (slack-ws-open team nil :on-open #'on-open)))))
+       (slack-ws-open team :on-open #'on-open)))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)

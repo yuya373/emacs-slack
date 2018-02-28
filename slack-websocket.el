@@ -58,7 +58,7 @@
     (cancel-timer (oref team websocket-connect-timeout-timer))
     (oset team websocket-connect-timeout-timer nil)))
 
-(cl-defun slack-ws-open (team &optional ws-url &key (on-open nil))
+(cl-defun slack-ws-open (team &key (on-open nil) (ws-url nil))
   (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
       (slack-log "Websocket is Already Open" team)
     (slack-ws-set-connect-timeout-timer team)
@@ -732,7 +732,7 @@
                                   slack-message-edit-buffer
                                   slack-message-share-buffer
                                   slack-room-message-compose-buffer))))
-      (slack-ws-open team nil :on-open #'on-open))))
+      (slack-ws-open team :on-open #'on-open))))
 
 (defun slack-authorize-for-reconnect (team)
   (cl-labels
@@ -754,7 +754,7 @@ TEAM is one of `slack-teams'"
               (use-reconnect-url ()
                                  (slack-log "Reconnect with reconnect-url" team)
                                  (slack-ws-open team
-                                                (oref team reconnect-url)))
+                                                :ws-url (oref team reconnect-url)))
               (do-reconnect (team)
                             (cl-incf (oref team reconnect-count))
                             (slack-ws-close team nil)
