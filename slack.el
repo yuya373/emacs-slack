@@ -172,13 +172,15 @@ never means never show typing indicator."
    (data "slack-authorize")
    (slack-log (format "Slack Authorization Finished" (oref team name)) team)
    (let ((team (slack-update-team data team)))
-     (slack-channel-list-update team)
-     (slack-group-list-update team)
-     (slack-im-list-update team)
-     (slack-bot-list-update team)
-     (slack-request-emoji team)
-     (slack-update-modeline)
-     (slack-ws-open team))))
+     (cl-labels
+         ((on-open ()
+                   (slack-channel-list-update team)
+                   (slack-group-list-update team)
+                   (slack-im-list-update team)
+                   (slack-bot-list-update team)
+                   (slack-request-emoji team)
+                   (slack-update-modeline)))
+       (slack-ws-open team nil :on-open #'on-open)))))
 
 (defun slack-on-authorize-e
     (&key error-thrown &allow-other-keys &rest_)

@@ -58,24 +58,27 @@
     (cancel-timer (oref team websocket-connect-timeout-timer))
     (oset team websocket-connect-timeout-timer nil)))
 
-(defun slack-ws-open (team &optional ws-url)
+(cl-defun slack-ws-open (team &optional ws-url &key (on-open nil))
   (if (and (oref team ws-conn) (websocket-openp (oref team ws-conn)))
       (slack-log "Websocket is Already Open" team)
     (slack-ws-set-connect-timeout-timer team)
     (cl-labels
         ((on-message (websocket frame)
                      (slack-ws-on-message websocket frame team))
-         (on-open (_websocket)
-                  (oset team reconnect-count 0)
-                  (oset team connected t)
-                  (slack-log "WebSocket on-open"
-                             team :level 'debug))
+         (handle-on-open (_websocket)
+                         (oset team reconnect-count 0)
+                         (oset team connected t)
+                         (slack-log "WebSocket on-open"
+                                    team :level 'debug)
+                         (when (functionp on-open)
+                           (funcall on-open)))
          (on-close (websocket)
                    (oset team ws-conn nil)
                    (oset team connected nil)
                    (slack-log (format "Websocket on-close: STATE: %s"
                                       (websocket-ready-state websocket))
-                              team :level 'debug))
+                              team :level 'debug)
+                   (slack-ws-set-reconnect-timer team))
          (on-error (_websocket type err)
                    (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                       type err)
@@ -85,7 +88,7 @@
             (condition-case error-var
                 (websocket-open (or ws-url (oref team ws-url))
                                 :on-message #'on-message
-                                :on-open #'on-open
+                                :on-open #'handle-on-open
                                 :on-close #'on-close
                                 :on-error #'on-error
                                 :nowait (oref team websocket-nowait))
@@ -95,6 +98,7 @@
                           team
                           :level 'error)
                (slack-ws-close team)
+               (slack-ws-set-reconnect-timer team)
                nil))))))
 
 (cl-defun slack-ws-close (&optional team (close-reconnection t))
@@ -644,7 +648,9 @@
                     :time time))
            (json (json-encode m)))
       (slack-ws-set-check-ping-timer team time)
-      (slack-ws-send json team))))
+      (slack-ws-send json team)
+      (slack-log (format "Send PING: %s" time)
+                 team :level 'trace))))
 
 (defun slack-ws-set-check-ping-timer (team time)
   (puthash time (run-at-time (oref team check-ping-timeout-sec)
@@ -706,25 +712,27 @@
     (oset team self self-data)
     (oset team self-id (plist-get self-data :id))
     (oset team self-name (plist-get self-data :name))
-    (slack-channel-list-update team)
-    (slack-group-list-update team)
-    (slack-im-list-update team)
-    (slack-bot-list-update team)
-    (cl-loop for buffer in (oref team slack-message-buffer)
-             do (slack-if-let*
-                    ((live-p (buffer-live-p buffer))
-                     (slack-buffer (with-current-buffer buffer
-                                     (and (bound-and-true-p
-                                           slack-current-buffer)
-                                          slack-current-buffer))))
-                    (slack-buffer-load-missing-messages
-                     slack-buffer)))
-    (slack-team-kill-buffers
-     team :except '(slack-message-buffer
-                    slack-message-edit-buffer
-                    slack-message-share-buffer
-                    slack-room-message-compose-buffer))
-    (slack-ws-open team)))
+    (cl-labels
+        ((on-open ()
+                  (slack-channel-list-update team)
+                  (slack-group-list-update team)
+                  (slack-im-list-update team)
+                  (slack-bot-list-update team)
+                  (cl-loop for buffer in (oref team slack-message-buffer)
+                           do (slack-if-let*
+                                  ((live-p (buffer-live-p buffer))
+                                   (slack-buffer (with-current-buffer buffer
+                                                   (and (bound-and-true-p
+                                                         slack-current-buffer)
+                                                        slack-current-buffer))))
+                                  (slack-buffer-load-missing-messages
+                                   slack-buffer)))
+                  (slack-team-kill-buffers
+                   team :except '(slack-message-buffer
+                                  slack-message-edit-buffer
+                                  slack-message-share-buffer
+                                  slack-room-message-compose-buffer))))
+      (slack-ws-open team nil :on-open #'on-open))))
 
 (defun slack-authorize-for-reconnect (team)
   (cl-labels
@@ -786,9 +794,13 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-handle-pong (payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref team ping-check-timers))))
+    (slack-log (format "Receive PONG: %s" key)
+               team :level 'trace)
     (when timer
       (cancel-timer timer)
-      (remhash key (oref team ping-check-timers)))))
+      (remhash key (oref team ping-check-timers))
+      (slack-log (format "Remove PING Check Timer: %s" key)
+                 team :level 'trace))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (let ((room (slack-room-find (plist-get payload :channel)
