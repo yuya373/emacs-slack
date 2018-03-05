@@ -1,7 +1,7 @@
 # emacs-slack
 
 Emacs client for [Slack](https://slack.com/)
-### **[ScreenShot](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
+### **[ScreenShots](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
 
 ## Dependencies
 - [websocket](https://github.com/ahyatt/emacs-websocket)
