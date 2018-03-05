@@ -739,7 +739,8 @@
       ((on-error (&key error-thrown &allow-other-keys)
                  (slack-log (format "Slack Reconnect Failed: %s"
                                     (cdr error-thrown))
-                            team))
+                            team)
+                 (slack-ws-set-reconnect-timer team))
        (on-success (data)
                    (slack-on-authorize-for-reconnect data team)))
     (slack-authorize team #'on-error #'on-success)))
@@ -778,8 +779,7 @@ TEAM is one of `slack-teams'"
   (slack-ws-cancel-reconnect-timer team)
   (cl-labels
       ((on-timeout ()
-                   (slack-ws-reconnect team)
-                   (slack-ws-set-reconnect-timer team)))
+                   (slack-ws-reconnect team)))
     (oset team reconnect-timer
           (run-at-time (oref team reconnect-after-sec)
                        nil
