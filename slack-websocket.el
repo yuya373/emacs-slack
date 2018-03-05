@@ -632,8 +632,7 @@
 (defun slack-ws-set-ping-timer (team)
   (slack-ws-cancel-ping-timer team)
   (cl-labels ((ping ()
-                    (slack-ws-ping team)
-                    (slack-ws-set-ping-timer team)))
+                    (slack-ws-ping team)))
     (oset team ping-timer (run-at-time 10 nil #'ping))))
 
 (defun slack-ws-current-time-str ()
@@ -796,6 +795,7 @@ TEAM is one of `slack-teams'"
          (timer (gethash key (oref team ping-check-timers))))
     (slack-log (format "Receive PONG: %s" key)
                team :level 'trace)
+    (slack-ws-set-ping-timer team)
     (when timer
       (cancel-timer timer)
       (remhash key (oref team ping-check-timers))
