@@ -46,7 +46,8 @@
       (json-end-of-file nil))))
 
 (defclass slack-request-request ()
-  ((url :initarg :url)
+  ((response :initform nil)
+   (url :initarg :url)
    (team :initarg :team)
    (type :initarg :type :initform "GET")
    (success :initarg :success)
@@ -130,19 +131,20 @@
                                   :data data))
                        (when (functionp on-error)
                          (funcall on-error)))))
-        (request
-         url
-         :type type
-         :sync sync
-         :params (cons (cons "token" (oref team token))
-                       params)
-         :data data
-         :files files
-         :headers headers
-         :parser parser
-         :success #'on-success
-         :error #'on-error
-         :timeout timeout)))))
+        (oset req response
+              (request
+               url
+               :type type
+               :sync sync
+               :params (cons (cons "token" (oref team token))
+                             params)
+               :data data
+               :files files
+               :headers headers
+               :parser parser
+               :success #'on-success
+               :error #'on-error
+               :timeout timeout))))))
 
 
 (cl-defmacro slack-request-handle-error ((data req-name &optional handler) &body body)

@@ -127,6 +127,10 @@
             (push req to-remove)
           (push req new-queue)))
 
+      (dolist (req to-remove)
+        (when (not (request-response-done-p (oref req response)))
+          (request-abort (oref req response))))
+
       (oset slack-request-worker-instance queue new-queue)
       (slack-log (format "Remove Request from Worker, ALL: %s, REMOVED: %s, NEW-QUEUE: %s"
                          (length all)
