@@ -740,9 +740,10 @@
 
 (defun slack-authorize-for-reconnect (team)
   (cl-labels
-      ((on-error (&key error-thrown &allow-other-keys)
-                 (slack-log (format "Slack Reconnect Failed: %s"
-                                    (cdr error-thrown))
+      ((on-error (&key error-thrown symbol-status &allow-other-keys)
+                 (slack-log (format "Slack Reconnect Failed: %s, %s"
+                                    error-thrown
+                                    symbol-status)
                             team)
                  (slack-ws-set-reconnect-timer team))
        (on-success (data)
