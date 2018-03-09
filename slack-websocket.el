@@ -138,8 +138,7 @@
     (push payload waiting-send)
     (cl-labels
         ((reconnect ()
-                    (slack-ws-close team)
-                    (slack-ws-set-reconnect-timer team)))
+                    (slack-ws-close team)))
       (if (websocket-openp ws-conn)
           (condition-case err
               (progn
@@ -667,9 +666,7 @@
 
 (defun slack-ws-ping-timeout (team)
   (slack-log "Slack Websocket PING Timeout." team :level 'warn)
-  (slack-ws-close team)
-  (when (oref team reconnect-auto)
-    (slack-ws-set-reconnect-timer team)))
+  (slack-ws-close team))
 
 (defun slack-ws-cancel-ping-check-timers (team)
   (maphash #'(lambda (key value)
