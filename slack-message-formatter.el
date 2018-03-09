@@ -217,7 +217,7 @@
                               (match-string 1 text)))))
       (replace-regexp-in-string user-regexp
                                 #'unescape-user-id
-                                text t))))
+                                text t t))))
 
 (defun slack-message-replace-user-name (text)
   (let ((user-name-regexp "<@U.*?|\\(.*?\\)>"))
@@ -226,7 +226,7 @@
       (if (string-match-p user-name-regexp text)
           (replace-regexp-in-string user-name-regexp
                                     #'replace-user-id-with-name
-                                    text)))))
+                                    text nil t)))))
 
 (defun slack-message-unescape-command (text)
   (let ((command-regexp "<!\\(.*?\\)>"))
@@ -235,7 +235,7 @@
                  (concat "@" (match-string 1 text))))
       (replace-regexp-in-string command-regexp
                                 #'unescape-command
-                                text))))
+                                text nil t))))
 
 (defun slack-message-unescape-channel (text)
   (let ((channel-regexp "<#\\(C.*?\\)|\\(.*?\\)>"))
