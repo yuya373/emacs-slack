@@ -40,6 +40,25 @@
   "Max Height of image.  nil is unlimited.  integer."
   :group 'slack)
 
+(defconst slack-log-levels
+  '(;; debugging
+    (trace . 40) (debug . 30)
+    ;; information
+    (info . 20)
+    ;; errors
+    (warn . 10) (error . 0))
+  "Named logging levels.")
+
+(defcustom slack-log-level 'info
+  "Used in `slack-message-logger'.
+One of 'info, 'debug"
+  :group 'slack)
+
+(defcustom slack-log-time-format
+  "[%Y-%m-%d %H:%M:%S]"
+  "Time format for log."
+  :group 'slack)
+
 (defalias 'slack-if-let*
   (if (fboundp 'if-let*)
       'if-let*
@@ -75,14 +94,34 @@
                                (if (eq :json-false value)
                                    nil
                                  value)))))))
+(defun slack-log-level-to-int (level)
+  (slack-if-let* ((cell (cl-assoc level slack-log-levels)))
+      (cdr cell)
+    20))
 
-(cl-defun slack-log (msg team &key (logger #'message))
-  (let ((log (format "[%s] %s - %s"
-                     (format-time-string "%Y-%m-%d %H:%M:%S")
+
+(defun slack-message-logger (message level team)
+  "Display message using `message'."
+  (let ((user-level (slack-log-level-to-int slack-log-level))
+        (current-level (slack-log-level-to-int level)))
+    (when (<= current-level user-level)
+      (message (format "%s [%s] [%s] %s"
+                       (format-time-string slack-log-time-format)
+                       level
+                       (oref team name)
+                       message)))))
+
+(cl-defun slack-log (msg team &key
+                         (logger #'slack-message-logger)
+                         (level 'debug))
+  (let ((log (format "%s [%s] %s - %s"
+                     (format-time-string slack-log-time-format)
+                     level
                      msg
                      (oref team name)))
         (buf (get-buffer-create (slack-log-buffer-name team))))
-    (funcall logger log)
+    (when (functionp logger)
+      (funcall logger msg level team))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (save-excursion
@@ -175,6 +214,18 @@
                           (format-time-string "%Y-%m-%d %H:%M:%S")
                           payload)))
         (setq buffer-read-only t)))))
+
+(defun slack-log-open-websocket-buffer ()
+  (interactive)
+  (if websocket-debug
+      (progn
+        (let* ((team (slack-team-select))
+               (websocket (oref team ws-conn)))
+          (if websocket
+              (funcall slack-buffer-function
+                       (websocket-get-debug-buffer-create websocket))
+            (error "Websocket is not connected"))))
+    (error "`websocket-debug` is not t")))
 
 (defun slack-log-open-event-buffer ()
   (interactive)

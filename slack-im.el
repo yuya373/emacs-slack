@@ -135,7 +135,7 @@
                 (mapc #'(lambda (room)
                           (slack-room-info-request room team))
                       (oref team ims))
-                (slack-log "Slack Im List Updated" team))))
+                (slack-log "Slack Im List Updated" team :level 'info))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
                             team

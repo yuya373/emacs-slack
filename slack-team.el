@@ -88,7 +88,6 @@ use `slack-change-current-team' to change `slack-current-team'"
    (display-profile-image :initarg :display-profile-image :initform nil)
    (display-attachment-image-inline :initarg :display-attachment-image-inline :initform nil)
    (display-file-image-inline :initarg :display-file-image-inline :initform nil)
-   (retry-after-timer :initform nil)
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
@@ -110,6 +109,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-file-comment-compose-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
+   (websocket-connect-timeout-timer :initform nil)
+   (websocket-connect-timeout-sec :type number :initform 20) ;; websocket url is valid for 30 seconds.
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
@@ -297,17 +298,6 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
-
-(defmethod slack-team-request-suspended-p ((team slack-team))
-  (oref team retry-after-timer))
-
-(defmethod slack-team-run-retry-request-timer ((team slack-team) retry-after-sec)
-  (cl-labels ((do-request ()
-                          (with-slots (waiting-requests) team
-                            (mapc #'slack-request waiting-requests)
-                            (setq waiting-requests nil))))
-    (oset team retry-after-timer
-          (run-at-time retry-after-sec nil #'do-request))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
