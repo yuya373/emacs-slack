@@ -28,6 +28,7 @@
 (require 'slack-room)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-request)
 
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")

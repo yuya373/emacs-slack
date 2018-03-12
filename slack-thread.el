@@ -30,6 +30,7 @@
 (require 'slack-channel)
 (require 'slack-im)
 (require 'slack-message)
+(require 'slack-request)
 
 (defvar lui-prompt-string "> ")
 (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")

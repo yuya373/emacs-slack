@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'slack-team)
+(require 'slack-request)
 
 (defconst slack-reminder-list-url "https://slack.com/api/reminders.list")
 (defconst slack-reminder-add-url "https://slack.com/api/reminders.add")

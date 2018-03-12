@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'slack-room)
+(require 'slack-request)
 
 (defface slack-search-result-message-header-face
   '((t (:weight bold :height 1.1 :underline t)))

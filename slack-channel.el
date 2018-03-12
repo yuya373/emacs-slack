@@ -28,6 +28,7 @@
 (require 'slack-group)
 (require 'slack-buffer)
 (require 'slack-util)
+(require 'slack-request)
 
 (defvar slack-buffer-function)
 

@@ -29,6 +29,7 @@
 (require 'slack-room)
 (require 'slack-buffer)
 (require 'slack-user)
+(require 'slack-request)
 
 (defvar slack-buffer-function)
 

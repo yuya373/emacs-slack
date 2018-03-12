@@ -28,6 +28,7 @@
 (require 'subr-x)
 (require 'slack-util)
 (require 'slack-reaction)
+(require 'slack-request)
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."

@@ -23,6 +23,8 @@
 ;;
 
 ;;; Code:
+(require 'slack-request)
+
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
 (defun slack-emoji-watch-download-complete (team paths)

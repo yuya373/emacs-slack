@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-request)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
