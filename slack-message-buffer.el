@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room-buffer)
+(require 'slack-buffer)
 (require 'slack-request)
 
 (define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
