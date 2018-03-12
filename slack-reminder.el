@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-room)
 (require 'slack-team)
 (require 'slack-request)
 

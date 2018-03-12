@@ -28,6 +28,7 @@
 (require 'json)
 (require 'slack-util)
 (require 'slack-websocket)
+(require 'slack-room)
 (require 'slack-im)
 (require 'slack-group)
 (require 'slack-message)

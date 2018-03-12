@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-room)
 (require 'slack-util)
 (require 'slack-room-buffer)
 (require 'slack-buffer)

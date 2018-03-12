@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'slack-util)
+(require 'slack-room)
 (require 'slack-message-sender)
 
 (defconst slack-message-edit-url "https://slack.com/api/chat.update")
