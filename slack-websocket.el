@@ -29,6 +29,7 @@
 (require 'slack-message)
 (require 'slack-team)
 (require 'slack-reply)
+(require 'slack-file)
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
 (defclass slack-typing ()
