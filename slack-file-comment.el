@@ -25,6 +25,7 @@
 ;;; Code:
 (require 'slack-util)
 (require 'slack-message)
+(require 'slack-file)
 
 (define-derived-mode slack-edit-file-comment-mode
   fundamental-mode

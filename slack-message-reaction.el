@@ -28,6 +28,7 @@
 (require 'slack-message)
 (require 'slack-reaction)
 (require 'slack-room)
+(require 'slack-file)
 (require 'slack-request)
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
