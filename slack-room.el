@@ -101,6 +101,21 @@
       (slack-room-archived-p room)
       (not (slack-room-open-p room))))
 
+(defmacro slack-room-names (rooms &optional filter)
+  `(cl-labels
+       ((latest-ts (room)
+                   (with-slots (latest) room
+                     (if latest (oref latest ts) "0")))
+        (sort-rooms (rooms)
+                    (nreverse
+                     (cl-sort rooms #'string<
+                              :key #'(lambda (name-with-room) (latest-ts (cdr name-with-room)))))))
+     (sort-rooms
+      (cl-loop for room in (if ,filter
+                               (funcall ,filter ,rooms)
+                             ,rooms)
+               collect (cons (slack-room-label room) room)))))
+
 (defun slack-room-select (rooms)
   (let* ((alist (slack-room-names
                  rooms #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
@@ -162,21 +177,6 @@
           (slack-room-label-prefix room)
           (slack-room-display-name room)
           (slack-room-unread-count-str room)))
-
-(defmacro slack-room-names (rooms &optional filter)
-  `(cl-labels
-       ((latest-ts (room)
-                   (with-slots (latest) room
-                     (if latest (oref latest ts) "0")))
-        (sort-rooms (rooms)
-                    (nreverse
-                     (cl-sort rooms #'string<
-                              :key #'(lambda (name-with-room) (latest-ts (cdr name-with-room)))))))
-     (sort-rooms
-      (cl-loop for room in (if ,filter
-                               (funcall ,filter ,rooms)
-                             ,rooms)
-               collect (cons (slack-room-label room) room)))))
 
 (defmethod slack-room-name ((room slack-room))
   (oref room name))
