@@ -999,7 +999,7 @@ TEAM is one of `slack-teams'"
                  (slack-with-file-comment (oref comment id) file
                    (slack-message-update file-comment file team))))
       (if file (update file)
-        (slack-file-request-info file-id 1 team :after-success #'update)))))
+        (slack-file-request-info file-id 1 team #'update)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
