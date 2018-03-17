@@ -5,5 +5,6 @@
     (oauth2 "0.10")
     (circe "2.2")
     (alert "1.2")
-    (emojify "0.2"))
+    (emojify "0.2")
+    (emacs "25"))
   :url "https://github.com/yuya373/emacs-slack")
