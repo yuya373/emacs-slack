@@ -84,12 +84,12 @@
 
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
-  (let ((buffer (call-next-method)))
-    (with-current-buffer buffer
-      (if (string= "0" (slack-buffer-last-read this))
-          (goto-char (marker-position lui-input-marker))
-        (slack-buffer-goto (slack-buffer-last-read this))
-        (slack-buffer-goto-next-message)))
+  (let ((has-buffer (get-buffer (slack-buffer-name this)))
+        (buffer (call-next-method)))
+    (if (and (not has-buffer)
+             (not (string= "0" (slack-buffer-last-read this))))
+        (with-current-buffer buffer
+          (slack-buffer-goto (slack-buffer-last-read this))))
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
