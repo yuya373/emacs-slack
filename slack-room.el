@@ -42,7 +42,8 @@
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
-   (team-id :initarg :team-id)))
+   (team-id :initarg :team-id)
+   (last-read :initarg :last_read :type string :initform "0")))
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
@@ -60,7 +61,8 @@
   (oset this latest (oref other latest))
   (oset this unread-count (oref other unread-count))
   (oset this unread-count-display (oref other unread-count-display))
-  (oset this team-id (oref other team-id)))
+  (oset this team-id (oref other team-id))
+  (oset this last-read (oref other last-read)))
 
 (defun slack-room-create (payload team class)
   (cl-labels

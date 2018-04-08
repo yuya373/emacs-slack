@@ -811,11 +811,11 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-room-marked (payload team)
   (let ((room (slack-room-find (plist-get payload :channel)
-                               team))
-        (new-unread-count-display (plist-get payload :unread_count_display)))
+                               team)))
     (when room
-      (with-slots (unread-count-display) room
-        (setq unread-count-display new-unread-count-display))
+      (with-slots (unread-count-display last-read) room
+        (setq unread-count-display (plist-get payload :unread_count_display))
+        (setq last-read (plist-get payload :ts)))
       (slack-update-modeline))))
 
 (defun slack-ws-handle-file-comment-added (payload team)
