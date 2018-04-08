@@ -91,7 +91,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
-   (websocket-nowait :initarg :websocket-nowait :initform nil)
+   (websocket-nowait :initarg :websocket-nowait :initform t)
    (star :initform nil)
    (slack-message-buffer :initform nil :type (or null list))
    (slack-file-info-buffer :initform nil :type (or null list))
