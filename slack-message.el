@@ -409,6 +409,12 @@
                         (oref m thread-ts))))
     (and thread-ts (string= (oref m ts) thread-ts))))
 
+(defun slack-message-update-mark ()
+  "Update Channel's last-read marker to this message."
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-update-mark buffer :force t)))
+
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

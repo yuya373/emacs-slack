@@ -49,34 +49,34 @@
   (with-slots (room) this
     (oref room last-read)))
 
-(defmethod slack-buffer-update-mark ((this slack-message-buffer))
+(cl-defmethod slack-buffer-update-mark ((this slack-message-buffer) &key (force nil))
   (let* ((ts (slack-get-ts)))
-    (when (string< (slack-buffer-last-read this) ts)
-      (slack-log (format "update mark to %s" ts)
-                 (oref this team))
-      (slack-buffer-update-mark-request this ts
-                                        #'(lambda () (with-slots (room) this
-                                                       (oset room last-read ts)))))))
+    (with-slots (room) this
+      (when (or force (string< (slack-buffer-last-read this) ts))
+        (slack-log (format "%s: update mark to %s"
+                           (slack-room-name room)
+                           ts)
+                   (oref this team))
+        (slack-buffer-update-mark-request this ts
+                                          #'(lambda () (oset room last-read ts)))))))
 
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team) this
-    (if (and  (slack-room-member-p room)
-              (or (string< (slack-buffer-last-read this) ts)
-                  (string= (slack-buffer-last-read this) ts)) )
-        (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                                    (slack-request-handle-error
-                                     (data "slack-buffer-update-mark-request")
-                                     (when (functionp after-success)
-                                       (funcall after-success)))))
-          (with-slots (id) room
-            (slack-request
-             (slack-request-create
-              (slack-room-update-mark-url room)
-              team
-              :type "POST"
-              :params (list (cons "channel"  id)
-                            (cons "ts"  ts))
-              :success #'on-update-mark)))))))
+    (when (slack-room-member-p room)
+      (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                                  (slack-request-handle-error
+                                   (data "slack-buffer-update-mark-request")
+                                   (when (functionp after-success)
+                                     (funcall after-success)))))
+        (with-slots (id) room
+          (slack-request
+           (slack-request-create
+            (slack-room-update-mark-url room)
+            team
+            :type "POST"
+            :params (list (cons "channel"  id)
+                          (cons "ts"  ts))
+            :success #'on-update-mark)))))))
 
 (defmethod slack-buffer-send-message ((this slack-message-buffer) message)
   (with-slots (room team) this
