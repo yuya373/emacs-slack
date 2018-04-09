@@ -184,7 +184,9 @@ One of 'info, 'debug"
   (get-text-property 0 'ts (thing-at-point 'line)))
 
 (defun slack-linkfy (text link)
-  (format "<%s|%s>" link text))
+  (if (not (slack-string-blankp link))
+      (format "<%s|%s>" link text)
+    text))
 
 (defun slack-string-blankp (str)
   (if str

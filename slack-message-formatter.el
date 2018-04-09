@@ -76,6 +76,19 @@
   "Face used to attachment field title."
   :group 'slack)
 
+(defcustom slack-date-formats
+  '((date_num . "%Y-%m-%d")
+    (date . "%B %d,%Y")
+    (date_short . "%b %d,%Y")
+    (date_long . "%A %B %d,%Y")
+    (date_pretty . "%B %d,%Y")
+    (date_short_pretty . "%b %d,%Y")
+    (date_long_pretty . "%A %B %d,%Y")
+    (time . "%H:%M")
+    (time_secs . "%H:%M:%S"))
+  "Date formats for Slack's date formatting.\n see https://api.slack.com/docs/message-formatting"
+  :group 'slack)
+
 (defun slack-message-put-header-property (header)
   (if header
       (propertize header 'face 'slack-message-output-header)))
@@ -200,10 +213,11 @@
             (replace-regexp-in-string "&lt;" "<" and-unescpaed))
            (gt-unescaped
             (replace-regexp-in-string "&gt;" ">" lt-unescaped)))
-      (slack-message-unescape-command
-       (slack-message-unescape-user-id
-        (slack-message-unescape-channel gt-unescaped)
-        team)))))
+      (slack-message-unescape-date-format
+       (slack-message-unescape-command
+        (slack-message-unescape-user-id
+         (slack-message-unescape-channel gt-unescaped)
+         team))))))
 
 (defun slack-message-unescape-user-id (text team)
   (let ((user-regexp "<@\\(U.*?\\)>"))
@@ -227,11 +241,41 @@
                                     #'replace-user-id-with-name
                                     text nil t)))))
 
+(defun slack-message-unescape-date-format (text)
+  (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|.*>")
+        (time-format-regexp "{\\(.*?\\)}"))
+    (cl-labels
+        ((unescape-date-string
+          (text)
+          (let* ((time (match-string 1 text))
+                 (format-string (match-string 2 text))
+                 (link (match-string 3 text)))
+            (replace-regexp-in-string time-format-regexp
+                                      #'(lambda (text)
+                                          (unescape-datetime-format time link text))
+                                      format-string)))
+         (unescape-datetime-format
+          (unix-time link text)
+          (let* ((match (match-string 1 text))
+                 (template (cl-assoc (intern match) slack-date-formats)))
+            (if template
+                (slack-linkfy
+                 (format-time-string (cdr template)
+                                     (float-time (string-to-number unix-time)))
+                 (and link (substring link 1 (length link))))
+              ""))))
+      (replace-regexp-in-string date-regexp
+                                #'unescape-date-string
+                                text nil t))))
+
 (defun slack-message-unescape-command (text)
   (let ((command-regexp "<!\\(.*?\\)>"))
     (cl-labels ((unescape-command
                  (text)
-                 (concat "@" (match-string 1 text))))
+                 (let ((match (match-string 1 text)))
+                   (if (string-prefix-p "date" match)
+                       (format "<!%s>" match)
+                     (concat "@" match)))))
       (replace-regexp-in-string command-regexp
                                 #'unescape-command
                                 text nil t))))
