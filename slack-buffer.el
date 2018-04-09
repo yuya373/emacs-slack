@@ -140,15 +140,15 @@
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
-        (and (eq type 'entered)
-             (slack-buffer-update-mark buffer))
-        (slack-log (format "CURSOR-EVENT: WINDOW: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
-                           window
-                           prev-point
-                           (point)
-                           type)
-                   (oref buffer team)
-                   :level 'trace))))
+        (when (eq type 'entered)
+          (slack-buffer-update-mark buffer)
+          (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
+                             (buffer-name (window-buffer window))
+                             prev-point
+                             (point)
+                             type)
+                     (oref buffer team)
+                     :level 'trace)))))
 
 (defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
