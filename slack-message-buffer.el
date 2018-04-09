@@ -31,6 +31,13 @@
 (require 'slack-buffer)
 (require 'slack-request)
 
+(defface slack-new-message-marker-face
+  '((t (:foreground "#d33682"
+                    :weight bold
+                    :height 0.8)))
+  "Face used to New Message Marker."
+  :group 'slack)
+
 (define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
@@ -43,7 +50,8 @@
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
-   (latest :initform nil :type (or null string))))
+   (latest :initform nil :type (or null string))
+   (marker-overlay :initform nil)))
 
 (defmethod slack-buffer-last-read ((this slack-message-buffer))
   (with-slots (room) this
@@ -57,8 +65,11 @@
                            (slack-room-name room)
                            ts)
                    (oref this team))
-        (slack-buffer-update-mark-request this ts
-                                          #'(lambda () (oset room last-read ts)))))))
+        (slack-buffer-update-mark-request
+         this ts
+         #'(lambda ()
+             (oset room last-read ts)
+             (slack-buffer-update-marker-overlay this)))))))
 
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team) this
@@ -89,7 +100,8 @@
     (if (and (not has-buffer)
              (not (string= "0" (slack-buffer-last-read this))))
         (with-current-buffer buffer
-          (slack-buffer-goto (slack-buffer-last-read this))))
+          (slack-buffer-goto (slack-buffer-last-read this))
+          (slack-buffer-update-marker-overlay this)))
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
@@ -359,6 +371,26 @@
 (defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
   (with-slots (team) this
     (slack-slash-commands-execute command team)))
+
+(defmethod slack-buffer-update-marker-overlay ((this slack-message-buffer))
+  (let ((buf (get-buffer (slack-buffer-name this))))
+    (and buf (with-current-buffer buf
+               (let* ((last-read (slack-buffer-last-read this))
+                      (beg (slack-buffer-ts-eq (point-min) (point-max) last-read))
+                      (end (and beg (next-single-property-change beg 'ts))))
+                 (when (and beg end)
+                   (if (oref this marker-overlay)
+                       (move-overlay (oref this marker-overlay)
+                                     beg end)
+                     (progn
+                       (oset this marker-overlay (make-overlay beg end))
+                       (let ((after-string
+                              (propertize "New Message"
+                                          'face
+                                          'slack-new-message-marker-face)))
+                         (overlay-put (oref this marker-overlay)
+                                      'after-string
+                                      (format "\n%s" after-string)))))))))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
