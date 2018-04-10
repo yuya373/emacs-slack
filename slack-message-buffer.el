@@ -62,7 +62,8 @@
   (let* ((ts (slack-get-ts))
          (timer-timeout-sec (or (and force 0) 5)))
     (with-slots (room update-mark-timer) this
-      (when (or force (string< (slack-buffer-last-read this) ts))
+      (when (or force (or (string< (slack-buffer-last-read this) ts)
+                          (string= (slack-buffer-last-read this) ts)))
         (slack-log (format "%s: update mark to %s"
                            (slack-room-name room)
                            ts)
