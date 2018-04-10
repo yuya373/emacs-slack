@@ -135,7 +135,8 @@
       (lui-replace (slack-message-to-string message team)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
-                            (oref message ts)))))))
+                            (oref message ts))))
+      (slack-buffer-update-marker-overlay this))))
 
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
