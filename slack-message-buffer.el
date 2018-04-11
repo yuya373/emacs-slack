@@ -106,8 +106,8 @@
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
         (buffer (call-next-method)))
-    (if (and (not has-buffer)
-             (not (string= "0" (slack-buffer-last-read this))))
+    (if (and ;; (not has-buffer)
+         (not (string= "0" (slack-buffer-last-read this))))
         (with-current-buffer buffer
           (slack-buffer-goto (slack-buffer-last-read this))
           (slack-buffer-update-marker-overlay this)))
