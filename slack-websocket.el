@@ -352,7 +352,7 @@
          im team
          :after-success #'(lambda (&rest _ignore)
                             (slack-log (format "Direct Message Channel with %s is Open"
-                                               (slack-user-name (oref im user)))
+                                               (slack-user-name (oref im user) team))
                                        team :level 'info))
          :async t)))
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
