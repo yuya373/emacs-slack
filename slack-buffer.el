@@ -142,7 +142,9 @@
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
         (when (eq type 'entered)
-          (slack-buffer-update-mark buffer)
+          (unless (slack-team-mark-as-read-immediatelyp (oref buffer team))
+            (slack-buffer-update-mark buffer))
+
           (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
                              (buffer-name (window-buffer window))
                              prev-point

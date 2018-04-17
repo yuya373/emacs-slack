@@ -72,13 +72,9 @@
           (cancel-timer update-mark-timer))
         (cl-labels
             ((update-mark ()
-                          (slack-buffer-update-mark-request
-                                      this ts
-                                      #'(lambda ()
-                                          (oset room last-read ts)
-                                          (slack-buffer-update-marker-overlay this)))))
+                          (slack-buffer-update-mark-request this ts)))
           (setq update-mark-timer
-              (run-at-time timer-timeout-sec nil #'update-mark)))))))
+                (run-at-time timer-timeout-sec nil #'update-mark)))))))
 
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team) this
@@ -86,6 +82,8 @@
       (cl-labels ((on-update-mark (&key data &allow-other-keys)
                                   (slack-request-handle-error
                                    (data "slack-buffer-update-mark-request")
+                                   (oset room last-read ts)
+                                   (slack-buffer-update-marker-overlay this)
                                    (when (functionp after-success)
                                      (funcall after-success)))))
         (with-slots (id) room
@@ -102,15 +100,26 @@
   (with-slots (room team) this
     (slack-message-send-internal message (oref room id) team)))
 
+(defmethod slack-buffer-latest-ts ((this slack-message-buffer))
+  (with-slots (room) this
+    (slack-if-let* ((latest (oref room latest)))
+        (oref latest ts))))
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
-        (buffer (call-next-method)))
-    (if (and ;; (not has-buffer)
-         (not (string= "0" (slack-buffer-last-read this))))
-        (with-current-buffer buffer
-          (slack-buffer-goto (slack-buffer-last-read this))
-          (slack-buffer-update-marker-overlay this)))
+        (buffer (call-next-method))
+        (last-read (slack-buffer-last-read this)))
+    (with-current-buffer buffer
+      (if (slack-team-mark-as-read-immediatelyp (oref this team))
+          (progn
+            (unless has-buffer (goto-char (marker-position lui-input-marker)))
+            (and (slack-buffer-latest-ts this)
+                 (slack-buffer-update-mark-request this
+                                                   (slack-buffer-latest-ts this))))
+        (unless (string= "0" last-read)
+          (slack-buffer-goto last-read)
+          (slack-buffer-update-marker-overlay this))))
+
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
