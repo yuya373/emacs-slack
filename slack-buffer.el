@@ -135,7 +135,23 @@
       (lui-replace (slack-message-to-string message team)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
-                            (oref message ts)))))))
+                            (oref message ts))))
+      (slack-buffer-update-marker-overlay this))))
+
+(defun slack-buffer-subscribe-cursor-event (window prev-point type)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (progn
+        (when (eq type 'entered)
+          (unless (slack-team-mark-as-read-immediatelyp (oref buffer team))
+            (slack-buffer-update-mark buffer))
+
+          (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
+                             (buffer-name (window-buffer window))
+                             prev-point
+                             (point)
+                             type)
+                     (oref buffer team)
+                     :level 'trace)))))
 
 (defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
@@ -144,7 +160,10 @@
      (slack-message-to-string message team)
      'not-tracked-p not-tracked-p
      'ts (slack-ts message)
-     'slack-last-ts lui-time-stamp-last)))
+     'slack-last-ts lui-time-stamp-last
+     'cursor-sensor-functions '(slack-buffer-subscribe-cursor-event))
+    (lui-insert "" t)
+    ))
 
 (defmethod slack-buffer-insert-load-more ((this slack-buffer))
   (let ((str (propertize "(load more)\n"
@@ -353,15 +372,13 @@
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-next-point cur-point (point-max) ts)
-   (slack-buffer-goto-first-message))
-  (recenter))
+   (message "You are on Last Message.")))
 
 (defun slack-buffer-goto-prev-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-prev-point cur-point (point-min) ts)
-   (slack-buffer-goto-last-message))
-  (recenter))
+   (message "You are on First Message.")))
 
 (defun slack-buffer-goto-first-message ()
   (interactive)

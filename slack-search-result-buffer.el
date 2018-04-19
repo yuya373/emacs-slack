@@ -60,7 +60,8 @@
     (let* ((time (slack-ts-to-time (slack-ts match)))
            (lui-time-stamp-time time)
            (lui-time-stamp-format "[%Y-%m-%d %H:%M:%S]"))
-      (lui-insert (slack-message-to-string match team) t))))
+      (lui-insert (slack-message-to-string match team) t)
+      (lui-insert "" t))))
 
 (defmethod slack-buffer-has-next-page-p ((this slack-search-result-buffer))
   (with-slots (search-result) this

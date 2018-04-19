@@ -119,10 +119,9 @@
 
 (defun slack-format-message (&rest args)
   (let ((messages args))
-    (concat (mapconcat #'identity
-                       (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
-                       "\n")
-            "\n")))
+    (mapconcat #'identity
+               (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
+               "\n")))
 
 (defmethod slack-message-profile-image ((m slack-message) team)
   (slack-user-image (slack-user-find m team) team))

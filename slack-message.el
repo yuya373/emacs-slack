@@ -348,7 +348,9 @@
         (slack-room-update-latest room message)
         (if (slack-thread-message-p message)
             (slack-thread-message-update-buffer message room team replace)
-          (slack-room-update-buffer room team message replace))
+          (slack-room-update-buffer room team message replace)
+          (slack-room-inc-unread-count room))
+
         (unless no-notify
           (slack-message-notify message room team))
         (slack-update-modeline))))
@@ -406,6 +408,12 @@
          (thread-ts (or (and thread (oref thread thread-ts))
                         (oref m thread-ts))))
     (and thread-ts (string= (oref m ts) thread-ts))))
+
+(defun slack-message-update-mark ()
+  "Update Channel's last-read marker to this message."
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-update-mark buffer :force t)))
 
 
 (provide 'slack-message)

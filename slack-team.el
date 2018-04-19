@@ -111,6 +111,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (websocket-connect-timeout-timer :initform nil)
    (websocket-connect-timeout-sec :type number :initform 20) ;; websocket url is valid for 30 seconds.
+   (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
@@ -298,6 +299,9 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
+
+(defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
+  (oref team mark-as-read-immediately))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

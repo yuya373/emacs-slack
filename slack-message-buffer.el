@@ -31,49 +31,95 @@
 (require 'slack-buffer)
 (require 'slack-request)
 
+(defface slack-new-message-marker-face
+  '((t (:foreground "#d33682"
+                    :weight bold
+                    :height 0.8)))
+  "Face used to New Message Marker."
+  :group 'slack)
+
 (define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-pre-output-hook 'slack-search-code-block nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
+  ;; TODO move to `slack-room-buffer' ?
+  (cursor-sensor-mode)
   (setq-local lui-max-buffer-size nil)
   )
 
 (defclass slack-message-buffer (slack-room-buffer)
   ((oldest :initform nil :type (or null string))
-   (last-read :initform "0" :type string)))
+   (latest :initform nil :type (or null string))
+   (marker-overlay :initform nil)
+   (update-mark-timer :initform nil)))
 
+(defmethod slack-buffer-last-read ((this slack-message-buffer))
+  (with-slots (room) this
+    (oref room last-read)))
 
-(defmethod slack-buffer-update-mark ((this slack-message-buffer) ts)
-  (with-slots (room team last-read) this
-    (if (and  (slack-room-member-p room)
-              (or (string< last-read ts)
-                  (string= last-read ts)) )
-        (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                                    (slack-request-handle-error
-                                     (data "slack-buffer-update-mark"))))
-          (with-slots (id) room
-            (slack-request
-             (slack-request-create
-              (slack-room-update-mark-url room)
-              team
-              :type "POST"
-              :params (list (cons "channel"  id)
-                            (cons "ts"  ts))
-              :success #'on-update-mark)))))))
+(cl-defmethod slack-buffer-update-mark ((this slack-message-buffer) &key (force nil))
+  (let* ((ts (slack-get-ts))
+         (timer-timeout-sec (or (and force 0) 5)))
+    (with-slots (room update-mark-timer) this
+      (when (or force (or (string< (slack-buffer-last-read this) ts)
+                          (string= (slack-buffer-last-read this) ts)))
+        (slack-log (format "%s: update mark to %s"
+                           (slack-room-name room)
+                           ts)
+                   (oref this team))
+        (when (timerp update-mark-timer)
+          (cancel-timer update-mark-timer))
+        (cl-labels
+            ((update-mark ()
+                          (slack-buffer-update-mark-request this ts)))
+          (setq update-mark-timer
+                (run-at-time timer-timeout-sec nil #'update-mark)))))))
+
+(defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
+  (with-slots (room team) this
+    (when (slack-room-member-p room)
+      (cl-labels ((on-update-mark (&key data &allow-other-keys)
+                                  (slack-request-handle-error
+                                   (data "slack-buffer-update-mark-request")
+                                   (oset room last-read ts)
+                                   (slack-buffer-update-marker-overlay this)
+                                   (when (functionp after-success)
+                                     (funcall after-success)))))
+        (with-slots (id) room
+          (slack-request
+           (slack-request-create
+            (slack-room-update-mark-url room)
+            team
+            :type "POST"
+            :params (list (cons "channel"  id)
+                          (cons "ts"  ts))
+            :success #'on-update-mark)))))))
 
 (defmethod slack-buffer-send-message ((this slack-message-buffer) message)
   (with-slots (room team) this
     (slack-message-send-internal message (oref room id) team)))
 
+(defmethod slack-buffer-latest-ts ((this slack-message-buffer))
+  (with-slots (room) this
+    (slack-if-let* ((latest (oref room latest)))
+        (oref latest ts))))
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((has-buffer (get-buffer (slack-buffer-name this)))
-        (buffer (call-next-method)))
+        (buffer (call-next-method))
+        (last-read (slack-buffer-last-read this)))
     (with-current-buffer buffer
-      (if has-buffer
-          (slack-buffer-update-mark this (oref this last-read))
-        (goto-char (marker-position lui-input-marker))))
+      (if (slack-team-mark-as-read-immediatelyp (oref this team))
+          (progn
+            (unless has-buffer (goto-char (marker-position lui-input-marker)))
+            (and (slack-buffer-latest-ts this)
+                 (slack-buffer-update-mark-request this
+                                                   (slack-buffer-latest-ts this))))
+        (unless (string= "0" last-read)
+          (slack-buffer-goto last-read)
+          (slack-buffer-update-marker-overlay this))))
+
     buffer))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
@@ -116,18 +162,17 @@
 
       (slack-buffer-insert-load-more this)
 
-      (with-slots (room team last-read) this
+      (with-slots (room team latest) this
         (let* ((messages (slack-room-sorted-messages room))
                (latest-message (car (last messages)))
                (oldest-message (car messages)))
           (cl-loop for m in messages
-                   do (if (and (or (null last-read)
-                                   (string< last-read (oref m ts)))
+                   do (if (and (or (null latest)
+                                   (string< latest (oref m ts)))
                                (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
-            (slack-buffer-update-mark this (oref latest-message ts))
-            (slack-buffer-update-last-read this latest-message))
+            (slack-buffer-update-lastest this (oref latest-message ts)))
           (when oldest-message
             (slack-buffer-update-oldest this oldest-message))))
       )
@@ -140,12 +185,12 @@
 (cl-defmethod slack-buffer-update ((this slack-message-buffer) message &key replace)
   (with-slots (room team) this
     (let ((buffer (get-buffer (slack-buffer-name this))))
-      (slack-buffer-update-last-read this message)
-      (if (slack-buffer-in-current-frame buffer)
-          (slack-buffer-update-mark this (oref message ts))
-        (slack-room-inc-unread-count room))
+      ;; (if (slack-buffer-in-current-frame buffer)
+      ;;     (slack-buffer-update-mark-request this (oref message ts))
+      ;;   (slack-room-inc-unread-count room))
 
       (if replace (slack-buffer-replace this message)
+        (slack-buffer-update-lastest this (oref message ts))
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
@@ -154,11 +199,11 @@
     (let ((buf (slack-create-room-message-compose-buffer room team)))
       (slack-buffer-display buf))))
 
-(defmethod slack-buffer-update-last-read ((this slack-message-buffer) message)
-  (with-slots (last-read) this
-    (if (or (null last-read)
-            (string< last-read (oref message ts)))
-        (setq last-read (oref message ts)))))
+(defmethod slack-buffer-update-lastest ((this slack-message-buffer) latest)
+  (with-slots ((prev-latest latest)) this
+    (if (or (null prev-latest)
+            (string< prev-latest latest))
+        (setq prev-latest latest))))
 
 (defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
   (with-slots (room team) this
@@ -237,7 +282,7 @@
     (oset this oldest (oref message ts))))
 
 (defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
-  (with-slots (room team last-read) this
+  (with-slots (room team) this
     (cl-labels
         ((request-messages (latest)
                            (slack-room-history-request room team
@@ -258,10 +303,8 @@
                                 (slack-buffer-prepare-marker-for-history this)
                                 (slack-buffer-insert-load-more this)
                                 (cl-loop for m in messages
-                                         do (slack-buffer-insert this m t)))
-                              (when latest-message
-                                (slack-buffer-update-last-read this
-                                                               latest-message))
+                                         do (slack-buffer-insert this m t))
+                                (slack-buffer-goto (slack-buffer-last-read this)))
                               (when oldest-message
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
@@ -346,6 +389,26 @@
 (defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
   (with-slots (team) this
     (slack-slash-commands-execute command team)))
+
+(defmethod slack-buffer-update-marker-overlay ((this slack-message-buffer))
+  (let ((buf (get-buffer (slack-buffer-name this))))
+    (and buf (with-current-buffer buf
+               (let* ((last-read (slack-buffer-last-read this))
+                      (beg (slack-buffer-ts-eq (point-min) (point-max) last-read))
+                      (end (and beg (next-single-property-change beg 'ts))))
+                 (when (and beg end)
+                   (if (oref this marker-overlay)
+                       (move-overlay (oref this marker-overlay)
+                                     beg end)
+                     (progn
+                       (oset this marker-overlay (make-overlay beg end))
+                       (let ((after-string
+                              (propertize "New Message"
+                                          'face
+                                          'slack-new-message-marker-face)))
+                         (overlay-put (oref this marker-overlay)
+                                      'after-string
+                                      (format "\n%s" after-string)))))))))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
