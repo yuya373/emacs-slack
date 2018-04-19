@@ -242,20 +242,24 @@
                                     text nil t)))))
 
 (defun slack-message-unescape-date-format (text)
-  (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|.*>")
+  (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|\\(.*\\)>")
         (time-format-regexp "{\\(.*?\\)}"))
     (cl-labels
         ((unescape-date-string
           (text)
           (let* ((time (match-string 1 text))
                  (format-string (match-string 2 text))
-                 (link (match-string 3 text)))
+                 (link (match-string 3 text))
+                 (fallback (match-string 4 text)))
             (replace-regexp-in-string time-format-regexp
                                       #'(lambda (text)
-                                          (unescape-datetime-format time link text))
+                                          (unescape-datetime-format time
+                                                                    link
+                                                                    text
+                                                                    fallback))
                                       format-string)))
          (unescape-datetime-format
-          (unix-time link text)
+          (unix-time link text fallback)
           (let* ((match (match-string 1 text))
                  (template (cl-assoc (intern match) slack-date-formats)))
             (if template
@@ -263,7 +267,7 @@
                  (format-time-string (cdr template)
                                      (float-time (string-to-number unix-time)))
                  (and link (substring link 1 (length link))))
-              ""))))
+              fallback))))
       (replace-regexp-in-string date-regexp
                                 #'unescape-date-string
                                 text nil t))))
