@@ -86,7 +86,9 @@
     (date_long_pretty . "%A %B %d,%Y")
     (time . "%H:%M")
     (time_secs . "%H:%M:%S"))
-  "Date formats for Slack's date formatting.\n see https://api.slack.com/docs/message-formatting"
+  "Date formats for Slack's date token.
+this format string passed to `format-time-string' function.
+see \"Formatting dates\" section in https://api.slack.com/docs/message-formatting"
   :group 'slack)
 
 (defun slack-message-put-header-property (header)
