@@ -410,5 +410,9 @@
                                       'after-string
                                       (format "\n%s" after-string)))))))))))
 
+(defmethod slack-buffer-replace ((this slack-message-buffer) message)
+  (call-next-method)
+  (slack-buffer-update-marker-overlay this))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
