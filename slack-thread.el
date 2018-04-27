@@ -37,6 +37,15 @@
 (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
 (defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
+(defcustom slack-thread-also-send-to-room 'ask
+  "Whether a thread message should also be sent to its room.
+If nil: don't send to the room.
+If `ask': ask the user every time.
+Any other non-nil value: send to the room."
+  :type '(choice (const :tag "Never send message to the room." nil)
+                 (const :tag "Ask the user every time." ask)
+                 (const :tag "Always send message to the room." t)))
+
 (define-derived-mode slack-thread-mode slack-mode "Slack - Thread"
   ""
   (lui-set-prompt lui-prompt-string)
@@ -72,8 +81,10 @@
   (let ((message (slack-message-prepare-links
                   (slack-escape-message message)
                   team))
-        (broadcast (y-or-n-p (format "Also send to %s ? "
-                                     (slack-room-name room)))))
+        (broadcast (if (eq slack-thread-also-send-to-room 'ask)
+                       (y-or-n-p (format "Also send to %s ? "
+                                         (slack-room-name room)))
+                     slack-thread-also-send-to-room)))
     (progn
       (slack-message-inc-id team)
       (with-slots (message-id sent-message self-id) team
