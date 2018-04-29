@@ -204,8 +204,12 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (slack-message-unescape-string (format "\n%s" body) team)))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
-  (with-slots (text) m
-    (slack-message-unescape-string text team)))
+  (with-slots (text attachments) m
+    (if (and text (< 0 (length text)))
+        (slack-message-unescape-string text team)
+      (let ((attachment-string (mapconcat #'slack-attachment-to-alert
+                                          attachments " ")))
+        (slack-message-unescape-string attachment-string team)))))
 
 (defun slack-message-unescape-string (text team)
   (when text
