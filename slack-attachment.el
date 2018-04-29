@@ -115,7 +115,10 @@
     (format "%s\t%s\n%s\t%s" pad title pad value)))
 
 (defmethod slack-attachment-to-alert ((a slack-attachment))
-  (oref a fallback))
+  (with-slots (fallback pretext) a
+    (if (and pretext (< 0 (length pretext)))
+        (format "%s\n%s" pretext fallback)
+      fallback)))
 
 (provide 'slack-attachment)
 ;;; slack-attachment.el ends here
