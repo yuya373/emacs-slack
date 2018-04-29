@@ -127,5 +127,14 @@
                              teams)))
       (force-mode-line-update))))
 
+(defun slack-message-test-notification ()
+  "Debug notification.
+Execute this function when cursor is on some message."
+  (interactive)
+  (let ((ts (slack-get-ts)))
+    (with-slots (room team) slack-current-buffer
+      (let ((message (slack-room-find-message room ts)))
+        (slack-message-notify message room team)))))
+
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
