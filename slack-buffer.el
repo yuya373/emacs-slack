@@ -323,8 +323,9 @@
           (add-text-properties start end (list 'face face)))))))
 
 (defun slack-buffer-buttonize-link ()
-  (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\(.*?\\)>"))
+  (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\([[:ascii:][:nonascii:]]*?\\)>"))
     (ignore-errors
+      (goto-char (point-min))
       (while (re-search-forward regex nil t)
         (let* ((url-begin (match-beginning 1))
                (cur-point (point))
