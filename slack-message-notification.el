@@ -80,7 +80,12 @@
                              (or (slack-message-body message team) ""))))
       (let ((team-name (oref team name))
             (room-name (slack-room-name room))
-            (text (slack-message-to-alert message team))
+            (text (with-temp-buffer
+                    (goto-char (point-min))
+                    (insert (slack-message-to-alert message team))
+                    (slack-buffer-buttonize-link)
+                    (buffer-substring-no-properties (point-min)
+                                                    (point-max))))
             (user-name (slack-message-sender-name message team)))
         (if (and (eq alert-default-style 'notifier)
                  (slack-im-p room)
@@ -126,6 +131,15 @@
                                                  (slack-team-get-unread-messages e)))
                              teams)))
       (force-mode-line-update))))
+
+(defun slack-message-test-notification ()
+  "Debug notification.
+Execute this function when cursor is on some message."
+  (interactive)
+  (let ((ts (slack-get-ts)))
+    (with-slots (room team) slack-current-buffer
+      (let ((message (slack-room-find-message room ts)))
+        (slack-message-notify message room team)))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
