@@ -185,9 +185,9 @@
 (cl-defmethod slack-buffer-update ((this slack-message-buffer) message &key replace)
   (with-slots (room team) this
     (let ((buffer (get-buffer (slack-buffer-name this))))
-      ;; (if (slack-buffer-in-current-frame buffer)
-      ;;     (slack-buffer-update-mark-request this (oref message ts))
-      ;;   (slack-room-inc-unread-count room))
+      (when (and (slack-team-mark-as-read-immediatelyp team)
+                 (slack-buffer-in-current-frame buffer))
+        (slack-buffer-update-mark-request this (oref message ts)))
 
       (if replace (slack-buffer-replace this message)
         (slack-buffer-update-lastest this (oref message ts))

@@ -208,10 +208,11 @@
                            (append messages (oref room messages))))
 
 (defmethod slack-room-update-latest ((room slack-room) message)
-  (with-slots (latest) room
-    (if (or (null latest)
-            (string< (oref latest ts) (oref message ts)))
-        (setq latest message))))
+  (unless (slack-thread-message-p message)
+    (with-slots (latest) room
+      (if (or (null latest)
+              (string< (oref latest ts) (oref message ts)))
+          (setq latest message)))))
 
 (defmethod slack-room-push-message ((room slack-room) message)
   (with-slots (messages) room
@@ -227,7 +228,7 @@
          (oldest (car sorted))
          (latest (car (last sorted))))
     (oset room messages sorted)
-    (oset room latest latest)))
+    (slack-room-update-latest room latest)))
 
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
