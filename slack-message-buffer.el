@@ -298,6 +298,7 @@
                             (progn
                               (with-current-buffer (slack-buffer-buffer this)
                                 (let ((inhibit-read-only t))
+                                  (slack-buffer-delete-overlay this)
                                   (delete-region (point-min)
                                                  (marker-position lui-output-marker)))
                                 (slack-buffer-prepare-marker-for-history this)
@@ -389,6 +390,10 @@
 (defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
   (with-slots (team) this
     (slack-slash-commands-execute command team)))
+
+(defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
+  (when (oref this marker-overlay)
+    (delete-overlay (oref this marker-overlay))))
 
 (defmethod slack-buffer-update-marker-overlay ((this slack-message-buffer))
   (let ((buf (get-buffer (slack-buffer-name this))))
