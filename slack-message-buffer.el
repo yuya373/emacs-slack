@@ -305,7 +305,8 @@
                                 (slack-buffer-insert-load-more this)
                                 (cl-loop for m in messages
                                          do (slack-buffer-insert this m t))
-                                (slack-buffer-goto (slack-buffer-last-read this)))
+                                (slack-buffer-goto (slack-buffer-last-read this))
+                                (slack-buffer-update-marker-overlay this))
                               (when oldest-message
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
