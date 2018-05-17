@@ -62,7 +62,8 @@
   (oset this unread-count (oref other unread-count))
   (oset this unread-count-display (oref other unread-count-display))
   (oset this team-id (oref other team-id))
-  (oset this last-read (oref other last-read)))
+  (unless (string= "0" (oref other last-read))
+    (oset this last-read (oref other last-read))))
 
 (defun slack-room-create (payload team class)
   (cl-labels
