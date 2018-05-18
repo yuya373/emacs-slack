@@ -47,7 +47,7 @@
       ((on-timeout ()
                    (slack-log (format "websocket open timeout")
                               team)
-                   (slack-ws-close team t)
+                   (slack-ws-close team)
                    (slack-ws-set-reconnect-timer team)))
     (oset team websocket-connect-timeout-timer
           (run-at-time (oref team websocket-connect-timeout-sec)
@@ -145,7 +145,8 @@
     (push payload waiting-send)
     (cl-labels
         ((reconnect ()
-                    (slack-ws-close team)))
+                    (slack-ws-close team)
+                    (slack-ws-set-reconnect-timer team)))
       (if (websocket-openp ws-conn)
           (condition-case err
               (progn
@@ -172,8 +173,8 @@
          (code (plist-get err :code)))
     (cond
      ((eq 1 code)
-      (slack-authorize-for-reconnect team))
       (slack-ws-close team)
+      (slack-ws-set-reconnect-timer team))
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))
                    team)))))
@@ -673,7 +674,8 @@
 
 (defun slack-ws-ping-timeout (team)
   (slack-log "Slack Websocket PING Timeout." team :level 'warn)
-  (slack-ws-close team))
+  (slack-ws-close team)
+  (slack-ws-set-reconnect-timer team))
 
 (defun slack-ws-cancel-ping-check-timers (team)
   (maphash #'(lambda (key value)
