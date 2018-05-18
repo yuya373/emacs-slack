@@ -87,7 +87,11 @@
                      (slack-log (format "Websocket on-close: STATE: %s"
                                         (websocket-ready-state websocket))
                                 team :level 'debug)
-                     (slack-ws-set-reconnect-timer team))
+                     (unwind-protect
+                         (progn
+                           (unless (oref team inhibit-reconnection)
+                             (slack-ws-set-reconnect-timer team)))
+                       (oset team inhibit-reconnection nil)))
            (on-error (_websocket type err)
                      (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                         type err)
@@ -110,29 +114,31 @@
                  ;; (slack-ws-set-reconnect-timer team)
                  nil)))))))
 
-(cl-defun slack-ws-close (&optional team (close-reconnection t))
+(cl-defun slack-ws-close (&optional team (close-reconnection nil))
   (interactive)
   (unless team
     (setq team slack-teams))
-  (cl-labels
-      ((close (team)
-              (slack-ws-cancel-ping-timer team)
-              (slack-ws-cancel-ping-check-timers team)
-              (when close-reconnection
-                (slack-ws-cancel-reconnect-timer team))
-              (with-slots (connected ws-conn last-pong) team
-                (when ws-conn
-                  (websocket-close ws-conn)
-                  (slack-log "Slack Websocket Closed" team)))))
-    (if (listp team)
-        (progn
-          (mapc #'close team)
-          (slack-request-worker-quit))
-      (close team)
-      (slack-request-worker-remove-request team)
-      )
-    ))
-
+  (let ((called-interactively (called-interactively-p 'any)))
+    (cl-labels
+        ((close (team)
+                (slack-ws-cancel-ping-timer team)
+                (slack-ws-cancel-ping-check-timers team)
+                (when (or close-reconnection
+                          called-interactively)
+                  (slack-ws-cancel-reconnect-timer team)
+                  (oset team inhibit-reconnection t))
+                (with-slots (connected ws-conn last-pong) team
+                  (when ws-conn
+                    (websocket-close ws-conn)
+                    (slack-log "Slack Websocket Closed" team)))))
+      (if (listp team)
+          (progn
+            (mapc #'close team)
+            (slack-request-worker-quit))
+        (close team)
+        (slack-request-worker-remove-request team)
+        )
+      )))
 
 (defun slack-ws-send (payload team)
   (with-slots (waiting-send ws-conn) team
@@ -166,8 +172,8 @@
          (code (plist-get err :code)))
     (cond
      ((eq 1 code)
-      (slack-ws-close team nil)
       (slack-authorize-for-reconnect team))
+      (slack-ws-close team)
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))
                    team)))))
@@ -764,7 +770,7 @@ TEAM is one of `slack-teams'"
                                                 :ws-url (oref team reconnect-url)))
               (do-reconnect (team)
                             (cl-incf (oref team reconnect-count))
-                            (slack-ws-close team nil)
+                            (slack-ws-close team)
                             (if (< 0 (length (oref team reconnect-url)))
                                 (slack-request-api-test team
                                                         #'use-reconnect-url)

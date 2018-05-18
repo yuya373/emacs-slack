@@ -112,6 +112,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (websocket-connect-timeout-timer :initform nil)
    (websocket-connect-timeout-sec :type number :initform 20) ;; websocket url is valid for 30 seconds.
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
+   (inhibit-reconnection :initform nil)
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
