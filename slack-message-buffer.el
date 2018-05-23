@@ -329,7 +329,9 @@
 
                  (slack-if-let* ((loading-message-end
                                   (slack-buffer-loading-message-end-point this)))
-                     (delete-region (point-min) loading-message-end)
+                     (progn
+                       (slack-buffer-delete-overlay this)
+                       (delete-region (point-min) loading-message-end))
                    (message "loading-message-end not found, oldest: %s" oldest))
 
                  (set-marker lui-output-marker (point-min))
@@ -340,7 +342,9 @@
 
                  (cl-loop for m in messages
                           do (slack-buffer-insert this m t))
-                 (lui-recover-output-marker)))
+                 (lui-recover-output-marker)
+                 (slack-buffer-update-marker-overlay this)
+                 ))
               (if current-ts
                   (slack-buffer-goto current-ts)
                 (goto-char cur-point))))
