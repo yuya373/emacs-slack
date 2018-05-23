@@ -298,13 +298,15 @@
                             (progn
                               (with-current-buffer (slack-buffer-buffer this)
                                 (let ((inhibit-read-only t))
+                                  (slack-buffer-delete-overlay this)
                                   (delete-region (point-min)
                                                  (marker-position lui-output-marker)))
                                 (slack-buffer-prepare-marker-for-history this)
                                 (slack-buffer-insert-load-more this)
                                 (cl-loop for m in messages
                                          do (slack-buffer-insert this m t))
-                                (slack-buffer-goto (slack-buffer-last-read this)))
+                                (slack-buffer-goto (slack-buffer-last-read this))
+                                (slack-buffer-update-marker-overlay this))
                               (when oldest-message
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
@@ -327,7 +329,9 @@
 
                  (slack-if-let* ((loading-message-end
                                   (slack-buffer-loading-message-end-point this)))
-                     (delete-region (point-min) loading-message-end)
+                     (progn
+                       (slack-buffer-delete-overlay this)
+                       (delete-region (point-min) loading-message-end))
                    (message "loading-message-end not found, oldest: %s" oldest))
 
                  (set-marker lui-output-marker (point-min))
@@ -338,7 +342,9 @@
 
                  (cl-loop for m in messages
                           do (slack-buffer-insert this m t))
-                 (lui-recover-output-marker)))
+                 (lui-recover-output-marker)
+                 (slack-buffer-update-marker-overlay this)
+                 ))
               (if current-ts
                   (slack-buffer-goto current-ts)
                 (goto-char cur-point))))
@@ -389,6 +395,10 @@
 (defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
   (with-slots (team) this
     (slack-slash-commands-execute command team)))
+
+(defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
+  (when (oref this marker-overlay)
+    (delete-overlay (oref this marker-overlay))))
 
 (defmethod slack-buffer-update-marker-overlay ((this slack-message-buffer))
   (let ((buf (get-buffer (slack-buffer-name this))))
