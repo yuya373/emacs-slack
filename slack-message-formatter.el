@@ -199,7 +199,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (let ((body (mapconcat #'slack-message-to-string attachments "\n\t-\n")))
+    (let ((body (mapconcat #'(lambda (attachment)
+                               (slack-message-to-string attachment team))
+                           attachments "\n\t-\n")))
       (if (< 0 (length body))
           (slack-message-unescape-string (format "\n%s" body) team)))))
 

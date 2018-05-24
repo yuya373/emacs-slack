@@ -55,7 +55,7 @@
     (when image-url
       (list image-url image-width image-height slack-image-max-height))))
 
-(defmethod slack-message-to-string ((attachment slack-attachment))
+(defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots
       (fallback text ts color from-url footer fields pretext) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
@@ -84,20 +84,21 @@
                                             ""))
                                 'face 'slack-attachment-footer))))
            (image (slack-image-string (slack-image-spec attachment))))
-      (if (and (slack-string-blankp header)
-               (slack-string-blankp pretext)
-               (slack-string-blankp body)
-               (slack-string-blankp fields)
-               (slack-string-blankp footer))
-          fallback
-        (format "%s%s%s%s%s%s"
-                (or (and header (format "\t%s\n" header)) "")
-                (or (and pretext (format "\t%s\n" pretext)) "")
-                (or (and body (format "\t%s" body)) "")
-                (or (and fields fields) "")
-                (or (and footer (format "\n\t%s" footer)) "")
-                (or (and image (format "\n%s" image)) ""))
-        ))))
+      (slack-message-unescape-string
+       (if (and (slack-string-blankp header)
+                (slack-string-blankp pretext)
+                (slack-string-blankp body)
+                (slack-string-blankp fields)
+                (slack-string-blankp footer))
+           fallback
+         (format "%s%s%s%s%s%s"
+                 (or (and header (format "\t%s\n" header)) "")
+                 (or (and pretext (format "\t%s\n" pretext)) "")
+                 (or (and body (format "\t%s" body)) "")
+                 (or (and fields fields) "")
+                 (or (and footer (format "\n\t%s" footer)) "")
+                 (or (and image (format "\n%s" image)) "")))
+       team))))
 
 (defmethod slack-attachment-header ((attachment slack-attachment))
   (with-slots (title title-link author-name author-subname) attachment
