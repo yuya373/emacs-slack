@@ -290,7 +290,11 @@
          (file-path (and image-url (slack-profile-image-path image-url team))))
     (when file-path
       (if (file-exists-p file-path) file-path
-        (url-copy-file image-url file-path)))
+        (slack-url-copy-file image-url file-path
+                             :success (lambda ()
+                                        (slack-log (format "Success download Image: %s"
+                                                           file-path)
+                                                   team)))))
     file-path))
 
 (cl-defun slack-user-image (user team &optional (size 32))
