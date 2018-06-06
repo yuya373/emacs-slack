@@ -199,7 +199,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
-    (let ((body (mapconcat #'slack-message-to-string attachments "\n\t-\n")))
+    (let ((body (mapconcat #'(lambda (attachment)
+                               (slack-message-to-string attachment team))
+                           attachments "\n\t-\n")))
       (if (< 0 (length body))
           (slack-message-unescape-string (format "\n%s" body) team)))))
 
@@ -222,7 +224,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (slack-message-unescape-date-format
        (slack-message-unescape-command
         (slack-message-unescape-user-id
-         (slack-message-unescape-channel gt-unescaped)
+         (slack-message-unescape-channel gt-unescaped team)
          team))))))
 
 (defun slack-message-unescape-user-id (text team)
@@ -290,14 +292,16 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 #'unescape-command
                                 text nil t))))
 
-(defun slack-message-unescape-channel (text)
-  (let ((channel-regexp "<#\\(C.*?\\)|\\(.*?\\)>"))
+(defun slack-message-unescape-channel (text team)
+  (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))
     (cl-labels ((unescape-channel
                  (text)
-                 (concat "#" (or (match-string 2 text)
-                                 (slack-room-find
-                                  (match-string 1 text))
-                                 (match-string 1 text)))))
+                 (let ((name (match-string 2 text))
+                       (id (match-string 1 text)))
+                   (concat "#" (or (and name (substring name 1))
+                                   (slack-if-let* ((room (slack-room-find id team)))
+                                       (oref room name)
+                                     id))))))
       (replace-regexp-in-string channel-regexp
                                 #'unescape-channel
                                 text t))))

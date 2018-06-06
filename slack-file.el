@@ -580,23 +580,27 @@
                           #'slack-file-display)
                         map)))
 
-(defmethod slack-file-summary ((file slack-file) _ts)
+(defmethod slack-file-summary ((file slack-file) _ts team)
   (with-slots (initial-comment pretty-type mimetype permalink name title) file
     (format "uploaded%s this %s: %s <%s|open in browser>"
             (if initial-comment
                 " and commented on"
               "")
             (or pretty-type mimetype)
-            (slack-file-link-info (oref file id) (or title name))
+            (slack-file-link-info (oref file id)
+                                  (slack-message-unescape-string (or title name)
+                                                                 team))
             permalink)))
 
-(defmethod slack-file-summary ((this slack-file-email) ts)
+(defmethod slack-file-summary ((this slack-file-email) ts team)
   (with-slots (preview-plain-text plain-text is-expanded) this
     (let* ((has-more (< (length preview-plain-text)
                         (length plain-text)))
-           (body (or (and is-expanded plain-text)
-                     (or (and has-more (format "%s…" preview-plain-text))
-                         preview-plain-text))))
+           (body (slack-message-unescape-string
+                  (or (and is-expanded plain-text)
+                      (or (and has-more (format "%s…" preview-plain-text))
+                          preview-plain-text))
+                  team)))
       (format "%s\n\n%s\n\n%s"
               (call-next-method)
               (propertize body

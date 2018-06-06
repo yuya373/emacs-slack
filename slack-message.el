@@ -415,6 +415,24 @@
   (slack-if-let* ((buffer slack-current-buffer))
       (slack-buffer-update-mark buffer :force t)))
 
+(defun slack-message-inspect ()
+  (interactive)
+  (slack-if-let* ((ts (slack-get-ts))
+                  (buffer slack-current-buffer))
+      (with-slots (room team) buffer
+        (slack-if-let* ((message (slack-room-find-message room ts)))
+            (message "ROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s"
+                     (oref room id)
+                     (eieio-object-class message)
+                     (length (oref message attachments))
+                     (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
+                                                 (slack-message-unescape-channel
+                                                  (oref e title)
+                                                  team)
+                                                 (oref e pretext)
+                                                 (oref e text)))
+                             (oref message attachments))
+                     )))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
