@@ -331,40 +331,45 @@ One of 'info, 'debug"
       (mapconcat #'propertize-image (sort-images images) "\n"))))
 
 (cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (when (functionp success) (funcall success)))
-       (on-error (&key error-thrown symbol-status response data)
-                 (message "Error Fetching Image: %s %s %s, url: %s"
-                          (request-response-status-code response)
-                          error-thrown symbol-status url)
-                 (if (file-exists-p newname)
-                     (delete-file newname))
-                 (case (request-response-status-code response)
-                   (403 nil)
-                   (404 nil)
-                   (t (when (functionp error)
-                        (funcall error
-                                 (request-response-status-code response)
-                                 error-thrown
-                                 symbol-status
-                                 url)))))
-       (parser () (mm-write-region (point-min) (point-max)
-                                   newname nil nil nil 'binary t)))
-    (let* ((url-obj (url-generic-parse-url url))
-           (need-token-p (and url-obj
-                              (string-match-p "slack"
-                                              (url-host url-obj))))
-           (use-https-p (and url-obj
-                             (string= "https" (url-type url-obj)))))
-      (request
-       url
-       :success #'on-success
-       :error #'on-error
-       :parser #'parser
-       :sync sync
-       :headers (if (and token use-https-p need-token-p)
-                    (list (cons "Authorization" (format "Bearer %s" token))))))))
+  (if (executable-find "curl")
+      (slack-curl-downloader url newname
+                             :success success
+                             :error error
+                             :token token)
+    (cl-labels
+        ((on-success (&key data &allow-other-keys)
+                     (when (functionp success) (funcall success)))
+         (on-error (&key error-thrown symbol-status response data)
+                   (message "Error Fetching Image: %s %s %s, url: %s"
+                            (request-response-status-code response)
+                            error-thrown symbol-status url)
+                   (if (file-exists-p newname)
+                       (delete-file newname))
+                   (case (request-response-status-code response)
+                     (403 nil)
+                     (404 nil)
+                     (t (when (functionp error)
+                          (funcall error
+                                   (request-response-status-code response)
+                                   error-thrown
+                                   symbol-status
+                                   url)))))
+         (parser () (mm-write-region (point-min) (point-max)
+                                     newname nil nil nil 'binary t)))
+      (let* ((url-obj (url-generic-parse-url url))
+             (need-token-p (and url-obj
+                                (string-match-p "slack"
+                                                (url-host url-obj))))
+             (use-https-p (and url-obj
+                               (string= "https" (url-type url-obj)))))
+        (request
+         url
+         :success #'on-success
+         :error #'on-error
+         :parser #'parser
+         :sync sync
+         :headers (if (and token use-https-p need-token-p)
+                      (list (cons "Authorization" (format "Bearer %s" token)))))))))
 
 (defun slack-render-image (image team)
   (let ((buf (get-buffer-create
@@ -424,6 +429,35 @@ One of 'info, 'debug"
                                     ,old-list)))
                  (if o (slack-merge o n)
                    (push n ,old-list)))))
+
+(cl-defun slack-curl-downloader (url name &key (success nil) (error nil) (token nil))
+  (cl-labels
+      ((sentinel (proc event)
+                 (cond
+                  ((string-equal "finished\n" event)
+                   (when (functionp success) (funcall success)))
+                  (t
+                   (let ((status (process-status proc))
+                         (output (with-current-buffer (process-buffer proc)
+                                   (buffer-substring-no-properties (point-min)
+                                                                   (point-max)))))
+                     (if (functionp error)
+                         (funcall error status output url name)
+                       (message "Download Failed. STATUS: %s, EVENT: %s, URL: %s, NAME: %s, OUTPUT: %s"
+                                status
+                                event
+                                url
+                                name
+                                output))
+                     (delete-process proc))))))
+    (let* ((header (or (and (string-prefix-p "https" url) token
+                            (format "-H 'Authorization: Bearer %s'" token))
+                       ""))
+           (command (format "curl -L -o '%s' %s '%s'" name header url))
+           (proc (start-process-shell-command "slack-curl-downloader"
+                                              "slack-curl-downloader"
+                                              command)))
+      (set-process-sentinel proc #'sentinel))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here
