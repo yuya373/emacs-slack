@@ -450,7 +450,12 @@ One of 'info, 'debug"
                                 name
                                 output))
                      (delete-process proc))))))
-    (let* ((header (or (and (string-prefix-p "https" url) token
+    (let* ((url-obj (url-generic-parse-url url))
+           (need-token-p (and url-obj
+                              (string-match-p "slack" (url-host url-obj))))
+           (header (or (and token
+                            need-token-p
+                            (string-prefix-p "https" url)
                             (format "-H 'Authorization: Bearer %s'" token))
                        ""))
            (command (format "curl -L -o '%s' %s '%s'" name header url))
