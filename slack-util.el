@@ -458,7 +458,7 @@ One of 'info, 'debug"
                             (string-prefix-p "https" url)
                             (format "-H 'Authorization: Bearer %s'" token))
                        ""))
-           (command (format "curl -f -L -o '%s' %s '%s'" name header url))
+           (command (format "curl --silent --show-error -f -L -o '%s' %s '%s'" name header url))
            (proc (start-process-shell-command "slack-curl-downloader"
                                               "slack-curl-downloader"
                                               command)))
