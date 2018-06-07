@@ -209,7 +209,8 @@
                            (append messages (oref room messages))))
 
 (defmethod slack-room-update-latest ((room slack-room) message)
-  (unless (slack-thread-message-p message)
+  (when (and message
+             (not (slack-thread-message-p message)))
     (with-slots (latest) room
       (if (or (null latest)
               (string< (oref latest ts) (oref message ts)))
