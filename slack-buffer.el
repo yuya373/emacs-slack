@@ -103,15 +103,11 @@
                     (token (oref (oref slack-current-buffer team) token)))
         (cl-labels
             ((on-success ()
-                         (slack-buffer-replace-image cur-buffer ts))
-             (on-error (status-code error _status url)
-                       (message "[Error Download Image: %s, %s, %s]"
-                                status-code error url)))
+                         (slack-buffer-replace-image cur-buffer ts)))
           (unless (file-exists-p path)
             (slack-url-copy-file url
                                  path
                                  :success #'on-success
-                                 :error #'on-error
                                  :token token))))))
 
 (defmethod slack-buffer-init-buffer :after (this)
