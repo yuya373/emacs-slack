@@ -317,7 +317,7 @@
                                 (slack-buffer-update-oldest this
                                                             oldest-message)))))))
       (oset room messages nil)
-      (request-messages (oref this oldest)))))
+      (request-messages nil))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
