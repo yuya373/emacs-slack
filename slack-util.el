@@ -449,6 +449,8 @@ One of 'info, 'debug"
                                 url
                                 name
                                 output))
+                     (if (file-exists-p name)
+                         (delete-file name))
                      (delete-process proc))))))
     (let* ((url-obj (url-generic-parse-url url))
            (need-token-p (and url-obj
