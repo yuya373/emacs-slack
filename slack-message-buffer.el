@@ -52,29 +52,33 @@
   ((oldest :initform nil :type (or null string))
    (latest :initform nil :type (or null string))
    (marker-overlay :initform nil)
-   (update-mark-timer :initform nil)))
+   (update-mark-timer :initform '(nil . nil)) ;; (timestamp . timer)
+   ))
 
 (defmethod slack-buffer-last-read ((this slack-message-buffer))
   (with-slots (room) this
     (oref room last-read)))
 
 (cl-defmethod slack-buffer-update-mark ((this slack-message-buffer) &key (force nil))
-  (let* ((ts (slack-get-ts))
-         (timer-timeout-sec (or (and force 0) 5)))
-    (with-slots (room update-mark-timer) this
-      (when (or force (or (string< (slack-buffer-last-read this) ts)
-                          (string= (slack-buffer-last-read this) ts)))
+  (with-slots (room update-mark-timer) this
+    (let* ((ts (slack-get-ts))
+           (timer-timeout-sec (or (and force 0) 5))
+           (prev-mark (or (car update-mark-timer)
+                          (slack-buffer-last-read this)))
+           (prev-timer (cdr update-mark-timer)))
+      (when (or force (or (string< prev-mark ts)
+                          (string= prev-mark ts)))
         (slack-log (format "%s: update mark to %s"
                            (slack-room-name room)
                            ts)
                    (oref this team))
-        (when (timerp update-mark-timer)
-          (cancel-timer update-mark-timer))
+        (when (timerp prev-timer)
+          (cancel-timer prev-timer))
         (cl-labels
             ((update-mark ()
                           (slack-buffer-update-mark-request this ts)))
           (setq update-mark-timer
-                (run-at-time timer-timeout-sec nil #'update-mark)))))))
+                (cons ts (run-at-time timer-timeout-sec nil #'update-mark))))))))
 
 (defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team) this
