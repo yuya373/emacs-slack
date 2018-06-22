@@ -110,18 +110,20 @@
         (oref latest ts))))
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
-  (let ((has-buffer (get-buffer (slack-buffer-name this)))
+  (let ((buffer-already-exists-p (get-buffer (slack-buffer-name this)))
         (buffer (call-next-method))
         (last-read (slack-buffer-last-read this)))
     (with-current-buffer buffer
       (if (slack-team-mark-as-read-immediatelyp (oref this team))
           (progn
-            (unless has-buffer (goto-char (marker-position lui-input-marker)))
+            (unless buffer-already-exists-p
+              (goto-char (marker-position lui-input-marker)))
             (and (slack-buffer-latest-ts this)
                  (slack-buffer-update-mark-request this
                                                    (slack-buffer-latest-ts this))))
         (unless (string= "0" last-read)
-          (slack-buffer-goto last-read)
+          (unless buffer-already-exists-p
+            (slack-buffer-goto last-read))
           (slack-buffer-update-marker-overlay this))))
 
     buffer))
