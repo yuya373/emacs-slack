@@ -19,8 +19,8 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 - [request](https://github.com/tkf/emacs-request)
 - [websocket](https://github.com/ahyatt/emacs-websocket)
 
+## Configuration
 
-## Configure
 [How to get token](#how-to-get-token-the-easy-way)
 
 ```elisp
