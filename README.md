@@ -9,14 +9,16 @@
 You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/ScreenShots).
 
 ## Dependencies
-- [websocket](https://github.com/ahyatt/emacs-websocket)
-- [request](https://github.com/tkf/emacs-request)
+
+- [Alert](https://github.com/jwiegley/alert)
+- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise User
+  Interface library).
+- [Emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
 - [Oauth2](https://github.com/emacsmirror/oauth2/blob/master/oauth2.el)
   - do `package install`
-- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise User Interface library).
-- [Alert](https://github.com/jwiegley/alert)
-- [Emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
-  - Required if you want to show emoji.
+- [request](https://github.com/tkf/emacs-request)
+- [websocket](https://github.com/ahyatt/emacs-websocket)
+
 
 ## Configure
 [How to get token](#how-to-get-token-the-easy-way)
