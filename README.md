@@ -79,6 +79,12 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
   (setq alert-default-style 'notifier))
 
 ```
+## How to get client ID
+
+ 1. Log into the Slack team you're interested in with a web browser
+ 2. Open DevTools
+ 3. Open Network tab
+ 4. Take the _x_id from Query String Parameters
 
 ## How to get token (the easy way)
 
