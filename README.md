@@ -81,14 +81,16 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 ```
 
 ## How to get token (the easy way)
-### 1. From a query param
+
+### 1. From Request Payload
 
  1. Log into the Slack team you're interested in with a web browser
  2. Open DevTools
  3. Open Network tab
- 4. Search for (Ctrl-F) "xoxs-" and copy token from Query String Parameters
+ 4. Search for (Ctrl-F) "xoxs-" and copy token from Request Payload
 
 ### 2. With a legacy token
+
 1. Go to "https://api.slack.com/custom-integrations/legacy-tokens".
 2. Create token for the teams you want to have integrate with.
 
