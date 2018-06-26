@@ -1,19 +1,26 @@
-# emacs-slack
+<p align="center"><img src="https://raw.githubusercontent.com/yuya373/emacs-slack/assets/assets/slack-logo.svg?sanitize=true" width=300 height=126/></p>
+<p align="center"><b>Emacs Slack</b></p>
+<p align="center">GNU Emacs client for <a href="https://slack.com/">Slack</a>.</p>
 
-Emacs client for [Slack](https://slack.com/)
-### **[ScreenShots](https://github.com/yuya373/emacs-slack/wiki/ScreenShots)**
+---
+
+## Preview
+
+You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/ScreenShots).
 
 ## Dependencies
-- [websocket](https://github.com/ahyatt/emacs-websocket)
-- [request](https://github.com/tkf/emacs-request)
+
+- [Alert](https://github.com/jwiegley/alert)
+- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise User
+  Interface library).
+- [Emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
 - [Oauth2](https://github.com/emacsmirror/oauth2/blob/master/oauth2.el)
   - do `package install`
-- [circe](https://github.com/jorgenschaefer/circe) (for the Linewise User Interface library).
-- [Alert](https://github.com/jwiegley/alert)
-- [Emojify](https://github.com/iqbalansari/emacs-emojify) (optional)
-  - Required if you want to show emoji.
+- [request](https://github.com/tkf/emacs-request)
+- [websocket](https://github.com/ahyatt/emacs-websocket)
 
-## Configure
+## Configuration
+
 [How to get token](#how-to-get-token-the-easy-way)
 
 ```elisp
@@ -31,16 +38,15 @@ Emacs client for [Slack](https://slack.com/)
    :default t
    :client-id "aaaaaaaaaaa.00000000000"
    :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-   :token "aaaa-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
+   :token "xoxs-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
    :subscribed-channels '(test-rename rrrrr)
-   :full-and-display-names t
-   )
+   :full-and-display-names t)
 
   (slack-register-team
    :name "test"
    :client-id "3333333333.77777777777"
    :client-secret "cccccccccccccccccccccccccccccccc"
-   :token "xxxx-yyyyyyyyyy-zzzzzzzzzzz-hhhhhhhhhhh-llllllllll"
+   :token "xoxs-yyyyyyyyyy-zzzzzzzzzzz-hhhhhhhhhhh-llllllllll"
    :subscribed-channels '(hoge fuga))
 
   (evil-define-key 'normal slack-info-mode-map
@@ -73,16 +79,24 @@ Emacs client for [Slack](https://slack.com/)
   (setq alert-default-style 'notifier))
 
 ```
-
-## How to get token (the easy way)
-### 1. From a query param
+## How to get client ID
 
  1. Log into the Slack team you're interested in with a web browser
  2. Open DevTools
  3. Open Network tab
- 4. Search for (Ctrl-F) "xoxs-" and copy token from Query String Parameters
+ 4. Take the _x_id from Query String Parameters
+
+## How to get token (the easy way)
+
+### 1. From Request Payload
+
+ 1. Log into the Slack team you're interested in with a web browser
+ 2. Open DevTools
+ 3. Open Network tab
+ 4. Search for (Ctrl-F) "xoxs-" and copy token from Request Payload
 
 ### 2. With a legacy token
+
 1. Go to "https://api.slack.com/custom-integrations/legacy-tokens".
 2. Create token for the teams you want to have integrate with.
 
