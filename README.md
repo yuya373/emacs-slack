@@ -38,7 +38,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
    :default t
    :client-id "aaaaaaaaaaa.00000000000"
    :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-   :token "aaaa-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
+   :token "xoxs-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
    :subscribed-channels '(test-rename rrrrr)
    :full-and-display-names t
    )
@@ -47,7 +47,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
    :name "test"
    :client-id "3333333333.77777777777"
    :client-secret "cccccccccccccccccccccccccccccccc"
-   :token "xxxx-yyyyyyyyyy-zzzzzzzzzzz-hhhhhhhhhhh-llllllllll"
+   :token "xoxs-yyyyyyyyyy-zzzzzzzzzzz-hhhhhhhhhhh-llllllllll"
    :subscribed-channels '(hoge fuga))
 
   (evil-define-key 'normal slack-info-mode-map
