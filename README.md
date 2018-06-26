@@ -40,8 +40,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
    :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
    :token "xoxs-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
    :subscribed-channels '(test-rename rrrrr)
-   :full-and-display-names t
-   )
+   :full-and-display-names t)
 
   (slack-register-team
    :name "test"
