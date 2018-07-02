@@ -55,11 +55,34 @@
             (mapconcat #'identity user-names ", ")
             (oref r name))))
 
+(defvar slack-reaction-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-reaction-toggle)
+    (define-key keymap [mouse-1] #'slack-reaction-toggle)
+    keymap))
+
+(defun slack-reaction-toggle ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (reaction-name (oref reaction name))
+                  (reaction-users (oref reaction users))
+                  (team (oref buffer team))
+                  (self-id (oref team self-id)))
+      (if (cl-find-if #'(lambda (id) (string= id self-id)) reaction-users)
+          (slack-message-reaction-remove reaction-name
+                                         (slack-get-ts)
+                                         (oref buffer room)
+                                         team)
+        (slack-message--add-reaction buffer reaction-name))))
+
 (defmethod slack-reaction-to-string ((r slack-reaction) team)
-  (let* ((text (format ":%s:: %d" (oref r name) (oref r count))))
-    (propertize text
-                'reaction r
-                'help-echo (slack-reaction-help-text r team))))
+  (propertize (format " :%s: %d " (oref r name) (oref r count))
+              'face 'slack-message-output-reaction
+              'mouse-face 'highlight
+              'keymap slack-reaction-keymap
+              'reaction r
+              'help-echo (slack-reaction-help-text r team)))
 
 (defun slack-reaction-echo-description ()
   (slack-if-let* ((buffer slack-current-buffer)
