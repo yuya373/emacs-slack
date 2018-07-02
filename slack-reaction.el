@@ -76,13 +76,19 @@
                                          team)
         (slack-message--add-reaction buffer reaction-name))))
 
+(defun slack-reaction-help-echo (_window _string pos)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property pos 'reaction))
+                  (team (oref buffer team)))
+      (slack-reaction-help-text reaction team)))
+
 (defmethod slack-reaction-to-string ((r slack-reaction) team)
   (propertize (format " :%s: %d " (oref r name) (oref r count))
               'face 'slack-message-output-reaction
               'mouse-face 'highlight
               'keymap slack-reaction-keymap
               'reaction r
-              'help-echo (slack-reaction-help-text r team)))
+              'help-echo #'slack-reaction-help-echo))
 
 (defun slack-reaction-echo-description ()
   (slack-if-let* ((buffer slack-current-buffer)
