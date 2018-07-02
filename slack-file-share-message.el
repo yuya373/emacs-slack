@@ -46,7 +46,7 @@
            (attachment-body (slack-message-attachment-body m team))
            (body (slack-file-summary (oref m file) (slack-ts m) team))
            (thumb (slack-message-image-to-string m))
-           (reactions (slack-message-reaction-to-string m))
+           (reactions (slack-message-reaction-to-string m team))
            (thread (slack-thread-to-string m team))
            (initial-comment (slack-if-let* ((initial-comment
                                              (oref (oref m file) initial-comment)))
@@ -54,7 +54,8 @@
                                  (format "\n“ %s%s"
                                          (slack-message-body initial-comment team)
                                          (let ((str (slack-message-reaction-to-string
-                                                     initial-comment)))
+                                                     initial-comment
+                                                     team)))
                                            (if (slack-string-blankp str)
                                                ""
                                              (format "\n%s" str))))

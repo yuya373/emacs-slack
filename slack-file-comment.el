@@ -70,10 +70,10 @@
 (defmethod slack-message-reactions ((this slack-file-comment))
   (oref this reactions))
 
-(defmethod slack-message-reaction-to-string ((m slack-file-comment))
+(defmethod slack-message-reaction-to-string ((m slack-file-comment) team)
   (let ((reactions (oref m reactions)))
     (when reactions
-      (slack-format-reactions reactions))))
+      (slack-format-reactions reactions team))))
 
 (defmethod slack-equalp ((c slack-file-comment) other)
   (string= (oref c id) (oref other id)))
@@ -88,7 +88,7 @@
 (defmethod slack-message-to-string ((comment slack-file-comment) team)
   (let ((header (slack-message-header-to-string comment team))
         (body (slack-message-body-to-string comment team))
-        (reactions (slack-message-reaction-to-string comment)))
+        (reactions (slack-message-reaction-to-string comment team)))
     (propertize (slack-format-message header body reactions)
                 'file-comment-id (oref comment id))))
 
@@ -172,7 +172,7 @@
                            (format "“ %s" (slack-message-unescape-string comment
                                                                           team))))
              (header (slack-message-header-to-string this team))
-             (reactions (slack-message-reaction-to-string this)))
+             (reactions (slack-message-reaction-to-string this team)))
         (slack-format-message header text reactions)))))
 
 (defmethod slack-message-get-user-id ((m slack-file-comment-message))

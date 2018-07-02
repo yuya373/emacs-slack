@@ -340,7 +340,7 @@
                           (propertize preview-plain-text
                                       'slack-defer-face #'slack-put-preview-overlay)
                           (slack-file-comments-count-to-string this)
-                          (slack-message-reaction-to-string this)
+                          (slack-message-reaction-to-string this team)
                           (slack-file-link-info (oref this id) "\n(more info)"))))
 
 (defmethod slack-message-to-string ((file slack-file) team)
@@ -353,7 +353,7 @@
                                       (format ": %s" mimetype)))
                           (slack-file-comments-count-to-string file)
                           (slack-message-image-to-string file)
-                          (slack-message-reaction-to-string file)
+                          (slack-message-reaction-to-string file team)
                           (slack-file-link-info (oref file id) "\n(more info)"))))
 
 (defun slack-file-list ()
