@@ -61,6 +61,12 @@
                 'reaction r
                 'help-echo (slack-reaction-help-text r team))))
 
+(defun slack-reaction-echo-description ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (team (oref buffer team)))
+      (message (slack-reaction-help-text reaction team))))
+
 (defun slack-reaction-notify (payload team room)
   (let* ((user-id (plist-get payload :user))
          (reaction (plist-get payload :reaction))
