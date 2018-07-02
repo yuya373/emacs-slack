@@ -314,7 +314,14 @@
   (let* ((old-reaction (slack-reaction-find message reaction))
          (decl-p (< 1 (oref old-reaction count))))
     (if decl-p
-        (cl-decf (oref old-reaction count))
+        (with-slots (count users) old-reaction
+          (cl-decf count)
+          (setq users (cl-remove-if
+                       #'(lambda (old-user)
+                           (cl-find old-user
+                                    (oref reaction users)
+                                    :test #'string=))
+                       users)))
       (slack-reaction-delete message reaction))))
 
 (defmacro slack-with-file-comment (id file &rest body)
