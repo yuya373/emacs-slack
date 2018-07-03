@@ -47,7 +47,7 @@
   :group 'slack)
 
 (defface slack-message-output-reaction
-  '((t (:overline t)))
+  '((t (:box (:line-width 1 :style released-button))))
   "Face used to reactions."
   :group 'slack)
 
@@ -98,10 +98,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defun slack-message-put-text-property (text)
   (if text
       (propertize text 'face 'slack-message-output-text)))
-
-(defun slack-message-put-reactions-property (text)
-  (if text
-      (propertize text 'face 'slack-message-output-reaction)))
 
 (defun slack-message-put-hard (text)
   (if text
@@ -167,10 +163,10 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 
 (defun slack-format-reactions (reactions team)
-  (slack-message-put-reactions-property
-   (concat "\n"
-           (mapconcat #'(lambda (r) (slack-reaction-to-string r team))
-                      reactions " "))))
+  (concat "\n"
+          (mapconcat #'(lambda (r) (slack-reaction-to-string r team))
+                     reactions
+                     " ")))
 
 (defmethod slack-message-reaction-to-string ((m slack-message) team)
   (let ((reactions (slack-message-reactions m)))
