@@ -49,9 +49,23 @@
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
 
-(defmethod slack-reaction-to-string ((r slack-reaction))
-  (let ((text (format ":%s:: %d" (oref r name) (oref r count))))
-    (propertize text 'reaction r)))
+(defmethod slack-reaction-help-text ((r slack-reaction) team)
+  (let ((user-names (slack-reaction-user-names r team)))
+    (format "%s reacted with :%s:"
+            (mapconcat #'identity user-names ", ")
+            (oref r name))))
+
+(defmethod slack-reaction-to-string ((r slack-reaction) team)
+  (let* ((text (format ":%s:: %d" (oref r name) (oref r count))))
+    (propertize text
+                'reaction r
+                'help-echo (slack-reaction-help-text r team))))
+
+(defun slack-reaction-echo-description ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (team (oref buffer team)))
+      (message (slack-reaction-help-text reaction team))))
 
 (defun slack-reaction-notify (payload team room)
   (let* ((user-id (plist-get payload :user))

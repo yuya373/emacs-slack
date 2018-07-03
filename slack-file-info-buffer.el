@@ -87,7 +87,7 @@
            (thumb (or (and (slack-file-image-p file)
                            (slack-message-large-image-to-string file))
                       (slack-message-image-to-string file)))
-           (reactions (slack-message-reaction-to-string file))
+           (reactions (slack-message-reaction-to-string file team))
 
            (comments-count
             (slack-file-comments-count-to-string file)))

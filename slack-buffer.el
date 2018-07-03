@@ -136,17 +136,21 @@
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
+        (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
+                           (buffer-name (window-buffer window))
+                           prev-point
+                           (point)
+                           type)
+                   (oref buffer team)
+                   :level 'trace)
+
         (when (eq type 'entered)
           (unless (slack-team-mark-as-read-immediatelyp (oref buffer team))
             (slack-buffer-update-mark buffer))
+          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
 
-          (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
-                             (buffer-name (window-buffer window))
-                             prev-point
-                             (point)
-                             type)
-                     (oref buffer team)
-                     :level 'trace)))))
+        (when (eq type 'left)
+          (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
 
 (defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
