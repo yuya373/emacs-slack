@@ -298,18 +298,28 @@
   :group 'slack)
 
 (defun slack-put-preview-overlay (start end)
-  (let ((overlay (make-overlay start (1+ end))))
+  (let ((overlay (make-overlay start end)))
     (overlay-put overlay 'face 'slack-preview-face)))
 
 (defalias 'slack-put-email-body-overlay 'slack-put-preview-overlay)
 (defalias 'slack-put-code-block-overlay 'slack-put-preview-overlay)
 
 (defun slack-search-code-block ()
-  (while (re-search-forward "```" (point-max) t)
-    (let ((beg (point)))
-      (if (re-search-forward "```" (point-max) t)
-          (let ((end (point)))
-            (slack-put-code-block-overlay (- beg 3) end))))))
+  (while (re-search-forward "`\\([^`]\\|\n\\)" (point-max) t)
+    (let* ((block-begin (- (point) 4))
+           (block-p (and (<= (point-min) block-begin)
+                         (string= (buffer-substring-no-properties block-begin
+                                                                  (+ block-begin 3))
+                                  "```")))
+           (beg (or (and block-p block-begin) (- (point) 2)))
+           (end-regex (or (and block-p "```") "[^`]`[^`]")))
+
+      (goto-char (+ beg (or (and block-p 3) 1)))
+
+      (if (re-search-forward end-regex (point-max) t)
+          (let* ((end (or (and block-p (1+ (point))) (- (point) 1))))
+            (slack-put-code-block-overlay beg end)
+            (goto-char end))))))
 
 
 (defun slack-add-face-lazy ()
