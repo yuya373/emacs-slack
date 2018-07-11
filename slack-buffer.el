@@ -317,7 +317,7 @@
       (goto-char (+ beg (or (and block-p 3) 1)))
 
       (if (re-search-forward end-regex (point-max) t)
-          (let* ((end (or (and block-p (point)) (- (point) 1))))
+          (let* ((end (or (and block-p (1+ (point))) (- (point) 1))))
             (slack-put-code-block-overlay beg end)
             (goto-char end))))))
 
