@@ -32,7 +32,6 @@
 (defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
 (defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
-(defconst slack-set-active-url "https://slack.com/api/users.setActive")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
@@ -302,18 +301,6 @@
     (let ((image (slack-user-fetch-image user size team)))
       (when image
         (create-image image nil nil :ascent 80)))))
-
-(defun slack-request-set-active (team)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data "slack-request-set-active"))))
-    (slack-request
-     (slack-request-create
-      slack-set-active-url
-      team
-      :success #'on-success
-      ))))
 
 (defun slack-user-presence (user)
   (plist-get user :presence))
