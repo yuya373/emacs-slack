@@ -196,5 +196,25 @@
                        (format "%s\n" usage))
                   "")
               desc))))
+
+(cl-defmethod slack-command-run ((command slack-command) team channel
+                                 &key (text nil))
+  (let ((disp "")
+        (client-token "")
+        (command (oref command name)))
+    (cl-labels
+        ((on-success (&key data &allow-other-keys)
+                     (message "DATA: %s" data)))
+      (slack-request
+       (slack-request-create
+        "https://slack.com/api/chat.command"
+        team
+        :params (list (cons "disp" disp)
+                      (cons "client_token" client-token)
+                      (cons "command" command)
+                      (cons "channel" channel)
+                      (when text
+                        (cons "text" text)))
+        :success #'on-success)))))
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
