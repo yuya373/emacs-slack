@@ -118,5 +118,64 @@
           (send-message)
         (slack-im-open user #'send-message)))))
 
+(defclass slack-command ()
+  ((name :initarg :name :type string)
+   (type :initarg :type :type string)
+   (usage :initarg :usage :type string)
+   (desc :initarg :desc :type string)))
+
+(defclass slack-core-command (slack-command)
+  ((canonical-name :initarg :canonical_name :type string)
+   (alias-of :initarg :alias_of :type string)))
+
+(defclass slack-app-command (slack-command)
+  ((app :initarg :app :type string)))
+
+(defclass slack-service-command (slack-command)
+  ((service-name :initarg :service_name :type string)))
+
+(defun slack-command-create (command)
+  (cl-labels
+      ((slack-core-command-create
+        (payload)
+        (apply #'make-instance 'slack-core-command
+               (slack-collect-slots 'slack-core-command payload)))
+       (slack-app-command-create
+        (payload)
+        (apply #'make-instance 'slack-app-command
+               (slack-collect-slots 'slack-app-command payload)))
+       (slack-service-command-create
+        (payload)
+        (apply #'make-instance 'slack-service-command
+               (slack-collect-slots 'slack-service-command payload))))
+    (let ((type (plist-get command :type)))
+      (cond
+       ((string= type "core")
+        (slack-core-command-create command))
+       ((string= type "app")
+        (slack-app-command-create command))
+       ((string= type "service")
+        (slack-service-command-create command))
+       (t (apply #'make-instance 'slack-command command))))))
+
+(defun slack-command-list-update (&optional team)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-commands-list-request")
+           (let ((commands (mapcar #'(lambda (command) (slack-command-create command))
+                                   (cl-remove-if-not #'listp
+                                                     (plist-get data :commands)))))
+             (oset team commands commands)
+             (slack-log "Slack Command List Updated" team :level 'info)))))
+      (slack-request
+       (slack-request-create
+        "https://slack.com/api/commands.list"
+        team
+        :type "POST"
+        :success #'on-success)))))
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

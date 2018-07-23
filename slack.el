@@ -175,6 +175,7 @@ never means never show typing indicator."
                    (slack-im-list-update team)
                    (slack-bot-list-update team)
                    (slack-request-emoji team)
+                   (slack-command-list-update team)
                    (slack-update-modeline)))
        (slack-ws-open team :on-open #'on-open)))))
 
