@@ -168,18 +168,19 @@ One of 'info, 'debug"
                                                     (oref team name))
                                 collect (concat "#" (oref team name))))
                       (slash
-                       (cl-loop for com in slack-slash-commands-available
-                                if (string-prefix-p content com)
-                                collect (concat "/" com))
+                       (cl-loop for command in (oref slack-current-team commands)
+                                if (string-prefix-p (concat "/" content)
+                                                    (oref command name))
+                                collect (oref command name))
                        ))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (slash
           (company-doc-buffer
-           (documentation
-            (slack-slash-commands-find (substring arg 1))
-            t)))))
-      )))
+           (let* ((team slack-current-team)
+                  (command (slack-command-find arg team)))
+             (when command
+               (slack-command-company-doc-string command team))))))))))
 
 (defun slack-get-ts ()
   (get-text-property 0 'ts (thing-at-point 'line)))

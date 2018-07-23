@@ -121,12 +121,12 @@
 (defclass slack-command ()
   ((name :initarg :name :type string)
    (type :initarg :type :type string)
-   (usage :initarg :usage :type string)
-   (desc :initarg :desc :type string)))
+   (usage :initarg :usage :type string :initform "")
+   (desc :initarg :desc :type string :initform "")
+   (alias-of :initarg :alias_of :type string)))
 
 (defclass slack-core-command (slack-command)
-  ((canonical-name :initarg :canonical_name :type string)
-   (alias-of :initarg :alias_of :type string)))
+  ((canonical-name :initarg :canonical_name :type string)))
 
 (defclass slack-app-command (slack-command)
   ((app :initarg :app :type string)))
@@ -177,5 +177,24 @@
         team
         :type "POST"
         :success #'on-success)))))
+
+(defun slack-command-find (name team)
+  (let ((commands (oref team commands)))
+    (cl-find-if #'(lambda (command) (string= name
+                                             (oref command name)))
+                commands)))
+
+(defmethod slack-command-company-doc-string ((this slack-command) team)
+  (if (slot-boundp this 'alias-of)
+      (let ((command (slack-command-find (oref this alias-of)
+                                         team)))
+        (when command
+          (slack-command-company-doc-string command team)))
+    (with-slots (usage desc) this
+      (format "%s%s"
+              (or (and (< 0 (length usage))
+                       (format "%s\n" usage))
+                  "")
+              desc))))
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
