@@ -23,20 +23,6 @@
 ;;
 
 ;;; Code:
-(defvar slack-slash-commands-map
-  '(("active" . slack-slash-commands-active)
-    ("away" . slack-slash-commands-away)
-    ("dnd" . slack-slash-commands-dnd)
-    ("leave" . slack-slash-commands-leave)
-    ("join" . slack-slash-commands-join)
-    ("remind" . slack-slash-commands-remind)
-    ("shrug" . slack-slash-commands-shrug)
-    ("status" . slack-slash-commands-status)
-    ("who" . slack-slash-commands-who)
-    ("dm" . slack-slash-commands-dm)))
-
-(defvar slack-slash-commands-available
-  (mapcar #'car slack-slash-commands-map))
 
 (defun slack-slash-commands-parse (text)
   (if (string-prefix-p "/" text)
@@ -46,21 +32,6 @@
         (when command
           (cons command (cdr (split-string text " ")))))))
 
-(defun slack-slash-commands-find (command)
-  (cdr (cl-assoc command slack-slash-commands-map :test #'string=)))
-
-(defun slack-slash-commands-execute (command team)
-  (let ((command (car command))
-        (args (cdr command)))
-    (funcall (slack-slash-commands-find command) team args)))
-
-(defun slack-slash-commands-active (team _args)
-  ;; https://api.slack.com/docs/presence-and-status#user_presence
-  ;; Setting presence back to auto indicates that the automatic status should be used instead. There's no way to force a user status to active.
-  (slack-request-set-presence team "auto"))
-
-(defun slack-slash-commands-away (team _args)
-  (slack-request-set-presence team))
 
 (defun slack-slash-commands-leave (team _args)
   (slack-channel-leave team t))
@@ -84,19 +55,6 @@
   "[your message]"
   (slack-message--send (format "%s ¯\\_(ツ)_/¯"
                                (mapconcat #'identity messages " "))))
-
-(defun slack-slash-commands-status (team args)
-  "[clear] or [:your_new_status_emoji:] [your new status message]"
-  (let ((emoji (car args))
-        (text (cdr args)))
-    (if (string= emoji "clear")
-        (slack-user-set-status-request team "" "")
-      (if (string-prefix-p ":" emoji)
-          (slack-user-set-status-request team emoji (mapconcat #'identity text " "))
-        (slack-user-set-status-request team "" (mapconcat #'identity args " "))))))
-
-(defun slack-slash-commands-who (_team _args)
-  (slack-room-user-select))
 
 (defun slack-slash-commands-dm (team args)
   "@user [your message]"

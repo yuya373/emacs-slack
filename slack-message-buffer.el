@@ -386,10 +386,6 @@
       (let ((buf (slack-create-user-profile-buffer team user-id)))
         (slack-buffer-display buf)))))
 
-(defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
-  (with-slots (team) this
-    (slack-slash-commands-execute command team)))
-
 (defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
   (when (oref this marker-overlay)
     (delete-overlay (oref this marker-overlay))))
