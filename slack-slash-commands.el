@@ -145,19 +145,28 @@
   (let ((disp "")
         (client-token "")
         (command (oref command name)))
-    (cl-labels
-        ((on-success (&key data &allow-other-keys)
-                     (message "DATA: %s" data)))
-      (slack-request
-       (slack-request-create
-        "https://slack.com/api/chat.command"
-        team
-        :params (list (cons "disp" disp)
-                      (cons "client_token" client-token)
-                      (cons "command" command)
-                      (cons "channel" channel)
-                      (when text
-                        (cons "text" text)))
-        :success #'on-success)))))
+    (cond
+     ((or (string= command "/join")
+          (string= command "/open")) (error "/join and /open are not supported yet"))
+     (t
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-command-run")
+                        (slack-if-let* ((response (plist-get data :response)))
+                            (message "%s" (slack-message-unescape-string response
+                                                                         team))))))
+        (slack-request
+         (slack-request-create
+          "https://slack.com/api/chat.command"
+          team
+          :params (list (cons "disp" disp)
+                        (cons "client_token" client-token)
+                        (cons "command" command)
+                        (cons "channel" channel)
+                        (when text
+                          (cons "text" text)))
+          :success #'on-success)))))))
+
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here
