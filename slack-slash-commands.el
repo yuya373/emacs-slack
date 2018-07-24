@@ -24,14 +24,15 @@
 
 ;;; Code:
 
-(defun slack-slash-commands-parse (text)
-  (if (string-prefix-p "/" text)
-      (let* ((maybe-command (car (split-string (substring text 1) " ")))
-             (command (cl-find maybe-command slack-slash-commands-available
-                               :test #'string=)))
-        (when command
-          (cons command (cdr (split-string text " ")))))))
-
+(defun slack-slash-commands-parse (text team)
+  "Return (command . arguments) or nil."
+  (when (string-prefix-p "/" text)
+    (let* ((tokens (split-string text " "))
+           (maybe-command (car tokens))
+           (command (slack-command-find maybe-command team)))
+      (when command
+        (cons command
+              (mapconcat #'identity (cdr tokens) " "))))))
 
 (defun slack-slash-commands-leave (team _args)
   (slack-channel-leave team t))

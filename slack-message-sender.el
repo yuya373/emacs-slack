@@ -93,9 +93,14 @@
   (slack-link-channels (slack-link-users message team) team))
 
 (defun slack-message--send (message)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-if-let* ((command (slack-slash-commands-parse message)))
-          (slack-buffer-execute-slash-command buf command)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (oref buf team))
+                  (room (oref buf room)))
+      (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
+          (slack-command-run (car command-and-arg)
+                             team
+                             (oref room id)
+                             :text (cdr command-and-arg))
         (slack-buffer-send-message buf message))))
 
 (defun slack-message-send-internal (message channel-id team)
