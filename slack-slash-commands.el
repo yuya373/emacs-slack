@@ -51,28 +51,11 @@
         (cons command
               (mapconcat #'identity (cdr tokens) " "))))))
 
-(defun slack-slash-commands-leave (team _args)
-  (slack-channel-leave team t))
-
 (defun slack-slash-commands-join (team _args)
   (slack-channel-join team t))
 
 (defun slack-slash-commands-remind (team _args)
   (slack-reminder-add team))
-
-(defun slack-slash-commands-dnd (team args)
-  "[some description of time, see `slack-parse-time-string']"
-  (let ((time (car args))
-        (user (slack-user--find (oref team self-id) team)))
-    (if (or (not (slack-user-dnd-in-range-p user))
-            time)
-        (slack-request-dnd-set-snooze team time)
-      (slack-request-dnd-end-dnd team))))
-;; ¯\_(ツ)_/¯
-(defun slack-slash-commands-shrug (_team messages)
-  "[your message]"
-  (slack-message--send (format "%s ¯\\_(ツ)_/¯"
-                               (mapconcat #'identity messages " "))))
 
 (defun slack-slash-commands-dm (team args)
   "@user [your message]"
