@@ -410,12 +410,26 @@
       (slack-message-deleted message room team)))
 
 (defun slack-ws-update-message (payload team)
-  (let ((m (slack-message-create payload team))
-        (bot_id (plist-get payload :bot_id)))
-    (when m
-      (if (and bot_id (not (slack-find-bot bot_id team)))
-          (slack-bot-info-request bot_id team #'(lambda (team) (slack-message-update m team)))
-        (slack-message-update m team)))))
+  (let ((subtype (plist-get payload :subtype)))
+    (if (string= subtype "bot_message")
+        (slack-ws-update-bot-message payload team)
+      (slack-message-update (slack-message-create payload team)
+                            team))))
+
+(defun slack-ws-update-bot-message (payload team)
+  (let* ((bot-id (plist-get payload :bot_id))
+         (username (plist-get payload :username))
+         (user (plist-get payload :user))
+         (bot (or (slack-find-bot bot-id team)
+                  (slack-find-bot-by-name username team)
+                  (slack-user--find user team)))
+         (message (slack-message-create payload team)))
+    (if bot
+        (slack-message-update message team)
+      (slack-bot-info-request bot-id
+                              team
+                              #'(lambda (team)
+                                  (slack-message-update message team))))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))

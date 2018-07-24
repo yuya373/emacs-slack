@@ -35,6 +35,12 @@
                   (string= id (plist-get bot :id)))
                 bots)))
 
+(defun slack-find-bot-by-name (name team)
+  (with-slots (bots) team
+    (cl-find-if #'(lambda (bot)
+                    (string= name (plist-get bot :name)))
+                bots)))
+
 (defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))
         (oref m username))
