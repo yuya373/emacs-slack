@@ -54,29 +54,6 @@
 (defun slack-slash-commands-join (team _args)
   (slack-channel-join team t))
 
-(defun slack-slash-commands-remind (team _args)
-  (slack-reminder-add team))
-
-(defun slack-slash-commands-dm (team args)
-  "@user [your message]"
-  (let* ((user-name (substring (car args) 1))
-         (text (mapconcat #'identity (cdr args) " "))
-         (user (slack-user-find-by-name user-name team)))
-    (unless user
-      (error "Invalid user name: %s" (car args)))
-    (cl-labels
-        ((send-message
-          ()
-          (slack-message-send-internal
-           text
-           (oref (slack-im-find-by-user-id (plist-get user :id)
-                                           team)
-                 id)
-           team)))
-      (if (slack-im-find-by-user-id (plist-get user :id) team)
-          (send-message)
-        (slack-im-open user #'send-message)))))
-
 (defun slack-command-create (command)
   (cl-labels
       ((slack-core-command-create
