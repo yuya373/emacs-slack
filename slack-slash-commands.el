@@ -23,6 +23,23 @@
 ;;
 
 ;;; Code:
+(require 'eieio)
+
+(defclass slack-command ()
+  ((name :initarg :name :type string)
+   (type :initarg :type :type string)
+   (usage :initarg :usage :type string :initform "")
+   (desc :initarg :desc :type string :initform "")
+   (alias-of :initarg :alias_of :type string)))
+
+(defclass slack-core-command (slack-command)
+  ((canonical-name :initarg :canonical_name :type string)))
+
+(defclass slack-app-command (slack-command)
+  ((app :initarg :app :type string)))
+
+(defclass slack-service-command (slack-command)
+  ((service-name :initarg :service_name :type string)))
 
 (defun slack-slash-commands-parse (text team)
   "Return (command . arguments) or nil."
@@ -76,22 +93,6 @@
       (if (slack-im-find-by-user-id (plist-get user :id) team)
           (send-message)
         (slack-im-open user #'send-message)))))
-
-(defclass slack-command ()
-  ((name :initarg :name :type string)
-   (type :initarg :type :type string)
-   (usage :initarg :usage :type string :initform "")
-   (desc :initarg :desc :type string :initform "")
-   (alias-of :initarg :alias_of :type string)))
-
-(defclass slack-core-command (slack-command)
-  ((canonical-name :initarg :canonical_name :type string)))
-
-(defclass slack-app-command (slack-command)
-  ((app :initarg :app :type string)))
-
-(defclass slack-service-command (slack-command)
-  ((service-name :initarg :service_name :type string)))
 
 (defun slack-command-create (command)
   (cl-labels
