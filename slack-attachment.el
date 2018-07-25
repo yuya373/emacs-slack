@@ -50,6 +50,35 @@
    (channel-name :initarg :channel_name :initform nil)
    (from-url :initarg :from_url :initform nil)))
 
+(defclass slack-attachment-field ()
+  ((title :initarg :title :initform nil)
+   (value :initarg :value :initform nil)
+   (short :initarg :short :initform nil)))
+
+(defun slack-attachment-create (payload)
+  (let ((properties payload))
+    (setq properties
+          (plist-put properties :fields
+                     (mapcar #'(lambda (field)
+                                 (apply #'slack-attachment-field
+                                        (slack-collect-slots 'slack-attachment-field
+                                                             field)))
+                             (append (plist-get payload :fields) nil))))
+    (setq properties
+          (plist-put properties :actions
+                     (mapcar #'slack-attachment-action-create
+                             (plist-get payload :actions))))
+
+    (if (numberp (plist-get payload :ts))
+        (setq properties
+              (plist-put properties :ts (number-to-string (plist-get payload :ts)))))
+
+    (if (plist-get payload :is_share)
+        (apply #'slack-shared-message "shared-attachment"
+               (slack-collect-slots 'slack-shared-message properties))
+      (apply #'slack-attachment "attachment"
+             (slack-collect-slots 'slack-attachment properties)))))
+
 (defmethod slack-image-spec ((this slack-attachment))
   (with-slots (image-url image-height image-width) this
     (when image-url

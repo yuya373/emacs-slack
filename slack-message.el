@@ -29,6 +29,7 @@
 (require 'slack-util)
 (require 'slack-reaction)
 (require 'slack-request)
+(require 'slack-attachment)
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
@@ -79,11 +80,6 @@
    (username :initarg :username :type string :initform "")
    (icons :initarg :icons)))
 
-(defclass slack-attachment-field ()
-  ((title :initarg :title :initform nil)
-   (value :initarg :value :initform nil)
-   (short :initarg :short :initform nil)))
-
 (defclass slack-file-comment-message (slack-message)
   ((file :initarg :file :initform nil)
    (comment :initarg :comment :initform nil)))
@@ -120,26 +116,6 @@
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
-
-(defun slack-attachment-create (payload)
-  (let ((properties payload))
-    (setq properties
-          (plist-put properties :fields
-                     (mapcar #'(lambda (field)
-                                 (apply #'slack-attachment-field
-                                        (slack-collect-slots 'slack-attachment-field
-                                                             field)))
-                             (append (plist-get payload :fields) nil))))
-
-    (if (numberp (plist-get payload :ts))
-        (setq properties
-              (plist-put properties :ts (number-to-string (plist-get payload :ts)))))
-
-    (if (plist-get payload :is_share)
-        (apply #'slack-shared-message "shared-attachment"
-               (slack-collect-slots 'slack-shared-message properties))
-      (apply #'slack-attachment "attachment"
-             (slack-collect-slots 'slack-attachment properties)))))
 
 (defmethod slack-message-set-attachments ((m slack-message) payload)
   (let ((attachments (append (plist-get payload :attachments) nil)))
