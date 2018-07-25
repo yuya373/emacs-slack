@@ -898,6 +898,27 @@ TEAM is one of `slack-teams'"
                                       (oref team users))))))
 
 ;; [star_added event | Slack](https://api.slack.com/events/star_added)
+(defun slack-ws-handle-star-added-to-file (file-id team)
+  (let ((file (slack-file-find file-id team)))
+    (cl-labels
+        ((update (&rest _args)
+                 (slack-with-file file-id team
+                   (slack-message-star-added file)
+                   (slack-message-update file team)
+
+                   (cl-loop for channel in (slack-file-channel-ids file)
+                            do (slack-if-let*
+                                   ((channel (slack-room-find channel team))
+                                    (message (slack-room-find-file-share-message
+                                              channel file-id)))
+                                   (progn
+                                     (slack-message-star-added message
+                                                               file-id)
+                                     (slack-message-update message
+                                                           team t t)))))))
+      (if file (update)
+        (slack-file-request-info file-id 1 team #'update)))))
+
 (defun slack-ws-handle-star-added (payload team)
   (let* ((item (plist-get payload :item))
          (item-type (plist-get item :type)))
@@ -918,28 +939,17 @@ TEAM is one of `slack-teams'"
                            (slack-message-update file-comment file team))
 
                          (cl-loop for channel in (slack-file-channel-ids file)
-                                  do (slack-if-let* ((channel (slack-room-find channel team))
-                                                     (message (slack-room-find-file-comment-message
-                                                               channel comment-id)))
+                                  do (slack-if-let*
+                                         ((channel (slack-room-find channel team))
+                                          (message
+                                           (slack-room-find-file-comment-message
+                                            channel comment-id)))
                                          (update-message message))))))
             (if file (update)
               (slack-file-request-info file-id 1 team #'update)))))
        ((string= item-type "file")
-        (let* ((file-id (plist-get (plist-get item :file) :id))
-               (file (slack-file-find file-id team)))
-          (cl-labels
-              ((update (&rest _args)
-                       (slack-with-file file-id team
-                         (slack-message-star-added file)
-                         (slack-message-update file team)
-
-                         (cl-loop for channel in (slack-file-channel-ids file)
-                                  do (slack-if-let* ((channel (slack-room-find channel team))
-                                                     (message (slack-room-find-file-share-message
-                                                               channel (oref file id))))
-                                         (update-message message))))))
-            (if file (update)
-              (slack-file-request-info file-id 1 team #'update)))))
+        (slack-ws-handle-star-added-to-file (plist-get (plist-get item :file) :id)
+                                            team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (ts (plist-get (plist-get item :message) :ts))
@@ -948,6 +958,28 @@ TEAM is one of `slack-teams'"
     (slack-if-let* ((star (oref team star)))
         (slack-star-add star item team))))
 
+
+;; [2018-07-25 16:30:03] (:type star_added :user U1013370U :item (:type file :file (:id FBWDT9VH8) :date_create 1532503802 :file_id FBWDT9VH8 :user_id USLACKBOT) :event_ts 1532503802.000378)
+(defun slack-ws-handle-star-removed-from-file (file-id team)
+  (let ((file (slack-file-find file-id team)))
+    (cl-labels
+        ((update (&rest _args)
+                 (slack-with-file file-id team
+                   (slack-message-star-removed file)
+                   (slack-message-update file team)
+
+                   (cl-loop for channel in (slack-file-channel-ids file)
+                            do (slack-if-let*
+                                   ((channel (slack-room-find channel team))
+                                    (message (slack-room-find-file-share-message
+                                              channel file-id)))
+                                   (progn
+                                     (slack-message-star-removed message
+                                                                 file-id)
+                                     (slack-message-update message
+                                                           team t t)))))))
+      (if file (update)
+        (slack-file-request-info file-id 1 team #'update)))))
 
 (defun slack-ws-handle-star-removed (payload team)
   (let* ((item (plist-get payload :item))
@@ -976,21 +1008,8 @@ TEAM is one of `slack-teams'"
             (if file (update)
               (slack-file-request-info file-id 1 team #'update)))))
        ((string= item-type "file")
-        (let* ((file-id (plist-get (plist-get item :file) :id))
-               (file (slack-file-find file-id team)))
-          (cl-labels
-              ((update (&rest _args)
-                       (slack-with-file file-id team
-                         (slack-message-star-removed file)
-                         (slack-message-update file team)
-
-                         (cl-loop for channel in (slack-file-channel-ids file)
-                                  do (slack-if-let* ((channel (slack-room-find channel team))
-                                                     (message (slack-room-find-file-share-message
-                                                               channel (oref file id))))
-                                         (update-message message))))))
-            (if file (update)
-              (slack-file-request-info file-id 1 team #'update)))))
+        (slack-ws-handle-star-removed-from-file (plist-get (plist-get item :file) :id)
+                                                team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (ts (plist-get (plist-get item :message) :ts))

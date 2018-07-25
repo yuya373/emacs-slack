@@ -32,6 +32,10 @@
   ((upload :initarg :upload)
    (user :initarg :user :initform nil)))
 
+(defmethod slack-find-file ((this slack-file-message) file-id)
+  (with-slots (files) this
+    (cl-find-if #'(lambda (file) (string= file-id (oref file id)))
+                files)))
 
 (defmethod slack-message-image-to-string ((m slack-file-share-message))
   (slack-image-string (slack-file-thumb-image-spec (oref m file))))
@@ -90,14 +94,20 @@
       (cons "file_comment" file-comment-id)
     (cons "file" (oref (oref m file) id))))
 
-(defmethod slack-message-star-added ((m slack-file-share-message))
-  (slack-message-star-added (oref m file)))
+(defmethod slack-message-star-added ((m slack-file-share-message) file-id)
+  (slack-if-let* ((file (slack-find-file m file-id)))
+      (slack-message-star-added file)))
 
-(defmethod slack-message-star-removed ((m slack-file-share-message))
-  (slack-message-star-removed (oref m file)))
+(defmethod slack-message-star-removed ((m slack-file-share-message) file-id)
+  (slack-if-let* ((file (slack-find-file m file-id)))
+      (slack-message-star-removed file)))
 
 (defmethod slack-message-star-api-params ((m slack-file-share-message))
-  (slack-message-star-api-params (oref m file)))
+  (with-slots (files) m
+    (slack-if-let* ((file-id (get-text-property (point) 'file-id))
+                    (file (slack-find-file m file-id)))
+        (slack-message-star-api-params file)
+      (error "FILE-ID not found.  execute on the file"))))
 
 (defmethod slack-reaction-find ((this slack-file-share-message) reaction)
   (slack-reaction-find (oref this file) reaction))
