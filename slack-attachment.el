@@ -24,6 +24,8 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
+(require 'slack-request)
 
 (defclass slack-attachment ()
   ((fallback :initarg :fallback :initform nil)
@@ -45,6 +47,7 @@
    (ts :initarg :ts :initform nil)
    (author-subname :initarg :author_subname :initform nil)
    (callback-id :initarg :callback_id :initform nil)
+   (id :initarg :id :initform nil)
    (actions :initarg :actions :initform '())))
 
 (defclass slack-shared-message (slack-attachment)
@@ -64,7 +67,8 @@
    (dismiss-text :initarg :dismiss_text :type string :initform "Cancel")))
 
 (defclass slack-attachment-action ()
-  ((name :initarg :name :type string)
+  ((id :initarg :id :type string)
+   (name :initarg :name :type string)
    (text :initarg :text :type string)
    (type :initarg :type :type string)
    (value :initarg :value :initform nil)
@@ -72,38 +76,116 @@
             :type (or null slack-attachment-action-confirmation))
    (style :initarg :style :type string :initform "default")))
 
+(defun slack-attachment-action-create (payload)
+  (let ((properties payload))
+    (when (plist-get payload :confirm)
+      (setq properties (plist-put properties
+                                  :confirm
+                                  (apply #'make-instance
+                                         'slack-attachment-action-confirmation
+                                         (slack-collect-slots
+                                          'slack-attachment-action-confirmation
+                                          (plist-get payload :confirm))))))
+    (apply #'make-instance 'slack-attachment-action
+           (slack-collect-slots 'slack-attachment-action properties))))
+
 (defun slack-attachment-create (payload)
   (let ((properties payload))
-    (setq properties
-          (plist-put properties :fields
+    (setq payload
+          (plist-put payload :fields
                      (mapcar #'(lambda (field)
                                  (apply #'slack-attachment-field
                                         (slack-collect-slots 'slack-attachment-field
                                                              field)))
                              (append (plist-get payload :fields) nil))))
-    (setq properties
-          (plist-put properties :actions
+    (setq payload
+          (plist-put payload :actions
                      (mapcar #'slack-attachment-action-create
                              (plist-get payload :actions))))
 
-    (if (numberp (plist-get payload :ts))
-        (setq properties
-              (plist-put properties :ts (number-to-string (plist-get payload :ts)))))
+    (when (numberp (plist-get payload :ts))
+      (setq payload
+            (plist-put payload :ts (number-to-string (plist-get payload :ts)))))
+
+    ;; (message "PAYLOAD: %s" payload)
 
     (if (plist-get payload :is_share)
         (apply #'slack-shared-message "shared-attachment"
-               (slack-collect-slots 'slack-shared-message properties))
+               (slack-collect-slots 'slack-shared-message payload))
       (apply #'slack-attachment "attachment"
-             (slack-collect-slots 'slack-attachment properties)))))
+             (slack-collect-slots 'slack-attachment payload)))))
 
 (defmethod slack-image-spec ((this slack-attachment))
   (with-slots (image-url image-height image-width) this
     (when image-url
       (list image-url image-width image-height slack-image-max-height))))
 
+(defface slack-message-action-primary-face
+  '((t (:box (:line-width 1 :style released-button)
+             :foreground "#2aa198")))
+  "Face used to primary action."
+  :group 'slack)
+
+(defface slack-message-action-danger-face
+  '((t (:box (:line-width 1 :style released-button)
+             :foreground "#FF6E64")))
+  "Face used to danger action."
+  :group 'slack)
+
+(defvar slack-attachment-action-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-attachment-action-run)
+    (define-key keymap [mouse-1] #'slack-attachment-action-run)
+    keymap))
+
+(defun slack-attachment-action-run ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (room (oref buffer room))
+                  (team (oref buffer team))
+                  (payload (get-text-property (point) 'payload))
+                  (ts (slack-get-ts)))
+      (progn
+        (setq payload (cons (cons "channel_id" (oref room id)) payload))
+        (setq payload (cons (cons "message_ts" ts) payload))
+        (cl-labels
+            ((on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-attachment-action-run")
+                          (message "DATA: %s" data))))
+          (slack-request
+           (slack-request-create
+            "https://slack.com/api/chat.attachmentAction"
+            team
+            :type "POST"
+            :params (list (cons "payload" payload))
+            :success #'on-success))))))
+
+(defmethod slack-attachment-action-to-string ((action slack-attachment-action)
+                                              attachment team)
+  (with-slots (callback-id (attachment-id id)) attachment
+    (with-slots (id name text type value style) action
+      (let ((face (or (and (string= "danger" style)
+                           'slack-message-action-danger-face)
+                      (and (string= "primary" style)
+                           'slack-message-action-primary-face)
+                      'slack-message-action-face))
+            (payload (list (cons "attachment_id" (number-to-string attachment-id))
+                           (cons "callback_id" callback-id)
+                           (cons "actions" (list (cons "id" id)
+                                                 (cons "name" name)
+                                                 (cons "text" text)
+                                                 (cons "type" type)
+                                                 (cons "value" value)
+                                                 (cons "style" style))))))
+        (propertize text
+                    'face face
+                    'payload payload
+                    'keymap slack-attachment-action-keymap)))))
+
 (defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots
-      (fallback text ts color from-url footer fields pretext) attachment
+      (fallback text ts color from-url footer fields pretext actions) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
            (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
                     pad-raw))
@@ -121,6 +203,13 @@
                                                                                (format "\t%s" pad)))
                                          fields
                                          (format "\n\t%s\n" pad))))
+           (actions (if actions
+                        (mapconcat #'(lambda (action)
+                                       (slack-attachment-action-to-string action
+                                                                          attachment
+                                                                          team))
+                                   actions
+                                   " ")))
            (footer (if footer
                        (format "%s\t%s"
                                pad
@@ -137,11 +226,12 @@
                 (slack-string-blankp fields)
                 (slack-string-blankp footer))
            fallback
-         (format "%s%s%s%s%s%s"
+         (format "%s%s%s%s%s%s%s"
                  (or (and header (format "\t%s\n" header)) "")
                  (or (and pretext (format "\t%s\n" pretext)) "")
                  (or (and body (format "\t%s" body)) "")
                  (or (and fields fields) "")
+                 (or (and actions actions) "")
                  (or (and footer (format "\n\t%s" footer)) "")
                  (or (and image (format "\n%s" image)) "")))
        team))))
