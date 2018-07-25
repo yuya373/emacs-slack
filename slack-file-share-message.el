@@ -92,7 +92,7 @@
 (defmethod slack-message-get-param-for-reaction ((m slack-file-share-message))
   (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
       (cons "file_comment" file-comment-id)
-    (cons "file" (oref (oref m file) id))))
+    (cons "file" (get-text-property (point) 'file-id))))
 
 (defmethod slack-message-star-added ((m slack-file-share-message) file-id)
   (slack-if-let* ((file (slack-find-file m file-id)))
@@ -109,32 +109,27 @@
         (slack-message-star-api-params file)
       (error "FILE-ID not found.  execute on the file"))))
 
-(defmethod slack-reaction-find ((this slack-file-share-message) reaction)
-  (slack-reaction-find (oref this file) reaction))
-
 (defmethod slack-reaction-delete ((this slack-file-share-message) reaction)
   (slack-reaction-delete (oref this file) reaction))
 
-(defmethod slack-reaction-push ((this slack-file-share-message) reaction)
-  (slack-reaction-push (oref this file) reaction))
-
 (defmethod slack-message-append-reaction ((m slack-file-share-message) reaction
-                                          &optional type)
-  (if (string= type "file_comment")
-      (slack-if-let* ((old-reaction (slack-reaction-find (oref (oref m file) initial-comment)
-                                                         reaction)))
+                                          &optional type file-id)
+  (let ((file (slack-find-file m file-id)))
+    (if (string= type "file_comment")
+        (slack-if-let*
+            ((old-reaction (slack-reaction-find (oref file initial-comment) reaction)))
+            (slack-reaction-join old-reaction reaction)
+          (slack-reaction-push (oref file initial-comment) reaction))
+      (slack-if-let* ((old-reaction (slack-reaction-find file reaction)))
           (slack-reaction-join old-reaction reaction)
-        (slack-reaction-push (oref (oref m file) initial-comment) reaction))
-    (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
-        (slack-reaction-join old-reaction reaction)
-      (slack-reaction-push m reaction))))
+        (slack-reaction-push file reaction)))))
 
 (defmethod slack-message-pop-reaction ((m slack-file-share-message) reaction
-                                       &optional type)
+                                       &optional type file-id)
   (if (string= type "file_comment")
       (slack-message--pop-reaction (oref (oref m file) initial-comment)
                                    reaction)
-    (slack-message--pop-reaction m reaction)))
+    (slack-message--pop-reaction (slack-find-file m file-id) reaction)))
 
 (defmethod slack-message-changed--copy ((this slack-file-share-message) other)
   (let ((changed (call-next-method)))

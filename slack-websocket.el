@@ -438,6 +438,30 @@
              (slack-message-create payload team)
              team))))))
 
+(defun slack-ws-handle-reaction-added-to-file (file-id reaction team)
+  (let* ((file (slack-file-find file-id team))
+         (item-type "file"))
+    (cl-labels
+        ((update (&rest _args)
+                 (slack-with-file file-id team
+                   (slack-message-append-reaction file reaction)
+                   (slack-message-update file team)
+                   (cl-loop for channel in (slack-file-channel-ids file)
+                            do (slack-if-let*
+                                   ((channel (slack-room-find channel team))
+                                    (message (slack-room-find-file-share-message
+                                              channel (oref file id))))
+
+                                   (progn
+                                     (slack-message-append-reaction message
+                                                                    reaction
+                                                                    item-type
+                                                                    file-id)
+                                     (slack-message-update message
+                                                           team t t)))))))
+      (if file (update)
+        (slack-file-request-info file-id 1 team #'update)))))
+
 (defun slack-ws-handle-reaction-added (payload team)
   (let* ((item (plist-get payload :item))
          (item-type (plist-get item :type))
@@ -474,27 +498,37 @@
             (if file (update)
               (slack-file-request-info file-id 1 team #'update)))))
        ((string= item-type "file")
-        (let* ((file-id (plist-get item :file))
-               (file (slack-file-find file-id team)))
-          (cl-labels
-              ((update (&rest _args)
-                       (slack-with-file file-id team
-                         (slack-message-append-reaction file reaction)
-                         (slack-message-update file team)
-                         (cl-loop for channel in (slack-file-channel-ids file)
-                                  do (slack-if-let*
-                                         ((channel (slack-room-find channel team))
-                                          (message (slack-room-find-file-share-message
-                                                    channel (oref file id))))
-                                         (update-message message))))))
-            (if file (update)
-              (slack-file-request-info file-id 1 team #'update)))))
+        (slack-ws-handle-reaction-added-to-file (plist-get item :file)
+                                                reaction
+                                                team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
               (slack-reaction-notify payload team room))))))))
+
+(defun slack-ws-handle-reaction-removed-from-file (file-id reaction team)
+  (let* ((file (slack-file-find file-id team))
+         (item-type "file"))
+    (cl-labels
+        ((update (&rest _args)
+                 (slack-with-file file-id team
+                   (slack-message-pop-reaction file reaction)
+                   (slack-message-update file team)
+                   (cl-loop for channel in (slack-file-channel-ids file)
+                            do (slack-if-let*
+                                   ((channel (slack-room-find channel team))
+                                    (message (slack-room-find-file-share-message
+                                              channel (oref file id))))
+                                   (progn
+                                     (slack-message-pop-reaction message
+                                                                 reaction
+                                                                 item-type
+                                                                 file-id)
+                                     (slack-message-update message team t t)))))))
+      (if file (update)
+        (slack-file-request-info file-id 1 team #'update)))))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (let* ((item (plist-get payload :item))
@@ -533,21 +567,9 @@
             (if file (update)
               (slack-file-request-info file-id 1 team #'update)))))
        ((string= item-type "file")
-        (let* ((file-id (plist-get item :file))
-               (file (slack-file-find file-id team)))
-          (cl-labels
-              ((update (&rest _args)
-                       (slack-with-file file-id team
-                         (slack-message-pop-reaction file reaction)
-                         (slack-message-update file team)
-                         (cl-loop for channel in (slack-file-channel-ids file)
-                                  do (slack-if-let*
-                                         ((channel (slack-room-find channel team))
-                                          (message (slack-room-find-file-share-message
-                                                    channel (oref file id))))
-                                         (update-message message))))))
-            (if file (update)
-              (slack-file-request-info file-id 1 team #'update)))))
+        (slack-ws-handle-reaction-removed-from-file (plist-get item :file)
+                                                    reaction
+                                                    team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))

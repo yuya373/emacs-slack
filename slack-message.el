@@ -293,24 +293,18 @@
 (defmethod slack-reaction-find ((m slack-message) reaction)
   (slack-reaction--find (oref m reactions) reaction))
 
-(defmethod slack-reaction-find ((m slack-file-message) reaction)
-  (slack-reaction-find (oref m file) reaction))
-
 (defmethod slack-message-reactions ((this slack-message))
   (oref this reactions))
-
-(defmethod slack-message-reactions ((this slack-file-message))
-  (slack-message-reactions (oref this file)))
 
 (defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (oref m ts)))
 
-(defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type)
+(defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
   (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
       (slack-reaction-join old-reaction reaction)
     (slack-reaction-push m reaction)))
 
-(defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type)
+(defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type _file-id)
   (slack-message--pop-reaction m reaction))
 
 (defun slack-message--pop-reaction (message reaction)
