@@ -57,7 +57,7 @@
    (hide :initarg :hide :initform nil)))
 
 (defclass slack-file-message (slack-message)
-  ((file :initarg :file)))
+  ((files :initarg :files :initform '())))
 
 (defclass slack-reply (slack-message)
   ((user :initarg :user :initform nil)
@@ -133,9 +133,10 @@
   m)
 
 (defmethod slack-message-set-file ((m slack-file-message) payload team)
-  (let ((file (slack-file-create (plist-get payload :file))))
-    (oset m file file)
-    (slack-file-set-channel file (plist-get payload :channel))
+  (let ((files (mapcar #'(lambda (file) (slack-file-create file))
+                       (plist-get payload :files))))
+    (oset m files files)
+    ;; (slack-file-set-channel file (plist-get payload :channel))
     m))
 
 (defmethod slack-message-set-file-comment ((m slack-message) _payload)
@@ -166,7 +167,9 @@
              ((plist-member payload :reply_to)
               (apply #'slack-reply "reply"
                      (slack-collect-slots 'slack-reply payload)))
-             ((and subtype (string-equal "file_share" subtype))
+             ((or (and subtype (string-equal "file_share" subtype))
+                  (and (plist-get payload :files)
+                       (< 0 (length (plist-get payload :files)))))
               (apply #'slack-file-share-message "file-share"
                      (slack-collect-slots 'slack-file-share-message payload)))
              ((and subtype (string-equal "file_comment" subtype))

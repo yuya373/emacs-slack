@@ -41,28 +41,46 @@
 
 (defmethod slack-message-to-string ((m slack-file-share-message) team)
   (cl-labels
-      ((redisplay () (slack-message-redisplay m (slack-room-find (oref m channel) team))))
+      ((redisplay
+        () (slack-message-redisplay m (slack-room-find (oref m channel) team)))
+       (initial-comment
+        (file)
+        (slack-if-let* ((initial-comment (oref file initial-comment)))
+            (propertize
+             (format "\n“ %s%s"
+                     (slack-message-body initial-comment team)
+                     (let ((str (slack-message-reaction-to-string
+                                 initial-comment
+                                 team)))
+                       (if (slack-string-blankp str)
+                           ""
+                         (format "\n%s" str))))
+             'file-comment-id (oref initial-comment id))
+          "")))
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
-           (body (slack-file-summary (oref m file) (slack-ts m) team))
-           (thumb (slack-message-image-to-string m))
-           (reactions (slack-message-reaction-to-string m team))
-           (thread (slack-thread-to-string m team))
-           (initial-comment (slack-if-let* ((initial-comment
-                                             (oref (oref m file) initial-comment)))
-                                (propertize
-                                 (format "\n“ %s%s"
-                                         (slack-message-body initial-comment team)
-                                         (let ((str (slack-message-reaction-to-string
-                                                     initial-comment
-                                                     team)))
-                                           (if (slack-string-blankp str)
-                                               ""
-                                             (format "\n%s" str))))
-                                 'file-comment-id (oref initial-comment id))
-                              "")))
-      (slack-format-message header body attachment-body
-                            thumb reactions initial-comment thread))))
+           (files-body (mapcar #'(lambda (file)
+                                   (let ((body (slack-file-summary file
+                                                                   (slack-ts m)
+                                                                   team))
+                                         (thumb (slack-image-string
+                                                 (slack-file-thumb-image-spec file)))
+                                         (reactions (slack-message-reaction-to-string
+                                                     file
+                                                     team))
+                                         (initial-comment (initial-comment file)))
+                                     (propertize
+                                      (slack-format-message body
+                                                            thumb
+                                                            reactions
+                                                            initial-comment)
+                                      'file-id (oref file id))))
+                               (oref m files)))
+           (thread (slack-thread-to-string m team)))
+      (slack-format-message header
+                            (apply #'slack-format-message files-body)
+                            attachment-body
+                            thread))))
 
 (defun slack-get-file-comment-id ()
   (get-text-property 0 'file-comment-id (thing-at-point 'line)))

@@ -121,7 +121,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (oref m is-starred))
 
 (defmethod slack-message-starred-p ((m slack-file-message))
-  (oref (oref m file) is-starred))
+  (with-slots (files) m
+    (cl-find-if #'(lambda (file) (oref file is-starred))
+                files)))
 
 (defmethod slack-message-starred-str ((m slack-message))
   (if (slack-message-starred-p m)
