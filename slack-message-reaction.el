@@ -37,14 +37,6 @@
   "Invalid emoji regex. Slack server treated some emojis as Invalid."
   :group 'slack)
 
-(defun slack-file-comment-add-reaction (file-comment-id reaction team)
-  (slack-message-reaction-add-request (list (cons "name" reaction)
-                                            (cons "file_comment" file-comment-id))
-                                      team))
-
-(defun slack-get-file-comment-id ()
-  (get-text-property 0 'file-comment-id (thing-at-point 'line)))
-
 (defun slack-get-file-id ()
   (get-text-property 0 'file-id (thing-at-point 'line)))
 
@@ -54,25 +46,13 @@
                                       team))
 
 (defun slack-message--add-reaction (buf reaction)
-  (slack-if-let* ((file-comment-id (slack-get-file-comment-id)))
-      (slack-buffer-add-reaction-to-file-comment buf reaction file-comment-id)
-    (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts))))
+  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
 
 (defun slack-message-add-reaction ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
                   (reaction (slack-message-reaction-input)))
       (slack-message--add-reaction buf reaction)))
-
-(defun slack-file-comment-remove-reaction (file-comment-id file-id team)
-  (slack-with-file file-id team
-    (slack-with-file-comment file-comment-id file
-      (let ((reaction (slack-message-reaction-select
-                       (slack-message-reactions file-comment))))
-        (slack-message-reaction-remove-request
-         (list (cons "file_comment" file-comment-id)
-               (cons "name" reaction))
-         team)))))
 
 (defun slack-file-remove-reaction (file-id team)
   (slack-with-file file-id team
@@ -85,10 +65,8 @@
 
 (defun slack-message-remove-reaction ()
   (interactive)
-  (slack-buffer-remove-reaction-from-message
-   slack-current-buffer
-   (slack-get-ts)
-   (slack-get-file-comment-id)))
+  (slack-buffer-remove-reaction-from-message slack-current-buffer
+                                             (slack-get-ts)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)

@@ -150,10 +150,6 @@
            (buf (slack-create-thread-message-buffer room team ts)))
       (when (slack-reply-broadcast-message-p message)
         (error "Can't start thread from broadcasted message"))
-      (when (slack-file-comment-message-p message)
-        (error "Can't start thread from file comment message"))
-      (when (slack-file-share-message-p message)
-        (error "Can't start thread from file share message"))
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
@@ -240,20 +236,11 @@
   (with-slots (room team) this
     (slack-message-reaction-add reaction ts room team)))
 
-(defmethod slack-buffer-add-reaction-to-file-comment
-  ((this slack-message-buffer) reaction id)
-  (with-slots (team) this
-    (slack-file-comment-add-reaction id reaction team)))
-
 (defmethod slack-buffer-remove-reaction-from-message
-  ((this slack-message-buffer) ts &optional file-comment-id)
+  ((this slack-message-buffer) ts)
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
-           ;; TODO
-           (reactions (if file-comment-id
-                          (slack-message-reactions
-                           (oref (oref message file) initial-comment))
-                        (slack-message-reactions message)))
+           (reactions (slack-message-reactions message))
            (reaction (slack-message-reaction-select reactions)))
       (slack-message-reaction-remove reaction ts room team))))
 

@@ -102,7 +102,7 @@
     (slack-message-reaction-add reaction ts room team)))
 
 (defmethod slack-buffer-remove-reaction-from-message
-  ((this slack-thread-message-buffer) ts &optional _file-comment-id)
+  ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
            (reaction (slack-message-reaction-select

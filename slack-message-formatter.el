@@ -120,11 +120,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
-(defmethod slack-message-starred-p ((m slack-file-message))
-  (with-slots (files) m
-    (cl-find-if #'(lambda (file) (oref file is-starred))
-                files)))
-
 (defmethod slack-message-starred-str ((m slack-message))
   (if (slack-message-starred-p m)
       ":star:"
@@ -180,9 +175,12 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
            (body (slack-message-body-to-string m team))
+           (files (mapconcat #'(lambda (file)
+                                 (slack-message-to-string file (oref m ts) team))
+                             (oref m files) "\n"))
            (reactions (slack-message-reaction-to-string m team))
            (thread (slack-thread-to-string m team)))
-      (slack-format-message header body attachment-body reactions thread))))
+      (slack-format-message header body files attachment-body reactions thread))))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m

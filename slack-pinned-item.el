@@ -37,13 +37,7 @@
 
 (defmethod slack-message-to-string ((this slack-pinned-item) team)
   (with-slots (message) this
-    (cond
-     ((object-of-class-p message 'slack-file-comment)
-      (format "%s%s"
-              (slack-message-to-string message team)
-              (slack-file-link-info (oref message file-id) "\n(more info)\n")))
-     (t
-      (slack-message-to-string message team)))))
+    (slack-message-to-string message team)))
 
 (provide 'slack-pinned-item)
 ;;; slack-pinned-item.el ends here
