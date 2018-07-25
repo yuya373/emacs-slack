@@ -122,18 +122,24 @@
          (slack-collect-slots 'slack-reaction payload)))
 
 (defun slack-attachment-create (payload)
-  (plist-put payload :fields
-             (mapcar #'(lambda (field) (apply #'slack-attachment-field
-                                              (slack-collect-slots 'slack-attachment-field field)))
-                     (append (plist-get payload :fields) nil)))
-  (if (numberp (plist-get payload :ts))
-      (plist-put payload :ts (number-to-string (plist-get payload :ts))))
+  (let ((properties payload))
+    (setq properties
+          (plist-put properties :fields
+                     (mapcar #'(lambda (field)
+                                 (apply #'slack-attachment-field
+                                        (slack-collect-slots 'slack-attachment-field
+                                                             field)))
+                             (append (plist-get payload :fields) nil))))
 
-  (if (plist-get payload :is_share)
-      (apply #'slack-shared-message "shared-attachment"
-             (slack-collect-slots 'slack-shared-message payload))
-    (apply #'slack-attachment "attachment"
-           (slack-collect-slots 'slack-attachment payload))))
+    (if (numberp (plist-get payload :ts))
+        (setq properties
+              (plist-put properties :ts (number-to-string (plist-get payload :ts)))))
+
+    (if (plist-get payload :is_share)
+        (apply #'slack-shared-message "shared-attachment"
+               (slack-collect-slots 'slack-shared-message properties))
+      (apply #'slack-attachment "attachment"
+             (slack-collect-slots 'slack-attachment properties)))))
 
 (defmethod slack-message-set-attachments ((m slack-message) payload)
   (let ((attachments (append (plist-get payload :attachments) nil)))
