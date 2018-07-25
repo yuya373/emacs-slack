@@ -43,7 +43,9 @@
    (footer :initarg :footer :initform nil)
    (color :initarg :color :initform nil)
    (ts :initarg :ts :initform nil)
-   (author-subname :initarg :author_subname :initform nil)))
+   (author-subname :initarg :author_subname :initform nil)
+   (callback-id :initarg :callback_id :initform nil)
+   (actions :initarg :actions :initform '())))
 
 (defclass slack-shared-message (slack-attachment)
   ((channel-id :initarg :channel_id :initform nil)
@@ -54,6 +56,21 @@
   ((title :initarg :title :initform nil)
    (value :initarg :value :initform nil)
    (short :initarg :short :initform nil)))
+
+(defclass slack-attachment-action-confirmation ()
+  ((title :initarg :title :initform nil)
+   (text :initarg :text :type string)
+   (ok-text :initarg :ok_text :type string :initform "Okay")
+   (dismiss-text :initarg :dismiss_text :type string :initform "Cancel")))
+
+(defclass slack-attachment-action ()
+  ((name :initarg :name :type string)
+   (text :initarg :text :type string)
+   (type :initarg :type :type string)
+   (value :initarg :value :initform nil)
+   (confirm :initarg :confirm :initform nil
+            :type (or null slack-attachment-action-confirmation))
+   (style :initarg :style :type string :initform "default")))
 
 (defun slack-attachment-create (payload)
   (let ((properties payload))
