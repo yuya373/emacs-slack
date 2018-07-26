@@ -254,7 +254,7 @@ One of 'info, 'debug"
                                                   (list :max-height max-height))
                                               (if max-width
                                                   (list :max-width max-width))))))
-    (if imagemagick-available-p
+    (if (and (display-graphic-p) imagemagick-available-p)
         (slack-image-shrink image max-height)
       image)))
 
