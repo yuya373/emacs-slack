@@ -413,7 +413,7 @@
       (slack-buffer-update-mark buffer :force t)))
 
 (defmethod slack-message--inspect ((this slack-message) room team)
-  (format "ROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s"
+  (format "ROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
           (oref room id)
           (eieio-object-class this)
           (length (oref this attachments))
@@ -423,7 +423,11 @@
                                        team)
                                       (oref e pretext)
                                       (oref e text)))
-                  (oref this attachments))))
+                  (oref this attachments))
+          (length (oref this files))
+          (mapcar (lambda (e) (format "(TITLE: %s)"
+                                      (oref e title)))
+                  (oref this files))))
 
 (defmethod slack-message--inspect ((this slack-file-comment-message) room team)
   (let ((super (call-next-method)))
