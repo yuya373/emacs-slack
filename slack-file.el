@@ -375,7 +375,7 @@
                                      files))
            (candidates (mapcar #'(lambda (f)
                                    (cons (concat
-                                          (slack-message-time-to-string (oref f ts))
+                                          (slack-message-time-to-string (slack-ts f))
                                           " "
                                           (oref f (or title name)))
                                          f))

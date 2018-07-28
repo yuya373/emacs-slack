@@ -59,7 +59,7 @@
                 slack-message-delete-url
                 team
                 :type "POST"
-                :params (list (cons "ts" (oref message ts))
+                :params (list (cons "ts" (slack-ts message))
                               (cons "channel" (oref room id)))
                 :success #'on-delete))
             (message "Canceled"))))))

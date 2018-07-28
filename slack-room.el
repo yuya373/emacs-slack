@@ -108,7 +108,7 @@
   `(cl-labels
        ((latest-ts (room)
                    (with-slots (latest) room
-                     (if latest (oref latest ts) "0")))
+                     (if latest (slack-ts latest) "0")))
         (sort-rooms (rooms)
                     (nreverse
                      (cl-sort rooms #'string<
@@ -132,7 +132,7 @@
     :success success)))
 
 (defun slack-room-find-message (room ts)
-  (cl-find-if #'(lambda (m) (string= ts (oref m ts)))
+  (cl-find-if #'(lambda (m) (string= ts (slack-ts m)))
               (oref room messages)
               :from-end t))
 
@@ -185,9 +185,7 @@
   (oref room name))
 
 (defun slack-room-sort-messages (messages)
-  (cl-sort messages
-           #'string<
-           :key #'(lambda (m) (oref m ts))))
+  (cl-sort messages #'string< :key #'slack-ts))
 
 (defun slack-room-reject-thread-message (messages)
   (cl-remove-if #'(lambda (m) (and (not (eq (eieio-object-class-name m)
@@ -213,7 +211,7 @@
              (not (slack-thread-message-p message)))
     (with-slots (latest) room
       (if (or (null latest)
-              (string< (oref latest ts) (oref message ts)))
+              (string< (slack-ts latest) (slack-ts message)))
           (setq latest message)))))
 
 (defmethod slack-room-push-message ((room slack-room) message)
@@ -235,8 +233,8 @@
 (defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room
     (cl-remove-if #'(lambda (m)
-                      (or (string< from (oref m ts))
-                          (string= from (oref m ts))))
+                      (or (string< from (slack-ts m))
+                          (string= from (slack-ts m))))
                   (slack-room-sort-messages (copy-sequence messages)))))
 
 (defmethod slack-room-update-mark ((room slack-room) team ts)

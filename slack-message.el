@@ -199,7 +199,7 @@
           message)))))
 
 (defmethod slack-message-equal ((m slack-message) n)
-  (string= (oref m ts) (oref n ts)))
+  (string= (slack-ts m) (slack-ts n)))
 
 (defmethod slack-message-get-thread ((parent slack-message) team)
   (let ((thread (oref parent thread)))
@@ -280,7 +280,7 @@
   (slack-buffer-add-star slack-current-buffer (slack-get-ts)))
 
 (defmethod slack-message-star-api-params ((m slack-message))
-  (cons "timestamp" (oref m ts)))
+  (cons "timestamp" (slack-ts m)))
 
 (defmethod slack-reaction-delete ((this slack-message) reaction)
   (with-slots (reactions) this
@@ -296,7 +296,7 @@
   (oref this reactions))
 
 (defmethod slack-message-get-param-for-reaction ((m slack-message))
-  (cons "timestamp" (oref m ts)))
+  (cons "timestamp" (slack-ts m)))
 
 (defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
   (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
@@ -367,12 +367,12 @@
                                                        room
                                                        (oref thread thread-ts)
                                                        team)))
-                (slack-buffer-message-delete buffer (oref message ts)))
+                (slack-buffer-message-delete buffer (slack-ts message)))
             (slack-message-update parent team t)))
     (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
                                             room
                                             team)))
-        (slack-buffer-message-delete buf (oref message ts))))
+        (slack-buffer-message-delete buf (slack-ts message))))
 
   (if slack-message-custom-delete-notifier
       (funcall slack-message-custom-delete-notifier message room team)
@@ -395,7 +395,7 @@
 
 (defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
-       (not (string= (oref this ts) (oref this thread-ts)))))
+       (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
   nil)
@@ -404,7 +404,7 @@
   (let* ((thread (oref m thread))
          (thread-ts (or (and thread (oref thread thread-ts))
                         (oref m thread-ts))))
-    (and thread-ts (string= (oref m ts) thread-ts))))
+    (and thread-ts (string= (slack-ts m) thread-ts))))
 
 (defun slack-message-update-mark ()
   "Update Channel's last-read marker to this message."

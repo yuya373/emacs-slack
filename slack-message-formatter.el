@@ -176,7 +176,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
            (attachment-body (slack-message-attachment-body m team))
            (body (slack-message-body-to-string m team))
            (files (mapconcat #'(lambda (file)
-                                 (slack-message-to-string file (oref m ts) team))
+                                 (slack-message-to-string file
+                                                          (slack-ts m)
+                                                          team))
                              (oref m files) "\n"))
            (reactions (slack-message-reaction-to-string m team))
            (thread (slack-thread-to-string m team)))
