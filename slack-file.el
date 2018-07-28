@@ -533,5 +533,8 @@
 (defmethod slack-ts ((this slack-file))
   (number-to-string (oref this timestamp)))
 
+(defmethod slack-thread-message-p ((this slack-file))
+  nil)
+
 (provide 'slack-file)
 ;;; slack-file.el ends here

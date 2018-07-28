@@ -52,5 +52,28 @@
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
+(defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
+  (let ((lui-time-stamp-time (slack-message-time-stamp message))
+        (ts (slack-ts message))
+        (team (oref this team)))
+    (lui-insert-with-text-properties
+     (slack-message-to-string message ts team)
+     'not-tracked-p not-tracked-p
+     'ts ts
+     'slack-last-ts lui-time-stamp-last)
+    (lui-insert "" t)
+    ))
+
+(defmethod slack-buffer-replace ((this slack-file-list-buffer)
+                                 message)
+  (with-slots (team) this
+    (with-current-buffer (slack-buffer-buffer this)
+      (lui-replace (slack-message-to-string message
+                                            (slack-ts message)
+                                            team)
+                   (lambda ()
+                     (equal (get-text-property (point) 'ts)
+                            (slack-ts message)))))))
+
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here
