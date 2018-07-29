@@ -114,6 +114,7 @@ One of 'info, 'debug"
 (cl-defun slack-log (msg team &key
                          (logger #'slack-message-logger)
                          (level 'debug))
+  "LEVEL is one of 'trace, 'debug, 'info, 'warn, 'error"
   (let ((log (format "%s [%s] %s - %s"
                      (format-time-string slack-log-time-format)
                      level

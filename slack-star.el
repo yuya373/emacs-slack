@@ -50,9 +50,6 @@
 (defclass slack-star-file (slack-star-item)
   ((file :initarg :file :type slack-file)))
 
-(defclass slack-star-file-comment (slack-star-file)
-  ((file-comment :initarg :file-comment :type slack-file-comment)))
-
 (defclass slack-star-channel (slack-star-item) ;; Ch ??
   ((channel :initarg :channel :type string))) ;; ID
 
@@ -67,9 +64,6 @@
 
 (defmethod slack-star-item-message ((this slack-star-file))
   (oref this file))
-
-(defmethod slack-star-item-message ((this slack-star-file-comment))
-  (oref this file-comment))
 
 (defmethod slack-ts ((this slack-star-item))
   (oref this date-create))
@@ -98,9 +92,6 @@
 
 (defmethod slack-to-string ((this slack-star-message) team)
   (slack-message-to-string (oref this message) team))
-
-(defmethod slack-to-string ((this slack-star-file-comment) team)
-  (slack-message-to-string (oref this file-comment) team))
 
 (defmethod slack-to-string ((this slack-star-file) team)
   (slack-message-to-string (oref this file) team))
@@ -140,13 +131,6 @@
       (make-instance 'slack-star-file
                      :date-create date-create
                      :file file))
-     ((string= type "file_comment")
-      (make-instance 'slack-star-file-comment
-                     :date-create date-create
-                     :file file
-                     :file-comment (slack-file-comment-create
-                                    (plist-get payload :comment)
-                                    file-id)))
      ((string= type "channel")
       (make-instance 'slack-star-channel
                      :date-create date-create

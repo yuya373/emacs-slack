@@ -86,9 +86,7 @@
   (with-slots (room team ts) this
     (slack-if-let* ((m (slack-room-find-message room ts)))
         (progn
-          (if (object-of-class-p m 'slack-file-comment-message)
-              (slack-file-comment--edit (oref room id) (oref team id) ts message)
-            (slack-message--edit (oref room id) team ts message))
+          (slack-message--edit (oref room id) team ts message)
           (call-next-method)))))
 
 

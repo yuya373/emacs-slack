@@ -171,14 +171,14 @@ Any other non-nil value: send to the room."
             (unread-count (plist-get payload :unread_count))
             (last-read (plist-get payload :last_read)))
         (make-instance 'slack-thread
-                       :thread_ts (oref m ts)
+                       :thread_ts (slack-ts m)
                        :root m
                        :replies replies
                        :reply_count (or reply-count 0)
                        :unread_count (or unread-count 1)
                        :last_read last-read))
     (make-instance 'slack-thread
-                   :thread_ts (oref m ts)
+                   :thread_ts (slack-ts m)
                    :root m)))
 
 (defmethod slack-merge ((old slack-thread) new)
@@ -291,7 +291,9 @@ Any other non-nil value: send to the room."
 
 (defmethod slack-thread-delete-message ((thread slack-thread) message)
   (with-slots (messages reply-count) thread
-    (setq messages (cl-remove-if #'(lambda (e) (string= (oref e ts) (oref message ts)))
+    (setq messages (cl-remove-if #'(lambda (e)
+                                     (string= (slack-ts e)
+                                              (slack-ts message)))
                                  messages))
     (setq reply-count (length messages))))
 

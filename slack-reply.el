@@ -31,7 +31,7 @@
     (let ((sent-msg (slack-message-find-sent m team)))
       (if sent-msg
           (progn
-            (oset sent-msg ts (oref m ts))
+            (oset sent-msg ts (slack-ts m))
             (slack-message-update sent-msg team))))))
 
 (defmethod slack-message-find-sent ((m slack-reply) team)

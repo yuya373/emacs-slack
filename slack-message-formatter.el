@@ -120,9 +120,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
-(defmethod slack-message-starred-p ((m slack-file-message))
-  (oref (oref m file) is-starred))
-
 (defmethod slack-message-starred-str ((m slack-message))
   (if (slack-message-starred-p m)
       ":star:"
@@ -178,9 +175,20 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (let* ((header (slack-message-header-to-string m team))
            (attachment-body (slack-message-attachment-body m team))
            (body (slack-message-body-to-string m team))
+           (files (mapconcat #'(lambda (file)
+                                 (slack-message-to-string file
+                                                          (slack-ts m)
+                                                          team))
+                             (oref m files) "\n"))
            (reactions (slack-message-reaction-to-string m team))
            (thread (slack-thread-to-string m team)))
-      (slack-format-message header body attachment-body reactions thread))))
+      (slack-format-message header body
+                            (if (< 0 (length files))
+                                (format "\n%s" files)
+                              files)
+                            attachment-body reactions thread))))
+
+(message "%s" (length (mapconcat #'identity '() "\n")))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
@@ -189,6 +197,28 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "Replied to a thread: \n%s"
           (slack-message-unescape-string (oref m text) team)))
+
+(defmethod slack-message-body-to-string ((m slack-file-comment-message) team)
+  (with-slots (file comment deleted-at) m
+    (let ((commented-user (slack-user-name (plist-get comment :user)
+                                           team))
+          (comment-body (plist-get comment :comment))
+          (file-id (plist-get file :id))
+          (file-user (slack-user-name (plist-get file :user)
+                                      team))
+          (file-title (plist-get file :title))
+          (text-propertize (or
+                            (and deleted-at
+                                 #'slack-message-put-deleted-property)
+                            #'slack-message-put-text-property)))
+      (format "%s %s: %s"
+              (funcall text-propertize
+                       (format "@%s commented on @%s's file"
+                               commented-user
+                               file-user))
+              (slack-file-link-info file-id file-title)
+              (funcall text-propertize
+                       comment-body)))))
 
 (defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
@@ -202,12 +232,15 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (slack-message-unescape-string (format "\n%s" body) team)))))
 
 (defmethod slack-message-to-alert ((m slack-message) team)
-  (with-slots (text attachments) m
-    (if (and text (< 0 (length text)))
-        (slack-message-unescape-string text team)
-      (let ((attachment-string (mapconcat #'slack-attachment-to-alert
-                                          attachments " ")))
-        (slack-message-unescape-string attachment-string team)))))
+  (with-slots (text attachments files) m
+    (let ((alert-text
+           (cond
+            ((and text (< 0 (length text))) text)
+            ((and attachments (< 0 (length attachments)))
+             (mapconcat #'slack-attachment-to-alert attachments " "))
+            ((and files (< 0 (length files)))
+             (mapconcat #'(lambda (file) (oref file title)) files " ")))))
+      (slack-message-unescape-string alert-text team))))
 
 (defun slack-message-unescape-string (text team)
   (when text

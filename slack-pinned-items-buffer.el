@@ -87,10 +87,7 @@
                                    team :room room))
             ((string= type "file")
              (or (slack-file-find (plist-get (plist-get item :file) :id) team)
-                 (slack-file-create (plist-get item :file))))
-            ((string= type "file_comment")
-             (slack-file-comment-create (plist-get item :comment)
-                                        (plist-get (plist-get item :file) :id))))))))
+                 (slack-file-create (plist-get item :file)))))))))
     (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer room team)))
         (progn
           (oset buf items (mapcar #'create-item items))

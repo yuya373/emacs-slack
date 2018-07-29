@@ -103,10 +103,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-message-share-buffer :initform nil :type (or null list))
    (slack-room-message-compose-buffer :initform nil :type (or null list))
    (slack-thread-message-compose-buffer :initform nil :type (or null list))
-   (slack-edit-file-comment-buffer :initform nil :type (or null list))
    (slack-stars-buffer :initform nil :type (or null list))
    (slack-search-result-buffer :initform nil :type (or null list))
-   (slack-file-comment-compose-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (websocket-connect-timeout-timer :initform nil)
@@ -126,10 +124,8 @@ use `slack-change-current-team' to change `slack-current-team'"
                   'slack-message-share-buffer
                   'slack-room-message-compose-buffer
                   'slack-thread-message-compose-buffer
-                  'slack-edit-file-comment-buffer
                   'slack-search-result-buffer
-                  'slack-stars-buffer
-                  'slack-file-comment-compose-buffer))
+                  'slack-stars-buffer))
          (slots (cl-remove-if #'(lambda (e) (cl-find e except)) l)))
     (cl-loop for slot in slots
              do (cl-loop for buffer in (slot-value this slot)

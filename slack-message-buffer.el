@@ -107,7 +107,7 @@
 (defmethod slack-buffer-latest-ts ((this slack-message-buffer))
   (with-slots (room) this
     (slack-if-let* ((latest (oref room latest)))
-        (oref latest ts))))
+        (slack-ts latest))))
 
 (defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((buffer-already-exists-p (get-buffer (slack-buffer-name this)))
@@ -150,10 +150,6 @@
            (buf (slack-create-thread-message-buffer room team ts)))
       (when (slack-reply-broadcast-message-p message)
         (error "Can't start thread from broadcasted message"))
-      (when (slack-file-comment-message-p message)
-        (error "Can't start thread from file comment message"))
-      (when (slack-file-share-message-p message)
-        (error "Can't start thread from file share message"))
       (slack-buffer-display buf))))
 
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
@@ -174,11 +170,11 @@
                (oldest-message (car messages)))
           (cl-loop for m in messages
                    do (if (and (or (null latest)
-                                   (string< latest (oref m ts)))
+                                   (string< latest (slack-ts m)))
                                (not (slack-thread-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
-            (slack-buffer-update-lastest this (oref latest-message ts)))
+            (slack-buffer-update-lastest this (slack-ts latest-message)))
           (when oldest-message
             (slack-buffer-update-oldest this oldest-message))))
       )
@@ -193,10 +189,10 @@
     (let ((buffer (get-buffer (slack-buffer-name this))))
       (when (and (slack-team-mark-as-read-immediatelyp team)
                  (slack-buffer-in-current-frame buffer))
-        (slack-buffer-update-mark-request this (oref message ts)))
+        (slack-buffer-update-mark-request this (slack-ts message)))
 
       (if replace (slack-buffer-replace this message)
-        (slack-buffer-update-lastest this (oref message ts))
+        (slack-buffer-update-lastest this (slack-ts message))
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
@@ -240,20 +236,11 @@
   (with-slots (room team) this
     (slack-message-reaction-add reaction ts room team)))
 
-(defmethod slack-buffer-add-reaction-to-file-comment
-  ((this slack-message-buffer) reaction id)
-  (with-slots (team) this
-    (slack-file-comment-add-reaction id reaction team)))
-
 (defmethod slack-buffer-remove-reaction-from-message
-  ((this slack-message-buffer) ts &optional file-comment-id)
+  ((this slack-message-buffer) ts)
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
-           ;; TODO
-           (reactions (if file-comment-id
-                          (slack-message-reactions
-                           (oref (oref message file) initial-comment))
-                        (slack-message-reactions message)))
+           (reactions (slack-message-reactions message))
            (reaction (slack-message-reaction-select reactions)))
       (slack-message-reaction-remove reaction ts room team))))
 
@@ -284,8 +271,8 @@
 
 (defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
   (when (and message (or (null (oref this oldest))
-                         (string< (oref message ts) (oref this oldest))))
-    (oset this oldest (oref message ts))))
+                         (string< (slack-ts message) (oref this oldest))))
+    (oset this oldest (slack-ts message))))
 
 (defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
   (with-slots (room team) this
@@ -300,7 +287,7 @@
                                (oldest-message (car messages))
                                (latest-message (car (last messages))))
                           (if has-more
-                              (request-messages (oref latest-message ts))
+                              (request-messages (slack-ts latest-message))
                             (progn
                               (with-current-buffer (slack-buffer-buffer this)
                                 (let ((inhibit-read-only t))
@@ -359,7 +346,7 @@
                                                             (or (string< oldest e)
                                                                 (string= oldest e)))
                                                         (slack-room-sorted-messages room)
-                                                        :key #'(lambda (e) (oref e ts)))))
+                                                        :key #'slack-ts)))
                             (update-buffer messages)
                             (slack-buffer-update-oldest this (car messages)))))
         (slack-room-history-request room team
