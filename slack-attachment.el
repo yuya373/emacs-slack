@@ -178,13 +178,14 @@
                       'slack-message-action-face))
             (payload (list (cons "attachment_id" (number-to-string attachment-id))
                            (cons "callback_id" callback-id)
-                           (cons "actions" (list (cons "id" id)
-                                                 (cons "name" name)
-                                                 (cons "text" text)
-                                                 (cons "type" type)
-                                                 (cons "value" value)
-                                                 (cons "style" style))))))
-        (propertize text
+                           (cons "actions" (list (list (cons "id" id)
+                                                       (cons "name" name)
+                                                       (cons "text" text)
+                                                       (cons "type" type)
+                                                       (cons "value" value)
+                                                       (cons "style" style))))))
+            (txt (replace-regexp-in-string ":" " " text)))
+        (propertize txt
                     'face face
                     'payload payload
                     'keymap slack-attachment-action-keymap)))))
