@@ -395,8 +395,7 @@
                   (message-payload (plist-get payload :message))
                   (ts (plist-get message-payload :ts))
                   (base (slack-room-find-message room ts))
-                  (new-message-payload (plist-put message-payload :edited-at ts))
-                  (new-message (slack-message-create new-message-payload
+                  (new-message (slack-message-create message-payload
                                                      team
                                                      :room room)))
       (slack-message-update base team t
