@@ -56,7 +56,8 @@
    (thread-ts :initarg :thread_ts :initform nil)
    (hide :initarg :hide :initform nil)
    (files :initarg :files :initform '())
-   (edited :initarg :edited :initform nil)))
+   (edited :initarg :edited :initform nil)
+   (is-ephemeral :initarg :is_ephemeral :initform nil)))
 
 (defclass slack-message-edited ()
   ((user :initarg :user :type string)
@@ -95,6 +96,7 @@
 (defgeneric slack-message-sender-name  (slack-message team))
 (defgeneric slack-message-to-string (slack-message))
 (defgeneric slack-message-to-alert (slack-message))
+(defmethod slack-message-bot-id ((_this slack-message)) nil)
 
 (defgeneric slack-room-buffer-name (room))
 

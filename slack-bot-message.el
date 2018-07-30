@@ -29,6 +29,9 @@
 (require 'slack-message-formatter)
 (require 'slack-util)
 
+(defmethod slack-message-bot-id ((this slack-bot-message))
+  (oref this bot-id))
+
 (defun slack-find-bot (id team)
   (with-slots (bots) team
     (cl-find-if (lambda (bot)

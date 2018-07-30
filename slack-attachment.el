@@ -144,10 +144,12 @@
                   (room (oref buffer room))
                   (team (oref buffer team))
                   (payload (get-text-property (point) 'payload))
-                  (ts (slack-get-ts)))
+                  (ts (slack-get-ts))
+                  (message (slack-room-find-message room ts)))
       (progn
         (setq payload (cons (cons "channel_id" (oref room id)) payload))
         (setq payload (cons (cons "message_ts" ts) payload))
+        (setq payload (cons (cons "is_ephemeral" (oref message is-ephemeral)) payload))
         (cl-labels
             ((on-success (&key data &allow-other-keys)
                          (slack-request-handle-error
@@ -158,7 +160,11 @@
             "https://slack.com/api/chat.attachmentAction"
             team
             :type "POST"
-            :params (list (cons "payload" payload))
+            :params (list (cons "payload" (json-encode-alist payload))
+                          (if (slack-bot-message-p message)
+                              (cons "service_id"
+                                    (slack-message-bot-id message))
+                            (cons "service_id" "B01")))
             :success #'on-success))))))
 
 (defmethod slack-attachment-action-to-string ((action slack-attachment-action)
