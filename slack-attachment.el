@@ -231,20 +231,15 @@
            (image (slack-image-string (slack-image-spec attachment)
                                       (format "\t%s\t" pad))))
       (slack-message-unescape-string
-       (if (and (slack-string-blankp header)
-                (slack-string-blankp pretext)
-                (slack-string-blankp body)
-                (slack-string-blankp fields)
-                (slack-string-blankp footer))
-           fallback
-         (format "%s%s%s%s%s%s%s"
-                 (or (and header (format "\t%s\n" header)) "")
-                 (or (and pretext (format "\t%s\n" pretext)) "")
-                 (or (and body (format "\t%s" body)) "")
-                 (or (and fields fields) "")
-                 (or (and actions (format "\t%s" actions)) "")
-                 (or (and footer (format "\n\t%s" footer)) "")
-                 (or (and image (format "\n\t%s\t%s" pad image)) "")))
+       (slack-format-message
+        (or (and header (format "\t%s\n" header)) "")
+        (or (and pretext (format "\t%s\n" pretext)) "")
+        (or (and body (format "\t%s" body)) "")
+        (or (and fields fields) "")
+        (or (and actions (format "\t%s" actions)) "")
+        (or (and footer (format "\n\t%s" footer)) "")
+        (or (and image (< 0 (length image))
+                 (format "\n\t%s\t%s" pad image)) ""))
        team))))
 
 (defmethod slack-attachment-header ((attachment slack-attachment))
