@@ -171,7 +171,8 @@
           (cl-loop for m in messages
                    do (if (and (or (null latest)
                                    (string< latest (slack-ts m)))
-                               (not (slack-thread-message-p m)))
+                               (or (not (slack-thread-message-p m))
+                                   (slack-reply-broadcast-message-p m)))
                           (slack-buffer-insert this m t)))
           (when latest-message
             (slack-buffer-update-lastest this (slack-ts latest-message)))

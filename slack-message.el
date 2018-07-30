@@ -50,12 +50,16 @@
    (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean :initform nil)
    (pinned-to :initarg :pinned_to :type (or null list))
-   (edited-at :initarg :edited-at :initform nil)
    (deleted-at :initarg :deleted-at :initform nil)
    (thread :initarg :thread :initform nil)
    (thread-ts :initarg :thread_ts :initform nil)
    (hide :initarg :hide :initform nil)
-   (files :initarg :files :initform '())))
+   (files :initarg :files :initform '())
+   (edited :initarg :edited :initform nil)))
+
+(defclass slack-message-edited ()
+  ((user :initarg :user :type string)
+   (ts :initarg :ts :type string)))
 
 (defclass slack-reply (slack-message)
   ((user :initarg :user :initform nil)
@@ -64,7 +68,6 @@
 
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
-   (edited :initarg :edited)
    (id :initarg :id)
    (inviter :initarg :inviter)))
 
@@ -191,12 +194,24 @@
 
       (let ((message (create-message payload)))
         (when message
+          (slack-message-set-edited message payload)
           (slack-message-set-attachments message payload)
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload team)
           (slack-message-set-thread message team payload)
           message)))))
+
+(defmethod slack-message-set-edited ((this slack-message) payload)
+  (if (plist-get payload :edited)
+      (oset this edited (apply #'make-instance slack-message-edited
+                               (slack-collect-slots 'slack-message-edited
+                                                    (plist-get payload :edited))))))
+
+(defmethod slack-message-edited-at ((this slack-message))
+  (with-slots (edited) this
+    (when edited
+      (oref edited ts))))
 
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (slack-ts m) (slack-ts n)))
@@ -385,12 +400,12 @@
 
 (defmethod slack-message-changed--copy ((this slack-message) other)
   (let ((changed nil))
-    (with-slots (text attachments edited-at) this
+    (with-slots (text attachments edited) this
       (unless (string= text (oref other text))
         (setq text (oref other text))
         (setq changed t))
       (setq attachments (oref other attachments))
-      (setq edited-at (oref other edited-at)))
+      (setq edited (oref other edited)))
     changed))
 
 (defmethod slack-thread-message-p ((this slack-message))
@@ -398,7 +413,7 @@
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
-  nil)
+  (call-next-method))
 
 (defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))

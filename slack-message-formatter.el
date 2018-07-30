@@ -188,8 +188,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                               files)
                             attachment-body reactions thread))))
 
-(message "%s" (length (mapconcat #'identity '() "\n")))
-
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
     (slack-message-unescape-string text team)))
