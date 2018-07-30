@@ -398,7 +398,7 @@
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
-  nil)
+  (call-next-method))
 
 (defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))
