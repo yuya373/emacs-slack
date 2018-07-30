@@ -204,12 +204,15 @@
                                          fields
                                          (format "\n\t%s\n" pad))))
            (actions (if actions
-                        (mapconcat #'(lambda (action)
-                                       (slack-attachment-action-to-string action
-                                                                          attachment
-                                                                          team))
-                                   actions
-                                   " ")))
+                        (format "%s\t%s"
+                                pad
+                                (mapconcat #'(lambda (action)
+                                               (slack-attachment-action-to-string
+                                                action
+                                                attachment
+                                                team))
+                                           actions
+                                           " "))))
            (footer (if footer
                        (format "%s\t%s"
                                pad
@@ -218,7 +221,8 @@
                                         (or (and ts (format "|%s" (slack-message-time-to-string ts)))
                                             ""))
                                 'face 'slack-attachment-footer))))
-           (image (slack-image-string (slack-image-spec attachment))))
+           (image (slack-image-string (slack-image-spec attachment)
+                                      (format "\t%s\t" pad))))
       (slack-message-unescape-string
        (if (and (slack-string-blankp header)
                 (slack-string-blankp pretext)
@@ -231,9 +235,9 @@
                  (or (and pretext (format "\t%s\n" pretext)) "")
                  (or (and body (format "\t%s" body)) "")
                  (or (and fields fields) "")
-                 (or (and actions actions) "")
+                 (or (and actions (format "\t%s" actions)) "")
                  (or (and footer (format "\n\t%s" footer)) "")
-                 (or (and image (format "\n%s" image)) "")))
+                 (or (and image (format "\n\t%s\t%s" pad image)) "")))
        team))))
 
 (defmethod slack-attachment-header ((attachment slack-attachment))
