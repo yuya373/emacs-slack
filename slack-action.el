@@ -42,19 +42,24 @@
                   (payload (get-text-property (point) 'payload))
                   (buffer slack-current-buffer)
                   (team (oref buffer team)))
-      (cl-labels
-          ((on-success (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data "slack-action-run")
-                        (message "DATA: %s" data))))
-        (slack-request
-         (slack-request-create
-          "https://slack.com/api/chat.action"
-          team
-          :type "POST"
-          :params (list (cons "bot" bot)
-                        (cons "payload" payload))
-          :success #'on-success)))))
+      (let ((url "https://slack.com/api/chat.action")
+            (params (list (cons "bot" bot)
+                          (cons "payload" payload))))
+        (cl-labels
+            ((log-error (err) (format "Error: %s, URL: %s, PARAMS: %s"
+                                      err
+                                      url
+                                      params))
+             (on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-action-run" #'log-error))))
+          (slack-request
+           (slack-request-create
+            url
+            team
+            :type "POST"
+            :params params
+            :success #'on-success))))))
 
 (defun slack-display-inline-action ()
   (goto-char (point-min))

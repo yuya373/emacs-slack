@@ -267,27 +267,35 @@
                                    (cons "message_ts" ts)
                                    (cons "channel_id" (oref room id))))
                   (action (get-text-property (point) 'action)))
-      (cl-labels
-          ((on-success (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data "slack-attachment-action-run")
-                        (message "DATA: %s" data))))
-        (slack-request
-         (slack-request-create
-          "https://slack.com/api/chat.attachmentAction"
-          team
-          :type "POST"
-          :params (list (cons "payload" (json-encode-alist
-                                         (nconc common-payload
-                                                (slack-attachment-action-run-payload
-                                                 action
-                                                 attachment-id
-                                                 callback-id))))
-                        (if (slack-bot-message-p message)
-                            (cons "service_id"
-                                  (slack-message-bot-id message))
-                          (cons "service_id" "B01")))
-          :success #'on-success)))))
+      (let ((url "https://slack.com/api/chat.attachmentAction")
+            (params (list (cons "payload" (json-encode-alist
+                                           (nconc common-payload
+                                                  (slack-attachment-action-run-payload
+                                                   action
+                                                   attachment-id
+                                                   callback-id))))
+                          (if (slack-bot-message-p message)
+                              (cons "service_id"
+                                    (slack-message-bot-id message))
+                            (cons "service_id" "B01")))))
+        (cl-labels
+            ((log-error (err)
+                        (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                           err
+                                           url
+                                           params)
+                                   team
+                                   :level 'error))
+             (on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-attachment-action-run" #'log-error))))
+          (slack-request
+           (slack-request-create
+            url
+            team
+            :type "POST"
+            :params params
+            :success #'on-success))))))
 
 (defmethod slack-attachment-callback-id ((this slack-attachment))
   (oref this callback-id))
