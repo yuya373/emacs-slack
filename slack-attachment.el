@@ -76,18 +76,71 @@
             :type (or null slack-attachment-action-confirmation))
    (style :initarg :style :type string :initform "default")))
 
+(defclass slack-attachment-select-action (slack-attachment-action)
+  ((data-source :initarg :data_source :type string :initform "static")
+   (options :initarg :options :initform nil)
+   (option-groups :initarg :option_groups :initform nil)))
+
+(defclass slack-attachment-select-action-option ()
+  ((text :initarg :text :type string)
+   (value :initarg :value :type string)))
+
+(defclass slack-attachment-select-action-option-group ()
+  ((text :initarg :text :type string)
+   (options :initarg :options :initform nil)))
+
+
+
 (defun slack-attachment-action-create (payload)
-  (let ((properties payload))
-    (when (plist-get payload :confirm)
-      (setq properties (plist-put properties
-                                  :confirm
-                                  (apply #'make-instance
-                                         'slack-attachment-action-confirmation
-                                         (slack-collect-slots
-                                          'slack-attachment-action-confirmation
-                                          (plist-get payload :confirm))))))
-    (apply #'make-instance 'slack-attachment-action
-           (slack-collect-slots 'slack-attachment-action properties))))
+  (cl-labels
+      ((create-option (option)
+                      (apply #'make-instance
+                             'slack-attachment-select-action-option
+                             (slack-collect-slots
+                              'slack-attachment-select-action-option
+                              option)))
+       (create-option-group
+        (option-group)
+        (when (plist-get option-group :options)
+          (setq option-group
+                (plist-put option-group
+                           :options
+                           (mapcar #'create-option
+                                   (plist-get option-group :options)))))
+        (apply #'make-instance
+               'slack-attachment-select-action-option-group
+               (slack-collect-slots
+                'slack-attachment-select-action-option-group
+                option-group))))
+    (let* ((properties payload)
+           (type (plist-get payload :type)))
+
+      (when (plist-get payload :confirm)
+        (setq properties (plist-put properties
+                                    :confirm
+                                    (apply #'make-instance
+                                           'slack-attachment-action-confirmation
+                                           (slack-collect-slots
+                                            'slack-attachment-action-confirmation
+                                            (plist-get payload :confirm))))))
+      (cond
+       ((string= type "select")
+        (progn
+          (setq properties
+                (plist-put properties
+                           :options
+                           (mapcar #'create-option
+                                   (plist-get properties :options))))
+          (setq properties
+                (plist-put properties
+                           :option_groups
+                           (mapcar #'create-option-group
+                                   (plist-get properties :option_groups))))
+          (apply #'make-instance 'slack-attachment-select-action
+                 (slack-collect-slots 'slack-attachment-select-action properties))))
+       (t
+        (apply #'make-instance 'slack-attachment-action
+               (slack-collect-slots 'slack-attachment-action properties)))))))
 
 (defun slack-attachment-create (payload)
   (let ((properties payload))
@@ -138,57 +191,148 @@
     (define-key keymap [mouse-1] #'slack-attachment-action-run)
     keymap))
 
+(defmethod slack-attachment-action-run-payload ((this slack-attachment-action)
+                                                attachment-id
+                                                callback-id)
+  (with-slots (id name text type value style) this
+    (list (cons "attachment_id" (number-to-string attachment-id))
+          (cons "callback_id" callback-id)
+          (cons "actions" (list (list (cons "id" id)
+                                      (cons "name" name)
+                                      (cons "text" text)
+                                      (cons "type" type)
+                                      (cons "value" value)
+                                      (cons "style" style)))))))
+
+(defmethod slack-attachment-action-run-payload ((this slack-attachment-select-action)
+                                                attachment-id
+                                                callback-id)
+
+  (cl-labels
+      ((select (prompt options)
+               (funcall slack-completing-read-function
+                        prompt
+                        options
+                        nil t))
+       (find-option (text options)
+                    (cl-find-if #'(lambda (option)
+                                    (string= text (oref option text)))
+                                options))
+       (select-option (options)
+                      (select "Select Option: "
+                              (mapcar #'(lambda (option)
+                                          (cons (oref option text)
+                                                (oref option value)))
+                                      options)))
+       (select-option-group (option-groups)
+                            (slack-if-let*
+                                ((text (select "Select Option Group: "
+                                               (mapcar #'(lambda (option-group)
+                                                           (oref option-group text))
+                                                       option-groups))))
+                                (find-option text option-groups))))
+    (with-slots (id name text type value style options option-groups) this
+      (slack-if-let*
+          ((options (if option-groups
+                        (oref (select-option-group option-groups) options)
+                      options))
+           (option-text (select-option options))
+           (option (find-option option-text options)))
+          (list (cons "attachment_id" (number-to-string attachment-id))
+                (cons "callback_id" callback-id)
+                (cons "actions"
+                      (list (list (cons "id" id)
+                                  (cons "name" name)
+                                  (cons "text" text)
+                                  (cons "type" type)
+                                  (cons "value" value)
+                                  (cons "style" style)
+                                  (cons "selected_options"
+                                        (list (list (cons "value"
+                                                          (oref option value)))))))))
+        (error "Option is not selected")))))
+
 (defun slack-attachment-action-run ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
                   (room (oref buffer room))
                   (team (oref buffer team))
-                  (payload (get-text-property (point) 'payload))
+                  (type (get-text-property (point) 'type))
+                  (attachment-id (get-text-property (point) 'attachment-id))
+                  (callback-id (get-text-property (point) 'callback-id))
                   (ts (slack-get-ts))
-                  (message (slack-room-find-message room ts)))
-      (progn
-        (setq payload (cons (cons "channel_id" (oref room id)) payload))
-        (setq payload (cons (cons "message_ts" ts) payload))
-        (setq payload (cons (cons "is_ephemeral" (oref message is-ephemeral)) payload))
-        (cl-labels
-            ((on-success (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-attachment-action-run")
-                          (message "DATA: %s" data))))
-          (slack-request
-           (slack-request-create
-            "https://slack.com/api/chat.attachmentAction"
-            team
-            :type "POST"
-            :params (list (cons "payload" (json-encode-alist payload))
-                          (if (slack-bot-message-p message)
-                              (cons "service_id"
-                                    (slack-message-bot-id message))
-                            (cons "service_id" "B01")))
-            :success #'on-success))))))
+                  (message (slack-room-find-message room ts))
+                  (common-payload (list
+                                   (cons "is_ephemeral" (oref message is-ephemeral))
+                                   (cons "message_ts" ts)
+                                   (cons "channel_id" (oref room id))))
+                  (action (get-text-property (point) 'action)))
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-attachment-action-run")
+                        (message "DATA: %s" data))))
+        (slack-request
+         (slack-request-create
+          "https://slack.com/api/chat.attachmentAction"
+          team
+          :type "POST"
+          :params (list (cons "payload" (json-encode-alist
+                                         (nconc common-payload
+                                                (slack-attachment-action-run-payload
+                                                 action
+                                                 attachment-id
+                                                 callback-id))))
+                        (if (slack-bot-message-p message)
+                            (cons "service_id"
+                                  (slack-message-bot-id message))
+                          (cons "service_id" "B01")))
+          :success #'on-success)))))
+
+(defmethod slack-attachment-callback-id ((this slack-attachment))
+  (oref this callback-id))
+
+(defmethod slack-attachment-id ((this slack-attachment))
+  (oref this id))
+
+(defmethod slack-attachment-action-face ((this slack-attachment-action))
+  (with-slots (style) this
+    (or (and (string= "danger" style)
+             'slack-message-action-danger-face)
+        (and (string= "primary" style)
+             'slack-message-action-primary-face)
+        'slack-message-action-face)))
+
+(defmethod slack-attachment-action-display-text ((this slack-attachment-action))
+  (replace-regexp-in-string ":" " " (oref this text)))
+
+(defmethod slack-attachment-action-to-string ((action slack-attachment-select-action)
+                                              attachment team)
+  (with-slots (id name text type data-source style options option-groups) action
+    (let* ((callback-id (slack-attachment-callback-id attachment))
+           (attachment-id (slack-attachment-id attachment))
+           (face (slack-attachment-action-face action)))
+      (propertize (slack-attachment-action-display-text action)
+                  'type type
+                  'face face
+                  'attachment-id attachment-id
+                  'callback-id callback-id
+                  'action action
+                  'keymap slack-attachment-action-keymap))))
 
 (defmethod slack-attachment-action-to-string ((action slack-attachment-action)
                                               attachment team)
-  (with-slots (callback-id (attachment-id id)) attachment
-    (with-slots (id name text type value style) action
-      (let ((face (or (and (string= "danger" style)
-                           'slack-message-action-danger-face)
-                      (and (string= "primary" style)
-                           'slack-message-action-primary-face)
-                      'slack-message-action-face))
-            (payload (list (cons "attachment_id" (number-to-string attachment-id))
-                           (cons "callback_id" callback-id)
-                           (cons "actions" (list (list (cons "id" id)
-                                                       (cons "name" name)
-                                                       (cons "text" text)
-                                                       (cons "type" type)
-                                                       (cons "value" value)
-                                                       (cons "style" style))))))
-            (txt (replace-regexp-in-string ":" " " text)))
-        (propertize txt
-                    'face face
-                    'payload payload
-                    'keymap slack-attachment-action-keymap)))))
+  (with-slots (id name text type value style) action
+    (let* ((callback-id (slack-attachment-callback-id attachment))
+           (attachment-id (slack-attachment-id attachment))
+           (face (slack-attachment-action-face action)))
+      (propertize (slack-attachment-action-display-text action)
+                  'type type
+                  'face face
+                  'keymap slack-attachment-action-keymap
+                  'attachment-id attachment-id
+                  'callback-id callback-id
+                  'action action))))
 
 (defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots
