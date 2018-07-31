@@ -96,11 +96,14 @@
   (slack-if-let* ((buf slack-current-buffer)
                   (team (oref buf team))
                   (room (oref buf room)))
-      (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
-          (slack-command-run (car command-and-arg)
-                             team
-                             (oref room id)
-                             :text (cdr command-and-arg))
+      (if (string-prefix-p "/" message)
+          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
+              (slack-command-run (car command-and-arg)
+                                 team
+                                 (oref room id)
+                                 :text (cdr command-and-arg))
+            (error "Unknown slash command: %s"
+                   (car (split-string message))))
         (slack-buffer-send-message buf message))))
 
 (defun slack-message-send-internal (message channel-id team)
