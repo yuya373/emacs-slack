@@ -79,7 +79,7 @@
    (to :initarg :to :type (or null list) :initform nil)
    ;; TODO verify type
    (cc :initarg :cc :type (or null list) :initform nil)
-   (subject :initarg :subject :type string)
+   (subject :initarg :subject :type (or null string))
    (plain-text :initarg :plain_text :type string)
    (preview-plain-text :initarg :preview_plain_text :type string)
    (is-expanded :initform nil :type boolean)))
