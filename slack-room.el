@@ -43,7 +43,9 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
    (team-id :initarg :team-id)
-   (last-read :initarg :last_read :type string :initform "0")))
+   (last-read :initarg :last_read :type string :initform "0")
+   (members :initarg :members :type list :initform '())))
+
 
 (defgeneric slack-room-name (room))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
