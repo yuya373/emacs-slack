@@ -74,7 +74,8 @@
    (value :initarg :value :initform nil)
    (confirm :initarg :confirm :initform nil
             :type (or null slack-attachment-action-confirmation))
-   (style :initarg :style :type string :initform "default")))
+   (style :initarg :style :type string :initform "default")
+   (url :initarg :url :type (or null string) :initform nil)))
 
 (defclass slack-attachment-select-action (slack-attachment-action)
   ((data-source :initarg :data_source :type string :initform "static")
@@ -252,6 +253,17 @@
                                                           (oref option value)))))))))
         (error "Option is not selected")))))
 
+(defmethod slack-attachment-action-confirm ((this slack-attachment-action))
+  (with-slots (confirm) this
+    (if confirm
+        (with-slots (title text ok-text dismiss-text) confirm
+          (yes-or-no-p (format "%s%s"
+                               (if title
+                                   (format "%s\n" title)
+                                 "")
+                               text)))
+      t)))
+
 (defun slack-attachment-action-run ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
@@ -259,7 +271,6 @@
                   (team (oref buffer team))
                   (type (get-text-property (point) 'type))
                   (attachment-id (get-text-property (point) 'attachment-id))
-                  (callback-id (get-text-property (point) 'callback-id))
                   (ts (slack-get-ts))
                   (message (slack-room-find-message room ts))
                   (common-payload (list
@@ -267,35 +278,40 @@
                                    (cons "message_ts" ts)
                                    (cons "channel_id" (oref room id))))
                   (action (get-text-property (point) 'action)))
-      (let ((url "https://slack.com/api/chat.attachmentAction")
-            (params (list (cons "payload" (json-encode-alist
-                                           (nconc common-payload
-                                                  (slack-attachment-action-run-payload
-                                                   action
-                                                   attachment-id
-                                                   callback-id))))
-                          (if (slack-bot-message-p message)
-                              (cons "service_id"
-                                    (slack-message-bot-id message))
-                            (cons "service_id" "B01")))))
-        (cl-labels
-            ((log-error (err)
-                        (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
-                                           err
-                                           url
-                                           params)
-                                   team
-                                   :level 'error))
-             (on-success (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-attachment-action-run" #'log-error))))
-          (slack-request
-           (slack-request-create
-            url
-            team
-            :type "POST"
-            :params params
-            :success #'on-success))))))
+      (when (slack-attachment-action-confirm action)
+        (slack-if-let* ((callback-id (get-text-property (point) 'callback-id)))
+            (let ((url "https://slack.com/api/chat.attachmentAction")
+                  (params (list (cons "payload"
+                                      (json-encode-alist
+                                       (nconc common-payload
+                                              (slack-attachment-action-run-payload
+                                               action
+                                               attachment-id
+                                               callback-id))))
+                                (if (slack-bot-message-p message)
+                                    (cons "service_id"
+                                          (slack-message-bot-id message))
+                                  (cons "service_id" "B01")))))
+              (cl-labels
+                  ((log-error (err)
+                              (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                                 err
+                                                 url
+                                                 params)
+                                         team
+                                         :level 'error))
+                   (on-success (&key data &allow-other-keys)
+                               (slack-request-handle-error
+                                (data "slack-attachment-action-run" #'log-error))))
+                (slack-request
+                 (slack-request-create
+                  url
+                  team
+                  :type "POST"
+                  :params params
+                  :success #'on-success))))
+          (slack-if-let* ((url (oref action url)))
+              (browse-url url))))))
 
 (defmethod slack-attachment-callback-id ((this slack-attachment))
   (oref this callback-id))
