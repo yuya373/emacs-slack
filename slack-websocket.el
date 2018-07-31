@@ -269,8 +269,9 @@
          ((string= type "star_removed")
           (slack-ws-handle-star-removed decoded-payload team))
          ((string= type "reconnect_url")
-          (slack-ws-handle-reconnect-url decoded-payload team)
-          )
+          (slack-ws-handle-reconnect-url decoded-payload team))
+         ((string= type "app_conversation_invite_request")
+          (slack-ws-handle-app-conversation-invite-request decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -923,6 +924,87 @@ TEAM is one of `slack-teams'"
 
     (slack-if-let* ((star (oref team star)))
         (slack-star-remove star item team))))
+
+(defun slack-ws-handle-app-conversation-invite-request (payload team)
+  (let* ((app-user (plist-get payload :app_user))
+         (channel-id (plist-get payload :channel_id))
+         (invite-message-ts (plist-get payload :invite_message_ts))
+         (scope-info (plist-get payload :scope_info))
+         (room (slack-room-find channel-id team)))
+    (if (yes-or-no-p (format "%s\n%s\n"
+                             (format "%s would like to do following in %s"
+                                     (slack-user-name app-user team)
+                                     (slack-room-name room))
+                             (mapconcat #'(lambda (scope)
+                                            (format "* %s"
+                                                    (plist-get scope
+                                                               :short_description)))
+                                        scope-info
+                                        "\n")))
+        (slack-app-conversation-allow-invite-request team
+                                                    :channel channel-id
+                                                    :app-user app-user
+                                                    :invite-message-ts invite-message-ts)
+      (slack-app-conversation-deny-invite-request team
+                                                  :channel channel-id
+                                                  :app-user app-user
+                                                  :invite-message-ts invite-message-ts))))
+
+(cl-defun slack-app-conversation-allow-invite-request (team &key channel
+                                                            app-user
+                                                            invite-message-ts)
+  (let ((url "https://slack.com/api/apps.permissions.internal.add")
+        (params (list (cons "channel" channel)
+                      (cons "app_user" app-user)
+                      (cons "invite_message_ts" invite-message-ts)
+                      (cons "did_confirm" "true")
+                      (cons "send_ephemeral_error_message" "true"))))
+    (cl-labels
+        ((log-error (err)
+                    (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                       err
+                                       url
+                                       params)
+                               team :level 'error))
+         (on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-app-conversation-allow-invite-request"
+                            #'log-error)
+                      (message "DATA: %s" data))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :success #'on-success)))))
+
+(cl-defun slack-app-conversation-deny-invite-request (team &key channel
+                                                           app-user
+                                                           invite-message-ts)
+  (let ((url "https://slack.com/api/apps.permissions.internal.denyAdd")
+        (params (list (cons "channel" channel)
+                      (cons "app_user" app-user)
+                      (cons "invite_message_ts" invite-message-ts))))
+    (cl-labels
+        ((log-error (err)
+                    (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                       err
+                                       url
+                                       params)
+                               team :level 'error))
+         (on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-app-conversation-deny-invite-request"
+                            #'log-error)
+                      (message "DATA: %s" data))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :success #'on-success)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
