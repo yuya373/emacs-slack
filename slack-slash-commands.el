@@ -30,7 +30,7 @@
    (type :initarg :type :type string)
    (usage :initarg :usage :type string :initform "")
    (desc :initarg :desc :type string :initform "")
-   (alias-of :initarg :alias_of :type string)))
+   (alias-of :initarg :alias_of :type (or null string) :initform nil)))
 
 (defclass slack-core-command (slack-command)
   ((canonical-name :initarg :canonical_name :type string)))
@@ -105,7 +105,7 @@
                 commands)))
 
 (defmethod slack-command-company-doc-string ((this slack-command) team)
-  (if (slot-boundp this 'alias-of)
+  (if (oref this alias-of)
       (let ((command (slack-command-find (oref this alias-of)
                                          team)))
         (when command
