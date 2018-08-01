@@ -272,6 +272,8 @@
           (slack-ws-handle-reconnect-url decoded-payload team))
          ((string= type "app_conversation_invite_request")
           (slack-ws-handle-app-conversation-invite-request decoded-payload team))
+         ((string= type "commands_changed")
+          (slack-ws-handle-commands-changed decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -1005,6 +1007,22 @@ TEAM is one of `slack-teams'"
         :type "POST"
         :params params
         :success #'on-success)))))
+
+(defun slack-ws-handle-commands-changed (payload team)
+  (let ((commands-updated (mapcar #'slack-command-create
+                                  (plist-get payload :commands_updated)))
+        (commands-removed (mapcar #'slack-command-create
+                                  (plist-get payload :commands_removed)))
+        (commands '()))
+    (cl-loop for command in (oref team commands)
+             if (and (not (cl-find-if #'(lambda (e) (slack-equalp command e))
+                                      commands-removed))
+                     (not (cl-find-if #'(lambda (e) (slack-equalp command e))
+                                      commands-updated)))
+             do (push command commands))
+    (cl-loop for command in commands-updated
+             do (push command commands))
+    (oset team commands commands)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
