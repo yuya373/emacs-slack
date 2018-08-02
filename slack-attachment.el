@@ -80,7 +80,8 @@
 (defclass slack-attachment-select-action (slack-attachment-action)
   ((data-source :initarg :data_source :type string :initform "static")
    (options :initarg :options :initform nil)
-   (option-groups :initarg :option_groups :initform nil)))
+   (option-groups :initarg :option_groups :initform nil)
+   (min-query-length :initarg :min_query_length :type (or null number))))
 
 (defclass slack-attachment-select-action-option ()
   ((text :initarg :text :type string)
@@ -193,65 +194,163 @@
     keymap))
 
 (defmethod slack-attachment-action-run-payload ((this slack-attachment-action)
-                                                attachment-id
-                                                callback-id)
+                                                team
+                                                common-payload
+                                                service-id)
   (with-slots (id name text type value style) this
-    (list (cons "attachment_id" (number-to-string attachment-id))
-          (cons "callback_id" callback-id)
-          (cons "actions" (list (list (cons "id" id)
+    (cons (cons "actions" (list (list (cons "id" id)
                                       (cons "name" name)
                                       (cons "text" text)
                                       (cons "type" type)
                                       (cons "value" value)
-                                      (cons "style" style)))))))
+                                      (cons "style" style))))
+          common-payload)))
+
+(defmethod slack-attachment-action-get-suggestions ((this
+                                                     slack-attachment-select-action)
+                                                    team
+                                                    common-payload
+                                                    service-id
+                                                    after-success)
+  (with-slots (name) this
+    (let ((url "https://slack.com/api/chat.attachmentSuggestion")
+          (params (list (cons "service_id" service-id)
+                        (cons "payload"
+                              (json-encode-alist
+                               (cons
+                                (cons "name" name)
+                                (cons (cons "value"
+                                            (read-from-minibuffer
+                                             (format "Start typing to see results... (minimum: %s) "
+                                                     (oref this min-query-length))))
+                                      common-payload)))))))
+
+      (cl-labels
+          ((log-error (err)
+                      (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                         err
+                                         url
+                                         params)))
+           (on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-attachment-action-get-suggestions"
+                              #'log-error))
+                       (funcall after-success (plist-get data :options))))
+        (slack-request
+         (slack-request-create
+          url
+          team
+          :type "POST"
+          :success #'on-success
+          :params params
+          :sync t))))))
+
+(defmethod slack-attachment-action-selected-options ((this
+                                                      slack-attachment-select-action)
+                                                     team
+                                                     common-payload
+                                                     service-id)
+  (with-slots (data-source) this
+    (cond
+     ((string= data-source "external")
+      (let ((option))
+        (cl-labels
+            ((on-success (options)
+                         (let ((selected
+                                (funcall slack-completing-read-function
+                                         ""
+                                         (cons "" (mapcar #'(lambda (e)
+                                                              (plist-get e :text))
+                                                          options))
+                                         nil t)))
+
+                           (setq option
+                                 (cl-find-if #'(lambda (e)
+                                                 (string= selected
+                                                          (plist-get e :text)))
+                                             options)))))
+          (slack-attachment-action-get-suggestions this
+                                                   team
+                                                   common-payload
+                                                   service-id
+                                                   #'on-success)
+          (if option
+              (list (list (cons "value" (plist-get option :value))))
+            (slack-attachment-action-selected-options
+             this team common-payload service-id)))))
+     ((string= data-source "conversations")
+      (let ((room-id (oref (slack-room-select (append (oref team channels)
+                                                      (oref team groups)
+                                                      (oref team ims)))
+                           id)))
+        (list (list (cons "value" room-id)))))
+     ((string= data-source "channels")
+      (let ((channel-id (oref (slack-room-select (oref team channels)) id)))
+        (list (list (cons "value" channel-id)))))
+     ((string= data-source "users")
+      (let ((user-id (plist-get (slack--user-select team) :id)))
+        (list (list (cons "value" user-id)))))
+     ((string= data-source "static")
+      (cl-labels
+          ((select (prompt options)
+                   (funcall slack-completing-read-function
+                            prompt
+                            options
+                            nil t))
+           (find-option (text options)
+                        (cl-find-if #'(lambda (option)
+                                        (string= text (oref option text)))
+                                    options))
+           (select-option (options)
+                          (select "Select Option: "
+                                  (mapcar #'(lambda (option)
+                                              (cons (oref option text)
+                                                    (oref option value)))
+                                          options)))
+           (select-option-group
+            (option-groups)
+            (slack-if-let*
+                ((text (select "Select Option Group: "
+                               (mapcar #'(lambda (option-group)
+                                           (oref option-group text))
+                                       option-groups))))
+                (find-option text option-groups))))
+        (with-slots (id name text type value style options option-groups) this
+          (slack-if-let*
+              ((options (if option-groups
+                            (oref (select-option-group option-groups) options)
+                          options))
+               (option-text (select-option options))
+               (option (find-option option-text options))
+               (selected-options (list (list (cons "value"
+                                                   (oref option value))))))
+              selected-options
+            (error "Option is not selected")))))
+     (t (error "%s's data-source: %s is not implemented"
+               (oref this name)
+               (oref this data-source))))))
 
 (defmethod slack-attachment-action-run-payload ((this slack-attachment-select-action)
-                                                attachment-id
-                                                callback-id)
-
-  (cl-labels
-      ((select (prompt options)
-               (funcall slack-completing-read-function
-                        prompt
-                        options
-                        nil t))
-       (find-option (text options)
-                    (cl-find-if #'(lambda (option)
-                                    (string= text (oref option text)))
-                                options))
-       (select-option (options)
-                      (select "Select Option: "
-                              (mapcar #'(lambda (option)
-                                          (cons (oref option text)
-                                                (oref option value)))
-                                      options)))
-       (select-option-group (option-groups)
-                            (slack-if-let*
-                                ((text (select "Select Option Group: "
-                                               (mapcar #'(lambda (option-group)
-                                                           (oref option-group text))
-                                                       option-groups))))
-                                (find-option text option-groups))))
-    (with-slots (id name text type value style options option-groups) this
-      (slack-if-let*
-          ((options (if option-groups
-                        (oref (select-option-group option-groups) options)
-                      options))
-           (option-text (select-option options))
-           (option (find-option option-text options)))
-          (list (cons "attachment_id" (number-to-string attachment-id))
-                (cons "callback_id" callback-id)
-                (cons "actions"
-                      (list (list (cons "id" id)
-                                  (cons "name" name)
-                                  (cons "text" text)
-                                  (cons "type" type)
-                                  (cons "value" value)
-                                  (cons "style" style)
-                                  (cons "selected_options"
-                                        (list (list (cons "value"
-                                                          (oref option value)))))))))
-        (error "Option is not selected")))))
+                                                team
+                                                common-payload
+                                                service-id)
+  (with-slots (id name text type value style data-source min-query-length) this
+    (slack-if-let*
+        ((selected-options (slack-attachment-action-selected-options this
+                                                                     team
+                                                                     common-payload
+                                                                     service-id)))
+        (cons (cons "actions"
+                    (list (list (cons "id" id)
+                                (cons "name" name)
+                                (cons "text" text)
+                                (cons "type" type)
+                                (cons "style" style)
+                                (cons "data_source" data-source)
+                                (cons "min_query_length" min-query-length)
+                                (cons "selected_options" selected-options))))
+              common-payload)
+      (error "Option is not selected"))))
 
 (defmethod slack-attachment-action-confirm ((this slack-attachment-action))
   (with-slots (confirm) this
@@ -273,25 +372,29 @@
                   (attachment-id (get-text-property (point) 'attachment-id))
                   (ts (slack-get-ts))
                   (message (slack-room-find-message room ts))
-                  (common-payload (list
-                                   (cons "is_ephemeral" (oref message is-ephemeral))
-                                   (cons "message_ts" ts)
-                                   (cons "channel_id" (oref room id))))
                   (action (get-text-property (point) 'action)))
       (when (slack-attachment-action-confirm action)
-        (slack-if-let* ((callback-id (get-text-property (point) 'callback-id)))
+        (slack-if-let* ((callback-id (get-text-property (point) 'callback-id))
+                        (common-payload (list
+                                         (cons "attachment_id" (number-to-string
+                                                                attachment-id))
+                                         (cons "callback_id" callback-id)
+                                         (cons "is_ephemeral" (oref message
+                                                                    is-ephemeral))
+                                         (cons "message_ts" ts)
+                                         (cons "channel_id" (oref room id))))
+                        (service-id (if (slack-bot-message-p message)
+                                        (slack-message-bot-id message)
+                                      "B01")))
             (let ((url "https://slack.com/api/chat.attachmentAction")
                   (params (list (cons "payload"
                                       (json-encode-alist
-                                       (nconc common-payload
-                                              (slack-attachment-action-run-payload
-                                               action
-                                               attachment-id
-                                               callback-id))))
-                                (if (slack-bot-message-p message)
-                                    (cons "service_id"
-                                          (slack-message-bot-id message))
-                                  (cons "service_id" "B01")))))
+                                       (slack-attachment-action-run-payload
+                                        action
+                                        team
+                                        common-payload
+                                        service-id)))
+                                (cons "service_id" service-id))))
               (cl-labels
                   ((log-error (err)
                               (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
