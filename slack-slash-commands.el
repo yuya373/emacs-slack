@@ -134,8 +134,20 @@
                        (slack-request-handle-error
                         (data "slack-command-run")
                         (slack-if-let* ((response (plist-get data :response)))
-                            (message "%s" (slack-message-unescape-string response
-                                                                         team))))))
+                            (slack-if-let*
+                                ((user (slack-user--find "USLACKBOT" team))
+                                 (payload (list :text response
+                                                :is_ephemeral t
+                                                :user (plist-get user :id)
+                                                :id (plist-get user :id)
+                                                :type "message"
+                                                :channel channel
+                                                :ts (number-to-string
+                                                     (time-to-seconds))))
+                                 (message (slack-message-create payload team)))
+                                (slack-message-update message team)
+                              (message "%s" (slack-message-unescape-string response
+                                                                           team)))))))
         (slack-request
          (slack-request-create
           "https://slack.com/api/chat.command"
