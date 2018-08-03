@@ -81,7 +81,7 @@
   ((data-source :initarg :data_source :type string :initform "static")
    (options :initarg :options :initform nil)
    (option-groups :initarg :option_groups :initform nil)
-   (min-query-length :initarg :min_query_length :type (or null number))))
+   (min-query-length :initarg :min_query_length :type (or null number) :initform nil)))
 
 (defclass slack-attachment-select-action-option ()
   ((text :initarg :text :type string)
