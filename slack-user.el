@@ -218,7 +218,7 @@
                                             #'(lambda ()
                                                 (interactive)
                                                 (slack-if-let* ((buf slack-current-buffer))
-                                                  (slack-buffer-display-im buf))))
+                                                    (slack-buffer-display-im buf))))
                                           map))))
     (format "%s\n%s\n\n%s" header body dm-button)))
 
@@ -233,6 +233,9 @@
 
 (defun slack-user-hidden-p (user)
   (not (eq (plist-get user :deleted) :json-false)))
+
+(defun slack--user-select (team)
+  (slack-select-from-list ((slack-user-names team) "Select User: ")))
 
 (defun slack-user-select ()
   (interactive)

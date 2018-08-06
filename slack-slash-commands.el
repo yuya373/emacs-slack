@@ -23,100 +23,142 @@
 ;;
 
 ;;; Code:
-(defvar slack-slash-commands-map
-  '(("active" . slack-slash-commands-active)
-    ("away" . slack-slash-commands-away)
-    ("dnd" . slack-slash-commands-dnd)
-    ("leave" . slack-slash-commands-leave)
-    ("join" . slack-slash-commands-join)
-    ("remind" . slack-slash-commands-remind)
-    ("shrug" . slack-slash-commands-shrug)
-    ("status" . slack-slash-commands-status)
-    ("who" . slack-slash-commands-who)
-    ("dm" . slack-slash-commands-dm)))
+(require 'eieio)
 
-(defvar slack-slash-commands-available
-  (mapcar #'car slack-slash-commands-map))
+(defclass slack-command ()
+  ((name :initarg :name :type string)
+   (type :initarg :type :type string)
+   (usage :initarg :usage :type string :initform "")
+   (desc :initarg :desc :type string :initform "")
+   (alias-of :initarg :alias_of :type (or null string) :initform nil)))
 
-(defun slack-slash-commands-parse (text)
-  (if (string-prefix-p "/" text)
-      (let* ((maybe-command (car (split-string (substring text 1) " ")))
-             (command (cl-find maybe-command slack-slash-commands-available
-                               :test #'string=)))
-        (when command
-          (cons command (cdr (split-string text " ")))))))
+(defclass slack-core-command (slack-command)
+  ((canonical-name :initarg :canonical_name :type string)))
 
-(defun slack-slash-commands-find (command)
-  (cdr (cl-assoc command slack-slash-commands-map :test #'string=)))
+(defclass slack-app-command (slack-command)
+  ((app :initarg :app :type string)))
 
-(defun slack-slash-commands-execute (command team)
-  (let ((command (car command))
-        (args (cdr command)))
-    (funcall (slack-slash-commands-find command) team args)))
+(defclass slack-service-command (slack-command)
+  ((service-name :initarg :service_name :type string)))
 
-(defun slack-slash-commands-active (team _args)
-  ;; https://api.slack.com/docs/presence-and-status#user_presence
-  ;; Setting presence back to auto indicates that the automatic status should be used instead. There's no way to force a user status to active.
-  (slack-request-set-presence team "auto"))
+(defmethod slack-equalp ((this slack-command) other)
+  (string= (oref this name) (oref other name)))
 
-(defun slack-slash-commands-away (team _args)
-  (slack-request-set-presence team))
-
-(defun slack-slash-commands-leave (team _args)
-  (slack-channel-leave team t))
+(defun slack-slash-commands-parse (text team)
+  "Return (command . arguments) or nil."
+  (when (string-prefix-p "/" text)
+    (let* ((tokens (split-string text " "))
+           (maybe-command (car tokens))
+           (command (slack-command-find maybe-command team)))
+      (when command
+        (cons command
+              (mapconcat #'identity (cdr tokens) " "))))))
 
 (defun slack-slash-commands-join (team _args)
   (slack-channel-join team t))
 
-(defun slack-slash-commands-remind (team _args)
-  (slack-reminder-add team))
+(defun slack-command-create (command)
+  (cl-labels
+      ((slack-core-command-create
+        (payload)
+        (apply #'make-instance 'slack-core-command
+               (slack-collect-slots 'slack-core-command payload)))
+       (slack-app-command-create
+        (payload)
+        (apply #'make-instance 'slack-app-command
+               (slack-collect-slots 'slack-app-command payload)))
+       (slack-service-command-create
+        (payload)
+        (apply #'make-instance 'slack-service-command
+               (slack-collect-slots 'slack-service-command payload))))
+    (let ((type (plist-get command :type)))
+      (cond
+       ((string= type "core")
+        (slack-core-command-create command))
+       ((string= type "app")
+        (slack-app-command-create command))
+       ((string= type "service")
+        (slack-service-command-create command))
+       (t (apply #'make-instance 'slack-command command))))))
 
-(defun slack-slash-commands-dnd (team args)
-  "[some description of time, see `slack-parse-time-string']"
-  (let ((time (car args))
-        (user (slack-user--find (oref team self-id) team)))
-    (if (or (not (slack-user-dnd-in-range-p user))
-            time)
-        (slack-request-dnd-set-snooze team time)
-      (slack-request-dnd-end-dnd team))))
-;; ¯\_(ツ)_/¯
-(defun slack-slash-commands-shrug (_team messages)
-  "[your message]"
-  (slack-message--send (format "%s ¯\\_(ツ)_/¯"
-                               (mapconcat #'identity messages " "))))
-
-(defun slack-slash-commands-status (team args)
-  "[clear] or [:your_new_status_emoji:] [your new status message]"
-  (let ((emoji (car args))
-        (text (cdr args)))
-    (if (string= emoji "clear")
-        (slack-user-set-status-request team "" "")
-      (if (string-prefix-p ":" emoji)
-          (slack-user-set-status-request team emoji (mapconcat #'identity text " "))
-        (slack-user-set-status-request team "" (mapconcat #'identity args " "))))))
-
-(defun slack-slash-commands-who (_team _args)
-  (slack-room-user-select))
-
-(defun slack-slash-commands-dm (team args)
-  "@user [your message]"
-  (let* ((user-name (substring (car args) 1))
-         (text (mapconcat #'identity (cdr args) " "))
-         (user (slack-user-find-by-name user-name team)))
-    (unless user
-      (error "Invalid user name: %s" (car args)))
+(defun slack-command-list-update (&optional team)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
     (cl-labels
-        ((send-message
-          ()
-          (slack-message-send-internal
-           text
-           (oref (slack-im-find-by-user-id (plist-get user :id)
-                                           team)
-                 id)
-           team)))
-      (if (slack-im-find-by-user-id (plist-get user :id) team)
-          (send-message)
-        (slack-im-open user #'send-message)))))
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-commands-list-request")
+           (let ((commands (mapcar #'(lambda (command) (slack-command-create command))
+                                   (cl-remove-if-not #'listp
+                                                     (plist-get data :commands)))))
+             (oset team commands commands)
+             (slack-log "Slack Command List Updated" team :level 'info)))))
+      (slack-request
+       (slack-request-create
+        "https://slack.com/api/commands.list"
+        team
+        :type "POST"
+        :success #'on-success)))))
+
+(defun slack-command-find (name team)
+  (let ((commands (oref team commands)))
+    (cl-find-if #'(lambda (command) (string= name
+                                             (oref command name)))
+                commands)))
+
+(defmethod slack-command-company-doc-string ((this slack-command) team)
+  (if (oref this alias-of)
+      (let ((command (slack-command-find (oref this alias-of)
+                                         team)))
+        (when command
+          (slack-command-company-doc-string command team)))
+    (with-slots (usage desc) this
+      (format "%s%s"
+              (or (and (< 0 (length usage))
+                       (format "%s\n" usage))
+                  "")
+              desc))))
+
+(cl-defmethod slack-command-run ((command slack-command) team channel
+                                 &key (text nil))
+  (let ((disp "")
+        (client-token "")
+        (command (oref command name)))
+    (cond
+     ((or (string= command "/join")
+          (string= command "/open")) (error "/join and /open are not supported yet"))
+     (t
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-command-run")
+                        (slack-if-let* ((response (plist-get data :response)))
+                            (slack-if-let*
+                                ((user (slack-user--find "USLACKBOT" team))
+                                 (payload (list :text response
+                                                :is_ephemeral t
+                                                :user (plist-get user :id)
+                                                :id (plist-get user :id)
+                                                :type "message"
+                                                :channel channel
+                                                :ts (number-to-string
+                                                     (time-to-seconds))))
+                                 (message (slack-message-create payload team)))
+                                (slack-message-update message team)
+                              (message "%s" (slack-message-unescape-string response
+                                                                           team)))))))
+        (slack-request
+         (slack-request-create
+          "https://slack.com/api/chat.command"
+          team
+          :params (list (cons "disp" disp)
+                        (cons "client_token" client-token)
+                        (cons "command" command)
+                        (cons "channel" channel)
+                        (when text
+                          (cons "text" text)))
+          :success #'on-success)))))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

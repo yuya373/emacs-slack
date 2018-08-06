@@ -30,6 +30,7 @@
 (require 'slack-room-buffer)
 (require 'slack-buffer)
 (require 'slack-request)
+(require 'slack-action)
 
 (defface slack-new-message-marker-face
   '((t (:foreground "#d33682"
@@ -43,6 +44,7 @@
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-pre-output-hook 'slack-search-code-block nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
+  (add-hook 'lui-pre-output-hook 'slack-display-inline-action t t)
   ;; TODO move to `slack-room-buffer' ?
   (cursor-sensor-mode)
   (setq-local lui-max-buffer-size nil)
@@ -385,10 +387,6 @@
                       (slack-select-from-list (user-alist "Select User: ")))))
       (let ((buf (slack-create-user-profile-buffer team user-id)))
         (slack-buffer-display buf)))))
-
-(defmethod slack-buffer-execute-slash-command ((this slack-message-buffer) command)
-  (with-slots (team) this
-    (slack-slash-commands-execute command team)))
 
 (defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
   (when (oref this marker-overlay)

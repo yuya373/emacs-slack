@@ -168,18 +168,19 @@ One of 'info, 'debug"
                                                     (oref team name))
                                 collect (concat "#" (oref team name))))
                       (slash
-                       (cl-loop for com in slack-slash-commands-available
-                                if (string-prefix-p content com)
-                                collect (concat "/" com))
+                       (cl-loop for command in (oref slack-current-team commands)
+                                if (string-prefix-p (concat "/" content)
+                                                    (oref command name))
+                                collect (oref command name))
                        ))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (slash
           (company-doc-buffer
-           (documentation
-            (slack-slash-commands-find (substring arg 1))
-            t)))))
-      )))
+           (let* ((team slack-current-team)
+                  (command (slack-command-find arg team)))
+             (when command
+               (slack-command-company-doc-string command team))))))))))
 
 (defun slack-get-ts ()
   (get-text-property 0 'ts (thing-at-point 'line)))
@@ -262,7 +263,7 @@ One of 'info, 'debug"
 (defun slack-image-exists-p (image-spec)
   (file-exists-p (slack-image-path (car image-spec))))
 
-(defun slack-image-string (spec)
+(defun slack-image-string (spec &optional pad)
   "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
   (if spec
       (slack-if-let* ((path (slack-image-path (car spec))))
@@ -273,7 +274,8 @@ One of 'info, 'debug"
                                      :width (cadr spec)
                                      :height (caddr spec)
                                      :max-height (cadddr spec)
-                                     :max-width (cadr (cdddr spec)))))
+                                     :max-width (cadr (cdddr spec))))
+               pad)
             (propertize "[Image]" 'slack-image-spec spec))
         "")
     ""))
@@ -317,19 +319,24 @@ One of 'info, 'debug"
         (create-image (or file data) 'imagemagick data :height h :width w))
     image))
 
-(defun slack-mapconcat-images (images)
+(defun slack-mapconcat-images (images &optional pad)
   (when images
-    (cl-labels ((sort-images (images)
-                             (let ((compare (if (or (and (eq system-type 'darwin) (< emacs-major-version 26))
-						    (< emacs-major-version 25))
-                                                #'>
-                                              #'<)))
-                               (cl-sort images compare :key #'(lambda (image) (caddr (car image))))))
-                (propertize-image (image)
-                                  (propertize "image"
-                                              'display image
-                                              'face 'slack-profile-image-face)))
-      (mapconcat #'propertize-image (sort-images images) "\n"))))
+    (cl-labels
+        ((sort-images (images)
+                      (let ((compare (if (or (and (eq system-type 'darwin)
+                                                  (< emacs-major-version 26))
+                                             (< emacs-major-version 25))
+                                         #'>
+                                       #'<)))
+                        (cl-sort images compare :key
+                                 #'(lambda (image) (caddr (car image))))))
+         (propertize-image (image)
+                           (propertize "image"
+                                       'display image
+                                       'face 'slack-profile-image-face)))
+      (mapconcat #'propertize-image
+                 (sort-images images)
+                 (format "\n%s" (or pad ""))))))
 
 (cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
   (if (executable-find "curl")

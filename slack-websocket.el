@@ -269,8 +269,11 @@
          ((string= type "star_removed")
           (slack-ws-handle-star-removed decoded-payload team))
          ((string= type "reconnect_url")
-          (slack-ws-handle-reconnect-url decoded-payload team)
-          )
+          (slack-ws-handle-reconnect-url decoded-payload team))
+         ((string= type "app_conversation_invite_request")
+          (slack-ws-handle-app-conversation-invite-request decoded-payload team))
+         ((string= type "commands_changed")
+          (slack-ws-handle-commands-changed decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -410,12 +413,26 @@
       (slack-message-deleted message room team)))
 
 (defun slack-ws-update-message (payload team)
-  (let ((m (slack-message-create payload team))
-        (bot_id (plist-get payload :bot_id)))
-    (when m
-      (if (and bot_id (not (slack-find-bot bot_id team)))
-          (slack-bot-info-request bot_id team #'(lambda (team) (slack-message-update m team)))
-        (slack-message-update m team)))))
+  (let ((subtype (plist-get payload :subtype)))
+    (if (string= subtype "bot_message")
+        (slack-ws-update-bot-message payload team)
+      (slack-message-update (slack-message-create payload team)
+                            team))))
+
+(defun slack-ws-update-bot-message (payload team)
+  (let* ((bot-id (plist-get payload :bot_id))
+         (username (plist-get payload :username))
+         (user (plist-get payload :user))
+         (bot (or (slack-find-bot bot-id team)
+                  (slack-find-bot-by-name username team)
+                  (slack-user--find user team)))
+         (message (slack-message-create payload team)))
+    (if bot
+        (slack-message-update message team)
+      (slack-bot-info-request bot-id
+                              team
+                              #'(lambda (team)
+                                  (slack-message-update message team))))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
@@ -909,6 +926,103 @@ TEAM is one of `slack-teams'"
 
     (slack-if-let* ((star (oref team star)))
         (slack-star-remove star item team))))
+
+(defun slack-ws-handle-app-conversation-invite-request (payload team)
+  (let* ((app-user (plist-get payload :app_user))
+         (channel-id (plist-get payload :channel_id))
+         (invite-message-ts (plist-get payload :invite_message_ts))
+         (scope-info (plist-get payload :scope_info))
+         (room (slack-room-find channel-id team)))
+    (if (yes-or-no-p (format "%s\n%s\n"
+                             (format "%s would like to do following in %s"
+                                     (slack-user-name app-user team)
+                                     (slack-room-name room))
+                             (mapconcat #'(lambda (scope)
+                                            (format "* %s"
+                                                    (plist-get scope
+                                                               :short_description)))
+                                        scope-info
+                                        "\n")))
+        (slack-app-conversation-allow-invite-request team
+                                                    :channel channel-id
+                                                    :app-user app-user
+                                                    :invite-message-ts invite-message-ts)
+      (slack-app-conversation-deny-invite-request team
+                                                  :channel channel-id
+                                                  :app-user app-user
+                                                  :invite-message-ts invite-message-ts))))
+
+(cl-defun slack-app-conversation-allow-invite-request (team &key channel
+                                                            app-user
+                                                            invite-message-ts)
+  (let ((url "https://slack.com/api/apps.permissions.internal.add")
+        (params (list (cons "channel" channel)
+                      (cons "app_user" app-user)
+                      (cons "invite_message_ts" invite-message-ts)
+                      (cons "did_confirm" "true")
+                      (cons "send_ephemeral_error_message" "true"))))
+    (cl-labels
+        ((log-error (err)
+                    (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                       err
+                                       url
+                                       params)
+                               team :level 'error))
+         (on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-app-conversation-allow-invite-request"
+                            #'log-error)
+                      (message "DATA: %s" data))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :success #'on-success)))))
+
+(cl-defun slack-app-conversation-deny-invite-request (team &key channel
+                                                           app-user
+                                                           invite-message-ts)
+  (let ((url "https://slack.com/api/apps.permissions.internal.denyAdd")
+        (params (list (cons "channel" channel)
+                      (cons "app_user" app-user)
+                      (cons "invite_message_ts" invite-message-ts))))
+    (cl-labels
+        ((log-error (err)
+                    (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                       err
+                                       url
+                                       params)
+                               team :level 'error))
+         (on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-app-conversation-deny-invite-request"
+                            #'log-error)
+                      (message "DATA: %s" data))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :success #'on-success)))))
+
+(defun slack-ws-handle-commands-changed (payload team)
+  (let ((commands-updated (mapcar #'slack-command-create
+                                  (plist-get payload :commands_updated)))
+        (commands-removed (mapcar #'slack-command-create
+                                  (plist-get payload :commands_removed)))
+        (commands '()))
+    (cl-loop for command in (oref team commands)
+             if (and (not (cl-find-if #'(lambda (e) (slack-equalp command e))
+                                      commands-removed))
+                     (not (cl-find-if #'(lambda (e) (slack-equalp command e))
+                                      commands-updated)))
+             do (push command commands))
+    (cl-loop for command in commands-updated
+             do (push command commands))
+    (oset team commands commands)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

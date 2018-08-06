@@ -52,7 +52,6 @@
    (creator :initarg :creator :initform "")
    (is-archived :initarg :is_archived :initform nil)
    (is-mpim :initarg :is_mpim :initform nil)
-   (members :initarg :members :type list :initform '())
    (topic :initarg :topic :initform nil)
    (purpose :initarg :purpose :initform nil)))
 
