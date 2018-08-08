@@ -412,7 +412,8 @@
       (slack-buffer-update-mark buffer :force t)))
 
 (defmethod slack-message--inspect ((this slack-message) room team)
-  (format "ROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+  (format "RAW: %s\nROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+          (oref this text)
           (oref room id)
           (eieio-object-class this)
           (length (oref this attachments))

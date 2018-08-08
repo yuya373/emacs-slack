@@ -319,6 +319,7 @@
       (if (re-search-forward end-regex (point-max) t)
           (let* ((end (or (and block-p (1+ (point))) (- (point) 1))))
             (slack-put-code-block-overlay beg end)
+            (put-text-property beg end 'slack-disable-buttonize t)
             (goto-char end))))))
 
 
@@ -339,10 +340,11 @@
       (while (re-search-forward regex nil t)
         (let* ((url-begin (match-beginning 1))
                (cur-point (point))
-               (disabled (get-text-property cur-point 'slack-disable-buttonize)))
-          (unless disabled
-            (let ((url (concat (match-string 1) (match-string 2)))
-                  (replace (match-string 3)))
+               (disabled (get-text-property cur-point 'slack-disable-buttonize))
+               (replace (match-string 3)))
+          (if disabled
+              (replace-match replace nil)
+            (let ((url (concat (match-string 1) (match-string 2))))
               (replace-match replace nil)
               (make-button (1- url-begin)
                            (+ (1- url-begin) (length replace))
