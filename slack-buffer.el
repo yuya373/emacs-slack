@@ -319,6 +319,7 @@
       (if (re-search-forward end-regex (point-max) t)
           (let* ((end (or (and block-p (1+ (point))) (- (point) 1))))
             (slack-put-code-block-overlay beg end)
+            (put-text-property beg end 'slack-disable-buttonize t)
             (goto-char end))))))
 
 
