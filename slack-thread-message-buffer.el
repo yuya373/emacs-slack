@@ -140,6 +140,9 @@
     (let ((buf (slack-create-message-share-buffer room team ts)))
       (slack-buffer-display buf))))
 
+(defmethod slack-file-upload-params ((this slack-thread-message-buffer))
+  (list (cons "thread_ts" (oref this thread-ts))
+        (cons "channels" (oref (oref this room) id))))
 
 (provide 'slack-thread-message-buffer)
 ;;; slack-thread-message-buffer.el ends here
