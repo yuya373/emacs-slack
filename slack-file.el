@@ -457,7 +457,7 @@
                                           (interactive)
                                           (slack-buffer-toggle-email-expand
                                            slack-current-buffer
-                                           ts)))
+                                           ts (oref this id))))
                                     map))))))
 
 (defmacro slack-with-file (id team &rest body)
