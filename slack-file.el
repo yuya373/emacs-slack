@@ -306,7 +306,7 @@
                         (cons "ts_to" oldest)))
       :success #'on-file-list))))
 
-(defun slack-file-select-sharing-channels (team)
+(defun slack-file-select-sharing-channels (current-room-name team)
   (cl-labels
       ((select-channels
         (channels acc)
@@ -314,7 +314,7 @@
                                (if acc
                                    (list "Select another channel (or leave empty): "
                                          (cons "" channels) nil t)
-                                 (list "Select channel: " channels nil t)))))
+                                 (list "Select channel: " channels nil t current-room-name)))))
           (if (< 0 (length selected))
               (select-channels (cl-remove-if (lambda (x) (equal selected (car-safe x))) channels)
                                (cons selected acc))
