@@ -79,7 +79,7 @@
                (string-match (format "@%s" (plist-get (oref team self) :name))
                              (or (slack-message-body message team) ""))))
       (let ((team-name (oref team name))
-            (room-name (slack-room-name room))
+            (room-name (slack-room-name room team))
             (text (with-temp-buffer
                     (goto-char (point-min))
                     (insert (slack-message-to-alert message team))

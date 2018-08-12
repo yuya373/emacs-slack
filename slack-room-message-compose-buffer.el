@@ -40,7 +40,7 @@
 (defmethod slack-buffer-name :static ((class slack-room-message-compose-buffer) room team)
   (format "*Slack - %s : %s Compose Message"
           (oref team name)
-          (slack-room-name room)))
+          (slack-room-name room team)))
 
 (defmethod slack-buffer-name ((this slack-room-message-compose-buffer))
   (with-slots (room team) this

@@ -48,7 +48,7 @@
 (defmethod slack-buffer-name :static ((class slack-message-share-buffer) room ts team)
   (format "*Slack - %s : %s  Share Message - %s"
           (oref team name)
-          (slack-room-name room)
+          (slack-room-name room team)
           ts))
 
 (defmethod slack-buffer-name ((this slack-message-share-buffer))

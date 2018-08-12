@@ -68,18 +68,18 @@
 
 (defun slack-group-names (team &optional filter)
   (with-slots (groups) team
-    (slack-room-names groups filter)))
+    (slack-room-names groups team filter)))
 
 (defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
-    (let ((name (slack-room-name room)))
+    (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
 
-(defmethod slack-room-buffer-name ((room slack-group))
+(defmethod slack-room-buffer-name ((room slack-group) team)
   (concat slack-group-buffer-name
           " : "
-          (slack-room-display-name room)))
+          (slack-room-display-name room team)))
 
 (defun slack-group-select ()
   (interactive)
@@ -87,7 +87,8 @@
          (room (slack-room-select
                 (cl-loop for team in (list team)
                          for groups = (oref team groups)
-                         nconc groups))))
+                         nconc groups)
+                team)))
     (slack-room-display room team)))
 
 (defun slack-group-list-update (&optional team after-success)
@@ -155,7 +156,7 @@
                                      (slack-room-equal-p group g))
                                  groups)))
            (message "Left Group: %s"
-                    (slack-room-display-name group)))))
+                    (slack-room-display-name group team)))))
       (slack-room-request-with-id slack-group-leave-url
                                   (oref group id)
                                   team
@@ -202,12 +203,12 @@
                                   #'on-group-unarchive))))
 
 
-(defun slack-group-members-s (group)
-  (with-slots (members team-id) group
-    (mapconcat #'(lambda (user) (slack-user-name user
-                                                 (slack-team-find team-id)))
+(defun slack-group-members-s (group team)
+  (with-slots (members) group
+    (mapconcat #'(lambda (user)
+                   (slack-user-name user
+                                    team))
                members ", ")))
-
 
 (defun slack-group-mpim-open ()
   (interactive)
@@ -216,7 +217,7 @@
     (cl-labels
         ((select-users (users acc)
                        (let ((selected (funcall slack-completing-read-function "Select User: "
-                                                        users nil t)))
+                                                users nil t)))
                          (if (< 0 (length selected))
                              (select-users users
                                            (push (cdr (cl-assoc selected users :test #'string=)) acc))
@@ -227,7 +228,9 @@
            (data "slack-group-mpim-open")
            (if (plist-get data :already_open)
                (message "Direct Message Channel with %s Already Open"
-                        (slack-group-members-s (slack-room-find (oref selected id) team)))
+                        (slack-group-members-s
+                         (slack-room-find (oref selected id) team)
+                         team))
              (oset team groups
                    (cons (slack-room-create (plist-get data :group) team 'slack-group)
                          (oref team groups)))))))
@@ -260,7 +263,7 @@
                                        groups)))
                  (if (plist-get data :already_closed)
                      (message "Direct Message Channel with %s Already Closed"
-                              (slack-group-members-s group)))))))
+                              (slack-group-members-s group team)))))))
           (slack-request
            (slack-request-create
             slack-mpim-close-url

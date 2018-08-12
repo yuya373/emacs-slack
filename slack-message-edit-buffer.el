@@ -57,7 +57,7 @@
   ((class slack-message-edit-buffer) room  ts team)
   (format "*Slack - %s : %s Edit Message %s"
           (oref team name)
-          (slack-room-name room)
+          (slack-room-name room team)
           ts))
 
 (defmethod slack-buffer-name ((this slack-message-edit-buffer))

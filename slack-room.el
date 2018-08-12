@@ -42,12 +42,11 @@
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
-   (team-id :initarg :team-id)
    (last-read :initarg :last_read :type string :initform "0")
    (members :initarg :members :type list :initform '())))
 
 
-(defgeneric slack-room-name (room))
+(defgeneric slack-room-name (room team))
 (defgeneric slack-room-history (room team &optional oldest after-success sync))
 (defgeneric slack-room-update-mark-url (room))
 
@@ -63,7 +62,6 @@
   (oset this latest (oref other latest))
   (oset this unread-count (oref other unread-count))
   (oset this unread-count-display (oref other unread-count-display))
-  (oset this team-id (oref other team-id))
   (unless (string= "0" (oref other last-read))
     (oset this last-read (oref other last-read))))
 
@@ -72,7 +70,6 @@
       ((prepare (p)
                 (plist-put p :members
                            (append (plist-get p :members) nil))
-                (plist-put p :team-id (oref team id))
                 p))
     (let* ((attributes (slack-collect-slots class (prepare payload)))
            (room (apply #'make-instance class attributes)))
@@ -82,10 +79,10 @@
 (defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
 
-(defmethod slack-room-buffer-name ((room slack-room))
+(defmethod slack-room-buffer-name ((room slack-room) team)
   (concat "*Slack*"
           " : "
-          (slack-room-display-name room)))
+          (slack-room-display-name room team)))
 
 (cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
   "Bind candidates from selected."
@@ -106,7 +103,7 @@
       (slack-room-archived-p room)
       (not (slack-room-open-p room))))
 
-(defmacro slack-room-names (rooms &optional filter)
+(defmacro slack-room-names (rooms team &optional filter)
   `(cl-labels
        ((latest-ts (room)
                    (with-slots (latest) room
@@ -119,11 +116,11 @@
       (cl-loop for room in (if ,filter
                                (funcall ,filter ,rooms)
                              ,rooms)
-               collect (cons (slack-room-label room) room)))))
+               collect (cons (slack-room-label room team) room)))))
 
-(defun slack-room-select (rooms)
+(defun slack-room-select (rooms team)
   (let* ((alist (slack-room-names
-                 rooms #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
+                 rooms team #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
     (slack-select-from-list (alist "Select Channel: "))))
 
 (cl-defun slack-room-list-update (url success team &key (sync t))
@@ -155,18 +152,15 @@
     (when message
       (slack-message-thread message room))))
 
-(defmethod slack-room-team ((room slack-room))
-  (slack-team-find (oref room team-id)))
-
-(defmethod slack-room-display-name ((room slack-room))
-  (let ((room-name (slack-room-name room)))
+(defmethod slack-room-display-name ((room slack-room) team)
+  (let ((room-name (slack-room-name room team)))
     (if slack-display-team-name
         (format "%s - %s"
-                (oref (slack-room-team room) name)
+                (slack-team-name team)
                 room-name)
       room-name)))
 
-(defmethod slack-room-label-prefix ((_room slack-room))
+(defmethod slack-room-label-prefix ((_room slack-room) _team)
   "  ")
 
 (defmethod slack-room-unread-count-str ((room slack-room))
@@ -177,13 +171,13 @@
                 ")")
       "")))
 
-(defmethod slack-room-label ((room slack-room))
+(defmethod slack-room-label ((room slack-room) team)
   (format "%s%s%s"
-          (slack-room-label-prefix room)
-          (slack-room-display-name room)
+          (slack-room-label-prefix room team)
+          (slack-room-display-name room team)
           (slack-room-unread-count-str room)))
 
-(defmethod slack-room-name ((room slack-room))
+(defmethod slack-room-name ((room slack-room) _team)
   (oref room name))
 
 (defun slack-room-sort-messages (messages)
@@ -264,7 +258,8 @@
          (room (slack-room-select
                 (cl-loop for team in (list team)
                          append (with-slots (groups ims channels) team
-                                  (append ims groups channels))))))
+                                  (append ims groups channels)))
+                team)))
     (slack-room-display room team)))
 
 (defun slack-create-room (url team success)
@@ -346,7 +341,7 @@
         (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
                                      channels)))
       (message "Channel: %s deleted"
-               (slack-room-display-name room))))))
+               (slack-room-display-name room team))))))
 
 (cl-defun slack-room-request-with-id (url id team success)
   (slack-request
@@ -363,7 +358,7 @@
   (cl-labels
       ((find-by-name (rooms name)
                      (cl-find-if #'(lambda (e) (string= name
-                                                        (slack-room-name e)))
+                                                        (slack-room-name e team)))
                                  rooms)))
     (or (find-by-name (oref team groups) name)
         (find-by-name (oref team channels) name)
@@ -410,7 +405,8 @@
                                    #'(lambda (room)
                                        (not (< 0 (oref room
                                                        unread-count-display))))
-                                   (append ims groups channels)))))))
+                                   (append ims groups channels))))
+                team)))
     (slack-room-display room team)))
 
 (defmethod slack-user-find ((room slack-room) team)
@@ -426,7 +422,7 @@
                                        'slack-message-buffer)
                                    room team)))
       (if buf (open buf)
-        (message "No Message in %s, fetching from server..." (slack-room-name room))
+        (message "No Message in %s, fetching from server..." (slack-room-name room team))
         (slack-room-history-request
          room team
          :after-success #'(lambda (&rest _ignore)

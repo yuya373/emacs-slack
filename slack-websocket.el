@@ -290,9 +290,9 @@
               (setq typing-timer nil)
               (setq typing nil))
           (if (slack-buffer-show-typing-p
-               (get-buffer (slack-room-buffer-name room)))
+               (get-buffer (slack-room-buffer-name room team)))
               (let ((team-name (slack-team-name team))
-                    (room-name (slack-room-name room))
+                    (room-name (slack-room-name room team))
                     (visible-users (cl-remove-if
                                     #'(lambda (u) (< (oref u limit) current))
                                     users)))
@@ -309,7 +309,7 @@
   (let* ((user (slack-user-name (plist-get payload :user) team))
          (room (slack-room-find (plist-get payload :channel) team)))
     (if (and user room
-             (slack-buffer-show-typing-p (get-buffer (slack-room-buffer-name room))))
+             (slack-buffer-show-typing-p (get-buffer (slack-room-buffer-name room team))))
         (let ((limit (+ 3 (float-time))))
           (with-slots (typing typing-timer) team
             (if (and typing (equal room (oref typing room)))
@@ -546,7 +546,7 @@
     (push channel (oref team channels))
     (slack-room-info-request channel team)
     (slack-log (format "Created channel %s"
-                       (slack-room-display-name channel))
+                       (slack-room-display-name channel team))
                team :level 'info)))
 
 (defun slack-ws-handle-room-archive (payload team)
@@ -554,7 +554,7 @@
          (room (slack-room-find id team)))
     (oset room is-archived t)
     (slack-log (format "Channel: %s is archived"
-                       (slack-room-display-name room))
+                       (slack-room-display-name room team))
                team :level 'info)))
 
 (defun slack-ws-handle-room-unarchive (payload team)
@@ -562,7 +562,7 @@
          (room (slack-room-find id team)))
     (oset room is-archived nil)
     (slack-log (format "Channel: %s is unarchived"
-                       (slack-room-display-name room))
+                       (slack-room-display-name room team))
                team :level 'info)))
 
 (defun slack-ws-handle-channel-deleted (payload team)
@@ -572,7 +572,7 @@
 (defun slack-ws-handle-room-rename (payload team)
   (let* ((c (plist-get payload :channel))
          (room (slack-room-find (plist-get c :id) team))
-         (old-name (slack-room-name room))
+         (old-name (slack-room-name room team))
          (new-name (plist-get c :name)))
     (oset room name new-name)
     (slack-log (format "Renamed channel from %s to %s"
@@ -584,14 +584,14 @@
     (push group (oref team groups))
     (slack-room-info-request group team)
     (slack-log (format "Joined group %s"
-                       (slack-room-display-name group))
+                       (slack-room-display-name group team))
                team :level 'info)))
 
 (defun slack-ws-handle-channel-joined (payload team)
   (let ((channel (slack-room-find (plist-get (plist-get payload :channel) :id) team)))
     (slack-room-info-request channel team)
     (slack-log (format "Joined channel %s"
-                       (slack-room-display-name channel))
+                       (slack-room-display-name channel team))
                team :level 'info)))
 
 (defun slack-ws-handle-presence-change (payload team)
@@ -936,7 +936,7 @@ TEAM is one of `slack-teams'"
     (if (yes-or-no-p (format "%s\n%s\n"
                              (format "%s would like to do following in %s"
                                      (slack-user-name app-user team)
-                                     (slack-room-name room))
+                                     (slack-room-name room team))
                              (mapconcat #'(lambda (scope)
                                             (format "* %s"
                                                     (plist-get scope
