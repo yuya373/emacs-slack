@@ -62,7 +62,7 @@
     (oref room last-read)))
 
 (cl-defmethod slack-buffer-update-mark ((this slack-message-buffer) &key (force nil))
-  (with-slots (room update-mark-timer) this
+  (with-slots (room update-mark-timer team) this
     (let* ((ts (slack-get-ts))
            (timer-timeout-sec (or (and force 0) 5))
            (prev-mark (or (car update-mark-timer)
@@ -71,7 +71,7 @@
       (when (or force (or (string< prev-mark ts)
                           (string= prev-mark ts)))
         (slack-log (format "%s: update mark to %s"
-                           (slack-room-name room)
+                           (slack-room-name room team)
                            ts)
                    (oref this team))
         (when (timerp prev-timer)
@@ -417,12 +417,13 @@
   (slack-buffer-update-marker-overlay this))
 
 (defmethod slack-file-upload-params ((this slack-message-buffer))
-  (list (cons "channels"
-              (mapconcat #'identity
-                         (slack-file-select-sharing-channels
-                          (slack-room-label (oref this room))
-                          (oref this team))
-                         ","))))
+  (with-slots (room team) this
+    (list (cons "channels"
+                (mapconcat #'identity
+                           (slack-file-select-sharing-channels
+                            (slack-room-label room team)
+                            team)
+                           ",")))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

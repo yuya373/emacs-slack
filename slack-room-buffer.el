@@ -36,7 +36,7 @@
   ((room :initarg :room :type slack-room)))
 
 (defmethod slack-buffer-name :static ((class slack-room-buffer) room team)
-  (slack-if-let* ((room-name (slack-room-name room)))
+  (slack-if-let* ((room-name (slack-room-name room team)))
       (format  "*Slack - %s : %s"
                (oref team name)
                room-name)))

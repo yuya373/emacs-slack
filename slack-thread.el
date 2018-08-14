@@ -83,7 +83,7 @@ Any other non-nil value: send to the room."
                   team))
         (broadcast (if (eq slack-thread-also-send-to-room 'ask)
                        (y-or-n-p (format "Also send to %s ? "
-                                         (slack-room-name room)))
+                                         (slack-room-name room team)))
                      slack-thread-also-send-to-room)))
     (progn
       (slack-message-inc-id team)
@@ -245,7 +245,7 @@ Any other non-nil value: send to the room."
     (let ((room (slack-room-find (oref root channel) team))
           (body (slack-message-body root team)))
       (when room
-        (format "%s - %s" (slack-room-name room)
+        (format "%s - %s" (slack-room-name room team)
                 (concat (substring body 0 (min 50 (length body))) "..."))))))
 
 (defun slack-thread-select (&optional reload)

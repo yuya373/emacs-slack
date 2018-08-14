@@ -57,14 +57,14 @@
     (setq is-member (oref other is-member))
     (setq num-members (oref other num-members))))
 
-(defmethod slack-room-buffer-name ((room slack-channel))
+(defmethod slack-room-buffer-name ((room slack-channel) team)
   (concat slack-channel-buffer-name
           " : "
-          (slack-room-display-name room)))
+          (slack-room-display-name room team)))
 
 (defun slack-channel-names (team &optional filter)
   (with-slots (channels) team
-    (slack-room-names channels filter)))
+    (slack-room-names channels team filter)))
 
 (defmethod slack-room-member-p ((room slack-channel))
   (oref room is-member))
@@ -75,7 +75,8 @@
          (room (slack-room-select
                 (cl-loop for team in (list team)
                          for channels = (oref team channels)
-                         nconc channels))))
+                         nconc channels)
+                team)))
     (slack-room-display room team)))
 
 (defun slack-channel-list-update (&optional team after-success)
@@ -148,7 +149,7 @@
                           (data "slack-channel-leave")
                           (oset channel is-member nil)
                           (message "Left Channel: %s"
-                                   (slack-room-name channel)))))
+                                   (slack-room-name channel team)))))
     (slack-room-request-with-id slack-channel-leave-url
                                 (oref channel id)
                                 team
@@ -180,7 +181,7 @@
      (slack-request-create
       slack-channel-join-url
       team
-      :params (list (cons "name" (slack-room-name channel)))
+      :params (list (cons "name" (slack-room-name channel team)))
       :success #'on-channel-join))))
 
 (defun slack-channel-create-from-info (id team)
@@ -194,7 +195,8 @@
                (let ((channel (slack-room-create c-data team 'slack-channel)))
                  (with-slots (channels) team (push channel channels))
                  (message "Channel: %s created"
-                          (slack-room-display-name channel))))))))
+                          (slack-room-display-name channel
+                                                   team))))))))
     (slack-channel-fetch-info id team #'on-create-from-info)))
 
 (defun slack-channel-fetch-info (id team success)
@@ -245,7 +247,7 @@
 
 (defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team
-    (let ((name (slack-room-name room)))
+    (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
 

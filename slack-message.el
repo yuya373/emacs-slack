@@ -98,7 +98,7 @@
 (defgeneric slack-message-to-alert (slack-message))
 (defmethod slack-message-bot-id ((_this slack-message)) nil)
 
-(defgeneric slack-room-buffer-name (room))
+(defgeneric slack-room-buffer-name (room team))
 
 (defun slack-room-find (id team)
   (if (and id team)
@@ -378,7 +378,7 @@
     (alert "message deleted"
            :icon slack-alert-icon
            :title (format "\\[%s] from %s"
-                          (slack-room-display-name room)
+                          (slack-room-display-name room team)
                           (slack-message-sender-name message team))
            :category 'slack)))
 

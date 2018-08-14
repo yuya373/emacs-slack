@@ -134,7 +134,6 @@
       (setq file-room (slack-file-room "file-room"
                                        :name "Files"
                                        :id "F"
-                                       :team-id (oref team id)
                                        :created (format-time-string "%s")
                                        :latest nil
                                        :unread_count 0
@@ -325,7 +324,8 @@
     (let* ((channels (slack-room-names
                       (append (oref team ims)
                               (oref team channels)
-                              (oref team groups))))
+                              (oref team groups))
+                      team))
            (target-channels (select-channels channels '())))
       (mapcar #'(lambda (selected) (channel-id selected channels))
               (cl-delete-if #'null target-channels)))))
@@ -476,7 +476,7 @@
             do (when (string= (oref file id) ,id)
                  ,@body)))
 
-(defmethod slack-room-buffer-name ((this slack-file))
+(defmethod slack-room-buffer-name ((this slack-file) _team)
   (with-slots (name) this
     (format "*Slack File - %s*" name)))
 

@@ -56,32 +56,28 @@
   (oref room is-open)
   (not (oref room is-user-deleted)))
 
-(defmethod slack-im-user-presence ((room slack-im))
-  (with-slots (team-id) room
-    (let ((team (slack-team-find team-id)))
-      (slack-user-presence-to-string (slack-user-find room team)))))
+(defmethod slack-im-user-presence ((room slack-im) team)
+  (slack-user-presence-to-string (slack-user-find room team)))
 
-(defmethod slack-im-user-dnd-status ((room slack-im))
-  (with-slots (team-id) room
-    (slack-user-dnd-status-to-string (slack-user-find room
-                                                      (slack-team-find team-id)))))
+(defmethod slack-im-user-dnd-status ((room slack-im) team)
+  (slack-user-dnd-status-to-string (slack-user-find room
+                                                    team)))
 
-(defmethod slack-room-name ((room slack-im))
-  (with-slots (user team-id) room
-    (slack-user-name user (slack-team-find team-id))))
+(defmethod slack-room-name ((room slack-im) team)
+  (with-slots (user) room
+    (slack-user-name user team)))
 
-(defmethod slack-room-display-name ((room slack-im))
+(defmethod slack-room-display-name ((room slack-im) team)
   "To Display emoji in minibuffer configure `emojify-inhibit-in-buffer-functions'"
-  (let* ((team (slack-team-find (oref room team-id)))
-         (status (slack-user-status (oref room user) team))
+  (let* ((status (slack-user-status (oref room user) team))
          (room-name (or (and status
                              (format "%s %s"
-                                     (slack-room-name room)
+                                     (slack-room-name room team)
                                      status))
-                        (slack-room-name room))))
+                        (slack-room-name room team))))
     (if slack-display-team-name
         (format "%s - %s"
-                (oref (slack-room-team room) name)
+                (slack-team-name team)
                 room-name)
       room-name)))
 
@@ -92,14 +88,15 @@
 (defun slack-im-names (team)
   (with-slots (ims) team
     (slack-room-names ims
+                      team
                       #'(lambda (ims)
                           (cl-remove-if #'(lambda (im) (not (oref im is-open)))
                                         ims)))))
 
-(defmethod slack-room-buffer-name ((room slack-im))
+(defmethod slack-room-buffer-name ((room slack-im) team)
   (concat slack-im-buffer-name
           " : "
-          (slack-room-display-name room)))
+          (slack-room-display-name room team)))
 
 (defun slack-im-select ()
   (interactive)
@@ -109,7 +106,7 @@
                                                           (not (oref im is-open)))
                                                       (oref team ims))
                               nconc ims))
-         (room (slack-room-select candidates)))
+         (room (slack-room-select candidates team)))
     (slack-room-display room team)))
 
 (defun slack-user-equal-p (a b)
@@ -215,11 +212,11 @@
         :params (list (cons "user" (plist-get user :id)))
         :success #'on-success)))))
 
-(defmethod slack-room-label-prefix ((room slack-im))
+(defmethod slack-room-label-prefix ((room slack-im) team)
   (format "%s "
           (or
-           (slack-im-user-dnd-status room)
-           (slack-im-user-presence room))))
+           (slack-im-user-dnd-status room team)
+           (slack-im-user-presence room team))))
 
 (defmethod slack-room-get-info-url ((_room slack-im))
   slack-im-open-url)

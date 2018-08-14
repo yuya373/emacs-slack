@@ -39,7 +39,7 @@
   ((class slack-thread-message-compose-buffer) room ts team)
   (format "*Slack - %s : %s Compose Thread Message - %s*"
           (oref team name)
-          (slack-room-name room)
+          (slack-room-name room team)
           ts))
 
 (defmethod slack-buffer-name ((this slack-thread-message-compose-buffer))

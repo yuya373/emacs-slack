@@ -77,7 +77,8 @@
   (let ((channel-ids
          (mapcar #'(lambda (x)
                      (let ((channel (cdr x)))
-                       (cons (slack-room-name channel) (slot-value channel 'id))))
+                       (cons (slack-room-name channel team)
+                             (slot-value channel 'id))))
                  (slack-channel-names team))))
     (replace-regexp-in-string
      "#\\<\\([A-Za-z0-9_\-]+\\)\\>"
@@ -160,7 +161,7 @@
       (with-slots (team) buf
         (slack-select-from-list
             ((slack-channel-names team) "Select Channel: ")
-            (insert (concat "#" (slack-room-name selected)))))))
+            (insert (concat "#" (slack-room-name selected team)))))))
 
 (defun slack-message-embed-mention ()
   (interactive)

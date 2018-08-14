@@ -51,7 +51,7 @@
 (defmethod slack-buffer-name :static ((class slack-thread-message-buffer) room ts team)
   (format "*Slack - %s : %s Thread - %s"
           (oref team name)
-          (slack-room-name room)
+          (slack-room-name room team)
           ts))
 
 (defmethod slack-buffer-name ((this slack-thread-message-buffer))
