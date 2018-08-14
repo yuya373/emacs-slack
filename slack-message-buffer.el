@@ -416,5 +416,13 @@
   (call-next-method)
   (slack-buffer-update-marker-overlay this))
 
+(defmethod slack-file-upload-params ((this slack-message-buffer))
+  (list (cons "channels"
+              (mapconcat #'identity
+                         (slack-file-select-sharing-channels
+                          (slack-room-label (oref this room))
+                          (oref this team))
+                         ","))))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

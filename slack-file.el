@@ -306,60 +306,70 @@
                         (cons "ts_to" oldest)))
       :success #'on-file-list))))
 
-(defun slack-file-upload ()
-  (interactive)
+(defun slack-file-select-sharing-channels (current-room-name team)
   (cl-labels
-      ((on-file-upload (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data "slack-file-upload")))
-       (select-channels (channels acc)
-                        (let ((selected (apply slack-completing-read-function
-                                               (if acc
-                                                   (list "Select another channel (or leave empty): "
-                                                         (cons "" channels) nil t)
-                                                 (list "Select channel: " channels nil t)))))
-                          (if (< 0 (length selected))
-                              (select-channels (cl-remove-if (lambda (x) (equal selected (car-safe x))) channels)
-                                               (cons selected acc))
-                            acc)))
+      ((select-channels
+        (channels acc)
+        (let ((selected (apply slack-completing-read-function
+                               (if acc
+                                   (list "Select another channel (or leave empty): "
+                                         (cons "" channels) nil t)
+                                 (list "Select channel: " channels nil t current-room-name)))))
+          (if (< 0 (length selected))
+              (select-channels (cl-remove-if (lambda (x) (equal selected (car-safe x))) channels)
+                               (cons selected acc))
+            acc)))
        (channel-id (selected channels)
                    (oref (cdr (cl-assoc selected channels :test #'string=))
                          id)))
-    (let* ((team (slack-team-select))
-           (channels (slack-room-names
+    (let* ((channels (slack-room-names
                       (append (oref team ims)
                               (oref team channels)
                               (oref team groups))))
-           (target-channels (select-channels channels '()))
-           (channel-ids (mapconcat #'(lambda (selected)
-                                       (channel-id selected channels))
-                                   (cl-delete-if #'null target-channels)
-                                   ","))
-           (buf (find-file-noselect
-                 (car (find-file-read-args
-                       "Select File: "
-                       (confirm-nonexistent-file-or-buffer)))
-                 t t))
-           (filename (read-from-minibuffer "Filename: "
-                                           (file-name-nondirectory
-                                            (buffer-file-name buf))))
-           (filetype (read-from-minibuffer "Filetype: "
-                                           (file-name-extension
-                                            (buffer-file-name buf))))
-           (initial-comment (read-from-minibuffer "Message: ")))
-      (slack-request
-       (slack-request-create
-        slack-file-upload-url
-        team
-        :type "POST"
-        :params (list (cons "filename" filename)
-                      (cons "channels" channel-ids)
-                      (cons "filetype" filetype)
-                      (if initial-comment
-                          (cons "initial_comment" initial-comment)))
-        :files (list (cons "file" buf))
-        :headers (list (cons "Content-Type" "multipart/form-data"))
-        :success #'on-file-upload)))))
+           (target-channels (select-channels channels '())))
+      (mapcar #'(lambda (selected) (channel-id selected channels))
+              (cl-delete-if #'null target-channels)))))
+
+(defun slack-file-select-upload-file-as-buffer ()
+  (find-file-noselect
+   (car (find-file-read-args
+         "Select File: "
+         (confirm-nonexistent-file-or-buffer)))
+   t t))
+
+(defun slack-file-upload ()
+  (interactive)
+  (slack-if-let*
+      ((slack-buffer slack-current-buffer)
+       (team (oref slack-buffer team))
+       (buf (slack-file-select-upload-file-as-buffer))
+       (filename (read-from-minibuffer "Filename: "
+                                       (file-name-nondirectory
+                                        (buffer-file-name buf))))
+       (filetype (read-from-minibuffer "Filetype: "
+                                       (file-name-extension
+                                        (buffer-file-name buf))))
+       (initial-comment (read-from-minibuffer "Message: ")))
+      (cl-labels
+          ((on-file-upload (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-file-upload"))))
+
+        (slack-request
+         (slack-request-create
+          slack-file-upload-url
+          team
+          :type "POST"
+          :params (append (slack-file-upload-params slack-buffer)
+                          (list
+                           (cons "filename" filename)
+                           (cons "filetype" filetype)
+                           (if initial-comment
+                               (cons "initial_comment" initial-comment))))
+          :files (list (cons "file" buf))
+          :headers (list (cons "Content-Type" "multipart/form-data"))
+          :success #'on-file-upload)))
+    (error "Call from message buffer or thread buffer")))
 
 (defun slack-file-delete ()
   (interactive)
