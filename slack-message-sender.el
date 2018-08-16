@@ -117,9 +117,8 @@
                     :text (slack-message-prepare-links
                            (slack-escape-message message)
                            team)))
-           (json (json-encode m))
            (obj (slack-message-create m team)))
-      (slack-ws-send json team)
+      (slack-ws-send m team)
       (puthash message-id obj sent-message))))
 
 (defun slack-message-read-room (team)

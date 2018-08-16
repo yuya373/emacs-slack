@@ -150,7 +150,8 @@
       (if (websocket-openp ws-conn)
           (condition-case err
               (progn
-                (websocket-send-text ws-conn payload)
+                (websocket-send-text ws-conn
+                                     (json-encode payload))
                 (setq waiting-send
                       (cl-remove-if #'(lambda (p) (string= payload p))
                                     waiting-send)))
@@ -644,10 +645,9 @@
     (let* ((time (slack-ws-current-time-str))
            (m (list :id message-id
                     :type "ping"
-                    :time time))
-           (json (json-encode m)))
+                    :time time)))
       (slack-ws-set-check-ping-timer team time)
-      (slack-ws-send json team)
+      (slack-ws-send m team)
       (slack-log (format "Send PING: %s" time)
                  team :level 'trace))))
 
