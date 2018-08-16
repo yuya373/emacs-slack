@@ -149,12 +149,7 @@
                     (slack-ws-set-reconnect-timer team)))
       (if (websocket-openp ws-conn)
           (condition-case err
-              (progn
-                (websocket-send-text ws-conn
-                                     (json-encode payload))
-                (setq waiting-send
-                      (cl-remove-if #'(lambda (p) (string= payload p))
-                                    waiting-send)))
+              (websocket-send-text ws-conn (json-encode payload))
             (error
              (slack-log (format "Error in `slack-ws-send`: %s" err)
                         team :level 'debug)
@@ -166,7 +161,7 @@
     (let ((candidate waiting-send))
       (setq waiting-send nil)
       (cl-loop for msg in candidate
-               do (sleep-for 1) (slack-ws-send msg team)))))
+               do (slack-ws-send msg team)))))
 
 ;; (:type error :error (:msg Socket URL has expired :code 1))
 (defun slack-ws-handle-error (payload team)
@@ -435,6 +430,17 @@
                               #'(lambda (team)
                                   (slack-message-update message team))))))
 
+(defun slack-ws-remove-from-resend-queue (payload team)
+  (with-slots (waiting-send) team
+    (slack-log (format "waiting-send: %s" (length waiting-send))
+               team :level 'trace)
+    (setq waiting-send
+          (cl-remove-if #'(lambda (e) (eq (plist-get e :id)
+                                          (plist-get payload :reply_to)))
+                        waiting-send))
+    (slack-log (format "waiting-send: %s" (length waiting-send))
+               team :level 'trace)))
+
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
     (if (eq ok :json-false)
@@ -444,10 +450,11 @@
                              (plist-get err :msg))
                      team))
       (let ((message-id (plist-get payload :reply_to)))
-        (if (integerp message-id)
-            (slack-message-handle-reply
-             (slack-message-create payload team)
-             team))))))
+        (when (integerp message-id)
+          (slack-message-handle-reply
+           (slack-message-create payload team)
+           team)
+          (slack-ws-remove-from-resend-queue payload team))))))
 
 (defun slack-ws-handle-reaction-added-to-file (file-id reaction team)
   (let* ((file (slack-file-find file-id team))
@@ -791,6 +798,7 @@ TEAM is one of `slack-teams'"
     (setq reconnect-timer nil)))
 
 (defun slack-ws-handle-pong (payload team)
+  (slack-ws-remove-from-resend-queue payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref team ping-check-timers))))
     (slack-log (format "Receive PONG: %s" key)
@@ -944,9 +952,9 @@ TEAM is one of `slack-teams'"
                                         scope-info
                                         "\n")))
         (slack-app-conversation-allow-invite-request team
-                                                    :channel channel-id
-                                                    :app-user app-user
-                                                    :invite-message-ts invite-message-ts)
+                                                     :channel channel-id
+                                                     :app-user app-user
+                                                     :invite-message-ts invite-message-ts)
       (slack-app-conversation-deny-invite-request team
                                                   :channel channel-id
                                                   :app-user app-user
