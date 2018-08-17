@@ -128,10 +128,15 @@
 (defmethod slack-buffer-replace ((this slack-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)
-      (lui-replace (slack-message-to-string message team)
-                   (lambda ()
-                     (equal (get-text-property (point) 'ts)
-                            (slack-ts message)))))))
+      (let ((cur-point (point)))
+        (lui-replace (slack-message-to-string message team)
+                     (lambda ()
+                       (equal (get-text-property (point) 'ts)
+                              (slack-ts message))))
+        (when (and (<= (point-min) cur-point)
+                   (<= cur-point (point-max)))
+          (goto-char cur-point))))))
+
 
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
