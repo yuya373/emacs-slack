@@ -338,7 +338,11 @@
                   (slack-buffer-update buf message :replace replace)))))))
 
 (defmethod slack-message-update ((message slack-message) team &optional replace no-notify)
-  (slack-if-let* ((room (slack-room-find (oref message channel) team)))
+  (slack-if-let*
+      ((room (slack-room-find (oref message channel) team))
+       (ts (slack-ts message))
+       (no-same-message (not (slack-room-find-message room ts))))
+
       (progn
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
