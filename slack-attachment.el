@@ -26,6 +26,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-selectable)
 
 (defclass slack-attachment ()
   ((fallback :initarg :fallback :initform nil)
@@ -77,19 +78,13 @@
    (style :initarg :style :type string :initform "default")
    (url :initarg :url :type (or null string) :initform nil)))
 
-(defclass slack-attachment-select-action (slack-attachment-action)
-  ((data-source :initarg :data_source :type string :initform "static")
-   (options :initarg :options :initform nil)
-   (option-groups :initarg :option_groups :initform nil)
-   (min-query-length :initarg :min_query_length :type (or null number) :initform nil)))
+(defclass slack-attachment-select-action (slack-attachment-action slack-selectable)
+  ((min-query-length :initarg :min_query_length :type (or null number) :initform nil)))
 
-(defclass slack-attachment-select-action-option ()
-  ((text :initarg :text :type string)
-   (value :initarg :value :type string)))
+(defclass slack-attachment-select-action-option (slack-selectable-option) ())
 
-(defclass slack-attachment-select-action-option-group ()
-  ((text :initarg :text :type string)
-   (options :initarg :options :initform nil)))
+(defclass slack-attachment-select-action-option-group
+  (slack-selectable-option-group) ())
 
 
 
@@ -138,6 +133,11 @@
                            :option_groups
                            (mapcar #'create-option-group
                                    (plist-get properties :option_groups))))
+          (setq properties
+                (plist-put properties
+                           :selected_options
+                           (mapcar #'create-option
+                                   (plist-get properties :selected_options))))
           (apply #'make-instance 'slack-attachment-select-action
                  (slack-collect-slots 'slack-attachment-select-action properties))))
        (t
@@ -293,41 +293,12 @@
       (let ((user-id (plist-get (slack--user-select team) :id)))
         (list (list (cons "value" user-id)))))
      ((string= data-source "static")
-      (cl-labels
-          ((select (prompt options)
-                   (funcall slack-completing-read-function
-                            prompt
-                            options
-                            nil t))
-           (find-option (text options)
-                        (cl-find-if #'(lambda (option)
-                                        (string= text (oref option text)))
-                                    options))
-           (select-option (options)
-                          (select "Select Option: "
-                                  (mapcar #'(lambda (option)
-                                              (cons (oref option text)
-                                                    (oref option value)))
-                                          options)))
-           (select-option-group
-            (option-groups)
-            (slack-if-let*
-                ((text (select "Select Option Group: "
-                               (mapcar #'(lambda (option-group)
-                                           (oref option-group text))
-                                       option-groups))))
-                (find-option text option-groups))))
-        (with-slots (id name text type value style options option-groups) this
-          (slack-if-let*
-              ((options (if option-groups
-                            (oref (select-option-group option-groups) options)
-                          options))
-               (option-text (select-option options))
-               (option (find-option option-text options))
-               (selected-options (list (list (cons "value"
-                                                   (oref option value))))))
-              selected-options
-            (error "Option is not selected")))))
+      (slack-if-let*
+          ((option (slack-selectable-select-from-static-data-source this))
+           (selected-options (list (list (cons "value"
+                                               (oref option value))))))
+          selected-options
+        (error "Option is not selected")))
      (t (error "%s's data-source: %s is not implemented"
                (oref this name)
                (oref this data-source))))))
@@ -435,6 +406,16 @@
 (defmethod slack-attachment-action-display-text ((this slack-attachment-action))
   (replace-regexp-in-string ":" " " (oref this text)))
 
+
+(defmethod slack-attachment-action-display-text ((this slack-attachment-select-action))
+  (let ((base (call-next-method)))
+    (with-slots (selected-options) this
+      (format "%s%s" base (if (and selected-options (car selected-options))
+                              (format " (%s)"
+                                      (slack-selectable-text (car selected-options)))
+                            "")))))
+
+
 (defmethod slack-attachment-action-to-string ((action slack-attachment-select-action)
                                               attachment team)
   (with-slots (id name text type data-source style options option-groups) action
@@ -537,6 +518,9 @@
       (if (and pretext (< 0 (length pretext)))
           (format "%s\n%s" pretext fallback)
         fallback))))
+
+(defmethod slack-selectable-prompt ((this slack-attachment-select-action))
+  (format "%s :" (oref this text)))
 
 (provide 'slack-attachment)
 ;;; slack-attachment.el ends here
