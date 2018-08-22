@@ -341,7 +341,8 @@
   (slack-if-let*
       ((room (slack-room-find (oref message channel) team))
        (ts (slack-ts message))
-       (no-same-message (not (slack-room-find-message room ts))))
+       (no-same-message (if replace t
+                          (not (slack-room-find-message room ts)))))
 
       (progn
         (slack-room-push-message room message)
