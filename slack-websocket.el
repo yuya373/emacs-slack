@@ -30,6 +30,7 @@
 (require 'slack-team)
 (require 'slack-reply)
 (require 'slack-file)
+(require 'slack-dialog)
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
 (defclass slack-typing ()
@@ -270,6 +271,8 @@
           (slack-ws-handle-app-conversation-invite-request decoded-payload team))
          ((string= type "commands_changed")
           (slack-ws-handle-commands-changed decoded-payload team))
+         ((string= type "dialog_opened")
+          (slack-ws-handle-dialog-opened decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -1031,6 +1034,14 @@ TEAM is one of `slack-teams'"
     (cl-loop for command in commands-updated
              do (push command commands))
     (oset team commands commands)))
+
+(defun slack-ws-handle-dialog-opened (payload team)
+  (slack-if-let*
+      ((dialog-id (plist-get payload :dialog_id))
+       (client-token (plist-get payload :client_token))
+       (not-initiated-from-other-client (string= "no_client_token_in_trigger"
+                                               client-token)))
+      (slack-dialog-get dialog-id team)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
