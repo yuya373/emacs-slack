@@ -180,7 +180,12 @@
                       (slack-if-let*
                           ((payload (plist-get data :dialog))
                            (dialog (slack-dialog-create payload)))
-                          (slack-dialog-submit dialog id team)))))
+                          ;; (slack-dialog-submit dialog id team)
+                          (slack-buffer-display
+                           (slack-create-dialog-buffer id
+                                                       dialog
+                                                       team))
+                        ))))
       (slack-request
        (slack-request-create
         url
