@@ -48,6 +48,12 @@
     (define-key map [mouse-1] #'slack-dialog-buffer-submit)
     map))
 
+(defvar slack-dialog-select-element-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-dialog-buffer-select)
+    (define-key map [mouse-1] #'slack-dialog-buffer-select)
+    map))
+
 (defface slack-dialog-text-element-input-face
   '((t (:box (:line-width 1))))
   "Used to dialog's text element input"
@@ -224,17 +230,40 @@
     (insert "\n")
     ))
 
+(defun slack-dialog-buffer-select ()
+  (interactive)
+  (slack-if-let*
+      ((buffer slack-current-buffer)
+       (team (oref buffer team))
+       (dialog-element (get-text-property (point)
+                                          'slack-dialog-element))
+       (value (slack-dialog-execute dialog-element team))
+       (beg (slack-dialog-beginning-of-field))
+       (end (slack-dialog-end-of-field))
+       (inhibit-read-only t))
+      (progn
+        (oset dialog-element value value)
+        (save-excursion
+          (delete-region beg (1+ end))
+          (slack-buffer-insert-select-button dialog-element)))))
+
+(defmethod slack-buffer-insert-select-button ((this slack-dialog-select-element))
+  (let ((label (slack-if-let*
+                   ((selected (slack-dialog-selected-option this)))
+                   (slack-selectable-text selected)
+                 "Choose an option...")))
+
+    (insert (propertize (format " %s " label)
+                        'face 'slack-dialog-select-element-input-face
+                        'keymap slack-dialog-select-element-map
+                        'slack-dialog-element this))))
+
 (defmethod slack-buffer-insert ((this slack-dialog-select-element))
-  (with-slots (label selected-options placeholder) this
+  (with-slots (label) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
     (insert "\n")
-    (insert (propertize (format " %s "
-                                (slack-if-let*
-                                    ((selected (slack-dialog-selected-option this)))
-                                    (slack-selectable-text selected)
-                                  "Choose an option..."))
-                        'face 'slack-dialog-select-element-input-face))
+    (slack-buffer-insert-select-button this)
     (insert "\n")
     ))
 
@@ -265,6 +294,11 @@
                                             value))
                                value)
                            params)))))
+          (when (and element
+                     (slack-dialog-select-element-p element))
+            (puthash (oref element name)
+                     (oref element value)
+                     params))
           (forward-line 1)))
       (with-slots (dialog dialog-id team) slack-current-buffer
         (slack-dialog--submit dialog dialog-id team
