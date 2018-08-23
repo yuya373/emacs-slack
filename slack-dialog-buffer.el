@@ -32,6 +32,42 @@
   (setq-local buffer-read-only t)
   (add-hook 'after-change-functions #'slack-dialog-buffer-process-text-input nil t))
 
+(defvar slack-dialog-text-element-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") nil)
+    map))
+
+(defface slack-dialog-text-element-input-face
+  '((t (:box (:line-width 1))))
+  "Used to dialog's text element input"
+  :group 'slack)
+
+(defface slack-dialog-element-label-face
+  '((t (:weight bold)))
+  "Used to dialog's element label"
+  :group 'slack)
+
+(defface slack-dialog-select-element-input-face
+  '((t (:box (:line-width 1 :style released-button))))
+  "Used to dialog's select element input"
+  :group 'slack)
+
+(defface slack-dialog-title-face
+  '((t (:weight bold :height 1.2)))
+  "Used to dialog's title"
+  :group 'slack)
+
+(defface slack-dialog-submit-button-face
+  '((t (:box (:line-width 1 :style released-button)
+             :foreground "#2aa198")))
+  "Used to dialog's submit button"
+  :group 'slack)
+
+(defface slack-dialog-cancel-button-face
+  '((t (:box (:line-width 1 :style released-button))))
+  "Used to dialog's cancel button"
+  :group 'slack)
+
 (defun slack-dialog-end-of-field ()
   (1- (next-single-property-change (point)
                                    'slack-dialog-element
@@ -93,6 +129,46 @@
                                       dialog-id dialog team)
   (slack-buffer-find-4 class dialog-id dialog team))
 
+(defmethod slack-buffer-insert ((this slack-dialog-text-element))
+  (with-slots (label) this
+    (insert (propertize label
+                        'face 'slack-dialog-element-label-face))
+    (insert "\n")
+    (insert (propertize (make-string 20 ? )
+                        'face 'slack-dialog-text-element-input-face
+                        'inhibit-read-only t
+                        'slack-dialog-element this
+                        'keymap slack-dialog-text-element-map
+                        ))
+    (insert "\n")))
+
+(defmethod slack-buffer-insert ((this slack-dialog-textarea-element))
+  (with-slots (label) this
+    (insert (propertize label
+                        'face 'slack-dialog-element-label-face))
+    (insert "\n")
+    (insert (propertize (make-string 20 ? )
+                        'face '(:box (:line-width 1))
+                        'inhibit-read-only t
+                        'slack-dialog-element this
+                        ))
+    (insert "\n")
+    ))
+
+(defmethod slack-buffer-insert ((this slack-dialog-select-element))
+  (with-slots (label selected-options placeholder) this
+    (insert (propertize label
+                        'face 'slack-dialog-element-label-face))
+    (insert "\n")
+    (insert (propertize (format " %s "
+                                (slack-if-let*
+                                    ((selected (slack-dialog-selected-option this)))
+                                    (slack-selectable-text selected)
+                                  "Choose an option..."))
+                        'face 'slack-dialog-select-element-input-face))
+    (insert "\n")
+    ))
+
 (defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (dialog (oref this dialog))
@@ -103,19 +179,19 @@
         (slack-dialog-buffer-mode)
         (slack-buffer-set-current-buffer this)
         (let ((inhibit-read-only t))
-          (insert title)
-          (insert "\n")
+          (insert (propertize title
+                              'face 'slack-dialog-title-face))
+          (insert "\n\n")
           (mapc #'(lambda (el)
-                    (with-slots (label) el
-                      (insert label)
-                      (insert "\n")
-                      (insert (propertize (make-string 20 ? )
-                                          'face '(:box (:line-width 1))
-                                          'inhibit-read-only t
-                                          'slack-dialog-element el))
-                      (insert "\n")))
+                    (slack-buffer-insert el)
+                    (insert "\n"))
                 elements)
-          (insert submit-label)
+          (insert "\n")
+          (insert (propertize " Cancel "
+                              'face 'slack-dialog-cancel-button-face))
+          (insert "\t")
+          (insert (propertize (format " %s " submit-label)
+                              'face 'slack-dialog-submit-button-face))
           (goto-char (point-min))
           )))
     (slack-buffer-push-new-4 'slack-dialog-buffer

@@ -68,6 +68,14 @@
 (defclass slack-dialog-select-option-group (slack-selectable-option-group)
   ((label :initarg :label :type string)))
 
+(defmethod slack-dialog-selected-option ((this slack-dialog-select-element))
+  (with-slots (data-source value options selected-options) this
+    (if (string= data-source "external")
+        (and selected-options (car selected-options))
+      (cl-find-if #'(lambda (op) (string= (oref op value)
+                                          value))
+                  options))))
+
 (defmethod slack-selectable-text ((this slack-dialog-select-option))
   (oref this label))
 
