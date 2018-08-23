@@ -130,11 +130,16 @@
   (slack-buffer-find-4 class dialog-id dialog team))
 
 (defmethod slack-buffer-insert ((this slack-dialog-text-element))
-  (with-slots (label) this
+  (with-slots (label value) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
     (insert "\n")
-    (insert (propertize (make-string 20 ? )
+    (insert (propertize (or (and value
+                                 (let ((pad-count (- 20 (length value))))
+                                   (if (< 0 pad-count)
+                                       (format "%s%s" value (make-string pad-count ? ))
+                                     value)))
+                            (make-string 20 ? ))
                         'face 'slack-dialog-text-element-input-face
                         'inhibit-read-only t
                         'slack-dialog-element this
