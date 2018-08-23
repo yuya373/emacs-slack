@@ -37,10 +37,27 @@
     (define-key map (kbd "RET") nil)
     map))
 
+(defvar slack-dialog-textarea-element-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'forward-line)
+    map))
+
+(defvar slack-dialog-submit-button-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-dialog-buffer-submit)
+    (define-key map [mouse-1] #'slack-dialog-buffer-submit)
+    map))
+
 (defface slack-dialog-text-element-input-face
   '((t (:box (:line-width 1))))
   "Used to dialog's text element input"
   :group 'slack)
+
+(defface slack-dialog-textarea-element-input-face
+  '((t (:box (:line-width 1))))
+  "Used to dialog's textarea element input"
+  :group 'slack)
+
 
 (defface slack-dialog-element-label-face
   '((t (:weight bold)))
@@ -74,40 +91,64 @@
                                    nil
                                    (point-max))))
 
+(defun slack-dialog-beginning-of-field ()
+  (cond
+   ((bobp) (point))
+   ((not (eq (get-text-property (point) 'slack-dialog-element)
+             (get-text-property (1- (point)) 'slack-dialog-element)))
+    (point))
+   (t (previous-single-property-change (point)
+                                       'slack-dialog-element
+                                       nil
+                                       (point-min)))))
+
+(defun slack-dialog-buffer-inspect ()
+  (interactive)
+  (message "%S" (line-end-position)))
+
+(defmethod slack-dialog-element-input-face ((_this slack-dialog-textarea-element))
+  'slack-dialog-textarea-element-input-face)
+
+(defmethod slack-dialog-element-input-face ((_this slack-dialog-text-element))
+  'slack-dialog-text-element-input-face)
+
+(defmethod slack-dialog-element-input-face ((_this slack-dialog-select-element))
+  'slack-dialog-select-element-input-face)
+
 (defun slack-dialog-buffer-process-text-input (beg end replace-length)
   (slack-if-let*
-      ((text (buffer-substring-no-properties beg end))
+      ((upper-bounds (< (1+ end) (point-max)))
+       (lower-bounds (> (1- end) (point-min)))
        (length (- end beg replace-length))
-       (inhibit-read-only t)
-       (pos (and (< (1+ end) (point-max))
-                 (> (1- end) (point-min))
-                 (if (get-text-property (1+ end)
-                                        'slack-dialog-element)
-                     (1+ end)
-                   (if (get-text-property (1- end)
-                                          'slack-dialog-element)
-                       (1- end)))))
-       (properties (text-properties-at pos)))
-      (progn
-        (set-text-properties beg end properties)
-        (when (< 0 length)
-          (save-excursion
-            (goto-char (slack-dialog-end-of-field))
-            (while (and (< 0 length)
-                        (eql (char-after (1- (point))) ? ))
-              (delete-region (1- (point)) (point))
-              (cl-decf length))))
-        (when (> 0 length)
-          (save-excursion
-            (goto-char end)
-            (goto-char (slack-dialog-end-of-field))
-            (let ((cur-point (point)))
-              (insert (make-string (abs length) ? ))
-              (set-text-properties cur-point (point) properties))
-            )))
-
-    (message "TEXT: %s, LENGTH: %s, %s"
-             text replace-length (- end beg replace-length))))
+       (pos (if (get-text-property (1+ end) 'slack-dialog-element)
+                (1+ end)
+              (if (get-text-property (1- end) 'slack-dialog-element)
+                  (1- end))))
+       (dialog-element (get-text-property pos 'slack-dialog-element)))
+      (when (or (slack-dialog-textarea-element-p dialog-element)
+                (slack-dialog-text-element-p dialog-element))
+        (let ((inhibit-read-only t)
+              (properties (slack-dialog-element-input-text-properties dialog-element)))
+          (set-text-properties beg end properties)
+          (when (< 0 length)
+            (save-excursion
+              (goto-char (if (slack-dialog-textarea-element-p dialog-element)
+                             (1- (line-end-position))
+                           (slack-dialog-end-of-field)))
+              (while (and (< 0 length)
+                          (eql (char-after (1- (point))) ? ))
+                (delete-region (1- (point)) (point))
+                (cl-decf length))))
+          (when (> 0 length)
+            (save-excursion
+              (goto-char end)
+              (goto-char (if (slack-dialog-textarea-element-p dialog-element)
+                             (1- (line-end-position))
+                           (1+ (slack-dialog-end-of-field))))
+              (let ((cur-point (point)))
+                (insert (make-string (abs length) ? ))
+                (set-text-properties cur-point (point) properties))
+              (goto-char (1- end))))))))
 
 (defclass slack-dialog-buffer (slack-buffer)
   ((dialog-id :initarg :dialog-id :type string)
@@ -129,34 +170,57 @@
                                       dialog-id dialog team)
   (slack-buffer-find-4 class dialog-id dialog team))
 
+(defmethod slack-dialog-element-input-text-properties ((this slack-dialog-text-element))
+  (list 'face 'slack-dialog-text-element-input-face
+        'inhibit-read-only t
+        'slack-dialog-element this
+        'keymap slack-dialog-text-element-map))
+
 (defmethod slack-buffer-insert ((this slack-dialog-text-element))
   (with-slots (label value) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
     (insert "\n")
-    (insert (propertize (or (and value
-                                 (let ((pad-count (- 20 (length value))))
-                                   (if (< 0 pad-count)
-                                       (format "%s%s" value (make-string pad-count ? ))
-                                     value)))
-                            (make-string 20 ? ))
-                        'face 'slack-dialog-text-element-input-face
-                        'inhibit-read-only t
-                        'slack-dialog-element this
-                        'keymap slack-dialog-text-element-map
-                        ))
+    (insert (apply #'propertize
+                   (or (and value
+                            (let ((pad-count (- 20 (length value))))
+                              (if (< 0 pad-count)
+                                  (format "%s%s" value (make-string pad-count ? ))
+                                value)))
+                       (make-string 20 ? ))
+                   (slack-dialog-element-input-text-properties this)))
     (insert "\n")))
 
+(defmethod slack-dialog-element-input-text-properties ((this slack-dialog-textarea-element))
+  (list 'face 'slack-dialog-textarea-element-input-face
+        'inhibit-read-only t
+        'keymap slack-dialog-textarea-element-map
+        'slack-dialog-element this))
+
 (defmethod slack-buffer-insert ((this slack-dialog-textarea-element))
-  (with-slots (label) this
+  (with-slots (label value) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
     (insert "\n")
-    (insert (propertize (make-string 20 ? )
-                        'face '(:box (:line-width 1))
-                        'inhibit-read-only t
-                        'slack-dialog-element this
-                        ))
+    (let ((start (point))
+          (lines 5)
+          (width 50)
+          (default-value (or value ""))
+          (end nil))
+      (insert default-value)
+      (when (< (count-lines start (point)) lines)
+        (dotimes (_ (- lines (count-lines start (point))))
+          (insert "\n")))
+      (setq end (point-marker))
+      (goto-char start)
+      (while (< (point) end)
+        (end-of-line)
+        (let ((pad (- width (- (point) (line-beginning-position)))))
+          (when (< 0 pad)
+            (insert (make-string pad ? ))))
+        (set-text-properties (line-beginning-position) (point)
+                             (slack-dialog-element-input-text-properties this))
+        (forward-line 1)))
     (insert "\n")
     ))
 
@@ -174,6 +238,39 @@
     (insert "\n")
     ))
 
+(defun slack-dialog-buffer-submit ()
+  (interactive)
+  (with-current-buffer (current-buffer)
+    (goto-char (point-min))
+    (let ((params (make-hash-table :test 'equal)))
+      (while (< (point) (point-max))
+        (let ((element (get-text-property 0
+                                          'slack-dialog-element
+                                          (thing-at-point 'line))))
+          (when (and element
+                     (or (slack-dialog-text-element-p element)
+                         (slack-dialog-textarea-element-p element)))
+            (let* ((beg (slack-dialog-beginning-of-field))
+                   (end (slack-dialog-end-of-field))
+                   (value (buffer-substring-no-properties beg end))
+                   (name (oref element name)))
+              (when (string-match " +\\'" value)
+                (setq value (substring value 0 (match-beginning 0))))
+              (when (< 0 (length value))
+                (let ((prev-value (gethash name params nil)))
+                  (puthash name
+                           (or (and prev-value
+                                    (format "%s\n%s"
+                                            prev-value
+                                            value))
+                               value)
+                           params)))))
+          (forward-line 1)))
+      (with-slots (dialog dialog-id team) slack-current-buffer
+        (slack-dialog--submit dialog dialog-id team
+                              (mapcar #'(lambda (key) (cons key (gethash key params)))
+                                      (hash-table-keys params)))))))
+
 (defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (dialog (oref this dialog))
@@ -188,15 +285,15 @@
                               'face 'slack-dialog-title-face))
           (insert "\n\n")
           (mapc #'(lambda (el)
-                    (slack-buffer-insert el)
-                    (insert "\n"))
+                    (slack-buffer-insert el))
                 elements)
           (insert "\n")
           (insert (propertize " Cancel "
                               'face 'slack-dialog-cancel-button-face))
           (insert "\t")
           (insert (propertize (format " %s " submit-label)
-                              'face 'slack-dialog-submit-button-face))
+                              'face 'slack-dialog-submit-button-face
+                              'keymap slack-dialog-submit-button-map))
           (goto-char (point-min))
           )))
     (slack-buffer-push-new-4 'slack-dialog-buffer
