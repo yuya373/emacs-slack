@@ -36,6 +36,12 @@
   "Face used to action."
   :group 'slack)
 
+(defun slack-execute-message-action ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (ts (slack-get-ts)))
+      (slack-buffer-execute-message-action buffer ts)))
+
 (defun slack-action-run ()
   (interactive)
   (slack-if-let* ((bot (get-text-property (point) 'bot))

@@ -235,6 +235,8 @@
   (slack-buffer-cant-execute this))
 (defmethod slack-file-upload-params ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(defmethod slack-buffer-execute-message-action ((this slack-buffer) _ts)
+  (slack-buffer-cant-execute this))
 
 (defvar lui-prompt-string "> ")
 
