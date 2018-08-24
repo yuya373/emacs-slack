@@ -271,11 +271,17 @@
   (interactive)
   (with-current-buffer (current-buffer)
     (goto-char (point-min))
-    (let ((params (make-hash-table :test 'equal)))
+    (let ((params (make-hash-table :test 'equal))
+          (elements (make-hash-table :test 'equal)))
       (while (< (point) (point-max))
         (let ((element (get-text-property 0
                                           'slack-dialog-element
                                           (thing-at-point 'line))))
+          (when element
+            (puthash (oref element name)
+                     element
+                     elements))
+
           (when (and element
                      (or (slack-dialog-text-element-p element)
                          (slack-dialog-textarea-element-p element)))
@@ -294,15 +300,21 @@
                                             value))
                                value)
                            params)))))
+
           (when (and element
                      (slack-dialog-select-element-p element))
             (puthash (oref element name)
                      (oref element value)
                      params))
           (forward-line 1)))
+
       (with-slots (dialog dialog-id team) slack-current-buffer
         (slack-dialog--submit dialog dialog-id team
-                              (mapcar #'(lambda (key) (cons key (gethash key params)))
+                              (mapcar #'(lambda (key)
+                                          (let ((value (gethash key params)))
+                                            (slack-dialog-element-validate (gethash key elements)
+                                                                           value)
+                                            (cons key value)))
                                       (hash-table-keys params)))))))
 
 (defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))

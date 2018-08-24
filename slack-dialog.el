@@ -68,6 +68,10 @@
 (defclass slack-dialog-select-option-group (slack-selectable-option-group)
   ((label :initarg :label :type string)))
 
+(defmethod slack-equalp ((this slack-dialog-element) other)
+  (string= (oref this name)
+           (oref other name)))
+
 (defmethod slack-dialog-selected-option ((this slack-dialog-select-element))
   (with-slots (data-source value options selected-options) this
     (if (string= data-source "external")
@@ -132,17 +136,23 @@
     (apply #'make-instance 'slack-dialog
            (slack-collect-slots 'slack-dialog payload))))
 
+(defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value))
+
+(defmethod slack-dialog-element-validate ((this slack-dialog-text-element) value)
+  (with-slots (min-length max-length label) this
+    (when (< max-length (length value))
+      (error "%s must be less than %s" label max-length))
+    (when (< (length value) min-length)
+      (error "%s must be greater than %s" label min-length))))
+
 (defmethod slack-dialog-execute ((this slack-dialog-text-element) team)
-  (with-slots (min-length max-length hint value placeholder label optional) this
+  (with-slots (hint value placeholder label optional) this
     (let* ((prompt (format "%s%s%s : "
                            label
                            (if hint (format " (%s)" hint) "")
                            (if optional " (optional)" "")))
            (value (read-from-minibuffer prompt value)))
-      (when (< max-length (length value))
-        (error "%s must be less than %s" label max-length))
-      (when (< (length value) min-length)
-        (error "%s must be greater than %s" label min-length))
+      (slack-dialog-element-validate this value)
       value)))
 
 (defmethod slack-dialog-execute ((this slack-dialog-textarea-element) team)
@@ -176,9 +186,9 @@
 (defmethod slack-dialog-submit ((this slack-dialog) dialog-id team)
   (with-slots (elements) this
     (let ((submission (mapcar #'(lambda (element)
-                                   (let ((value (slack-dialog-execute element team)))
-                                     (cons (oref element name) value)))
-                               elements)))
+                                  (let ((value (slack-dialog-execute element team)))
+                                    (cons (oref element name) value)))
+                              elements)))
       (slack-dialog--submit this dialog-id team submission))))
 
 (defun slack-dialog-get (id team)
