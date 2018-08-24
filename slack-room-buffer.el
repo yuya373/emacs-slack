@@ -149,7 +149,9 @@
                               (cons "action_id" (plist-get (cdr selected)
                                                            :action_id))
                               (cons "app_id" (plist-get (car selected)
-                                                        :app_id)))))
+                                                        :app_id))
+                              (cons "client_token"
+                                    (slack-team-client-token team)))))
                (slack-request
                 (slack-request-create
                  slack-actions-run-url

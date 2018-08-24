@@ -302,5 +302,8 @@ you can change current-team with `slack-change-current-team'"
 (defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))
 
+(defmethod slack-team-client-token ((team slack-team))
+  (format "EmacsSlack-%s" (oref team id)))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here

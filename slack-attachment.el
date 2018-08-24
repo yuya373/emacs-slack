@@ -367,7 +367,9 @@
                                         team
                                         common-payload
                                         service-id)))
-                                (cons "service_id" service-id))))
+                                (cons "service_id" service-id)
+                                (cons "client_token"
+                                      (slack-team-client-token team)))))
               (cl-labels
                   ((log-error (err)
                               (slack-log (format "Error: %s, URL: %s, PARAMS: %s"

@@ -1039,8 +1039,8 @@ TEAM is one of `slack-teams'"
   (slack-if-let*
       ((dialog-id (plist-get payload :dialog_id))
        (client-token (plist-get payload :client_token))
-       (not-initiated-from-other-client (string= "no_client_token_in_trigger"
-                                               client-token)))
+       (valid-client-tokenp (string= (slack-team-client-token team)
+                                     client-token)))
       (slack-dialog-get dialog-id team)))
 
 (provide 'slack-websocket)
