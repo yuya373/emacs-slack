@@ -240,13 +240,16 @@
      (t (error "Unknown element's data-source: %s" data-source))
      )))
 
-(defmethod slack-dialog--submit ((_this slack-dialog) dialog-id team submission)
+(defmethod slack-dialog--submit ((_this slack-dialog)
+                                 dialog-id team submission
+                                 &optional after-success)
   (let ((url "https://slack.com/api/dialog.submit")
         (params (list (cons "submission" (json-encode-alist submission))
                       (cons "dialog_id" dialog-id))))
     (cl-labels
         ((on-success (&key data &allow-other-keys)
-                     (message "DATA: %s" data)))
+                     (when (functionp after-success)
+                       (funcall after-success data))))
       (slack-request
        (slack-request-create
         url

@@ -54,6 +54,11 @@
     (define-key map [mouse-1] #'slack-dialog-buffer-select)
     map))
 
+(defface slack-dialog-element-error-face
+  '((t (:inherit font-lock-warning-face)))
+  "Used to dialog's element error message"
+  :group 'slack)
+
 (defface slack-dialog-element-hint-face
   '((t (:inherit font-lock-comment-face)))
   "Used to dialog's element hint"
@@ -298,9 +303,25 @@
     (let ((params (make-hash-table :test 'equal))
           (elements (make-hash-table :test 'equal)))
       (while (< (point) (point-max))
-        (let ((element (get-text-property 0
-                                          'slack-dialog-element
-                                          (thing-at-point 'line))))
+        (let* ((line (thing-at-point 'line))
+               (element (get-text-property 0
+                                           'slack-dialog-element
+                                           line))
+               (error-message-region
+                (get-text-property 0
+                                   'slack-dialog-error-message
+                                   line)))
+          (when error-message-region
+            (slack-if-let*
+                ((inhibit-read-only t)
+                 (beg (line-beginning-position))
+                 (end (1+ (next-single-property-change
+                           beg
+                           'slack-dialog-error-message
+                           nil
+                           (point-max)))))
+                (delete-region beg end)))
+
           (when element
             (puthash (oref element name)
                      element
@@ -334,13 +355,79 @@
           (forward-line 1)))
 
       (with-slots (dialog dialog-id team) slack-current-buffer
-        (slack-dialog--submit dialog dialog-id team
-                              (mapcar #'(lambda (key)
-                                          (let ((value (gethash key params)))
-                                            (slack-dialog-element-validate (gethash key elements)
-                                                                           value)
-                                            (cons key value)))
-                                      (hash-table-keys params)))))))
+        (cl-labels
+            ((after-success (data)
+                            (slack-if-let*
+                                ((err (plist-get data :error)))
+                                (slack-dialog-buffer-display-error
+                                 slack-current-buffer
+                                 err
+                                 (plist-get data :dialog_errors))
+                              (slack-dialog-buffer-kill-buffer
+                               slack-current-buffer)))
+             (validate (key)
+                       (slack-dialog-element-validate
+                        (gethash key elements)
+                        (gethash key params)))
+             (build-param (key)
+                          (cons key (gethash key params))))
+          (let ((submission (mapcar #'(lambda (key)
+                                        (validate key)
+                                        (build-param key))
+                                    (hash-table-keys params))))
+            (slack-dialog--submit dialog
+                                  dialog-id
+                                  team
+                                  submission
+                                  #'after-success)))))))
+
+(defmethod slack-dialog-buffer-display-error ((this slack-dialog-buffer) _err dialog-errors)
+  (slack-if-let* ((inhibit-read-only t)
+                  (buffer-name (slack-buffer-name this))
+                  (buf (get-buffer buffer-name)))
+      (with-current-buffer buf
+        (save-excursion
+          (goto-char (point-max))
+          (setq displayed-errors '())
+          (while (< (point-min) (point))
+            (let* ((line (thing-at-point 'line))
+                   (element (get-text-property 0
+                                               'slack-dialog-element
+                                               line)))
+              (when (and element
+                         (not (cl-find (oref element name)
+                                       displayed-errors
+                                       :test #'string=)))
+                (slack-if-let*
+                    ((dialog-error (cl-find-if
+                                    #'(lambda (e)
+                                        (string= (plist-get e :name)
+                                                 (oref element name)))
+                                    dialog-errors))
+                     (error-message (plist-get dialog-error :error)))
+                    (progn
+                      (push (oref element name) displayed-errors)
+                      (save-excursion
+                        (goto-char (1+ (slack-dialog-end-of-field)))
+                        (insert "\n")
+                        (let ((start (point)))
+                          (insert error-message)
+                          (put-text-property
+                           start (point)
+                           'face 'slack-dialog-element-error-face)
+                          (put-text-property
+                           start (point)
+                           'slack-dialog-error-message t))))))
+              (forward-line -1)))))))
+
+(defmethod slack-dialog-buffer-kill-buffer ((this slack-dialog-buffer))
+  (slack-if-let* ((buffer-name (slack-buffer-name this))
+                  (buf (get-buffer buffer-name))
+                  (win (get-buffer-window buf)))
+      (progn
+        (kill-buffer buf)
+        (when (< 1 (count-windows))
+          (delete-window win)))))
 
 (defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
