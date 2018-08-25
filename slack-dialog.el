@@ -42,25 +42,21 @@
    (label :initarg :label :type string)
    (type :initarg :type :type string)
    (optional :initarg :optional :type boolean :initform nil)
-   ))
+   (placeholder :initarg :placeholder :type (or null string) :initform nil)
+   (value :initarg :value :type (or null string) :initform nil)))
 
 (defclass slack-dialog-text-element (slack-dialog-element)
   ((max-length :initarg :max_length :type number :initform 150)
    (min-length :initarg :min_length :type number :initform 0)
    (hint :initarg :hint :type (or null string) :initform nil)
    ;; one of email, number, tel or url
-   (subtype :initarg :subtype :type (or null string) :initform nil)
-   (value :initarg :value :type (or null string) :initform nil)
-   (placeholder :initarg :placeholder :type (or null string) :initform nil)
-   ))
+   (subtype :initarg :subtype :type (or null string) :initform nil)))
 
 (defclass slack-dialog-textarea-element (slack-dialog-text-element)
   ((max-length :initarg :max_length :type number :initform 3000)))
 
 (defclass slack-dialog-select-element (slack-dialog-element slack-selectable)
-  ((min-query-length :initarg :min_query_length :type (or null number) :initform nil)
-   (placeholder :initarg :placeholder :type (or null string) :initform nil)
-   (value :initarg :value :type (or null string) :initform nil)))
+  ((min-query-length :initarg :min_query_length :type (or null number) :initform nil)))
 
 (defclass slack-dialog-select-option (slack-selectable-option)
   ((label :initarg :label :type string)))
