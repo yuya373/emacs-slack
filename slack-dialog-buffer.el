@@ -327,9 +327,10 @@
 
           (when (and element
                      (slack-dialog-select-element-p element))
-            (puthash (oref element name)
-                     (oref element value)
-                     params))
+            (let ((name (oref element name))
+                  (value (oref element value)))
+              (when value
+                (puthash name value params))))
           (forward-line 1)))
 
       (with-slots (dialog dialog-id team) slack-current-buffer
