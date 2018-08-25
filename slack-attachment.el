@@ -230,7 +230,8 @@
                       (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
                                          err
                                          url
-                                         params)))
+                                         params)
+                                 team :level 'error))
            (on-success (&key data &allow-other-keys)
                        (slack-request-handle-error
                         (data "slack-attachment-action-get-suggestions"
