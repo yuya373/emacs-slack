@@ -54,6 +54,11 @@
     (define-key map [mouse-1] #'slack-dialog-buffer-select)
     map))
 
+(defface slack-dialog-element-hint-face
+  '((t (:inherit font-lock-comment-face)))
+  "Used to dialog's element hint"
+  :group 'slack)
+
 (defface slack-dialog-text-element-input-face
   '((t (:box (:line-width 1))))
   "Used to dialog's text element input"
@@ -182,10 +187,23 @@
         'slack-dialog-element this
         'keymap slack-dialog-text-element-map))
 
-(defmethod slack-buffer-insert ((this slack-dialog-text-element))
-  (with-slots (label value) this
+(defmethod slack-buffer-insert-label ((this slack-dialog-element))
+  (with-slots (label optional) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
+    (when optional
+      (insert " (optional)"))))
+
+(defmethod slack-buffer-insert-hint ((this slack-dialog-text-element))
+  (with-slots (hint) this
+    (when hint
+      (insert (propertize hint
+                          'face 'slack-dialog-element-hint-face))
+      (insert "\n"))))
+
+(defmethod slack-buffer-insert ((this slack-dialog-text-element))
+  (with-slots (value) this
+    (slack-buffer-insert-label this)
     (insert "\n")
     (insert (apply #'propertize
                    (or (and value
@@ -195,7 +213,8 @@
                                 value)))
                        (make-string 20 ? ))
                    (slack-dialog-element-input-text-properties this)))
-    (insert "\n")))
+    (insert "\n")
+    (slack-buffer-insert-hint this)))
 
 (defmethod slack-dialog-element-input-text-properties ((this slack-dialog-textarea-element))
   (list 'face 'slack-dialog-textarea-element-input-face
@@ -204,9 +223,8 @@
         'slack-dialog-element this))
 
 (defmethod slack-buffer-insert ((this slack-dialog-textarea-element))
-  (with-slots (label value) this
-    (insert (propertize label
-                        'face 'slack-dialog-element-label-face))
+  (with-slots (value) this
+    (slack-buffer-insert-label this)
     (insert "\n")
     (let ((start (point))
           (lines 5)
@@ -228,7 +246,7 @@
                              (slack-dialog-element-input-text-properties this))
         (forward-line 1)))
     (insert "\n")
-    ))
+    (slack-buffer-insert-hint this)))
 
 (defun slack-dialog-buffer-select ()
   (interactive)
@@ -268,13 +286,10 @@
                         'slack-dialog-element this))))
 
 (defmethod slack-buffer-insert ((this slack-dialog-select-element))
-  (with-slots (label) this
-    (insert (propertize label
-                        'face 'slack-dialog-element-label-face))
-    (insert "\n")
-    (slack-buffer-insert-select-button this)
-    (insert "\n")
-    ))
+  (slack-buffer-insert-label this)
+  (insert "\n")
+  (slack-buffer-insert-select-button this)
+  (insert "\n"))
 
 (defun slack-dialog-buffer-submit ()
   (interactive)
@@ -340,7 +355,8 @@
                               'face 'slack-dialog-title-face))
           (insert "\n\n")
           (mapc #'(lambda (el)
-                    (slack-buffer-insert el))
+                    (slack-buffer-insert el)
+                    (insert "\n"))
                 elements)
           (insert "\n")
           (insert (propertize " Cancel "
