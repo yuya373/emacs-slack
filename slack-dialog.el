@@ -74,11 +74,11 @@
 
 (defmethod slack-dialog-selected-option ((this slack-dialog-select-element))
   (with-slots (data-source value options selected-options) this
-    (if (string= data-source "external")
-        (and selected-options (car selected-options))
-      (cl-find-if #'(lambda (op) (string= (oref op value)
-                                          value))
-                  options))))
+    (if (string= data-source "static")
+        (cl-find-if #'(lambda (op) (string= (oref op value)
+                                            value))
+                    options)
+      (and selected-options (car selected-options)))))
 
 (defmethod slack-selectable-text ((this slack-dialog-select-option))
   (oref this label))
@@ -145,7 +145,7 @@
     (when (< (length value) min-length)
       (error "%s must be greater than %s" label min-length))))
 
-(defmethod slack-dialog-execute ((this slack-dialog-text-element) team)
+(defmethod slack-dialog-execute ((this slack-dialog-text-element) _dialog-id team)
   (with-slots (hint value placeholder label optional) this
     (let* ((prompt (format "%s%s%s : "
                            label
@@ -155,16 +155,92 @@
       (slack-dialog-element-validate this value)
       value)))
 
-(defmethod slack-dialog-execute ((this slack-dialog-textarea-element) team)
+(defmethod slack-dialog-execute ((this slack-dialog-textarea-element) _dialog-id team)
   (call-next-method))
 
-(defmethod slack-dialog-execute ((this slack-dialog-select-element) team)
+(defmethod slack-dialog-select-element-get-suggestions ((this slack-dialog-select-element)
+                                                        dialog-id team after-success)
+  (let* ((url "https://slack.com/api/dialog.selectSuggestion")
+         (min-query-length (oref this min-query-length))
+         (prompt (format "Type hints to see options (minimum: %s) : " min-query-length))
+         (params (list (cons "dialog_id" dialog-id)
+                       (cons "name" (oref this name))
+                       (cons "value" (read-from-minibuffer prompt)))))
+    (cl-labels
+        ((on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-dialog-select-fetch-suggestion")
+                      (funcall after-success data))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :sync t
+        :success #'on-success)))))
+
+(defmethod slack-dialog-execute ((this slack-dialog-select-element) dialog-id team)
+  (slack-if-let* ((selected (slack-dialog--execute this dialog-id team)))
+      (cdr selected)))
+
+(defmethod slack-dialog--execute ((this slack-dialog-select-element) dialog-id team)
   (with-slots (data-source) this
     (cond
+     ((string= data-source "external")
+      (let ((result-option nil))
+        (cl-labels
+            ((log-error (err)
+                        (slack-log (format "Error: %s" err) team :level 'error))
+             (select (options)
+                     (slack-if-let*
+                         ((selected (completing-read "Choose an Option..."
+                                                     (mapcar #'(lambda (option)
+                                                                 (plist-get option :label))
+                                                             options)
+                                                     nil t)))
+                         (cl-find-if #'(lambda (option) (string= selected
+                                                                 (plist-get option :label)))
+                                     options)))
+             (after-success (data)
+                            (slack-request-handle-error
+                             (data "slack-dialog-execute"
+                                   #'log-error)
+                             (let ((option-groups (plist-get data :option_groups))
+                                   (options (plist-get data :options)))
+                               (when option-groups
+                                 (slack-if-let* ((selected-option-group (select option-groups)))
+                                     (setq options (plist-get selected-option-group :options))))
+                               (when options
+                                 (slack-if-let* ((selected (select options)))
+                                     (setq result-option selected)))))))
+          (slack-dialog-select-element-get-suggestions this
+                                                       dialog-id
+                                                       team
+                                                       #'after-success)
+          (if result-option
+              (cons (plist-get result-option :label)
+                    (plist-get result-option :value))))))
+     ((string= data-source "conversations")
+      (slack-if-let* ((rooms (append (oref team channels)
+                                     (oref team groups)
+                                     (oref team ims)))
+                      (room (slack-room-select rooms team)))
+          (cons (slack-room-name room team)
+                (oref room id))))
+     ((string= data-source "channels")
+      (slack-if-let* ((channels (oref team channels))
+                      (channel (slack-room-select channels team)))
+          (cons (slack-room-name channel team)
+                (oref channel id))))
+     ((string= data-source "users")
+      (slack-if-let* ((id (plist-get (slack--user-select team) :id)))
+          (cons (slack-user-name id team)
+                id)))
      ((string= "static" data-source)
-      (let ((selected (slack-selectable-select-from-static-data-source this)))
-        (when selected
-          (oref selected value))))
+      (slack-if-let* ((selected (slack-selectable-select-from-static-data-source this)))
+          (cons (oref selected label)
+                (oref selected value))))
      (t (error "Unknown element's data-source: %s" data-source))
      )))
 
@@ -186,7 +262,7 @@
 (defmethod slack-dialog-submit ((this slack-dialog) dialog-id team)
   (with-slots (elements) this
     (let ((submission (mapcar #'(lambda (element)
-                                  (let ((value (slack-dialog-execute element team)))
+                                  (let ((value (slack-dialog-execute element dialog-id team)))
                                     (cons (oref element name) value)))
                               elements)))
       (slack-dialog--submit this dialog-id team submission))))

@@ -237,11 +237,20 @@
        (team (oref buffer team))
        (dialog-element (get-text-property (point)
                                           'slack-dialog-element))
-       (value (slack-dialog-execute dialog-element team))
+       (dialog-id (oref buffer dialog-id))
+       (selected (slack-dialog--execute dialog-element
+                                        dialog-id
+                                        team))
+       (label (car selected))
+       (value (cdr selected))
+       (option (make-instance 'slack-dialog-select-option
+                              :label label
+                              :value value))
        (beg (slack-dialog-beginning-of-field))
        (end (slack-dialog-end-of-field))
        (inhibit-read-only t))
       (progn
+        (oset dialog-element selected-options (list option))
         (oset dialog-element value value)
         (save-excursion
           (delete-region beg (1+ end))
