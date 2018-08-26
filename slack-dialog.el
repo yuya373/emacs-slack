@@ -43,7 +43,12 @@
    (type :initarg :type :type string)
    (optional :initarg :optional :type boolean :initform nil)
    (placeholder :initarg :placeholder :type (or null string) :initform nil)
-   (value :initarg :value :type (or null string) :initform nil)))
+   (value :initarg :value :type (or null string) :initform nil)
+   (errors :initarg :errors :type list :initform '())))
+
+(defclass slack-dialog-element-error ()
+  ((name :initarg :name :type string)
+   (error-message :initarg :error-message :type string)))
 
 (defclass slack-dialog-text-element (slack-dialog-element)
   ((max-length :initarg :max_length :type number :initform 150)
@@ -63,6 +68,19 @@
 
 (defclass slack-dialog-select-option-group (slack-selectable-option-group)
   ((label :initarg :label :type string)))
+
+(defmethod slack-dialog-element-value ((this slack-dialog-element))
+  (or (oref this value) ""))
+
+(defmethod slack-dialog-element-value ((this slack-dialog-select-element))
+  (with-slots (data-source selected-options) this
+    (or (cond
+         ((string= data-source "external")
+          (and selected-options
+               (car selected-options)
+               (oref (car selected-options) value)))
+         (t (oref this value)))
+        "")))
 
 (defmethod slack-equalp ((this slack-dialog-element) other)
   (string= (oref this name)
