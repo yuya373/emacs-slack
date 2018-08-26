@@ -48,6 +48,12 @@
     (define-key map [mouse-1] #'slack-dialog-buffer-submit)
     map))
 
+(defvar slack-dialog-cancel-button-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-dialog-buffer-cancel)
+    (define-key map [mouse-1] #'slack-dialog-buffer-cancel)
+    map))
+
 (defvar slack-dialog-select-element-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") #'slack-dialog-buffer-select)
@@ -420,6 +426,11 @@
                            'slack-dialog-error-message t))))))
               (forward-line -1)))))))
 
+(defun slack-dialog-buffer-cancel ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-dialog-buffer-kill-buffer buffer)))
+
 (defmethod slack-dialog-buffer-kill-buffer ((this slack-dialog-buffer))
   (slack-if-let* ((buffer-name (slack-buffer-name this))
                   (buf (get-buffer buffer-name))
@@ -448,7 +459,8 @@
                 elements)
           (insert "\n")
           (insert (propertize " Cancel "
-                              'face 'slack-dialog-cancel-button-face))
+                              'face 'slack-dialog-cancel-button-face
+                              'keymap slack-dialog-cancel-button-map))
           (insert "\t")
           (insert (propertize (format " %s " submit-label)
                               'face 'slack-dialog-submit-button-face
