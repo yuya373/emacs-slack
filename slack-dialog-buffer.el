@@ -338,26 +338,25 @@
                          (slack-dialog-textarea-element-p element)))
             (let* ((beg (slack-dialog-beginning-of-field))
                    (end (slack-dialog-end-of-field))
-                   (value (buffer-substring-no-properties beg end))
+                   (value (or (buffer-substring-no-properties beg end) ""))
                    (name (oref element name)))
               (when (string-match " +\\'" value)
                 (setq value (substring value 0 (match-beginning 0))))
-              (when (< 0 (length value))
-                (let ((prev-value (gethash name params nil)))
-                  (puthash name
-                           (or (and prev-value
-                                    (format "%s\n%s"
-                                            prev-value
-                                            value))
-                               value)
-                           params)))))
+              (let ((prev-value (gethash name params nil)))
+                (puthash name
+                         (or (and prev-value
+                                  (< 0 (length prev-value))
+                                  (mapconcat #'identity
+                                             (list prev-value value)
+                                             "\n"))
+                             value)
+                         params))))
 
           (when (and element
                      (slack-dialog-select-element-p element))
             (let ((name (oref element name))
-                  (value (oref element value)))
-              (when value
-                (puthash name value params))))
+                  (value (or (oref element value) "")))
+              (puthash name value params)))
           (forward-line 1)))
 
       (with-slots (dialog dialog-id team) slack-current-buffer

@@ -132,9 +132,18 @@
     (apply #'make-instance 'slack-dialog
            (slack-collect-slots 'slack-dialog payload))))
 
-(defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value))
+(defmethod slack-dialog-element-validate ((this slack-dialog-element) value)
+  (with-slots (optional label) this
+    (when (and (not optional)
+               (or (null value)
+                   (< (length value) 1)))
+      (error "%s must not be empty" label))))
+
+(defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value)
+  (call-next-method))
 
 (defmethod slack-dialog-element-validate ((this slack-dialog-text-element) value)
+  (call-next-method)
   (with-slots (min-length max-length label) this
     (when (< max-length (length value))
       (error "%s must be less than %s" label max-length))
