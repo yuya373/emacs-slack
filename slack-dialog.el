@@ -35,6 +35,7 @@
    (state :initarg :state :type (or null string) :initform nil)
    (submit-label :initarg :submit_label :type string :initform "Submit")
    (notify-on-cancel :initarg :notify_on_cancel :type boolean :initform nil)
+   (error-message :initarg :error-message :type (or null string) :initform nil)
    ))
 
 (defclass slack-dialog-element ()

@@ -256,7 +256,7 @@
               (make-instance #'slack-dialog-element-error
                              :name (plist-get payload :name)
                              :error-message (plist-get payload :error)))
-             (set-dialog-error
+             (set-dialog-element-error
               (dialog-error elements)
               (slack-if-let*
                   ((element (cl-find-if #'(lambda (el)
@@ -274,9 +274,11 @@
               (data)
               (slack-if-let* ((err (plist-get data :error)))
                   (progn
+                    (oset dialog error-message err)
                     (dolist (dialog-error (mapcar #'create-dialog-element-error
                                                   (plist-get data :dialog_errors)))
-                      (set-dialog-error dialog-error elements))
+                      (set-dialog-element-error dialog-error elements))
+
                     (slack-dialog-buffer-redisplay this))
                 (slack-dialog-buffer-kill-buffer this))))
           (slack-dialog--submit dialog dialog-id team params #'after-success))))))
@@ -299,10 +301,14 @@
 
 (defmethod slack-buffer-insert ((this slack-dialog-buffer))
   (with-slots (dialog) this
-    (with-slots (title elements submit-label) dialog
+    (with-slots (error-message title elements submit-label) dialog
       (let ((inhibit-read-only t))
         (insert (propertize title
                             'face 'slack-dialog-title-face))
+        (when error-message
+          (insert "\n")
+          (insert (propertize error-message
+                              'face 'slack-dialog-element-error-face)))
         (insert "\n\n")
         (mapc #'(lambda (el)
                   (slack-buffer-insert el)
