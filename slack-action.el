@@ -39,7 +39,10 @@
 (defun slack-message-run-action ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
-                  (ts (slack-get-ts)))
+                  (room (oref buffer room))
+                  (ts (slack-get-ts))
+                  (message (slack-room-find-message room ts))
+                  (_not-ephemeral-messagep (not (oref message is-ephemeral))))
       (slack-buffer-execute-message-action buffer ts)))
 
 (defun slack-action-run ()
