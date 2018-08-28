@@ -814,17 +814,14 @@ TEAM is one of `slack-teams'"
                  team :level 'trace))))
 
 (defun slack-ws-handle-room-marked (payload team)
-  (let* ((room (slack-room-find (plist-get payload :channel) team))
-         (ts (plist-get payload :ts))
-         (message (and room (slack-room-find-message room ts))))
-    (when room
-      (with-slots (unread-count-display last-read) room
-        (setq unread-count-display
-              (plist-get payload :unread_count_display))
-        (when (and message
-                   (not (slack-thread-message-p message)))
-          (setq last-read ts)))
-      (slack-update-modeline))))
+  (slack-if-let* ((channel (plist-get payload :channel))
+                  (room (slack-room-find channel team))
+                  (ts (plist-get payload :ts))
+                  (unread-count-display (plist-get payload :unread_count_display)))
+      (progn
+        (oset room unread-count-display unread-count-display)
+        (oset room last-read ts)
+        (slack-update-modeline))))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((subscription (plist-get payload :subscription))
