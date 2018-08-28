@@ -36,7 +36,7 @@
   "Face used to action."
   :group 'slack)
 
-(defun slack-execute-message-action ()
+(defun slack-message-run-action ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
                   (ts (slack-get-ts)))
