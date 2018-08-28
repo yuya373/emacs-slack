@@ -284,7 +284,9 @@
 (defun slack-dialog-buffer-cancel ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer))
-      (slack-dialog-buffer-kill-buffer buffer)))
+      (with-slots (dialog dialog-id team) buffer
+        (slack-dialog-notify-cancel dialog dialog-id team)
+        (slack-dialog-buffer-kill-buffer buffer))))
 
 (defmethod slack-dialog-buffer-kill-buffer ((this slack-dialog-buffer))
   (slack-if-let* ((buffer-name (slack-buffer-name this))

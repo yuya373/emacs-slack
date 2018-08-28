@@ -317,5 +317,21 @@
         :params params
         :success #'on-success)))))
 
+(defmethod slack-dialog-notify-cancel ((this slack-dialog) dialog-id team)
+  (slack-if-let* ((url "https://slack.com/api/dialog.notifyCancel")
+                  (params (list (cons "dialog_id" dialog-id)))
+                  (notify-cancelp (oref this notify-on-cancel)))
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-dialog-notify-cancel"))))
+        (slack-request
+         (slack-request-create
+          url
+          team
+          :type "POST"
+          :params params
+          :success #'on-success)))))
+
 (provide 'slack-dialog)
 ;;; slack-dialog.el ends here
