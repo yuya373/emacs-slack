@@ -303,8 +303,16 @@ you can change current-team with `slack-change-current-team'"
 (defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))
 
+(defvar slack-team-random-numbers-for-client-token
+  (let ((result nil))
+    (dotimes (_ 10)
+      (push (random 10) result))
+    (mapconcat #'number-to-string result "")))
+
 (defmethod slack-team-client-token ((team slack-team))
-  (format "EmacsSlack-%s" (oref team id)))
+  (format "EmacsSlack-%s-%s"
+          (oref team id)
+          slack-team-random-numbers-for-client-token))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
