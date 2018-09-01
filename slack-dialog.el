@@ -334,5 +334,10 @@
           :params params
           :success #'on-success)))))
 
+(defmethod slack-dialog-clear-errors ((this slack-dialog))
+  (oset this error-message nil)
+  (dolist (element (oref this elements))
+    (oset element errors nil)))
+
 (provide 'slack-dialog)
 ;;; slack-dialog.el ends here

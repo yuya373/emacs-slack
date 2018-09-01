@@ -281,6 +281,7 @@
 
                     (slack-dialog-buffer-redisplay this))
                 (slack-dialog-buffer-kill-buffer this))))
+          (slack-dialog-clear-errors dialog)
           (slack-dialog--submit dialog dialog-id team params #'after-success))))))
 
 (defun slack-dialog-buffer-cancel ()
