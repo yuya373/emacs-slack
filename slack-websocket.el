@@ -30,6 +30,7 @@
 (require 'slack-team)
 (require 'slack-reply)
 (require 'slack-file)
+(require 'slack-dialog)
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
 (defclass slack-typing ()
@@ -270,6 +271,8 @@
           (slack-ws-handle-app-conversation-invite-request decoded-payload team))
          ((string= type "commands_changed")
           (slack-ws-handle-commands-changed decoded-payload team))
+         ((string= type "dialog_opened")
+          (slack-ws-handle-dialog-opened decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -811,17 +814,14 @@ TEAM is one of `slack-teams'"
                  team :level 'trace))))
 
 (defun slack-ws-handle-room-marked (payload team)
-  (let* ((room (slack-room-find (plist-get payload :channel) team))
-         (ts (plist-get payload :ts))
-         (message (and room (slack-room-find-message room ts))))
-    (when room
-      (with-slots (unread-count-display last-read) room
-        (setq unread-count-display
-              (plist-get payload :unread_count_display))
-        (when (and message
-                   (not (slack-thread-message-p message)))
-          (setq last-read ts)))
-      (slack-update-modeline))))
+  (slack-if-let* ((channel (plist-get payload :channel))
+                  (room (slack-room-find channel team))
+                  (ts (plist-get payload :ts))
+                  (unread-count-display (plist-get payload :unread_count_display)))
+      (progn
+        (oset room unread-count-display unread-count-display)
+        (oset room last-read ts)
+        (slack-update-modeline))))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((subscription (plist-get payload :subscription))
@@ -1031,6 +1031,14 @@ TEAM is one of `slack-teams'"
     (cl-loop for command in commands-updated
              do (push command commands))
     (oset team commands commands)))
+
+(defun slack-ws-handle-dialog-opened (payload team)
+  (slack-if-let*
+      ((dialog-id (plist-get payload :dialog_id))
+       (client-token (plist-get payload :client_token))
+       (valid-client-tokenp (string= (slack-team-client-token team)
+                                     client-token)))
+      (slack-dialog-get dialog-id team)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

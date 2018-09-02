@@ -105,6 +105,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-thread-message-compose-buffer :initform nil :type (or null list))
    (slack-stars-buffer :initform nil :type (or null list))
    (slack-search-result-buffer :initform nil :type (or null list))
+   (slack-dialog-buffer :initform nil :type (or null list))
+   (slack-dialog-edit-element-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (websocket-connect-timeout-timer :initform nil)
@@ -300,6 +302,17 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))
+
+(defvar slack-team-random-numbers-for-client-token
+  (let ((result nil))
+    (dotimes (_ 10)
+      (push (random 10) result))
+    (mapconcat #'number-to-string result "")))
+
+(defmethod slack-team-client-token ((team slack-team))
+  (format "EmacsSlack-%s-%s"
+          (oref team id)
+          slack-team-random-numbers-for-client-token))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

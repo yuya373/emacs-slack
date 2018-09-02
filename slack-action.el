@@ -36,6 +36,15 @@
   "Face used to action."
   :group 'slack)
 
+(defun slack-message-run-action ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (room (oref buffer room))
+                  (ts (slack-get-ts))
+                  (message (slack-room-find-message room ts))
+                  (_not-ephemeral-messagep (not (oref message is-ephemeral))))
+      (slack-buffer-execute-message-action buffer ts)))
+
 (defun slack-action-run ()
   (interactive)
   (slack-if-let* ((bot (get-text-property (point) 'bot))

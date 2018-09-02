@@ -60,6 +60,8 @@
 (require 'slack-thread-message-compose-buffer)
 (require 'slack-search-result-buffer)
 (require 'slack-stars-buffer)
+(require 'slack-dialog-buffer)
+(require 'slack-dialog-edit-element-buffer)
 
 (require 'slack-websocket)
 (require 'slack-request)

@@ -123,7 +123,7 @@
 (cl-defmethod slack-command-run ((command slack-command) team channel
                                  &key (text nil))
   (let ((disp "")
-        (client-token "")
+        (client-token (slack-team-client-token team))
         (command (oref command name)))
     (cond
      ((or (string= command "/join")
