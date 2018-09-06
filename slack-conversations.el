@@ -38,10 +38,6 @@
   "https://slack.com/api/conversations.rename")
 (defconst slack-conversations-set-purpose-url
   "https://slack.com/api/conversations.setPurpose")
-
-;; TODO
-;; https://slack.com/api/conversations.setPurpose
-;; https://slack.com/api/conversations.setTopic
 (defconst slack-conversations-set-topic-url
   "https://slack.com/api/conversations.setTopic")
 
@@ -124,6 +120,18 @@
       :type "POST"
       :params (list (cons "channel" channel)
                     (cons "purpose" purpose))
+      :success (slack-conversations-success-handler team)))))
+
+(defun slack-conversations-set-topic (room team)
+  (let ((channel (oref room id))
+        (topic (read-from-minibuffer "Topic: ")))
+    (slack-request
+     (slack-request-create
+      slack-conversations-set-topic-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel)
+                    (cons "topic" topic))
       :success (slack-conversations-success-handler team)))))
 
 (provide 'slack-conversations)
