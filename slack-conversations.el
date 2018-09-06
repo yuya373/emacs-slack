@@ -35,6 +35,17 @@
 (defconst slack-conversations-leave-url
   "https://slack.com/api/conversations.leave")
 
+;; TODO
+;; https://api.slack.com/methods/conversations.rename
+(defconst slack-conversations-rename-url
+  "https://slack.com/api/conversations.rename")
+;; https://slack.com/api/conversations.setPurpose
+(defconst slack-conversations-set-purpose-url
+  "https://slack.com/api/conversations.setPurpose")
+;; https://slack.com/api/conversations.setTopic
+(defconst slack-conversations-set-topic-url
+  "https://slack.com/api/conversations.setTopic")
+
 (cl-defun slack-conversations-success-handler (team)
   (cl-function
    (lambda (&key data &allow-other-keys)
