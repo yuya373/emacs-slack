@@ -30,10 +30,21 @@
   "https://slack.com/api/conversations.archive")
 (defconst slack-conversations-invite-url
   "https://slack.com/api/conversations.invite")
+(defconst slack-conversations-join-url
+  "https://slack.com/api/conversations.join")
+(defconst slack-conversations-leave-url
+  "https://slack.com/api/conversations.leave")
 
-(cl-defun slack-conversations-success-handler (&key data &allow-other-keys)
-  (slack-request-handle-error
-   (data "conversations")))
+(cl-defun slack-conversations-success-handler (team)
+  (cl-function
+   (lambda (&key data &allow-other-keys)
+     (cl-labels
+         ((log-error (e) (slack-log (format "%s" e) team :level 'error)))
+       (slack-request-handle-error
+        (data "conversations" #'log-error)
+        (slack-if-let* ((warning (plist-get data :warning)))
+            (slack-log (format "%s" warning) team
+                       :level 'warn)))))))
 
 (defun slack-conversations-archive (room team)
   (let ((id (oref room id)))
@@ -43,7 +54,7 @@
       team
       :type "POST"
       :params (list (cons "channel" id))
-      :success #'slack-conversations-success-handler))))
+      :success (slack-conversations-success-handler team)))))
 
 (defun slack-conversations-invite (room team)
   (let ((channel (oref room id))
@@ -57,8 +68,28 @@
       :type "POST"
       :params (list (cons "channel" channel)
                     (cons "users" users))
-      :success #'slack-conversations-success-handler
+      :success (slack-conversations-success-handler team)
       ))))
+
+(defun slack-conversations-join (room team)
+  (let ((channel (oref room id)))
+    (slack-request
+     (slack-request-create
+      slack-conversations-join-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel))
+      :success (slack-conversations-success-handler team)))))
+
+(defun slack-conversations-leave (room team)
+  (let ((channel (oref room id)))
+    (slack-request
+     (slack-request-create
+      slack-conversations-leave-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel))
+      :success (slack-conversations-success-handler team)))))
 
 
 (provide 'slack-conversations)

@@ -222,6 +222,9 @@
          ((or (string= type "channel_rename")
               (string= type "group_rename"))
           (slack-ws-handle-room-rename decoded-payload team))
+         ((or (string= type "channel_left")
+              (string= type "group_left"))
+          (slack-ws-handle-room-left decoded-payload team))
          ((string= type "channel_joined")
           (slack-ws-handle-channel-joined decoded-payload team))
          ((string= type "group_joined")
@@ -1039,6 +1042,21 @@ TEAM is one of `slack-teams'"
        (valid-client-tokenp (string= (slack-team-client-token team)
                                      client-token)))
       (slack-dialog-get dialog-id team)))
+
+(defun slack-ws-handle-room-left (payload team)
+  (slack-if-let* ((room (slack-room-find (plist-get payload :channel)
+                                         team)))
+      (progn
+        (when (slot-exists-p room 'is-member)
+          (oset room is-member nil))
+        (when (and (not (slack-channel-p room)) (slack-group-p room))
+          (oset team groups
+                (cl-remove-if #'(lambda (e)
+                                  (slack-room-equal-p e room))
+                              (oref team groups))))
+        (slack-log (format "You left %s" (slack-room-name room team))
+                   team :level 'info))))
+
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

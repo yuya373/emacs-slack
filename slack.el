@@ -67,6 +67,9 @@
 (require 'slack-request)
 (require 'slack-request-worker)
 
+(when (featurep 'helm)
+  (require 'helm-slack))
+
 (defgroup slack nil
   "Emacs Slack Client"
   :prefix "slack-"

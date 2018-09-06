@@ -37,6 +37,8 @@
        "Open channel" #'helm-slack-display-room
        "Archive channel" #'helm-slack-archive-room
        "Invite user to channel" #'helm-slack-invite-to-room
+       "Join channel" #'helm-slack-join-room
+       "Leave channel" #'helm-slack-leave-room
        ))
 
 (defun helm-slack-build-candidates ()
@@ -70,6 +72,14 @@
 (defun helm-slack-invite-to-room (candidate)
   (helm-slack-bind-room-and-team candidate
       (slack-conversations-invite room team)))
+
+(defun helm-slack-join-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-conversations-join room team)))
+
+(defun helm-slack-leave-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-conversations-leave room team)))
 
 (defun helm-slack ()
   "Helm Slack"
