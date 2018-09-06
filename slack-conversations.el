@@ -39,7 +39,8 @@
   (cl-function
    (lambda (&key data &allow-other-keys)
      (cl-labels
-         ((log-error (e) (slack-log (format "%s" e) team :level 'error)))
+         ((log-error (e) (slack-log (format "%s" (replace-regexp-in-string "_" " " e))
+                                    team :level 'error)))
        (slack-request-handle-error
         (data "conversations" #'log-error)
         (slack-if-let* ((warning (plist-get data :warning)))
