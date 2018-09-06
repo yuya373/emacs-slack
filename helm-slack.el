@@ -40,6 +40,7 @@
        "Join channel" #'helm-slack-join-room
        "Leave channel" #'helm-slack-leave-room
        "Rename channel" #'helm-slack-rename-room
+       "Set purpose for channel" #'helm-slack-set-purpose-for-room
        ))
 
 (defun helm-slack-build-candidates ()
@@ -85,6 +86,10 @@
 (defun helm-slack-rename-room (candidate)
   (helm-slack-bind-room-and-team candidate
       (slack-conversations-rename room team)))
+
+(defun helm-slack-set-purpose-for-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-conversations-set-purpose room team)))
 
 (defun helm-slack ()
   "Helm Slack"
