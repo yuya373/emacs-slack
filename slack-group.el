@@ -225,15 +225,7 @@
          (on-success
           (&key data &allow-other-keys)
           (slack-request-handle-error
-           (data "slack-group-mpim-open")
-           (if (plist-get data :already_open)
-               (message "Direct Message Channel with %s Already Open"
-                        (slack-group-members-s
-                         (slack-room-find (oref selected id) team)
-                         team))
-             (oset team groups
-                   (cons (slack-room-create (plist-get data :group) team 'slack-group)
-                         (oref team groups)))))))
+           (data "slack-group-mpim-open"))))
       (slack-request
        (slack-request-create
         slack-mpim-open-url
