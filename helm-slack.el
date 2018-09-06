@@ -34,7 +34,7 @@
 
 (setq helm-slack-actions
       (helm-make-actions
-       "Open channel" #'helm-slack-display-room
+       "Display channel" #'helm-slack-display-room
        "Archive channel" #'helm-slack-archive-room
        "Invite user to channel" #'helm-slack-invite-to-room
        "Join channel" #'helm-slack-join-room
