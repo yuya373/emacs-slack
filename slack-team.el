@@ -241,6 +241,11 @@ you can change current-team with `slack-change-current-team'"
     (setq slack-current-team team)
     (message "Set slack-current-team to %s" (or (and team (oref team name))
                                                 "nil"))
+    (setq slack-teams
+          (cons team (cl-remove-if #'(lambda (e)
+                                       (string= (oref e id)
+                                                (oref slack-current-team id)))
+                                   slack-teams)))
     (if team
         (slack-team-connect team))))
 
