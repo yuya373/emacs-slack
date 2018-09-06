@@ -34,11 +34,10 @@
   "https://slack.com/api/conversations.join")
 (defconst slack-conversations-leave-url
   "https://slack.com/api/conversations.leave")
-
-;; TODO
-;; https://api.slack.com/methods/conversations.rename
 (defconst slack-conversations-rename-url
   "https://slack.com/api/conversations.rename")
+
+;; TODO
 ;; https://slack.com/api/conversations.setPurpose
 (defconst slack-conversations-set-purpose-url
   "https://slack.com/api/conversations.setPurpose")
@@ -103,6 +102,17 @@
       :params (list (cons "channel" channel))
       :success (slack-conversations-success-handler team)))))
 
+(defun slack-conversations-rename (room team)
+  (let ((channel (oref room id))
+        (name (read-from-minibuffer "Name: ")))
+    (slack-request
+     (slack-request-create
+      slack-conversations-rename-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel)
+                    (cons "name" name))
+      :success (slack-conversations-success-handler team)))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
