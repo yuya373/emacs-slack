@@ -41,12 +41,26 @@
 (defconst slack-conversations-set-topic-url
   "https://slack.com/api/conversations.setTopic")
 
-(cl-defun slack-conversations-success-handler (team)
+(cl-defun slack-conversations-success-handler (team &optional errors-handler)
   (cl-function
    (lambda (&key data &allow-other-keys)
      (cl-labels
-         ((log-error (e) (slack-log (format "%s" (replace-regexp-in-string "_" " " e))
-                                    team :level 'error)))
+         ((replace-underscore-with-space (s)
+                                         (replace-regexp-in-string "_"
+                                                                   " "
+                                                                   s))
+          (log-error
+           (_)
+           (slack-if-let*
+               ((err (plist-get data :error))
+                (message (format "%s"
+                                 (replace-underscore-with-space
+                                  err))))
+               (slack-log message team :level 'error))
+           (slack-if-let*
+               ((errors (plist-get data :errors))
+                (has-handler (functionp errors-handler)))
+               (funcall errors-handler errors))))
        (slack-request-handle-error
         (data "conversations" #'log-error)
         (slack-if-let* ((warning (plist-get data :warning)))
@@ -64,19 +78,50 @@
       :success (slack-conversations-success-handler team)))))
 
 (defun slack-conversations-invite (room team)
-  (let ((channel (oref room id))
-        (users (plist-get (slack-select-from-list
-                              ((slack-user-names team)
-                               "Select User: ")) :id)))
-    (slack-request
-     (slack-request-create
-      slack-conversations-invite-url
-      team
-      :type "POST"
-      :params (list (cons "channel" channel)
-                    (cons "users" users))
-      :success (slack-conversations-success-handler team)
-      ))))
+  (let* ((channel (oref room id))
+         (user-names (slack-user-names team))
+         (users nil))
+    (cl-labels
+        ((already-selected-p
+          (user-name)
+          (cl-find-if #'(lambda (e)
+                          (string= e
+                                   (plist-get (cdr user-name)
+                                              :id)))
+                      users))
+         (filter-selected (user-names)
+                          (cl-remove-if #'already-selected-p
+                                        user-names)))
+      (cl-loop for i from 1 upto 30
+               as candidates = (filter-selected user-names)
+               as selected = (slack-select-from-list
+                                 (candidates "Select User: "))
+               while selected
+               do (push (plist-get selected :id) users)))
+    (setq users (mapconcat #'identity users ","))
+
+    (cl-labels
+        ((errors-handler
+          (errors)
+          (let ((message
+                 (mapconcat #'(lambda (err)
+                                (let ((msg (plist-get err :error))
+                                      (user (plist-get err :user)))
+                                  (format "%s%s"
+                                          (replace-regexp-in-string "_" " " msg)
+                                          (or (and user (format ": %s" user))
+                                              ""))))
+                            errors
+                            ", ")))
+            (slack-log message team :level 'error))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-invite-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel)
+                      (cons "users" users))
+        :success (slack-conversations-success-handler team #'errors-handler))))))
 
 (defun slack-conversations-join (room team)
   (let ((channel (oref room id)))
