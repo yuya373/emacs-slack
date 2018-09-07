@@ -26,6 +26,7 @@
 
 (require 'helm)
 (require 'slack-team)
+(require 'slack-room-info-buffer)
 (require 'slack-conversations)
 
 (defvar helm-slack-source nil)
@@ -96,12 +97,18 @@
   (helm-slack-bind-room-and-team candidate
       (slack-conversations-set-topic room team)))
 
+(defun helm-slack-persistent-action (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (let* ((buffer (slack-create-room-info-buffer room team)))
+        (switch-to-buffer (slack-buffer-buffer buffer)))))
+
 (defun helm-slack ()
   "Helm Slack"
   (interactive)
   (setf helm-slack-source
         (helm-build-sync-source "Helm Slack"
           :history 'helm-slack-source-history
+          :persistent-action #'helm-slack-persistent-action
           :action helm-slack-actions
           :candidates #'helm-slack-build-candidates))
   (helm
