@@ -64,7 +64,9 @@
        (slack-request-handle-error
         (data "conversations" #'log-error)
         (slack-if-let* ((warning (plist-get data :warning)))
-            (slack-log (format "%s" warning) team
+            (slack-log (format "%s" (replace-underscore-with-space
+                                     warning))
+                       team
                        :level 'warn)))))))
 
 (defun slack-conversations-archive (room team)
