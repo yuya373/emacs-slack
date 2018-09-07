@@ -29,10 +29,7 @@
 (require 'slack-room-info-buffer)
 (require 'slack-conversations)
 
-(defvar helm-slack-source nil)
-(defvar helm-slack-source-history nil)
 (defvar helm-slack-actions nil)
-
 (setq helm-slack-actions
       (helm-make-actions
        "Display channel" #'helm-slack-display-room
@@ -45,18 +42,56 @@
        "Set topic of channel" #'helm-slack-set-topic-of-room
        ))
 
+(defvar helm-slack-channels-source (helm-build-sync-source "Channels (Slack)"
+                                     :persistent-action #'helm-slack-persistent-action
+                                     :action helm-slack-actions
+                                     :candidates #'helm-slack-build-channels-candidates))
+
+(defvar helm-slack-groups-source (helm-build-sync-source "Private Channels (Slack)"
+                                   :persistent-action #'helm-slack-persistent-action
+                                   :action helm-slack-actions
+                                   :candidates #'helm-slack-build-groups-candidates))
+
+(defvar helm-slack-ims-source (helm-build-sync-source "Direct Messages (Slack)"
+                                :persistent-action #'helm-slack-persistent-action
+                                :action helm-slack-actions
+                                :candidates #'helm-slack-build-ims-candidates))
+
+(defvar helm-slack-source (helm-build-sync-source "Slack"
+                            :persistent-action #'helm-slack-persistent-action
+                            :action helm-slack-actions
+                            :candidates #'helm-slack-build-candidates))
+
+(defcustom helm-slack-sources
+  '(helm-slack-source)
+  "Default helm sources.
+pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source', `helm-slack-ims-source', `helm-slack-source'"
+  :type 'list
+  :group 'slack)
+
+(defun helm-slack-build-channels-candidates ()
+  (helm-slack-build--candidates #'(lambda (team) (oref team channels))))
+
+(defun helm-slack-build-groups-candidates ()
+  (helm-slack-build--candidates #'(lambda (team) (oref team groups))))
+
+(defun helm-slack-build-ims-candidates ()
+  (helm-slack-build--candidates #'(lambda (team) (oref team ims))))
+
 (defun helm-slack-build-candidates ()
+  (helm-slack-build--candidates #'(lambda (team) (with-slots (channels groups ims) team
+                                                   (append channels groups ims)))))
+
+(defun helm-slack-build--candidates (rooms-selector)
   (cl-loop for team in slack-teams
-           as c = (oref team channels)
-           as g = (oref team groups)
-           as i = (oref team ims)
+           as rooms = (funcall rooms-selector team)
            nconc (cl-labels
                      ((filter (rooms) (cl-remove-if #'slack-room-hidden-p
                                                     rooms))
                       (collector (label room) (list label room team)))
                    (let ((slack-display-team-name
                           (< 1 (length slack-teams))))
-                     (slack-room-names (append c g i) team
+                     (slack-room-names (append rooms nil) team
                                        #'filter #'collector)))))
 
 (defmacro helm-slack-bind-room-and-team (candidate &rest body)
@@ -105,16 +140,9 @@
 (defun helm-slack ()
   "Helm Slack"
   (interactive)
-  (setf helm-slack-source
-        (helm-build-sync-source "Helm Slack"
-          :history 'helm-slack-source-history
-          :persistent-action #'helm-slack-persistent-action
-          :action helm-slack-actions
-          :candidates #'helm-slack-build-candidates))
   (helm
    :prompt "Select Channel : "
-   :sources 'helm-slack-source
-   :history 'helm-slack-source-history))
+   :sources helm-slack-sources))
 
 (provide 'helm-slack)
 ;;; helm-slack.el ends here
