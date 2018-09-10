@@ -72,7 +72,7 @@
 (defun slack-user-names (team)
   (with-slots (users) team
     (mapcar (lambda (u) (cons (plist-get u :name) u))
-            users)))
+            (cl-remove-if #'slack-user-hidden-p users))))
 
 (defun slack-user-dnd-in-range-p (user)
   (let ((current (time-to-seconds))
