@@ -35,6 +35,7 @@
        "Display channel" #'helm-slack-display-room
        "Archive channel" #'helm-slack-archive-room
        "Invite user to channel" #'helm-slack-invite-to-room
+       "Kick user from channel" #'helm-slack-kick-from-room
        "Join channel" #'helm-slack-join-room
        "Leave channel" #'helm-slack-leave-room
        "Rename channel" #'helm-slack-rename-room
@@ -131,6 +132,10 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
 (defun helm-slack-set-topic-of-room (candidate)
   (helm-slack-bind-room-and-team candidate
       (slack-conversations-set-topic room team)))
+
+(defun helm-slack-kick-from-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-conversations-kick room team)))
 
 (defun helm-slack-persistent-action (candidate)
   (helm-slack-bind-room-and-team candidate
