@@ -861,12 +861,17 @@ TEAM is one of `slack-teams'"
                   :test #'string=))))
 
 (defun slack-ws-handle-member-left_channel (payload team)
-  (let ((user (plist-get payload :user))
-        (channel (slack-room-find (plist-get payload :channel) team)))
-    (when channel
-      (oset channel members
-            (cl-remove-if #'(lambda (e) (string= e user))
-                          (oref channel members))))))
+  (slack-if-let* ((user (plist-get payload :user))
+                  (channel (slack-room-find (plist-get payload :channel) team)))
+      (progn
+        (oset channel members
+              (cl-remove-if #'(lambda (e) (string= e user))
+                            (oref channel members)))
+        (slack-log (format "%s left %s"
+                           (slack-user-name user team)
+                           (slack-room-name channel team))
+                   team
+                   :level 'info))))
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (slack-user--find (plist-get payload :user) team))
