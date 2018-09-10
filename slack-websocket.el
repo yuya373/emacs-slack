@@ -854,11 +854,16 @@ TEAM is one of `slack-teams'"
                                 users))))))
 
 (defun slack-ws-handle-member-joined-channel (payload team)
-  (let ((user (plist-get payload :user))
-        (channel (slack-room-find (plist-get payload :channel) team)))
-    (when channel
-      (cl-pushnew user (oref channel members)
-                  :test #'string=))))
+  (slack-if-let* ((user (plist-get payload :user))
+                  (channel (slack-room-find (plist-get payload :channel) team)))
+      (progn
+        (cl-pushnew user (oref channel members)
+                    :test #'string=)
+        (slack-log (format "%s joined %s"
+                           (slack-user-name user team)
+                           (slack-room-name channel team))
+                   team
+                   :level 'info))))
 
 (defun slack-ws-handle-member-left_channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))
