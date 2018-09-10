@@ -188,11 +188,25 @@
 (defun slack-conversations-members (room team &optional cursor after-success)
   (let ((channel (oref room id)))
     (cl-labels
-        ((on-success (&key data &allow-other-keys)
-                     (slack-request-handle-error
-                      (data "slack-conversations-membe")
-                      (when (functionp after-success)
-                        (funcall after-success data)))))
+        ((build-users
+          (members)
+          (cl-remove-if-not #'(lambda (user-name)
+                                (cl-find (plist-get (cdr user-name)
+                                                    :id)
+                                         members
+                                         :test #'string=))
+                            (slack-user-names team)))
+         (on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-conversations-membe")
+           (let* ((members (plist-get data :members))
+                  (meta (plist-get data :response_metadata))
+                  (next-cursor (plist-get meta :next_cursor)))
+             (when (functionp after-success)
+               (funcall after-success
+                        (build-users members)
+                        next-cursor))))))
       (slack-request
        (slack-request-create
         slack-conversations-members-url
@@ -211,18 +225,9 @@
         (user nil)
         (candidates nil))
     (cl-labels
-        ((on-member-success
-          (data)
-          (let* ((members (plist-get data :members))
-                 (meta (plist-get data :response_metadata))
-                 (next-cursor (plist-get meta :next_cursor)))
-            (setq candidates
-                  (cl-remove-if-not #'(lambda (user-name)
-                                        (cl-find (plist-get (cdr user-name) :id)
-                                                 members
-                                                 :test #'string=))
-                                    (slack-user-names team)))
-            (setq cursor next-cursor)))
+        ((on-member-success (members next-cursor)
+                            (setq candidates members)
+                            (setq cursor next-cursor))
          (select-member (candidates)
                         (funcall #'completing-read
                                  "Select User: " candidates)))
