@@ -45,7 +45,7 @@
 (defconst slack-conversations-kick-url
   "https://slack.com/api/conversations.kick")
 
-(cl-defun slack-conversations-success-handler (team &optional errors-handler)
+(cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
    (lambda (&key data &allow-other-keys)
      (cl-labels
@@ -63,15 +63,17 @@
                (slack-log message team :level 'error))
            (slack-if-let*
                ((errors (plist-get data :errors))
-                (has-handler (functionp errors-handler)))
-               (funcall errors-handler errors))))
+                (has-handler (functionp on-errors)))
+               (funcall on-errors errors))))
        (slack-request-handle-error
         (data "conversations" #'log-error)
         (slack-if-let* ((warning (plist-get data :warning)))
             (slack-log (format "%s" (replace-underscore-with-space
                                      warning))
                        team
-                       :level 'warn)))))))
+                       :level 'warn)
+          (when (functionp on-success)
+            (funcall on-success data))))))))
 
 (defun slack-conversations-archive (room team)
   (let ((id (oref room id)))
@@ -127,7 +129,9 @@
         :type "POST"
         :params (list (cons "channel" channel)
                       (cons "users" users))
-        :success (slack-conversations-success-handler team #'errors-handler))))))
+        :success (slack-conversations-success-handler team
+                                                      :on-errors
+                                                      #'errors-handler))))))
 
 (defun slack-conversations-join (room team)
   (let ((channel (oref room id)))
@@ -164,26 +168,40 @@
 (defun slack-conversations-set-purpose (room team)
   (let ((channel (oref room id))
         (purpose (read-from-minibuffer "Purpose: ")))
-    (slack-request
-     (slack-request-create
-      slack-conversations-set-purpose-url
-      team
-      :type "POST"
-      :params (list (cons "channel" channel)
-                    (cons "purpose" purpose))
-      :success (slack-conversations-success-handler team)))))
+    (cl-labels
+        ((on-success (data)
+                     (let* ((channel (plist-get data :channel))
+                            (purpose (plist-get channel :purpose)))
+                       (oset room purpose purpose))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-set-purpose-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel)
+                      (cons "purpose" purpose))
+        :success (slack-conversations-success-handler team
+                                                      :on-success
+                                                      #'on-success))))))
 
 (defun slack-conversations-set-topic (room team)
   (let ((channel (oref room id))
         (topic (read-from-minibuffer "Topic: ")))
-    (slack-request
-     (slack-request-create
-      slack-conversations-set-topic-url
-      team
-      :type "POST"
-      :params (list (cons "channel" channel)
-                    (cons "topic" topic))
-      :success (slack-conversations-success-handler team)))))
+    (cl-labels
+        ((on-success (data)
+                     (let* ((channel (plist-get data :channel))
+                            (topic (plist-get channel :topic)))
+                       (oset room topic topic))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-set-topic-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel)
+                      (cons "topic" topic))
+        :success (slack-conversations-success-handler team
+                                                      :on-success
+                                                      #'on-success))))))
 
 (defun slack-conversations-members (room team &optional cursor after-success)
   (let ((channel (oref room id)))

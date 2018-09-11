@@ -159,6 +159,15 @@
       buffer
     (slack-room-info-buffer :room room :team team)))
 
+(defmethod slack-buffer-buffer ((this slack-room-info-buffer))
+  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (delete-region (point-min) (point-max))
+          (slack-buffer-insert this))
+        buf)
+    (slack-buffer-init-buffer this)))
+
 
 (provide 'slack-room-info-buffer)
 ;;; slack-room-info-buffer.el ends here
