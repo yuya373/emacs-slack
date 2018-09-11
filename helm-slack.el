@@ -28,6 +28,7 @@
 (require 'slack-team)
 (require 'slack-room-info-buffer)
 (require 'slack-conversations)
+(require 'slack-user-profile-buffer)
 
 (defvar helm-slack-actions nil)
 (setq helm-slack-actions
