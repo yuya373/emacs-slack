@@ -99,16 +99,19 @@
                     (cur-buffer (current-buffer))
                     (url (car spec))
                     (ts (get-text-property beg 'ts))
-                    (path (slack-image-path url))
-                    (token (oref (oref slack-current-buffer team) token)))
-        (cl-labels
-            ((on-success ()
-                         (slack-buffer-replace-image cur-buffer ts)))
-          (unless (file-exists-p path)
-            (slack-url-copy-file url
-                                 path
-                                 :success #'on-success
-                                 :token token))))))
+                    (path (slack-image-path url)))
+        (let* ((no-token-p (get-text-property (1- (point)) 'no-token))
+               (token (and (not no-token-p)
+                           (oref (oref slack-current-buffer team)
+                                 token))))
+          (cl-labels
+              ((on-success ()
+                           (slack-buffer-replace-image cur-buffer ts)))
+            (unless (file-exists-p path)
+              (slack-url-copy-file url
+                                   path
+                                   :success #'on-success
+                                   :token token)))))))
 
 (defmethod slack-buffer-init-buffer :after (this)
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))

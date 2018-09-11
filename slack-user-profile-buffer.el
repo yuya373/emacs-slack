@@ -64,7 +64,8 @@
         (erase-buffer)
         (goto-char (point-min))
         (with-slots (user-id team) this
-          (insert (slack-user-profile-to-string user-id team)))
+          (insert (propertize (slack-user-profile-to-string user-id team)
+                              'ts 'dummy)))
         (setq buffer-read-only t)
         (slack-buffer-enable-emojify)
         (goto-char (point-min))
@@ -82,6 +83,12 @@
   (with-slots (user-id team) this
     (let ((im (slack-im-find-by-user-id user-id team)))
       (slack-room-display im team))))
+
+(defmethod slack-buffer--replace ((this slack-user-profile-buffer) _ts)
+  (with-current-buffer (current-buffer)
+    (let ((inhibit-read-only t))
+      (delete-region (point-min) (point-max))
+      (slack-buffer--insert this))))
 
 
 
