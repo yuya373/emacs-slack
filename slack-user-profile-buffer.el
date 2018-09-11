@@ -67,7 +67,8 @@
           (insert (slack-user-profile-to-string user-id team)))
         (setq buffer-read-only t)
         (slack-buffer-enable-emojify)
-        (goto-char (point-min))))))
+        (goto-char (point-min))
+        (slack-display-image)))))
 
 (defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
   (let ((buf (call-next-method)))
