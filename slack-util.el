@@ -263,7 +263,7 @@ One of 'info, 'debug"
 (defun slack-image-exists-p (image-spec)
   (file-exists-p (slack-image-path (car image-spec))))
 
-(defun slack-image-string (spec &optional pad)
+(defun slack-image-string (spec &optional pad no-token)
   "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
   (if spec
       (slack-if-let* ((path (slack-image-path (car spec))))
@@ -276,7 +276,9 @@ One of 'info, 'debug"
                                      :max-height (cadddr spec)
                                      :max-width (cadr (cdddr spec))))
                pad)
-            (propertize "[Image]" 'slack-image-spec spec))
+            (propertize "[Image]"
+                        'slack-image-spec spec
+                        'no-token no-token))
         "")
     ""))
 

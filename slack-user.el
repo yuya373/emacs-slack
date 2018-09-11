@@ -198,6 +198,12 @@
 
 (defun slack-user-profile-to-string (id team)
   (let* ((user (slack-user--find id team))
+         (image (slack-image-string (list (slack-user-image-url user 512)
+                                          nil nil nil (window-width
+                                                       (get-buffer-window
+                                                        (current-buffer))
+                                                       t))
+                                    nil t))
          (profile (slack-user-profile user))
          (header (propertize (slack-user-header user)
                              'face 'slack-user-profile-header-face))
@@ -220,7 +226,7 @@
                                                 (slack-if-let* ((buf slack-current-buffer))
                                                     (slack-buffer-display-im buf))))
                                           map))))
-    (format "%s\n%s\n\n%s" header body dm-button)))
+    (format "\n%s\n\n%s%s\n%s\n\n%s" image header (format "  (%s)" id) body dm-button)))
 
 (defun slack-user-self-p (user-id team)
   (string= user-id (oref team self-id)))
@@ -279,12 +285,16 @@
 (defun slack-user-image-url-72 (user)
   (plist-get (slack-user-profile user) :image_72))
 
+(defun slack-user-image-url-512 (user)
+  (plist-get (slack-user-profile user) :image_512))
+
 (defun slack-user-image-url (user size)
   (cond
    ((eq size 24) (slack-user-image-url-24 user))
    ((eq size 32) (slack-user-image-url-32 user))
    ((eq size 48) (slack-user-image-url-48 user))
    ((eq size 72) (slack-user-image-url-72 user))
+   ((eq size 512) (slack-user-image-url-512 user))
    (t (slack-user-image-url-32 user))))
 
 (defun slack-user-fetch-image (user size team)
