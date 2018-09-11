@@ -124,5 +124,17 @@
                       (end (next-single-property-change beg 'ts)))
           (delete-region beg end)))))
 
+(defmethod slack-buffer--replace ((this slack-stars-buffer) ts)
+  (with-slots (team) this
+    (with-slots (star) team
+      (let* ((items (slack-star-items star))
+             (item (cl-find-if #'(lambda (e) (string= (slack-ts e)
+                                                      ts))
+                               items)))
+        (lui-replace (slack-to-string item team)
+                     #'(lambda ()
+                         (string= (get-text-property (point) 'ts)
+                                  ts)))))))
+
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here

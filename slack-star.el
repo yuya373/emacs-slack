@@ -91,10 +91,12 @@
     (setq items (append (oref new items) items))))
 
 (defmethod slack-to-string ((this slack-star-message) team)
-  (slack-message-to-string (oref this message) team))
+  (with-slots (message) this
+    (slack-message-to-string message team)))
 
 (defmethod slack-to-string ((this slack-star-file) team)
-  (slack-message-to-string (oref this file) team))
+  (with-slots (date-create file) this
+    (slack-message-to-string file date-create team)))
 
 (defun slack-create-star-paging (payload)
   ;; (:per_page 20 :spill 0 :page 1 :total 61 :pages 4)
