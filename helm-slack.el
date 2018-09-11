@@ -30,8 +30,7 @@
 (require 'slack-conversations)
 (require 'slack-user-profile-buffer)
 
-(defvar helm-slack-actions nil)
-(setq helm-slack-actions
+(defvar helm-slack-actions
       (helm-make-actions
        "Display channel" #'helm-slack-display-room
        "Archive channel" #'helm-slack-archive-room
