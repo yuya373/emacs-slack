@@ -103,20 +103,20 @@
       (slack-room-archived-p room)
       (not (slack-room-open-p room))))
 
-(defmacro slack-room-names (rooms team &optional filter)
+(defmacro slack-room-names (rooms team &optional filter collecter)
   `(cl-labels
        ((latest-ts (room)
                    (with-slots (latest) room
                      (if latest (slack-ts latest) "0")))
         (sort-rooms (rooms)
-                    (nreverse
-                     (cl-sort rooms #'string<
-                              :key #'(lambda (name-with-room) (latest-ts (cdr name-with-room)))))))
-     (sort-rooms
-      (cl-loop for room in (if ,filter
-                               (funcall ,filter ,rooms)
-                             ,rooms)
-               collect (cons (slack-room-label room team) room)))))
+                    (nreverse (cl-sort rooms #'string< :key #'latest-ts))))
+     (cl-loop for room in (sort-rooms (if ,filter
+                                          (funcall ,filter ,rooms)
+                                        ,rooms))
+              as label = (slack-room-label room team)
+              collect (if (functionp ,collecter)
+                          (funcall ,collecter label room)
+                        (cons label room)))))
 
 (defun slack-room-select (rooms team)
   (let* ((alist (slack-room-names

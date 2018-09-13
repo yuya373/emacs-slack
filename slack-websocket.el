@@ -222,6 +222,9 @@
          ((or (string= type "channel_rename")
               (string= type "group_rename"))
           (slack-ws-handle-room-rename decoded-payload team))
+         ((or (string= type "channel_left")
+              (string= type "group_left"))
+          (slack-ws-handle-room-left decoded-payload team))
          ((string= type "channel_joined")
           (slack-ws-handle-channel-joined decoded-payload team))
          ((string= type "group_joined")
@@ -851,19 +854,29 @@ TEAM is one of `slack-teams'"
                                 users))))))
 
 (defun slack-ws-handle-member-joined-channel (payload team)
-  (let ((user (plist-get payload :user))
-        (channel (slack-room-find (plist-get payload :channel) team)))
-    (when channel
-      (cl-pushnew user (oref channel members)
-                  :test #'string=))))
+  (slack-if-let* ((user (plist-get payload :user))
+                  (channel (slack-room-find (plist-get payload :channel) team)))
+      (progn
+        (cl-pushnew user (oref channel members)
+                    :test #'string=)
+        (slack-log (format "%s joined %s"
+                           (slack-user-name user team)
+                           (slack-room-name channel team))
+                   team
+                   :level 'info))))
 
 (defun slack-ws-handle-member-left_channel (payload team)
-  (let ((user (plist-get payload :user))
-        (channel (slack-room-find (plist-get payload :channel) team)))
-    (when channel
-      (oset channel members
-            (cl-remove-if #'(lambda (e) (string= e user))
-                          (oref channel members))))))
+  (slack-if-let* ((user (plist-get payload :user))
+                  (channel (slack-room-find (plist-get payload :channel) team)))
+      (progn
+        (oset channel members
+              (cl-remove-if #'(lambda (e) (string= e user))
+                            (oref channel members)))
+        (slack-log (format "%s left %s"
+                           (slack-user-name user team)
+                           (slack-room-name channel team))
+                   team
+                   :level 'info))))
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (slack-user--find (plist-get payload :user) team))
@@ -1039,6 +1052,21 @@ TEAM is one of `slack-teams'"
        (valid-client-tokenp (string= (slack-team-client-token team)
                                      client-token)))
       (slack-dialog-get dialog-id team)))
+
+(defun slack-ws-handle-room-left (payload team)
+  (slack-if-let* ((room (slack-room-find (plist-get payload :channel)
+                                         team)))
+      (progn
+        (when (slot-exists-p room 'is-member)
+          (oset room is-member nil))
+        (when (and (not (slack-channel-p room)) (slack-group-p room))
+          (oset team groups
+                (cl-remove-if #'(lambda (e)
+                                  (slack-room-equal-p e room))
+                              (oref team groups))))
+        (slack-log (format "You left %s" (slack-room-name room team))
+                   team :level 'info))))
+
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

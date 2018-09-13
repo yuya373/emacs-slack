@@ -107,6 +107,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-search-result-buffer :initform nil :type (or null list))
    (slack-dialog-buffer :initform nil :type (or null list))
    (slack-dialog-edit-element-buffer :initform nil :type (or null list))
+   (slack-room-info-buffer :initform nil :type (or null list))
    (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (websocket-connect-timeout-timer :initform nil)
@@ -241,6 +242,11 @@ you can change current-team with `slack-change-current-team'"
     (setq slack-current-team team)
     (message "Set slack-current-team to %s" (or (and team (oref team name))
                                                 "nil"))
+    (setq slack-teams
+          (cons team (cl-remove-if #'(lambda (e)
+                                       (string= (oref e id)
+                                                (oref slack-current-team id)))
+                                   slack-teams)))
     (if team
         (slack-team-connect team))))
 
