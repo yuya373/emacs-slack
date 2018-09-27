@@ -294,27 +294,18 @@
                                                        :after-success #'after-success))
          (after-success (has-more)
                         (let* ((messages (slack-room-sorted-messages room))
-                               (oldest-message (car messages))
                                (latest-message (car (last messages))))
                           (if has-more
                               (request-messages (slack-ts latest-message))
                             (progn
                               (with-current-buffer (slack-buffer-buffer this)
                                 (let ((inhibit-read-only t))
-                                  (slack-buffer-delete-overlay this)
-                                  (delete-region (point-min)
-                                                 (marker-position lui-output-marker)))
-                                (slack-buffer-prepare-marker-for-history this)
-                                (slack-buffer-insert-load-more this)
-                                (cl-loop for m in messages
-                                         do (slack-buffer-insert this m t))
+                                  (slack-buffer-delete-overlay this))
+                                (slack-buffer-insert-messages this messages)
                                 (slack-buffer-goto (slack-buffer-last-read this))
-                                (slack-buffer-update-marker-overlay this))
-                              (when oldest-message
-                                (slack-buffer-update-oldest this
-                                                            oldest-message)))))))
-      (oset room messages nil)
-      (request-messages nil))))
+                                (slack-buffer-update-marker-overlay this)))))))
+      (let ((latest-message (car (last (slack-room-sorted-messages room)))))
+        (request-messages (slack-ts latest-message))))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
