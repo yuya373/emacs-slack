@@ -300,8 +300,7 @@
                                     #'(lambda (u) (< (oref u limit) current))
                                     users)))
                 (slack-log
-                 (format "Slack [%s - %s] %s is typing..."
-                         team-name room-name
+                 (format "%s is typing..."
                          (mapconcat #'(lambda (u) (oref u user-name))
                                     visible-users
                                     ", "))
