@@ -157,6 +157,25 @@
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
   'slack-message-buffer-mode)
 
+(defmethod slack-buffer-insert-messages ((this slack-message-buffer) messages
+                                         &optional filter-by-oldest)
+  (with-slots (room team latest oldest) this
+    (let* ((latest-message (car (last messages)))
+           (oldest-message (car messages)))
+      (cl-loop for m in messages
+               do (if (and (or (and filter-by-oldest
+                                    (or (null oldest)
+                                        (string< (slack-ts m) oldest)))
+                               (or (null latest)
+                                   (string< latest (slack-ts m))))
+                           (or (not (slack-thread-message-p m))
+                               (slack-reply-broadcast-message-p m)))
+                      (slack-buffer-insert this m)))
+      (when latest-message
+        (slack-buffer-update-lastest this (slack-ts latest-message)))
+      (when oldest-message
+        (slack-buffer-update-oldest this oldest-message)))))
+
 (defmethod slack-buffer-init-buffer ((this slack-message-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
@@ -166,21 +185,10 @@
 
       (slack-buffer-insert-load-more this)
 
-      (with-slots (room team latest) this
-        (let* ((messages (slack-room-sorted-messages room))
-               (latest-message (car (last messages)))
-               (oldest-message (car messages)))
-          (cl-loop for m in messages
-                   do (if (and (or (null latest)
-                                   (string< latest (slack-ts m)))
-                               (or (not (slack-thread-message-p m))
-                                   (slack-reply-broadcast-message-p m)))
-                          (slack-buffer-insert this m t)))
-          (when latest-message
-            (slack-buffer-update-lastest this (slack-ts latest-message)))
-          (when oldest-message
-            (slack-buffer-update-oldest this oldest-message))))
-      )
+      (with-slots (room) this
+        (let ((messages (slack-room-sorted-messages room)))
+          (slack-buffer-insert-messages this messages))))
+
     (with-slots (room team) this
       (let* ((class (eieio-object-class-name this)))
         (slack-buffer-push-new-3 class room team)))
@@ -195,9 +203,8 @@
         (slack-buffer-update-mark-request this (slack-ts message)))
 
       (if replace (slack-buffer-replace this message)
-        (slack-buffer-update-lastest this (slack-ts message))
         (with-current-buffer buffer
-          (slack-buffer-insert this message))))))
+          (slack-buffer-insert-messages this (list message) t))))))
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
@@ -336,8 +343,7 @@
                    (let ((lui-time-stamp-position nil))
                      (lui-insert "(no more messages)\n" t)))
 
-                 (cl-loop for m in messages
-                          do (slack-buffer-insert this m t))
+                 (slack-buffer-insert-messages this messages)
                  (lui-recover-output-marker)
                  (slack-buffer-update-marker-overlay this)
                  ))
