@@ -98,6 +98,13 @@
   (oset req execute-at (+ retry-after (time-to-seconds)))
   (slack-request-worker-push req))
 
+(cl-defmethod slack-request-retry-failed-request-p ((req slack-request-request) error-thrown symbol-status)
+  (with-slots (type) req
+    (and (string= type "GET")
+         (or (and error-thrown
+                  (eq 'end-of-file (car error-thrown)))
+             (eq symbol-status 'timeout)))))
+
 (cl-defmethod slack-request ((req slack-request-request)
                              &key (on-success nil) (on-error nil))
   (let ((team (oref req team)))
@@ -128,16 +135,25 @@
                                           error-thrown
                                           symbol-status
                                           data)
-                                  team
-                                  :level 'error)
-                       (when (functionp error)
-                         (funcall error
-                                  :error-thrown error-thrown
-                                  :symbol-status symbol-status
-                                  :response response
-                                  :data data))
-                       (when (functionp on-error)
-                         (funcall on-error)))))
+                                  team :level 'error)
+                       (if (slack-request-retry-failed-request-p req error-thrown symbol-status)
+                           (progn
+                             (slack-log (format "Retry Requst by Error. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
+                                                url
+                                                params
+                                                error-thrown
+                                                symbol-status
+                                                data)
+                                        team :level 'warn)
+                             (slack-request-retry-request req 1))
+                         (when (functionp error)
+                           (funcall error
+                                    :error-thrown error-thrown
+                                    :symbol-status symbol-status
+                                    :response response
+                                    :data data))
+                         (when (functionp on-error)
+                           (funcall on-error))))))
         (oset req response
               (request
                url
