@@ -89,16 +89,23 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
                                                    (append channels groups ims)))))
 
 (defun helm-slack-build--candidates (rooms-selector)
-  (cl-loop for team in slack-teams
-           as rooms = (funcall rooms-selector team)
-           nconc (cl-labels
-                     ((filter (rooms) (cl-remove-if #'slack-room-hidden-p
-                                                    rooms))
-                      (collector (label room) (list label room team)))
-                   (let ((slack-display-team-name
-                          (< 1 (length slack-teams))))
-                     (slack-room-names (append rooms nil) team
-                                       #'filter #'collector)))))
+  (cl-labels ((sort (rooms)
+                    (nreverse (cl-sort rooms #'string< :key #'latest-ts)))
+              (latest-ts (label-room-team)
+                         (with-slots (latest) (cadr label-room-team)
+                           (if latest (slack-ts latest) "0"))))
+
+    (sort (cl-loop for team in slack-teams
+                   as rooms = (funcall rooms-selector team)
+                   nconc (cl-labels
+                             ((filter (rooms) (cl-remove-if #'slack-room-hidden-p
+                                                            rooms))
+                              (collector (label room) (list label room team)))
+                           (let ((slack-display-team-name
+                                  (< 1 (length slack-teams))))
+                             (cl-loop for room in (filter rooms)
+                                      collect (collector (slack-room-label room team)
+                                                         room))))))))
 
 (defmacro helm-slack-bind-room-and-team (candidate &rest body)
   (declare (indent 2) (debug t))
