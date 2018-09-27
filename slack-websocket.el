@@ -290,7 +290,8 @@
             (progn
               (cancel-timer typing-timer)
               (setq typing-timer nil)
-              (setq typing nil))
+              (setq typing nil)
+              (message ""))
           (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
                           (show-typing-p (slack-buffer-show-typing-p
                                           (get-buffer (slack-buffer-name buf)))))
