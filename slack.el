@@ -106,10 +106,10 @@ set this to save request to Slack if already have.")
  'slack-room-subscription slack-use-register-team-string
  "0.0.2")
 (defcustom slack-typing-visibility 'frame
-  "When to show typing indicator.
-frame means typing slack buffer is in the current frame, show typing indicator.
-buffer means typing slack buffer is the current buffer, show typing indicator.
-never means never show typing indicator."
+  "When to display typing indicator.
+When `frame', typing slack buffer is in the current frame.
+When `buffer', typing slack buffer is the current buffer.
+When `never', never display typing indicator."
   :type '(choice (const frame)
                  (const buffer)
                  (const never)))
