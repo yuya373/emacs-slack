@@ -178,7 +178,7 @@
                                    map)
                          'loading-message t)))
     (let ((lui-time-stamp-position nil))
-      (lui-insert str))))
+      (lui-insert str t))))
 
 (defmethod slack-buffer-loading-message-end-point ((this slack-buffer))
   (next-single-property-change (point-min) 'loading-message))

@@ -334,7 +334,7 @@
                  (if (and messages (< 0 (length messages)))
                      (slack-buffer-insert-load-more this)
                    (let ((lui-time-stamp-position nil))
-                     (lui-insert "(no more messages)\n")))
+                     (lui-insert "(no more messages)\n" t)))
 
                  (cl-loop for m in messages
                           do (slack-buffer-insert this m t))
