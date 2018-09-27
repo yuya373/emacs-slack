@@ -123,7 +123,7 @@
   (if (slack-buffer-has-next-page-p this)
       (slack-buffer-insert-load-more this)
     (let ((lui-time-stamp-position nil))
-      (lui-insert "(no more messages)\n"))))
+      (lui-insert "(no more messages)\n" t))))
 
 (provide 'slack-search-result-buffer)
 ;;; slack-search-result-buffer.el ends here
