@@ -205,7 +205,7 @@
 
       (if replace (slack-buffer-replace this message)
         (with-current-buffer buffer
-          (slack-buffer-insert-messages this (list message) t))))))
+          (slack-buffer-insert-messages this (list message)))))))
 
 (defmethod slack-buffer-display-message-compose-buffer ((this slack-message-buffer))
   (with-slots (room team) this
