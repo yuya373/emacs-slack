@@ -163,14 +163,15 @@
     (let* ((latest-message (car (last messages)))
            (oldest-message (car messages)))
       (cl-loop for m in messages
-               do (if (and (or (and filter-by-oldest
-                                    (or (null oldest)
-                                        (string< (slack-ts m) oldest)))
+               do (when (and (if filter-by-oldest
+                                 (or (message "%s < %s" (slack-ts m) oldest)
+                                     (null oldest)
+                                     (string< (slack-ts m) oldest))
                                (or (null latest)
                                    (string< latest (slack-ts m))))
-                           (or (not (slack-thread-message-p m))
-                               (slack-reply-broadcast-message-p m)))
-                      (slack-buffer-insert this m)))
+                             (or (not (slack-thread-message-p m))
+                                 (slack-reply-broadcast-message-p m)))
+                    (slack-buffer-insert this m)))
       (when latest-message
         (slack-buffer-update-lastest this (slack-ts latest-message)))
       (when oldest-message
