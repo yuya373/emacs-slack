@@ -164,8 +164,7 @@
            (oldest-message (car messages)))
       (cl-loop for m in messages
                do (when (and (if filter-by-oldest
-                                 (or (message "%s < %s" (slack-ts m) oldest)
-                                     (null oldest)
+                                 (or (null oldest)
                                      (string< (slack-ts m) oldest))
                                (or (null latest)
                                    (string< latest (slack-ts m))))
