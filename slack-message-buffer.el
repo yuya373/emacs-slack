@@ -335,7 +335,7 @@
                    (let ((lui-time-stamp-position nil))
                      (lui-insert "(no more messages)\n" t)))
 
-                 (slack-buffer-insert-messages this messages)
+                 (slack-buffer-insert-messages this messages t)
                  (lui-recover-output-marker)
                  (slack-buffer-update-marker-overlay this)
                  ))
@@ -343,13 +343,7 @@
                   (slack-buffer-goto current-ts)
                 (goto-char cur-point))))
            (after-success (&rest _ignore)
-                          (let ((messages (cl-remove-if #'(lambda (e)
-                                                            (or (string< oldest e)
-                                                                (string= oldest e)))
-                                                        (slack-room-sorted-messages room)
-                                                        :key #'slack-ts)))
-                            (update-buffer messages)
-                            (slack-buffer-update-oldest this (car messages)))))
+                          (update-buffer (slack-room-sorted-messages room))))
         (slack-room-history-request room team
                                     :oldest oldest
                                     :after-success #'after-success)))))
