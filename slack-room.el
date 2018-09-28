@@ -109,7 +109,8 @@
                    (with-slots (latest) room
                      (if latest (slack-ts latest) "0")))
         (sort-rooms (rooms)
-                    (nreverse (cl-sort rooms #'string< :key #'latest-ts))))
+                    (nreverse (cl-sort (append rooms nil)
+                                       #'string< :key #'latest-ts))))
      (cl-loop for room in (sort-rooms (if ,filter
                                           (funcall ,filter ,rooms)
                                         ,rooms))
