@@ -74,21 +74,15 @@
 
 (defun slack-link-channels (message team)
   "Add links to all references to valid channels in MESSAGE."
-  (let ((channel-ids
-         (mapcar #'(lambda (x)
-                     (let ((channel (cdr x)))
-                       (cons (slack-room-name channel team)
-                             (slot-value channel 'id))))
-                 (slack-channel-names team))))
-    (replace-regexp-in-string
-     "#\\<\\([A-Za-z0-9_\-]+\\)\\>"
-     #'(lambda (text)
-         (let* ((channel (match-string 1 text))
-                (id (cdr (assoc channel channel-ids))))
-           (if id
-               (format "<#%s|%s>" id channel)
-             text)))
-     message t)))
+  (replace-regexp-in-string
+   "#\\<\\([A-Za-z0-9_\-]+\\)\\>"
+   #'(lambda (text)
+       (slack-if-let* ((channel (slack-room-find (match-string 1 text) team)))
+           (format "<#%s|%s>"
+                   (oref channel id)
+                   (slack-room-name channel team))
+         text))
+   message t))
 
 (defun slack-message-prepare-links (message team)
   (slack-link-channels (slack-link-users message team) team))
