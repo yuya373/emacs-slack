@@ -305,7 +305,9 @@
                                 (slack-buffer-goto (slack-buffer-last-read this))
                                 (slack-buffer-update-marker-overlay this)))))))
       (let ((latest-message (car (last (slack-room-sorted-messages room)))))
-        (request-messages (slack-ts latest-message))))))
+        (request-messages (or (and latest-message
+                                   (slack-ts latest-message))
+                              nil))))))
 
 (defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
