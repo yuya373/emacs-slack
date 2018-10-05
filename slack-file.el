@@ -337,6 +337,35 @@
          (confirm-nonexistent-file-or-buffer)))
    t t))
 
+(defun slack-file-upload-snippet (&optional beg end)
+  (interactive "r")
+  (slack-if-let*
+      ((team (slack-team-select t))
+       (channels (mapconcat #'identity
+                            (slack-file-select-sharing-channels "" team)
+                            ","))
+       (title (read-from-minibuffer "Title: "))
+       (initial-comment (read-from-minibuffer "Message: "))
+       (filetype (read-from-minibuffer "Filetype: "))
+       (content (buffer-substring-no-properties beg end)))
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-file-upload-snippet"))))
+        (slack-request
+         (slack-request-create
+          slack-file-upload-url
+          team
+          :type "POST"
+          :headers (list (cons "Content-Type" "multipart/form-data"))
+
+          :params (list (and filetype (cons "filetype" filetype))
+                        (and initial-comment (cons "initial_comment" initial-comment))
+                        (and title (cons "title" title))
+                        (cons "channels" channels)
+                        (cons "content" content))
+          :success #'on-success)))))
+
 (defun slack-file-upload ()
   (interactive)
   (slack-if-let*
