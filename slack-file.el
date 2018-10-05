@@ -346,7 +346,7 @@
                             ","))
        (title (read-from-minibuffer "Title: "))
        (initial-comment (read-from-minibuffer "Message: "))
-       (filetype (read-from-minibuffer "Filetype: "))
+       (filetype (read-from-minibuffer "Filetype: " "auto"))
        (content (buffer-substring-no-properties beg end)))
       (cl-labels
           ((on-success (&key data &allow-other-keys)
