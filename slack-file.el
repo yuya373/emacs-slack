@@ -517,9 +517,8 @@
        (filename (read-from-minibuffer "Filename: "
                                        (file-name-nondirectory
                                         (buffer-file-name buf))))
-       (filetype (read-from-minibuffer "Filetype: "
-                                       (file-name-extension
-                                        (buffer-file-name buf))))
+       (filetype (slack-file-select-filetype (file-name-extension
+                                              (buffer-file-name buf))))
        (initial-comment (read-from-minibuffer "Message: ")))
       (cl-labels
           ((on-file-upload (&key data &allow-other-keys)
