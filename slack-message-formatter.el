@@ -183,7 +183,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                              (oref m files) "\n"))
            (reactions (slack-message-reaction-to-string m team))
            (thread (slack-thread-to-string m team)))
-      (slack-format-message header body
+      (slack-format-message (propertize header
+                                        'slack-message-header t)
+                            body
                             (if (< 0 (length files))
                                 (format "\n%s" files)
                               files)
