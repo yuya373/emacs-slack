@@ -380,7 +380,7 @@
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
   `(let* ((cur-point (point))
-          (ts (get-text-property cur-point 'ts)))
+          (ts (or (get-text-property cur-point 'ts) "0")))
      (let ((next-point ,find-point))
        (if next-point
            (goto-char next-point)
@@ -409,22 +409,16 @@
   (goto-char
    (slack-buffer-prev-point (point-max) (point-min) (format-time-string "%s"))))
 
-(defun slack-buffer-header-p (point)
-  (let ((face (get-text-property point 'face)))
-    (string= (format "%s" face) "slack-message-output-header")))
-
 (defun slack-buffer-next-point (start end ts)
   (cl-loop for i from start to end
-           if (and (string< ts
-                            (get-text-property i 'ts))
-                   (slack-buffer-header-p i))
+           for next-ts = (get-text-property i 'ts)
+           if (and next-ts (string< ts next-ts))
            return i))
 
 (defun slack-buffer-prev-point (start end ts)
   (cl-loop for i from start downto end
-           if (and (string< (get-text-property i 'ts)
-                            ts)
-                   (slack-buffer-header-p i))
+           for prev-ts = (get-text-property i 'ts)
+           if (and prev-ts (string< prev-ts ts))
            return i))
 
 (defun slack-buffer-ts-eq (start end ts)
