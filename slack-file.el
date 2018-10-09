@@ -450,7 +450,7 @@
                                        "Select channel: "))
                                  channels
                                  #'(lambda (loop-count)
-                                     (when (< 0 loop-count)
+                                     (when (< loop-count 1)
                                        current-room-name)))))
     (mapcar #'(lambda (channel) (oref channel id))
             target-channels)))
