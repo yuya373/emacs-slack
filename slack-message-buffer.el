@@ -410,10 +410,6 @@
                                       'after-string
                                       (format "%s\n" after-string)))))))))))
 
-(defmethod slack-buffer-replace ((this slack-message-buffer) message)
-  (call-next-method)
-  (slack-buffer-update-marker-overlay this))
-
 (defmethod slack-file-upload-params ((this slack-message-buffer))
   (with-slots (room team) this
     (list (cons "channels"
@@ -492,7 +488,8 @@
              (ts (slack-ts message)))
         (lui-replace text
                      (lambda ()
-                       (equal (get-text-property (point) 'ts) ts)))))))
+                       (equal (get-text-property (point) 'ts) ts))))))
+  (slack-buffer-update-marker-overlay this))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
