@@ -379,24 +379,28 @@
                  :test #'string=)))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
-  `(let* ((cur-point (point))
-          (ts (or (get-text-property cur-point 'ts) "0")))
+  (let ((ts (car else))
+        (else (cdr else)))
+   `(let* ((cur-point (point))
+          (ts (or (get-text-property cur-point 'ts) ,ts)))
      (let ((next-point ,find-point))
        (if next-point
            (goto-char next-point)
          (if (< 0 (length ',else))
-             ,@else)))))
+             ,@else))))))
 
 (defun slack-buffer-goto-next-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-next-point cur-point (point-max) ts)
+   "0"
    (message "You are on Last Message.")))
 
 (defun slack-buffer-goto-prev-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-prev-point cur-point (point-min) ts)
+   "z"
    (message "You are on First Message.")))
 
 (defun slack-buffer-goto-first-message ()
