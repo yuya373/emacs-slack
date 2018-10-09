@@ -204,6 +204,7 @@
    (url-private-download :initarg :url_private_download :initform "" :type string)
    (timestamp :initarg :timestamp :type number)
    (comments :initarg :comments :type list :initform '())
+   (mode :initarg :mode :type (or null string) :initform nil)
    ))
 
 (defclass slack-file-email (slack-file)
@@ -600,13 +601,15 @@
                         map)))
 
 (defmethod slack-file-summary ((file slack-file) _ts team)
-  (with-slots (pretty-type mimetype permalink name title) file
-    (format "uploaded this %s: %s <%s|open in browser>"
-            (or pretty-type mimetype)
-            (slack-file-link-info (oref file id)
-                                  (slack-message-unescape-string (or title name)
-                                                                 team))
-            permalink)))
+  (with-slots (mode pretty-type mimetype permalink name title) file
+    (if (string= mode "tombstone")
+        "This file was deleted."
+      (format "uploaded this %s: %s <%s|open in browser>"
+              (or pretty-type mimetype)
+              (slack-file-link-info (oref file id)
+                                    (slack-message-unescape-string (or title name)
+                                                                   team))
+              permalink))))
 
 (defmethod slack-file-summary ((this slack-file-email) ts team)
   (with-slots (preview-plain-text plain-text is-expanded) this
