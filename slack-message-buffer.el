@@ -157,6 +157,10 @@
 (defmethod slack-buffer-major-mode ((this slack-message-buffer))
   'slack-message-buffer-mode)
 
+(defmethod slack-buffer-visible-message-p ((this slack-message-buffer) message)
+  (or (not (slack-thread-message-p message))
+      (slack-reply-broadcast-message-p message)))
+
 (defmethod slack-buffer-insert-messages ((this slack-message-buffer) messages
                                          &optional filter-by-oldest)
   (with-slots (room team latest oldest) this
@@ -169,8 +173,7 @@
                                      (string< (slack-ts m) oldest))
                                (or (null latest)
                                    (string< latest (slack-ts m))))
-                             (or (not (slack-thread-message-p m))
-                                 (slack-reply-broadcast-message-p m)))
+                             (slack-buffer-visible-message-p this m))
                     (slack-buffer-insert this m nil prev-message)
                     (setq prev-message m)))
       (when latest-message
@@ -425,9 +428,10 @@
     (let ((ts (slack-ts message)))
       (cl-loop for m in (slack-room-sorted-messages room)
                with prev = nil
-               do (if (string= (slack-ts m) ts)
-                      (return prev)
-                    (setq prev m))))))
+               do (when (slack-buffer-visible-message-p this m)
+                    (if (string= (slack-ts m) ts)
+                        (return prev)
+                      (setq prev m)))))))
 
 (defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (with-slots (team) this
