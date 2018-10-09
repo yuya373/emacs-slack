@@ -420,6 +420,34 @@
                             team)
                            ",")))))
 
+(defmethod slack-buffer-prev-message ((this slack-message-buffer) message)
+  (with-slots (room team) this
+    (let ((ts (slack-ts message)))
+      (cl-loop for m in (slack-room-sorted-messages room)
+               with prev = nil
+               do (if (string= (slack-ts m) ts)
+                      (return prev)
+                    (setq prev m))))))
+
+(defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
+  (with-slots (team) this
+    (and prev
+         (and (equal (slack-user-find prev team)
+                     (slack-user-find message team))
+              (eq (time-to-day-in-year (slack-message-time-stamp
+                                        prev))
+                  (time-to-day-in-year lui-time-stamp-time))))))
+
+(defmethod slack-buffer-message-text ((this slack-message-buffer)
+                                      message
+                                      merge-message-p)
+  (with-slots (team) this
+    (let ((text (slack-message-to-string message team)))
+      (or (and merge-message-p
+               (let ((end (next-single-property-change
+                           0 'slack-message-header text)))
+                 (substring text (1+ end))))
+          text))))
 
 (defmethod slack-buffer-insert ((this slack-message-buffer) message
                                 &optional not-tracked-p prev-message)
@@ -427,23 +455,9 @@
          (room (oref this room))
          (team (oref this team))
          (ts (slack-ts message))
-         (prev (or prev-message
-                   (cl-loop for m in (slack-room-sorted-messages room)
-                            with prev = nil
-                            do (if (string= (slack-ts m) ts)
-                                   (return prev)
-                                 (setq prev m)))))
-         (merge-message-p (and prev
-                               (and (equal (slack-user-find prev team)
-                                           (slack-user-find message team))
-                                    (eq (time-to-day-in-year (slack-message-time-stamp prev))
-                                        (time-to-day-in-year lui-time-stamp-time)))))
-         (text (slack-message-to-string message team))
-         (text (or (and merge-message-p
-                        (let ((end (next-single-property-change
-                                    0 'slack-message-header text)))
-                          (substring text (1+ end))))
-                   text)))
+         (prev (or prev-message (slack-buffer-prev-message this message)))
+         (merge-message-p (slack-buffer-merge-message-p this message prev))
+         (text (slack-buffer-message-text this message merge-message-p)))
     (when merge-message-p
       (save-excursion
         (goto-char lui-output-marker)
@@ -464,6 +478,17 @@
      'slack-last-ts lui-time-stamp-last
      'cursor-sensor-functions '(slack-buffer-subscribe-cursor-event))
     (lui-insert "" t)))
+
+(defmethod slack-buffer-replace ((this slack-message-buffer) message)
+  (with-slots (team) this
+    (with-current-buffer (slack-buffer-buffer this)
+      (let* ((prev (slack-buffer-prev-message this message))
+             (merge-message-p (slack-buffer-merge-message-p this message prev))
+             (text (slack-buffer-message-text this message merge-message-p))
+             (ts (slack-ts message)))
+        (lui-replace text
+                     (lambda ()
+                       (equal (get-text-property (point) 'ts) ts)))))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
