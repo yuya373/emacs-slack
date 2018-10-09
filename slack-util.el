@@ -477,5 +477,29 @@ One of 'info, 'debug"
                                               command)))
       (set-process-sentinel proc #'sentinel))))
 
+(cl-defun slack-select-multiple (prompt-fn collection &optional initial-input-fn)
+  (let ((result '())
+        (loop-count 0)
+        (do-loop t))
+    (while do-loop
+      (let ((selected (apply slack-completing-read-function
+                             (list
+                              (funcall prompt-fn loop-count)
+                              (if result (cons "" collection) collection)
+                              nil t
+                              (when (functionp initial-input-fn)
+                                (funcall initial-input-fn loop-count))))))
+        (if (and selected (< 0 (length selected)))
+            (progn
+              (push (cdr (cl-assoc selected collection :test #'equal))
+                    result)
+              (setq collection (cl-remove-if #'(lambda (e)
+                                                 (equal selected (car-safe e)))
+                                             collection))
+              (cl-incf loop-count))
+
+          (setq do-loop nil))))
+    (cl-delete-if #'null result)))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here

@@ -438,29 +438,22 @@
       :success #'on-file-list))))
 
 (defun slack-file-select-sharing-channels (current-room-name team)
-  (cl-labels
-      ((select-channels
-        (channels acc)
-        (let ((selected (apply slack-completing-read-function
-                               (if acc
-                                   (list "Select another channel (or leave empty): "
-                                         (cons "" channels) nil t)
-                                 (list "Select channel: " channels nil t current-room-name)))))
-          (if (< 0 (length selected))
-              (select-channels (cl-remove-if (lambda (x) (equal selected (car-safe x))) channels)
-                               (cons selected acc))
-            acc)))
-       (channel-id (selected channels)
-                   (oref (cdr (cl-assoc selected channels :test #'string=))
-                         id)))
-    (let* ((channels (slack-room-names
-                      (append (oref team ims)
-                              (oref team channels)
-                              (oref team groups))
-                      team))
-           (target-channels (select-channels channels '())))
-      (mapcar #'(lambda (selected) (channel-id selected channels))
-              (cl-delete-if #'null target-channels)))))
+  (let* ((channels (slack-room-names
+                    (append (oref team ims)
+                            (oref team channels)
+                            (oref team groups))
+                    team))
+         (target-channels
+          (slack-select-multiple #'(lambda (loop-count)
+                                     (if (< 0 loop-count)
+                                         "Select another channel (or leave empty): "
+                                       "Select channel: "))
+                                 channels
+                                 #'(lambda (loop-count)
+                                     (when (< 0 loop-count)
+                                       current-room-name)))))
+    (mapcar #'(lambda (channel) (oref channel id))
+            target-channels)))
 
 (defun slack-file-select-upload-file-as-buffer ()
   (find-file-noselect

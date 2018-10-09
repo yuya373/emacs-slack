@@ -215,13 +215,13 @@
   (let* ((team (slack-team-select))
          (users (slack-user-names team)))
     (cl-labels
-        ((select-users (users acc)
-                       (let ((selected (funcall slack-completing-read-function "Select User: "
-                                                users nil t)))
-                         (if (< 0 (length selected))
-                             (select-users users
-                                           (push (cdr (cl-assoc selected users :test #'string=)) acc))
-                           acc)))
+        ((prompt (loop-count)
+                 (if (< 0 loop-count)
+                     "Select another user (or leave empty): "
+                   "Select user: "))
+         (user-ids ()
+                   (mapcar #'(lambda (user) (plist-get user :id))
+                           (slack-select-multiple #'prompt users)))
          (on-success
           (&key data &allow-other-keys)
           (slack-request-handle-error
@@ -231,7 +231,7 @@
         slack-mpim-open-url
         team
         :type "POST"
-        :params (list (cons "users" (mapconcat (lambda (u) (plist-get u :id)) (select-users users '()) ",")))
+        :params (list (cons "users" (mapconcat #'identity (user-ids) ",")))
         :success #'on-success)))))
 
 (defun slack-group-mpim-close ()
