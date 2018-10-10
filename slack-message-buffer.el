@@ -432,11 +432,14 @@
 (defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (with-slots (team) this
     (and prev
-         (and (equal (slack-user-find prev team)
-                     (slack-user-find message team))
-              (eq (time-to-day-in-year (slack-message-time-stamp
-                                        prev))
-                  (time-to-day-in-year lui-time-stamp-time))))))
+         (and (let ((prev-user (slack-user-find prev team))
+                    (current-user (slack-user-find message team)))
+                (equal prev-user current-user))
+              (let ((prev-day (time-to-day-in-year (slack-message-time-stamp
+                                                    prev)))
+                    (current-day (time-to-day-in-year (slack-message-time-stamp
+                                                       message))))
+                (eq prev-day current-day))))))
 
 (defmethod slack-buffer-message-text ((this slack-message-buffer)
                                       message
