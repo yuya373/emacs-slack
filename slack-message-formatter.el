@@ -30,7 +30,7 @@
 (require 'slack-room)
 
 (defface slack-profile-image-face
-  '((t (:background "#fff")))
+  '((t ()))
   "Face used to profile image."
   :group 'slack)
 
