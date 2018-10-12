@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-user)
 (require 'slack-room)
 
@@ -251,8 +252,21 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (slack-message-unescape-date-format
        (slack-message-unescape-command
         (slack-message-unescape-user-id
-         (slack-message-unescape-channel gt-unescaped team)
+         (slack-message-unescape-channel
+          (slack-message-unescape-usergroup gt-unescaped team)
+          team)
          team))))))
+
+(defun slack-message-unescape-usergroup (text team)
+  (let ((regexp "<!subteam^\\(.*?\\)|\\(.*?\\)>"))
+    (cl-labels
+        ((replace (text)
+                  (let* ((id (match-string 1 text)))
+                    (or (match-string 2 text)
+                        (slack-if-let* ((usergroup (slack-usergroup-find id team)))
+                            (oref usergroup handle)
+                          "<Unknown USERGROUP>")))))
+      (replace-regexp-in-string regexp #'replace text t t))))
 
 (defun slack-message-unescape-user-id (text team)
   (let ((user-regexp "<@\\(U.*?\\)>"))

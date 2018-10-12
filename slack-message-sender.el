@@ -62,14 +62,16 @@
    "@\\<\\([A-Za-z0-9._\-]+\\)\\>"
    #'(lambda (text)
        (let* ((username (match-string 1 text))
-              (id (slack-user-get-id username team)))
-         (if id
-             (format "<@%s|%s>" id username)
-           (cond
-            ((string= username "here") "<!here|here>")
-            ((cl-find username '("channel" "group") :test #'string=) "<!channel>")
-            ((string= username "everyone") "<!everyone>")
-            (t text)))))
+              (user-id (slack-user-get-id username team)))
+         (if user-id
+             (format "<@%s|%s>" user-id username)
+           (slack-if-let* ((group-id (slack-usergroup-get-id username team)))
+               (format "<!subteam^%s|@%s>" group-id username)
+             (cond
+              ((string= username "here") "<!here|here>")
+              ((cl-find username '("channel" "group") :test #'string=) "<!channel>")
+              ((string= username "everyone") "<!everyone>")
+              (t text))))))
    message t))
 
 (defun slack-link-channels (message team)

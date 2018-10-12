@@ -77,5 +77,15 @@
       :params (list (cons "include_count" "true")
                     (cons "include_users" "true"))))))
 
+(defun slack-usergroup-find (id team)
+  (cl-find-if #'(lambda (e) (string= id (oref e id)))
+              (oref team usergroups)))
+
+(defun slack-usergroup-get-id (handle team)
+  (slack-if-let*
+      ((group (cl-find-if #'(lambda (e) (string= handle (oref e handle)))
+                          (oref team usergroups))))
+      (oref group id)))
+
 (provide 'slack-usergroup)
 ;;; slack-user-group.el ends here
