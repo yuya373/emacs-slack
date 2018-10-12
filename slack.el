@@ -66,6 +66,7 @@
 (require 'slack-websocket)
 (require 'slack-request)
 (require 'slack-request-worker)
+(require 'slack-usergroup)
 
 (when (featurep 'helm)
   (require 'helm-slack))
@@ -181,6 +182,7 @@ When `never', never display typing indicator."
                    (slack-bot-list-update team)
                    (slack-request-emoji team)
                    (slack-command-list-update team)
+                   (slack-usergroup-list-update team)
                    (slack-update-modeline)))
        (slack-ws-open team :on-open #'on-open)))))
 
