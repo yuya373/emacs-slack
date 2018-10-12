@@ -140,7 +140,7 @@ One of 'info, 'debug"
                                   (let ((prompt-length (length lui-prompt-string)))
                                     (>= 0 (- (current-column) prompt-length (length str)))))
        (prefix-type (str) (cond
-                           ((string-prefix-p "@" str) 'user)
+                           ((string-prefix-p "@" str) 'user-or-usergroup)
                            ((string-prefix-p "#" str) 'channel)
                            ((and (string-prefix-p "/" str)
                                  (start-from-line-beginning str))
@@ -149,36 +149,40 @@ One of 'info, 'debug"
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
-                  ;; (cl-find major-mode '(slack-mode
-                  ;;                         slack-edit-message-mode
-                  ;;                         slack-thread-mode))
                 (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
                                    2)))
-      (candidates (let ((content (content arg)))
-                    (cl-case (prefix-type arg)
-                      (user
-                       (cl-loop for user in (oref slack-current-team users)
-                                if (and (not (eq (plist-get user :deleted) t))
-                                        (string-prefix-p content
-                                                         (plist-get user :name)))
-                                collect (concat "@" (plist-get user :name))))
-                      (channel
-                       (cl-loop for team in (oref slack-current-team channels)
-                                if (string-prefix-p content
-                                                    (oref team name))
-                                collect (concat "#" (oref team name))))
-                      (slash
-                       (cl-loop for command in (oref slack-current-team commands)
-                                if (string-prefix-p (concat "/" content)
-                                                    (oref command name))
-                                collect (oref command name))
-                       ))))
+      (candidates (slack-if-let*
+                      ((content (content arg))
+                       (team (and slack-current-buffer
+                                  (oref slack-current-buffer team))))
+                      (cl-case (prefix-type arg)
+                        (user-or-usergroup
+                         (nconc
+                          (cl-loop for usergroup in (oref team usergroups)
+                                   if (and (not (slack-usergroup-deleted-p usergroup))
+                                           (string-prefix-p content
+                                                            (oref usergroup handle)))
+                                   collect (concat "@" (oref usergroup handle)))
+                          (cl-loop for user in (oref team users)
+                                   if (and (not (eq (plist-get user :deleted) t))
+                                           (string-prefix-p content
+                                                            (plist-get user :name)))
+                                   collect (concat "@" (plist-get user :name)))))
+                        (channel
+                         (cl-loop for team in (oref team channels)
+                                  if (string-prefix-p content
+                                                      (oref team name))
+                                  collect (concat "#" (oref team name))))
+                        (slash
+                         (cl-loop for command in (oref team commands)
+                                  if (string-prefix-p (concat "/" content)
+                                                      (oref command name))
+                                  collect (oref command name))))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (slash
           (company-doc-buffer
-           (let* ((team slack-current-team)
-                  (command (slack-command-find arg team)))
+           (let* ((command (slack-command-find arg team)))
              (when command
                (slack-command-company-doc-string command team))))))))))
 

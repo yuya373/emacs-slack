@@ -87,5 +87,8 @@
                           (oref team usergroups))))
       (oref group id)))
 
+(defmethod slack-usergroup-deleted-p ((this slack-usergroup))
+  (not (eq 0 (oref this date-delete))))
+
 (provide 'slack-usergroup)
 ;;; slack-user-group.el ends here
