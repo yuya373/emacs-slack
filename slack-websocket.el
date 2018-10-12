@@ -276,6 +276,10 @@
           (slack-ws-handle-commands-changed decoded-payload team))
          ((string= type "dialog_opened")
           (slack-ws-handle-dialog-opened decoded-payload team))
+         ((string= type "subteam_created")
+          (slack-ws-handle-subteam-created decoded-payload team))
+         ((string= type "subteam_updated")
+          (slack-ws-handle-subteam-updated decoded-payload team))
          )))))
 
 (defun slack-ws-handle-reconnect-url (payload team)
@@ -1069,6 +1073,17 @@ TEAM is one of `slack-teams'"
         (slack-log (format "You left %s" (slack-room-name room team))
                    team :level 'info))))
 
+(defun slack-ws-handle-subteam-created (payload team)
+  (let ((usergroup (slack-usergroup-create (plist-get payload :subteam))))
+    (push usergroup (oref team usergroups))))
+
+(defun slack-ws-handle-subteam-updated (payload team)
+  (let ((usergroup (slack-usergroup-create (plist-get payload :subteam))))
+    (oset team usergroups (cons usergroup
+                                (cl-remove-if #'(lambda (e)
+                                                  (string= (oref e id)
+                                                           (oref usergroup id)))
+                                              (oref team usergroups))))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
