@@ -136,6 +136,11 @@
                      (equal (get-text-property (point) 'ts)
                             (slack-ts message)))))))
 
+(defmethod slack-buffer--subscribe-cursor-event ((this slack-buffer)
+                                                 window
+                                                 prev-point
+                                                 type))
+
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
@@ -147,11 +152,13 @@
                    (oref buffer team)
                    :level 'trace)
 
-        (when (eq type 'entered)
-          (unless (slack-team-mark-as-read-immediatelyp (oref buffer team))
-            (slack-buffer-update-mark buffer))
-          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
+        (slack-buffer--subscribe-cursor-event buffer
+                                              window
+                                              prev-point
+                                              type)
 
+        (when (eq type 'entered)
+          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
         (when (eq type 'left)
           (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
 

@@ -494,5 +494,16 @@
                        (equal (get-text-property (point) 'ts) ts))))))
   (slack-buffer-update-marker-overlay this))
 
+(defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
+                                                 window
+                                                 prev-point
+                                                 type)
+  (cond
+   ((eq type'entered)
+    (with-slots (team) this
+      (unless (slack-team-mark-as-read-immediatelyp team)
+        (slack-buffer-update-mark this))))
+   ((eq type 'left))))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
