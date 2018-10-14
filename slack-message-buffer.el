@@ -55,6 +55,7 @@
    (latest :initform nil :type (or null string))
    (marker-overlay :initform nil)
    (update-mark-timer :initform '(nil . nil)) ;; (timestamp . timer)
+   (cursor-event-prev-ts :initform nil :type (or null string))
    ))
 
 (defmethod slack-buffer-last-read ((this slack-message-buffer))
@@ -494,6 +495,16 @@
                        (equal (get-text-property (point) 'ts) ts))))))
   (slack-buffer-update-marker-overlay this))
 
+(defun slack-message-buffer-detect-ts-changed ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (message-buffer-p (eq 'slack-message-buffer
+                                        (eieio-object-class buffer)))
+                  (prev-ts (oref buffer cursor-event-prev-ts))
+                  (current-ts (slack-get-ts)))
+      (when (not (string= prev-ts current-ts))
+        (oset buffer cursor-event-prev-ts current-ts)
+        (slack-buffer-update-mark buffer))))
+
 (defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
                                                  window
                                                  prev-point
@@ -502,8 +513,15 @@
    ((eq type'entered)
     (with-slots (team) this
       (unless (slack-team-mark-as-read-immediatelyp team)
+        (oset this cursor-event-prev-ts (slack-get-ts))
+        (add-hook 'post-command-hook
+                  #'slack-message-buffer-detect-ts-changed
+                  t t)
         (slack-buffer-update-mark this))))
-   ((eq type 'left))))
+   ((eq type 'left)
+    (remove-hook 'post-command-hook
+                 #'slack-message-buffer-detect-ts-changed
+                 t))))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
