@@ -115,6 +115,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
    (inhibit-reconnection :initform nil)
    (commands :initform '() :type list)
+   (usergroups :initform '() :type list)
    ))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
