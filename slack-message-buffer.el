@@ -433,7 +433,10 @@
 (defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (with-slots (team) this
     (and prev
-         (and (let ((prev-user (slack-user-find prev team))
+         (and (not (slack-reply-broadcast-message-p message))
+              (null (oref message thread))
+              (null (oref prev thread))
+              (let ((prev-user (slack-user-find prev team))
                     (current-user (slack-user-find message team)))
                 (equal prev-user current-user))
               (let ((prev-day (time-to-day-in-year (slack-message-time-stamp
