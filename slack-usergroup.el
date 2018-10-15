@@ -91,4 +91,4 @@
   (not (eq 0 (oref this date-delete))))
 
 (provide 'slack-usergroup)
-;;; slack-user-group.el ends here
+;;; slack-usergroup.el ends here
