@@ -141,9 +141,13 @@
         )
       )))
 
+(defun slack-ws-payload-ping-p (payload)
+  (string= "ping" (plist-get payload :type)))
+
 (defun slack-ws-send (payload team)
   (with-slots (waiting-send ws-conn) team
-    (push payload waiting-send)
+    (unless (slack-ws-payload-ping-p payload)
+      (push payload waiting-send))
     (cl-labels
         ((reconnect ()
                     (slack-ws-close team)
@@ -442,16 +446,20 @@
                               #'(lambda (team)
                                   (slack-message-update message team))))))
 
+(defun slack-ws-payload-pong-p (payload)
+  (string= "pong" (plist-get payload :type)))
+
 (defun slack-ws-remove-from-resend-queue (payload team)
-  (with-slots (waiting-send) team
-    (slack-log (format "waiting-send: %s" (length waiting-send))
-               team :level 'trace)
-    (setq waiting-send
-          (cl-remove-if #'(lambda (e) (eq (plist-get e :id)
-                                          (plist-get payload :reply_to)))
-                        waiting-send))
-    (slack-log (format "waiting-send: %s" (length waiting-send))
-               team :level 'trace)))
+  (unless (slack-ws-payload-pong-p payload)
+    (with-slots (waiting-send) team
+      (slack-log (format "waiting-send: %s" (length waiting-send))
+                 team :level 'trace)
+      (setq waiting-send
+            (cl-remove-if #'(lambda (e) (eq (plist-get e :id)
+                                            (plist-get payload :reply_to)))
+                          waiting-send))
+      (slack-log (format "waiting-send: %s" (length waiting-send))
+                 team :level 'trace))))
 
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
