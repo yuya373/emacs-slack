@@ -161,10 +161,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 
 (defun slack-format-reactions (reactions team)
-  (concat "\n"
-          (mapconcat #'(lambda (r) (slack-reaction-to-string r team))
-                     reactions
-                     " ")))
+  (mapconcat #'(lambda (r) (slack-reaction-to-string r team))
+             reactions
+             " "))
 
 (defmethod slack-message-reaction-to-string ((m slack-message) team)
   (let ((reactions (slack-message-reactions m)))
