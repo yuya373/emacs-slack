@@ -396,8 +396,11 @@
     (and buf (with-current-buffer buf
                (let* ((last-read (slack-buffer-last-read this))
                       (beg (slack-buffer-ts-eq (point-min) (point-max) last-read))
-                      (end (and beg (next-single-property-change beg 'ts))))
-                 (when (and beg end)
+                      (end (and beg
+                                (<= (point-min) beg)
+                                (next-single-property-change beg 'ts))))
+                 (when (and beg end
+                            (<= end (point-max)))
                    (if (oref this marker-overlay)
                        (move-overlay (oref this marker-overlay)
                                      beg end)
