@@ -436,7 +436,8 @@
 (defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (with-slots (team) this
     (and prev
-         (and (not (slack-reply-broadcast-message-p message))
+         (and (not (slack-message-starred-p message))
+              (not (slack-reply-broadcast-message-p message))
               (null (oref message thread))
               (null (oref prev thread))
               (let ((prev-user (slack-user-find prev team))
