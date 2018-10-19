@@ -484,6 +484,7 @@
                            (marker-position lui-output-marker)))))
     (lui-insert-with-text-properties
      text
+     'merged-message-p merge-message-p
      'not-tracked-p not-tracked-p
      'ts ts
      'slack-last-ts lui-time-stamp-last
@@ -495,11 +496,43 @@
     (with-current-buffer (slack-buffer-buffer this)
       (let* ((prev (slack-buffer-prev-message this message))
              (merge-message-p (slack-buffer-merge-message-p this message prev))
-             (text (slack-buffer-message-text this message merge-message-p))
-             (ts (slack-ts message)))
-        (lui-replace text
-                     (lambda ()
-                       (equal (get-text-property (point) 'ts) ts))))))
+             (ts (slack-ts message))
+             (text (slack-buffer-message-text this
+                                              message
+                                              merge-message-p)))
+        (save-excursion
+          (goto-char (point-max))
+          (while (> (lui-backward-message) (point-min))
+            (when (equal (get-text-property (point) 'ts) ts)
+              (let ((merged-message-p
+                     (get-text-property (point) 'merged-message-p)))
+                (when (and (not merge-message-p) merged-message-p)
+                  (unwind-protect
+                      (progn
+                        (setq lui-output-marker (point-marker))
+                        (let ((lui-time-stamp-position nil))
+                          (lui-insert "" t)))
+                    (lui-recover-output-marker))
+                  (goto-char (next-single-char-property-change
+                              (point) 'lui-message-id)))
+
+                (when (and (not merged-message-p) merge-message-p)
+                  (let ((beg (previous-single-property-change
+                              (point) 'lui-message-id))
+                        (inhibit-read-only t))
+                    (when beg
+                      (delete-region beg (point)))))
+                )
+
+
+              (lui-replace-message text)
+              (let ((inhibit-read-only t)
+                    (end (next-single-property-change
+                          (point) 'lui-message-id)))
+                (when end
+                  (put-text-property (point) end
+                                     'merged-message-p
+                                     merge-message-p)))))))))
   (slack-buffer-update-marker-overlay this))
 
 (defun slack-message-buffer-detect-ts-changed ()

@@ -433,11 +433,16 @@
            return i))
 
 (defun slack-buffer-ts-eq (start end ts)
-  (if (and start end)
-      (cl-loop for i from start to end
+  (when (and start end)
+    (if (<= start end)
+        (cl-loop for i from start to end
+                 if (string= (get-text-property i 'ts)
+                             ts)
+                 return i)
+      (cl-loop for i from start downto end
                if (string= (get-text-property i 'ts)
                            ts)
-               return i)))
+               return i))))
 
 (defun slack--get-channel-id ()
   (interactive)
