@@ -34,12 +34,12 @@
   (setq-local default-directory slack-default-directory))
 
 (setq slack-dialog-edit-element-buffer-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-c")
-      #'slack-dialog-edit-buffer-save-content)
-    (define-key map (kbd "C-c C-k")
-      #'slack-dialog-edit-buffer-abort)
-    map))
+      (let ((map (make-sparse-keymap)))
+        (define-key map (kbd "C-c C-c")
+          #'slack-dialog-edit-buffer-save-content)
+        (define-key map (kbd "C-c C-k")
+          #'slack-dialog-edit-buffer-abort)
+        map))
 
 (defun slack-dialog-edit-buffer-save-content ()
   (interactive)

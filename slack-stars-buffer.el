@@ -42,8 +42,8 @@
 
 (defmethod slack-buffer-find :static ((class slack-stars-buffer) team)
   (slack-if-let* ((buf (cl-find-if #'(lambda (e) (string= (buffer-name e)
-                                                    (slack-buffer-name class team)))
-                             (slot-value team class))))
+                                                          (slack-buffer-name class team)))
+                                   (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
 (defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
@@ -71,8 +71,8 @@
                        (slack-buffer-insert this item t)))
 
       (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
-                                           (point-max)
-                                           before-oldest)))
+                                                 (point-max)
+                                                 before-oldest)))
           (goto-char point)))))
 
 (defmethod slack-buffer-request-history ((this slack-stars-buffer) after-success)

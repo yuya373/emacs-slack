@@ -35,7 +35,7 @@
 
 (defun slack-create-user-profile-buffer (team user-id)
   (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
-                                    user-id team)))
+                                          user-id team)))
       buf
     (slack-user-profile-buffer :team team
                                :user-id user-id)))

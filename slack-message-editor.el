@@ -107,7 +107,7 @@
 (defun slack-message-send-from-buffer ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
-            (text (buffer-substring-no-properties (point-min) (point-max))))
+                  (text (buffer-substring-no-properties (point-min) (point-max))))
       (slack-buffer-send-message buf text)))
 
 (defun slack-message--edit (channel team ts text)

@@ -33,7 +33,7 @@
 
 (defun slack-create-room-message-compose-buffer (room team)
   (slack-if-let* ((buf (slack-buffer-find 'slack-room-message-compose-buffer
-                                    room team)))
+                                          room team)))
       buf
     (slack-room-message-compose-buffer :room room :team team)))
 

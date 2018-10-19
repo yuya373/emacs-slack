@@ -447,8 +447,8 @@
         (slack-request-handle-error
          (data "slack-room-request-update")
          (let ((messages
-                 (cl-loop for message in (plist-get data :messages)
-                          collect (slack-message-create message team :room room)))
+                (cl-loop for message in (plist-get data :messages)
+                         collect (slack-message-create message team :room room)))
                (has-more (not (eq :json-false (plist-get data :has_more)))))
            (if oldest (slack-room-set-prev-messages room messages)
              (if latest (slack-room-append-messages room messages)

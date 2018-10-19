@@ -31,18 +31,18 @@
 (require 'slack-user-profile-buffer)
 
 (defvar helm-slack-actions
-      (helm-make-actions
-       "Display channel" #'helm-slack-display-room
-       "Archive channel" #'helm-slack-archive-room
-       "Invite user to channel" #'helm-slack-invite-to-room
-       "Kick user from channel" #'helm-slack-kick-from-room
-       "List user in channel" #'helm-slack-list-member-in-room
-       "Join channel" #'helm-slack-join-room
-       "Leave channel" #'helm-slack-leave-room
-       "Rename channel" #'helm-slack-rename-room
-       "Set purpose for channel" #'helm-slack-set-purpose-for-room
-       "Set topic of channel" #'helm-slack-set-topic-of-room
-       ))
+  (helm-make-actions
+   "Display channel" #'helm-slack-display-room
+   "Archive channel" #'helm-slack-archive-room
+   "Invite user to channel" #'helm-slack-invite-to-room
+   "Kick user from channel" #'helm-slack-kick-from-room
+   "List user in channel" #'helm-slack-list-member-in-room
+   "Join channel" #'helm-slack-join-room
+   "Leave channel" #'helm-slack-leave-room
+   "Rename channel" #'helm-slack-rename-room
+   "Set purpose for channel" #'helm-slack-set-purpose-for-room
+   "Set topic of channel" #'helm-slack-set-topic-of-room
+   ))
 
 (defvar helm-slack-members-actions
   (helm-make-actions "Display User" #'helm-slack-display-user))

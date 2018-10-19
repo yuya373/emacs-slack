@@ -56,10 +56,10 @@
 
 (defmethod slack-buffer-find :static ((class slack-buffer) room team)
   (slack-if-let* ((buf (cl-find-if
-                  #'(lambda (buf)
-                      (string= (buffer-name buf)
-                               (slack-buffer-name class room team)))
-                  (slot-value team class))))
+                        #'(lambda (buf)
+                            (string= (buffer-name buf)
+                                     (slack-buffer-name class room team)))
+                        (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
 (defmethod slack-buffer-buffer ((this slack-buffer))
@@ -79,8 +79,8 @@
 
 (defun slack-message-buffer-on-killed ()
   (slack-if-let* ((buf slack-current-buffer)
-            (class (eieio-object-class-name buf))
-            (cb (current-buffer)))
+                  (class (eieio-object-class-name buf))
+                  (cb (current-buffer)))
       (set-slot-value (oref buf team) class
                       (cl-remove-if #'(lambda (e) (equal e cb))
                                     (slot-value (oref buf team) class)))))
@@ -388,13 +388,13 @@
 (defmacro slack-buffer-goto-char (find-point &rest else)
   (let ((ts (car else))
         (else (cdr else)))
-   `(let* ((cur-point (point))
-          (ts (or (get-text-property cur-point 'ts) ,ts)))
-     (let ((next-point ,find-point))
-       (if next-point
-           (goto-char next-point)
-         (if (< 0 (length ',else))
-             ,@else))))))
+    `(let* ((cur-point (point))
+            (ts (or (get-text-property cur-point 'ts) ,ts)))
+       (let ((next-point ,find-point))
+         (if next-point
+             (goto-char next-point)
+           (if (< 0 (length ',else))
+               ,@else))))))
 
 (defun slack-buffer-goto-next-message ()
   (interactive)
