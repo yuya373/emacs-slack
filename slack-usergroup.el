@@ -67,7 +67,6 @@
                     (data "slack-usergroup-list-request")
                     (let ((usergroups (mapcar #'slack-usergroup-create
                                               (plist-get data :usergroups))))
-                      (message "%s" (length usergroups))
                       (oset team usergroups usergroups)))))
     (slack-request
      (slack-request-create
