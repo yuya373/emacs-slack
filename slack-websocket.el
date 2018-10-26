@@ -306,9 +306,7 @@
           (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
                           (show-typing-p (slack-buffer-show-typing-p
                                           (get-buffer (slack-buffer-name buf)))))
-              (let ((team-name (slack-team-name team))
-                    (room-name (slack-room-name room team))
-                    (visible-users (cl-remove-if
+              (let ((visible-users (cl-remove-if
                                     #'(lambda (u) (< (oref u limit) current))
                                     users)))
                 (slack-log
