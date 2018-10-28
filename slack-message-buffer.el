@@ -447,6 +447,7 @@
   (with-slots (team) this
     (and prev
          (and (not (slack-message-starred-p message))
+              (not (slack-message-starred-p prev))
               (not (slack-reply-broadcast-message-p message))
               (null (oref message thread))
               (null (oref prev thread))
