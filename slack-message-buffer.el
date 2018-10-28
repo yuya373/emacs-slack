@@ -423,6 +423,16 @@
                             team)
                            ",")))))
 
+(defmethod slack-buffer-next-message ((this slack-message-buffer) message)
+  (with-slots (room team) this
+    (let ((ts (slack-ts message)))
+      (cl-loop for m in (reverse (slack-room-sorted-messages room))
+               with next = nil
+               do (when (slack-buffer-visible-message-p this m)
+                    (if (string= (slack-ts m) ts)
+                        (return next)
+                      (setq next m)))))))
+
 (defmethod slack-buffer-prev-message ((this slack-message-buffer) message)
   (with-slots (room team) this
     (let ((ts (slack-ts message)))
@@ -521,9 +531,7 @@
                               (point) 'lui-message-id))
                         (inhibit-read-only t))
                     (when beg
-                      (delete-region beg (point)))))
-                )
-
+                      (delete-region beg (point))))))
 
               (lui-replace-message text)
               (let ((inhibit-read-only t)
@@ -532,7 +540,25 @@
                 (when end
                   (put-text-property (point) end
                                      'merged-message-p
-                                     merge-message-p)))))))))
+                                     merge-message-p)))
+              (slack-if-let*
+                  ((next (slack-buffer-next-message this
+                                                    message))
+
+                   (next-message-point
+                    (slack-buffer-ts-eq (point) (point-max)
+                                        (slack-ts next))))
+                  (let ((merged-message-p
+                         (get-text-property next-message-point
+                                            'merged-message-p))
+                        (merge-message-p
+                         (slack-buffer-merge-message-p this
+                                                       next
+                                                       message)))
+
+                    (unless (eq merged-message-p merge-message-p)
+                      (slack-buffer-replace this next))))))))))
+
   (slack-buffer-update-marker-overlay this))
 
 (defun slack-message-buffer-detect-ts-changed ()
