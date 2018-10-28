@@ -291,21 +291,22 @@
 
 (defun slack-user-typing (team)
   (with-slots (typing typing-timer) team
-    (with-slots (limit users room) typing
-      (let ((current (float-time)))
-        (if (and typing-timer (timerp typing-timer)
-                 (< limit current))
-            (progn
-              (cancel-timer typing-timer)
-              (setq typing-timer nil)
-              (setq typing nil)
-              (message ""))
+    (let ((current (float-time)))
+      (if (or (null typing)
+              (and typing-timer
+                   (timerp typing-timer)
+                   typing
+                   (< (oref typing limit) current)))
+          (progn
+            (cancel-timer typing-timer)
+            (setq typing-timer nil)
+            (setq typing nil)
+            (message ""))
+        (with-slots (users room) typing
           (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
                           (show-typing-p (slack-buffer-show-typing-p
                                           (get-buffer (slack-buffer-name buf)))))
-              (let ((team-name (slack-team-name team))
-                    (room-name (slack-room-name room team))
-                    (visible-users (cl-remove-if
+              (let ((visible-users (cl-remove-if
                                     #'(lambda (u) (< (oref u limit) current))
                                     users)))
                 (slack-log
