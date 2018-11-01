@@ -416,7 +416,7 @@
                                                      :room room)))
       (progn
         (oset new-message reactions (oref base reactions))
-        (slack-message-update new-message team t))
+        (slack-message-update new-message team t nil base))
     ))
 
 
