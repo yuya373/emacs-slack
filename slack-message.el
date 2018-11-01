@@ -347,7 +347,8 @@
       (progn
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
-        (if (slack-thread-message-p message)
+        (if (or (slack-thread-message-p message)
+                (slack-reply-broadcast-message-p message))
             (slack-thread-message-update-buffer message room team replace)
           (slack-room-update-buffer room team message replace)
           (slack-room-inc-unread-count room))
@@ -392,7 +393,7 @@
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
-  (call-next-method))
+  nil)
 
 (defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))
