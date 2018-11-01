@@ -387,16 +387,6 @@
                           (slack-message-sender-name message team))
            :category 'slack)))
 
-(defmethod slack-message-changed--copy ((this slack-message) other)
-  (let ((changed nil))
-    (with-slots (text attachments edited) this
-      (unless (string= text (oref other text))
-        (setq text (oref other text))
-        (setq changed t))
-      (setq attachments (oref other attachments))
-      (setq edited (oref other edited)))
-    changed))
-
 (defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
        (not (string= (slack-ts this) (oref this thread-ts)))))
