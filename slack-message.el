@@ -323,21 +323,23 @@
   (oref m text))
 
 (defmethod slack-thread-message-update-buffer ((message slack-message)
-                                               room team replace)
+                                               room team replace old-message)
   (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
       (progn
         (slack-room-update-buffer room team parent t)
-        (if (slack-reply-broadcast-message-p message)
-            (slack-room-update-buffer room team message replace))
-        (slack-if-let* ((thread (slack-message-get-thread parent team)))
-            (progn
-              (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                                      room
-                                                      (oref thread thread-ts)
-                                                      team)))
-                  (slack-buffer-update buf message :replace replace)))))))
+        (when (slack-reply-broadcast-message-p message)
+          (let* ((replace (if old-message
+                              (slack-reply-broadcast-message-p old-message)
+                            replace)))
+            (slack-room-update-buffer room team message replace)))
+        (slack-if-let* ((thread (slack-message-get-thread parent team))
+                        (buf (slack-buffer-find 'slack-thread-message-buffer
+                                                room
+                                                (oref thread thread-ts)
+                                                team)))
+            (slack-buffer-update buf message :replace replace)))))
 
-(defmethod slack-message-update ((message slack-message) team &optional replace no-notify)
+(defmethod slack-message-update ((message slack-message) team &optional replace no-notify old-message)
   (slack-if-let*
       ((room (slack-room-find (oref message channel) team))
        (ts (slack-ts message))
@@ -347,8 +349,14 @@
       (progn
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
-        (if (slack-thread-message-p message)
-            (slack-thread-message-update-buffer message room team replace)
+
+        (if (or (slack-thread-message-p message)
+                (slack-reply-broadcast-message-p message))
+            (slack-thread-message-update-buffer message
+                                                room
+                                                team
+                                                replace
+                                                old-message)
           (slack-room-update-buffer room team message replace)
           (slack-room-inc-unread-count room))
 
@@ -387,22 +395,12 @@
                           (slack-message-sender-name message team))
            :category 'slack)))
 
-(defmethod slack-message-changed--copy ((this slack-message) other)
-  (let ((changed nil))
-    (with-slots (text attachments edited) this
-      (unless (string= text (oref other text))
-        (setq text (oref other text))
-        (setq changed t))
-      (setq attachments (oref other attachments))
-      (setq edited (oref other edited)))
-    changed))
-
 (defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
-  (call-next-method))
+  nil)
 
 (defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))

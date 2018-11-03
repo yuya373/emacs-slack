@@ -414,8 +414,10 @@
                   (new-message (slack-message-create message-payload
                                                      team
                                                      :room room)))
-      (slack-message-update base team t
-                            (not (slack-message-changed--copy base new-message)))))
+      (progn
+        (oset new-message reactions (oref base reactions))
+        (slack-message-update new-message team t nil base))
+    ))
 
 
 (defun slack-ws-delete-message (payload team)
