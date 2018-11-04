@@ -205,7 +205,7 @@
 
 (defmethod slack-star-remove-star ((this slack-star) ts team)
   (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
-                              (oref this items))))
+                                    (oref this items))))
       (slack-message-star-api-request slack-message-stars-remove-url
                                       (slack-message-star-api-params item)
                                       team)))

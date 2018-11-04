@@ -56,10 +56,10 @@
 
 (defmethod slack-buffer-find :static ((class slack-buffer) room team)
   (slack-if-let* ((buf (cl-find-if
-                  #'(lambda (buf)
-                      (string= (buffer-name buf)
-                               (slack-buffer-name class room team)))
-                  (slot-value team class))))
+                        #'(lambda (buf)
+                            (string= (buffer-name buf)
+                                     (slack-buffer-name class room team)))
+                        (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
 (defmethod slack-buffer-buffer ((this slack-buffer))
@@ -79,8 +79,8 @@
 
 (defun slack-message-buffer-on-killed ()
   (slack-if-let* ((buf slack-current-buffer)
-            (class (eieio-object-class-name buf))
-            (cb (current-buffer)))
+                  (class (eieio-object-class-name buf))
+                  (cb (current-buffer)))
       (set-slot-value (oref buf team) class
                       (cl-remove-if #'(lambda (e) (equal e cb))
                                     (slot-value (oref buf team) class)))))
@@ -136,6 +136,11 @@
                      (equal (get-text-property (point) 'ts)
                             (slack-ts message)))))))
 
+(defmethod slack-buffer--subscribe-cursor-event ((this slack-buffer)
+                                                 window
+                                                 prev-point
+                                                 type))
+
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
@@ -147,11 +152,13 @@
                    (oref buffer team)
                    :level 'trace)
 
-        (when (eq type 'entered)
-          (unless (slack-team-mark-as-read-immediatelyp (oref buffer team))
-            (slack-buffer-update-mark buffer))
-          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
+        (slack-buffer--subscribe-cursor-event buffer
+                                              window
+                                              prev-point
+                                              type)
 
+        (when (eq type 'entered)
+          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
         (when (eq type 'left)
           (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
 
@@ -379,24 +386,28 @@
                  :test #'string=)))
 
 (defmacro slack-buffer-goto-char (find-point &rest else)
-  `(let* ((cur-point (point))
-          (ts (get-text-property cur-point 'ts)))
-     (let ((next-point ,find-point))
-       (if next-point
-           (goto-char next-point)
-         (if (< 0 (length ',else))
-             ,@else)))))
+  (let ((ts (car else))
+        (else (cdr else)))
+    `(let* ((cur-point (point))
+            (ts (or (get-text-property cur-point 'ts) ,ts)))
+       (let ((next-point ,find-point))
+         (if next-point
+             (goto-char next-point)
+           (if (< 0 (length ',else))
+               ,@else))))))
 
 (defun slack-buffer-goto-next-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-next-point cur-point (point-max) ts)
+   "0"
    (message "You are on Last Message.")))
 
 (defun slack-buffer-goto-prev-message ()
   (interactive)
   (slack-buffer-goto-char
    (slack-buffer-prev-point cur-point (point-min) ts)
+   "z"
    (message "You are on First Message.")))
 
 (defun slack-buffer-goto-first-message ()
@@ -409,30 +420,29 @@
   (goto-char
    (slack-buffer-prev-point (point-max) (point-min) (format-time-string "%s"))))
 
-(defun slack-buffer-header-p (point)
-  (let ((face (get-text-property point 'face)))
-    (string= (format "%s" face) "slack-message-output-header")))
-
 (defun slack-buffer-next-point (start end ts)
   (cl-loop for i from start to end
-           if (and (string< ts
-                            (get-text-property i 'ts))
-                   (slack-buffer-header-p i))
+           for next-ts = (get-text-property i 'ts)
+           if (and next-ts (string< ts next-ts))
            return i))
 
 (defun slack-buffer-prev-point (start end ts)
   (cl-loop for i from start downto end
-           if (and (string< (get-text-property i 'ts)
-                            ts)
-                   (slack-buffer-header-p i))
+           for prev-ts = (get-text-property i 'ts)
+           if (and prev-ts (string< prev-ts ts))
            return i))
 
 (defun slack-buffer-ts-eq (start end ts)
-  (if (and start end)
-      (cl-loop for i from start to end
+  (when (and start end)
+    (if (<= start end)
+        (cl-loop for i from start to end
+                 if (string= (get-text-property i 'ts)
+                             ts)
+                 return i)
+      (cl-loop for i from start downto end
                if (string= (get-text-property i 'ts)
                            ts)
-               return i)))
+               return i))))
 
 (defun slack--get-channel-id ()
   (interactive)

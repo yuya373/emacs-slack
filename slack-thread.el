@@ -152,7 +152,7 @@ Any other non-nil value: send to the room."
                                               (oref thread replies))
                                       :test #'string=)
                                      " "))
-               (text (format "\n%s reply from %s"
+               (text (format "%s reply from %s"
                              (oref thread reply-count)
                              usernames)))
           (propertize text

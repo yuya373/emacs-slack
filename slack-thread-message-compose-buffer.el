@@ -61,7 +61,7 @@
 
 (defun slack-create-thread-message-compose-buffer (room ts team)
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-compose-buffer
-                                    room ts team)))
+                                          room ts team)))
       buf
     (slack-thread-message-compose-buffer :room room
                                          :team team

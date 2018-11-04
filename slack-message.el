@@ -159,7 +159,8 @@
                      (slack-collect-slots 'slack-reply payload)))
              ((or (and subtype (or (string-equal "reply_broadcast" subtype)
                                    (string= "thread_broadcast" subtype)))
-                  (plist-get payload :reply_broadcast))
+                  (plist-get payload :reply_broadcast)
+                  (plist-get payload :is_thread_broadcast))
               (slack-reply-broadcast-message-create payload))
              ((and (plist-member payload :user) (plist-get payload :user))
               (apply #'slack-user-message "user-msg"

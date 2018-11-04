@@ -187,7 +187,8 @@ One of 'info, 'debug"
                (slack-command-company-doc-string command team))))))))))
 
 (defun slack-get-ts ()
-  (get-text-property 0 'ts (thing-at-point 'line)))
+  (slack-if-let* ((line (thing-at-point 'line)))
+      (get-text-property 0 'ts line)))
 
 (defun slack-linkfy (text link)
   (if (not (slack-string-blankp link))
