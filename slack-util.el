@@ -300,7 +300,7 @@ One of 'info, 'debug"
     (let* ((line-height 50.0)
            (height (or (plist-get (cdr image) :height)
                        (cdr (image-size image t))))
-           (line-count (/ height line-height))
+           (line-count (ceiling (/ height line-height)))
            (line (/ 1.0 line-count)))
       (if (< line-height height)
           (cl-loop for i from 0 to (- line-count 1)
