@@ -131,7 +131,8 @@
                     (funcall after-success team))
                 (slack-request-dnd-team-info team)
                 (mapc #'(lambda (room)
-                          (slack-room-info-request room team))
+                          (slack-request-worker-push
+                           (slack-room-create-info-request room team)))
                       (oref team ims))
                 (slack-log "Slack Im List Updated" team :level 'info))))
     (slack-room-list-update slack-im-list-url
