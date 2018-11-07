@@ -184,29 +184,6 @@
       :params (list (cons "name" (slack-room-name channel team)))
       :success #'on-channel-join))))
 
-(defun slack-channel-create-from-info (id team)
-  (cl-labels
-      ((on-create-from-info
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-channel-create-from-info")
-         (let* ((c-data (plist-get data :channel)))
-           (if (plist-get c-data :is_channel)
-               (let ((channel (slack-room-create c-data team 'slack-channel)))
-                 (with-slots (channels) team (push channel channels))
-                 (message "Channel: %s created"
-                          (slack-room-display-name channel
-                                                   team))))))))
-    (slack-channel-fetch-info id team #'on-create-from-info)))
-
-(defun slack-channel-fetch-info (id team success)
-  (slack-request
-   (slack-request-create
-    slack-channel-info-url
-    team
-    :params (list (cons "channel" id))
-    :success success)))
-
 (defun slack-channel-archive ()
   (interactive)
   (let* ((team (slack-team-select))
