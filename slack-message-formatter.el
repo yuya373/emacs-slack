@@ -77,6 +77,18 @@
   "Face used to attachment field title."
   :group 'slack)
 
+(defvar slack-channel-button-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-message-display-room)
+    (define-key keymap [mouse-1] #'slack-message-display-room)
+    keymap))
+
+(defface slack-channel-button-face
+  '((t (:underline t :foreground "cyan")))
+  "Face used to channel button."
+  :group 'slack)
+
+
 (defcustom slack-date-formats
   '((date_num . "%Y-%m-%d")
     (date . "%B %d,%Y")
@@ -333,16 +345,29 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 #'unescape-command
                                 text nil t))))
 
+(defun slack-message-display-room ()
+  (interactive)
+  (slack-if-let*
+      ((buffer slack-current-buffer)
+       (team (oref buffer team))
+       (room-id (get-text-property (point) 'room-id))
+       (room (slack-room-find room-id team)))
+      (slack-room-display room team)))
+
 (defun slack-message-unescape-channel (text team)
   (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))
     (cl-labels ((unescape-channel
                  (text)
                  (let ((name (match-string 2 text))
                        (id (match-string 1 text)))
-                   (concat "#" (or (and name (substring name 1))
-                                   (slack-if-let* ((room (slack-room-find id team)))
-                                       (oref room name)
-                                     id))))))
+                   (propertize (concat "#" (or (and name (substring name 1))
+                                               (slack-if-let* ((room (slack-room-find id team)))
+                                                   (oref room name)
+                                                 id)))
+                               'room-id id
+                               'keymap slack-channel-button-keymap
+                               'slack-defer-face 'slack-channel-button-face
+                               ))))
       (replace-regexp-in-string channel-regexp
                                 #'unescape-channel
                                 text t))))
