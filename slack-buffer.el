@@ -345,7 +345,8 @@
       (let ((face-or-func (get-text-property start 'slack-defer-face)))
         (if (functionp face-or-func)
             (funcall face-or-func start end)
-          (add-text-properties start end (list 'face face)))))))
+          (add-text-properties start end
+                               (list 'face face-or-func)))))))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\([[:ascii:][:nonascii:]]*?\\)>"))
