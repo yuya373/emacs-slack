@@ -467,11 +467,11 @@
 (defun slack-ws-handle-reply (payload team)
   (let ((ok (plist-get payload :ok)))
     (if (eq ok :json-false)
-        (let ((err (plist-get payload :error)))
-          (slack-log (format "Error code: %s msg: %s"
-                             (plist-get err :code)
-                             (plist-get err :msg))
-                     team))
+        (let* ((err (plist-get payload :error))
+               (code (plist-get err :code))
+               (msg (plist-get err :msg))
+               (template "Failed to send message. Error code: %s msg: %s"))
+          (slack-log (format template code msg) team :level 'error))
       (let ((message-id (plist-get payload :reply_to)))
         (when (integerp message-id)
           (slack-message-handle-reply
