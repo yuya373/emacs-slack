@@ -133,15 +133,23 @@
                                                       :on-errors
                                                       #'errors-handler))))))
 
-(defun slack-conversations-join (room team)
-  (let ((channel (oref room id)))
-    (slack-request
-     (slack-request-create
-      slack-conversations-join-url
-      team
-      :type "POST"
-      :params (list (cons "channel" channel))
-      :success (slack-conversations-success-handler team)))))
+(defun slack-conversations-join (room team &optional on-success)
+  (cl-labels
+      ((success (data)
+                (when (slack-channel-p room)
+                  (oset room is-member t))
+                (when (functionp on-success)
+                  (funcall on-success data))))
+    (let ((channel (oref room id)))
+      (slack-request
+       (slack-request-create
+        slack-conversations-join-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel))
+        :success (slack-conversations-success-handler
+                  team
+                  :on-success #'success))))))
 
 (defun slack-conversations-leave (room team)
   (let ((channel (oref room id)))

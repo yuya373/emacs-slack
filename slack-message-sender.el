@@ -109,19 +109,28 @@
                    (car (split-string message))))
         (slack-buffer-send-message buf message))))
 
-(defun slack-message-send-internal (message channel-id team)
-  (slack-message-inc-id team)
-  (with-slots (message-id sent-message self-id) team
-    (let* ((m (list :id message-id
-                    :channel channel-id
-                    :type "message"
-                    :user self-id
-                    :text (slack-message-prepare-links
-                           (slack-escape-message message)
-                           team)))
-           (obj (slack-message-create m team)))
-      (slack-ws-send m team)
-      (puthash message-id obj sent-message))))
+(defun slack-message-send-internal (message room team)
+  (if (and (slack-channel-p room)
+           (not (oref room is-member)))
+      (slack-conversations-join
+       room team
+       #'(lambda (_data) (slack-message-send-internal message
+                                                      room
+                                                      team)))
+    (progn
+      (slack-message-inc-id team)
+      (with-slots (message-id sent-message self-id) team
+        (let* ((channel-id (oref room id))
+               (m (list :id message-id
+                        :channel channel-id
+                        :type "message"
+                        :user self-id
+                        :text (slack-message-prepare-links
+                               (slack-escape-message message)
+                               team)))
+               (obj (slack-message-create m team)))
+          (slack-ws-send m team)
+          (puthash message-id obj sent-message))))))
 
 (defun slack-message-read-room (team)
   (let* ((list (slack-message-room-list team))

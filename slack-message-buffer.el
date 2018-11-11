@@ -105,7 +105,7 @@
 
 (defmethod slack-buffer-send-message ((this slack-message-buffer) message)
   (with-slots (room team) this
-    (slack-message-send-internal message (oref room id) team)))
+    (slack-message-send-internal message room team)))
 
 (defmethod slack-buffer-latest-ts ((this slack-message-buffer))
   (with-slots (room) this
