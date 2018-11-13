@@ -60,8 +60,7 @@
                        (slack-log (format "websocket open timeout")
                                   team)
                        (slack-ws-close ws team)
-                       (slack-ws-set-reconnect-timer
-                        ws #'slack-ws-reconnect ws team)))
+                       (slack-ws-reconnect ws team)))
         (slack-ws-set-connect-timeout-timer ws #'on-timeout))
 
       (cl-labels
@@ -83,8 +82,7 @@
                      (unwind-protect
                          (progn
                            (unless (oref ws inhibit-reconnection)
-                             (slack-ws-set-reconnect-timer
-                              ws #'slack-ws-reconnect ws team)))
+                             (slack-ws-reconnect ws team)))
                        (oset ws inhibit-reconnection nil)))
            (on-error (_websocket type err)
                      (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
@@ -106,8 +104,7 @@
                             :level 'error)
                  nil)))))))
 
-(cl-defmethod slack-ws-close ((ws slack-team-ws)
-                              &optional team (close-reconnection nil))
+(cl-defmethod slack-ws-close ((ws slack-team-ws) &optional team (close-reconnection nil))
   (interactive)
   (unless team
     (setq team slack-teams))
@@ -143,8 +140,7 @@
     (cl-labels
         ((reconnect ()
                     (slack-ws-close ws team)
-                    (slack-ws-set-reconnect-timer
-                     ws #'slack-ws-reconnect ws team)))
+                    (slack-ws-reconnect ws team)))
       (if (websocket-openp conn)
           (condition-case err
               (websocket-send-text conn (json-encode payload))
@@ -172,8 +168,7 @@
           ((on-timeout ()
                        (slack-log "Slack Websocket PING Timeout." team :level 'warn)
                        (slack-ws-close ws team)
-                       (slack-ws-set-reconnect-timer
-                        ws #'slack-ws-reconnect ws team)))
+                       (slack-ws-reconnect ws team)))
         (slack-ws-set-ping-check-timer ws time #'on-timeout))
       (slack-ws-send ws m team)
       (slack-log (format "Send PING: %s" time)
@@ -249,41 +244,44 @@
                                     error-thrown
                                     symbol-status)
                             team)
-                 (slack-ws-set-reconnect-timer
-                  ws #'slack-ws-reconnect ws team))
+                 (slack-ws-reconnect ws team))
        (on-success (data)
                    (slack-on-authorize-for-reconnect ws data team)))
     (slack-authorize team #'on-error #'on-success)))
 
-(defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
-  "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
-if FORCE is t, ignore `reconnect-count-max'.
-TEAM is one of `slack-teams'"
-  (cl-labels ((abort (team)
+(defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
+  (cl-labels ((abort ()
                      (slack-notify-abandon-reconnect team)
                      (slack-ws-close ws team t))
               (use-reconnect-url ()
                                  (slack-log "Reconnect with reconnect-url" team)
                                  (slack-ws-open ws team
                                                 :ws-url (oref ws reconnect-url)))
-              (do-reconnect (team)
+              (do-reconnect ()
                             (cl-incf (oref ws reconnect-count))
                             (slack-ws-close ws team)
                             (if (< 0 (length (oref ws reconnect-url)))
                                 (slack-request-api-test team
                                                         #'use-reconnect-url)
-                              (slack-authorize-for-reconnect ws team))))
-    (with-slots
-        (reconnect-count (reconnect-max reconnect-count-max)) ws
-      (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
-          (abort team)
-        (do-reconnect team)
-        (slack-log (format "Slack Websocket Try To Reconnect %s/%s"
-                           reconnect-count
-                           reconnect-max)
-                   team
-                   :level 'warn
-                   )))))
+                              (slack-authorize-for-reconnect ws team))
+                            (slack-log (format "Slack Websocket Try To Reconnect %s/%s"
+                                               (oref ws reconnect-count)
+                                               (oref ws reconnect-count-max))
+                                       team
+                                       :level 'warn))
+              (reconnect-count-exceed-p ()
+                                        (and (not force)
+                                             (< (oref ws reconnect-count-max)
+                                                (oref ws reconnect-count)))))
+    (if (reconnect-count-exceed-p)
+        (abort)
+      (do-reconnect))))
+
+(defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
+  "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
+if FORCE is t, ignore `reconnect-count-max'.
+TEAM is one of `slack-teams'"
+  (slack-ws-set-reconnect-timer ws #'slack-ws--reconnect ws team force))
 
 ;; Message handler
 
@@ -307,8 +305,7 @@ TEAM is one of `slack-teams'"
     (cond
      ((eq 1 code)
       (slack-ws-close ws team)
-      (slack-ws-set-reconnect-timer
-       ws #'slack-ws-reconnect ws team))
+      (slack-ws-reconnect ws team))
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))
                    team)))))

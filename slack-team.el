@@ -117,6 +117,12 @@ use `slack-change-current-team' to change `slack-current-team'"
   (with-slots (ws) this
     (slack-ws-send ws message this)))
 
+(cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
+  (with-slots (ws) this
+    (slack-ws-open ws this
+                   :on-open on-open
+                   :ws-url ws-url)))
+
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
   (let* ((l (list 'slack-message-buffer
                   'slack-file-info-buffer
