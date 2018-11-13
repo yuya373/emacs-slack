@@ -79,33 +79,46 @@
   :group 'tools)
 
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
-  "Function to print buffer.")
+  "Function to print buffer."
+  :type 'function
+  :group 'slack)
 
 (defvar slack-use-register-team-string
   "use `slack-register-team' instead.")
 
 (defcustom slack-client-id nil
-  "Client ID provided by Slack.")
+  "Client ID provided by Slack."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-client-id slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-client-secret nil
-  "Client Secret Provided by Slack.")
+  "Client Secret Provided by Slack."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-client-secret slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-token nil
   "Slack token provided by Slack.
-set this to save request to Slack if already have.")
+set this to save request to Slack if already have."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-token slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-room-subscription '()
   "Group or Channel list to subscribe notification."
+  :type '(repeat string)
   :group 'slack)
 (make-obsolete-variable
  'slack-room-subscription slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-typing-visibility 'frame
   "When to display typing indicator.
 When `frame', typing slack buffer is in the current frame.
@@ -113,14 +126,17 @@ When `buffer', typing slack buffer is the current buffer.
 When `never', never display typing indicator."
   :type '(choice (const frame)
                  (const buffer)
-                 (const never)))
+                 (const never))
+  :group 'slack)
 
 (defcustom slack-display-team-name t
   "If nil, only display channel, im, group name."
+  :type 'boolean
   :group 'slack)
 
 (defcustom slack-completing-read-function #'completing-read
   "Require same argument with `completing-read'."
+  :type 'function
   :group 'slack)
 
 
