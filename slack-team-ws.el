@@ -96,5 +96,15 @@
                nil
                fn fn-args)))
 
+(defmethod slack-ws-reconnect-count-exceed-p ((ws slack-team-ws))
+  (< (oref ws reconnect-count-max)
+     (oref ws reconnect-count)))
+
+(defmethod slack-ws-inc-reconnect-count ((ws slack-team-ws))
+  (incf (oref ws reconnect-count)))
+
+(defmethod slack-ws-use-reconnect-url-p ((ws slack-team-ws))
+  (< 0 (length (oref ws reconnect-url))))
+
 (provide 'slack-team-ws)
 ;;; slack-team-ws.el ends here
