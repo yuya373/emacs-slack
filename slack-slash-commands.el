@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 
 (defclass slack-command ()
   ((name :initarg :name :type string)

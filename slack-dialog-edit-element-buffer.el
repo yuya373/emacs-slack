@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-dialog-buffer)
 
 (defclass slack-dialog-edit-element-buffer (slack-buffer)

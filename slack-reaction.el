@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 
 (defclass slack-reaction ()
   ((name :initarg :name :type string)
