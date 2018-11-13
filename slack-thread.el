@@ -96,7 +96,7 @@ Any other non-nil value: send to the room."
                               :user self-id
                               :text message))
                (obj (slack-message-create payload team :room room)))
-          (slack-ws-send payload team)
+          (slack-team-send-message team payload)
           (puthash message-id obj sent-message))))))
 
 (defun slack-thread-show-or-create ()

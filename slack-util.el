@@ -229,7 +229,8 @@ One of 'info, 'debug"
   (if websocket-debug
       (progn
         (let* ((team (slack-team-select))
-               (websocket (oref team ws-conn)))
+               (websocket (and (slot-boundp team 'ws)
+                               (oref (oref team ws) conn))))
           (if websocket
               (funcall slack-buffer-function
                        (websocket-get-debug-buffer-create websocket))

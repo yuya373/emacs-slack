@@ -78,9 +78,9 @@
                               (oset team self self)
                               (oset team self-id (plist-get self :id))
                               (oset team self-name (plist-get self :name))
-                              (oset team ws-url (plist-get data :url))
+                              (slack-team-set-ws-url team (plist-get data :url))
                               (oset team domain (plist-get team-data :domain)))
-                            (slack-ws-open team :on-open #'on-open))))))
+                            (slack-ws-open (oref team ws) team :on-open #'on-open))))))
         (let ((request (slack-request
                         (slack-request-create
                          slack-rtm-connect-url

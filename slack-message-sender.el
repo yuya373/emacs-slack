@@ -129,7 +129,7 @@
                                (slack-escape-message message)
                                team)))
                (obj (slack-message-create m team)))
-          (slack-ws-send m team)
+          (slack-team-send-message team m)
           (puthash message-id obj sent-message))))))
 
 (defun slack-message-read-room (team)
