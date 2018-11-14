@@ -45,18 +45,9 @@
 (require 'slack-message-notification)
 (require 'slack-message-buffer)
 (require 'slack-authorize)
+(require 'slack-typing)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
-
-(defclass slack-typing ()
-  ((room :initarg :room :initform nil)
-   (limit :initarg :limit :initform nil)
-   (users :initarg :users :initform nil)))
-
-(defclass slack-typing-user ()
-  ((limit :initarg :limit :initform nil)
-   (user-name :initarg :user-name :initform nil)))
-
 
 (cl-defmethod slack-ws-open ((ws slack-team-ws) team &key (on-open nil) (ws-url nil))
   (slack-if-let* ((conn (oref ws conn))
@@ -423,34 +414,6 @@ TEAM is one of `slack-teams'"
 (defmethod slack-ws-handle-reconnect-url ((ws slack-team-ws) payload)
   (oset ws reconnect-url (plist-get payload :url)))
 
-(defun slack-user-typing (team)
-  (with-slots (typing typing-timer) team
-    (let ((current (float-time)))
-      (if (or (null typing)
-              (and typing-timer
-                   (timerp typing-timer)
-                   typing
-                   (< (oref typing limit) current)))
-          (progn
-            (cancel-timer typing-timer)
-            (setq typing-timer nil)
-            (setq typing nil)
-            (message ""))
-        (with-slots (users room) typing
-          (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
-                          (show-typing-p (slack-buffer-show-typing-p
-                                          (get-buffer (slack-buffer-name buf)))))
-              (let ((visible-users (cl-remove-if
-                                    #'(lambda (u) (< (oref u limit) current))
-                                    users)))
-                (slack-log
-                 (format "%s is typing..."
-                         (mapconcat #'(lambda (u) (oref u user-name))
-                                    visible-users
-                                    ", "))
-                 team
-                 :level 'info))))))))
-
 (defun slack-ws-handle-user-typing (payload team)
   (slack-if-let*
       ((user (slack-user-name (plist-get payload :user) team))
@@ -460,27 +423,14 @@ TEAM is one of `slack-teams'"
                                                    (slack-buffer-name buf)))))
       (let ((limit (+ 3 (float-time))))
         (with-slots (typing typing-timer) team
-          (if (and typing (string= (oref room id)
-                                   (oref (oref typing room) id)))
-              (with-slots ((typing-limit limit) (typing-room room) users) typing
-                (setq typing-limit limit)
-                (let ((typing-user (make-instance 'slack-typing-user
-                                                  :limit limit
-                                                  :user-name user)))
-                  (setq users
-                        (cons typing-user
-                              (cl-remove-if #'(lambda (u)
-                                                (string= (oref u user-name)
-                                                         user))
-                                            users)))))
-            (let ((new-typing (make-instance 'slack-typing
-                                             :room room :limit limit))
-                  (typing-user (make-instance 'slack-typing-user
-                                              :limit limit :user-name user)))
-              (oset new-typing users (list typing-user))
-              (setq typing new-typing))
+          (if (and typing
+                   (string= (oref room id) (oref (oref typing room) id)))
+              (progn
+                (slack-typing-set-limit typing limit)
+                (slack-typing-add-user typing user limit))
+            (setq typing (slack-typing-create room limit user))
             (setq typing-timer
-                  (run-with-timer t 1 #'slack-user-typing team)))))))
+                  (run-with-timer t 1 #'slack-typing-display team)))))))
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
@@ -1052,4 +1002,3 @@ TEAM is one of `slack-teams'"
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
-
