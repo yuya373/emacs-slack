@@ -179,7 +179,11 @@
       (with-slots (team) buf
         (let* ((pre-defined (list (list "here" :name "here")
                                   (list "channel" :name "channel")))
-               (alist (append pre-defined (slack-user-names team))))
+               (usergroups (mapcar #'(lambda (e) (list (oref e handle)
+                                                       :name (oref e handle)))
+                                   (cl-remove-if #'slack-usergroup-deleted-p
+                                                 (oref team usergroups))))
+               (alist (append pre-defined (slack-user-names team) usergroups)))
           (slack-select-from-list
               (alist "Select User: ")
               (insert (concat "@" (plist-get selected :name))))))))
