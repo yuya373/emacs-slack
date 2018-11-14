@@ -28,21 +28,10 @@
 (require 'slack-message)
 (require 'slack-message-formatter)
 (require 'slack-util)
+(require 'slack-bot)
 
 (defmethod slack-message-bot-id ((this slack-bot-message))
   (oref this bot-id))
-
-(defun slack-find-bot (id team)
-  (with-slots (bots) team
-    (cl-find-if (lambda (bot)
-                  (string= id (plist-get bot :id)))
-                bots)))
-
-(defun slack-find-bot-by-name (name team)
-  (with-slots (bots) team
-    (cl-find-if #'(lambda (bot)
-                    (string= name (plist-get bot :name)))
-                bots)))
 
 (defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))

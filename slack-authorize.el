@@ -33,7 +33,6 @@
 (require 'slack-emoji)
 (require 'slack-slash-commands)
 (require 'slack-usergroup)
-(require 'slack-websocket)
 (require 'slack-message-notification)
 
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
