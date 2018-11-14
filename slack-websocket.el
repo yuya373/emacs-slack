@@ -231,12 +231,11 @@
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
-                                        (slack-buffer (with-current-buffer buffer
-                                                        (and (bound-and-true-p
-                                                              slack-current-buffer)
-                                                             slack-current-buffer))))
-                                       (slack-buffer-load-missing-messages
-                                        slack-buffer)))
+                                        (buffer (with-current-buffer buffer
+                                                  (and (bound-and-true-p
+                                                        slack-current-buffer)
+                                                       slack-current-buffer))))
+                                       (slack-buffer-load-missing-messages buffer)))
                        (slack-team-kill-buffers
                         team :except '(slack-message-buffer
                                        slack-message-edit-buffer
