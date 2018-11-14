@@ -42,12 +42,6 @@
   (interactive)
   (slack-message--send (slack-message-read-from-minibuffer)))
 
-(defun slack-message-inc-id (team)
-  (with-slots (message-id) team
-    (if (eq message-id (1- most-positive-fixnum))
-        (setq message-id 1)
-      (cl-incf message-id))))
-
 (defun slack-escape-message (message)
   "Escape '<,' '>' & '&' in MESSAGE."
   (replace-regexp-in-string
@@ -118,7 +112,7 @@
                                                       room
                                                       team)))
     (progn
-      (slack-message-inc-id team)
+      (slack-team-inc-message-id team)
       (with-slots (message-id sent-message self-id) team
         (let* ((channel-id (oref room id))
                (m (list :id message-id

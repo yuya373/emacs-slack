@@ -317,5 +317,11 @@ you can change current-team with `slack-change-current-team'"
           (oref team id)
           slack-team-random-numbers-for-client-token))
 
+(defmethod slack-team-inc-message-id ((team slack-team))
+  (with-slots (message-id) team
+    (if (eq message-id (1- most-positive-fixnum))
+        (setq message-id 1)
+      (cl-incf message-id))))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here

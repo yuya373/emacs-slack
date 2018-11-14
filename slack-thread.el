@@ -86,7 +86,7 @@ Any other non-nil value: send to the room."
                                          (slack-room-name room team)))
                      slack-thread-also-send-to-room)))
     (progn
-      (slack-message-inc-id team)
+      (slack-team-inc-message-id team)
       (with-slots (message-id sent-message self-id) team
         (let* ((payload (list :id message-id
                               :channel (oref room id)

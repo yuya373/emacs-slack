@@ -158,7 +158,7 @@
                do (slack-ws-send ws msg team)))))
 
 (defmethod slack-ws-ping ((ws slack-team-ws) team)
-  (slack-message-inc-id team)
+  (slack-team-inc-message-id team)
   (with-slots (message-id) team
     (let* ((time (number-to-string (time-to-seconds (current-time))))
            (m (list :id message-id
