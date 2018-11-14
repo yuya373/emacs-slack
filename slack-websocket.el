@@ -41,7 +41,6 @@
 (require 'slack-usergroup)
 (require 'slack-slash-commands)
 (require 'slack-star)
-(require 'slack-file-info-buffer)
 (require 'slack-message-notification)
 (require 'slack-message-buffer)
 (require 'slack-authorize)
@@ -563,30 +562,6 @@ TEAM is one of `slack-teams'"
            team)
           (slack-ws-remove-from-resend-queue ws payload team))))))
 
-(defun slack-ws-handle-reaction-added-to-file (file-id reaction team)
-  (let* ((file (slack-file-find file-id team))
-         (item-type "file"))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-append-reaction file reaction)
-                   (slack-message-update file team)
-                   (cl-loop for channel in (slack-file-channel-ids file)
-                            do (slack-if-let*
-                                   ((channel (slack-room-find channel team))
-                                    (message (slack-room-find-file-share-message
-                                              channel (oref file id))))
-
-                                   (progn
-                                     (slack-message-append-reaction message
-                                                                    reaction
-                                                                    item-type
-                                                                    file-id)
-                                     (slack-message-update message
-                                                           team t t)))))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
-
 (defun slack-ws-handle-reaction-added (payload team)
   (let* ((item (plist-get payload :item))
          (item-type (plist-get item :type))
@@ -599,38 +574,12 @@ TEAM is one of `slack-teams'"
                          (slack-message-append-reaction message reaction item-type)
                          (slack-message-update message team t t)))
       (cond
-       ((string= item-type "file")
-        (slack-ws-handle-reaction-added-to-file (plist-get item :file)
-                                                reaction
-                                                team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
               (slack-reaction-notify payload team room))))))))
-
-(defun slack-ws-handle-reaction-removed-from-file (file-id reaction team)
-  (let* ((file (slack-file-find file-id team))
-         (item-type "file"))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-pop-reaction file reaction)
-                   (slack-message-update file team)
-                   (cl-loop for channel in (slack-file-channel-ids file)
-                            do (slack-if-let*
-                                   ((channel (slack-room-find channel team))
-                                    (message (slack-room-find-file-share-message
-                                              channel (oref file id))))
-                                   (progn
-                                     (slack-message-pop-reaction message
-                                                                 reaction
-                                                                 item-type
-                                                                 file-id)
-                                     (slack-message-update message team t t)))))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (let* ((item (plist-get payload :item))
@@ -644,10 +593,6 @@ TEAM is one of `slack-teams'"
                          (slack-message-pop-reaction message reaction item-type)
                          (slack-message-update message team t t)))
       (cond
-       ((string= item-type "file")
-        (slack-ws-handle-reaction-removed-from-file (plist-get item :file)
-                                                    reaction
-                                                    team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
