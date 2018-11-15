@@ -432,16 +432,18 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
-    (slack-user-info-request
-     (plist-get user :id) team
-     :after-success #'(lambda ()
-                        (slack-log (format "User %s Joind Team: %s"
-                                           (plist-get (slack-user--find (plist-get user :id)
-                                                                        team)
-                                                      :name)
-                                           (slack-team-name team))
-                                   team
-                                   :level 'info)))))
+    (cl-labels
+        ((after-success (data)
+                        (let ((user-id (plist-get user :id)))
+                          (slack-log (format "User %s Joind Team: %s"
+                                             (slack-user-name user-id team)
+                                             (slack-team-name team))
+                                     team
+                                     :level 'info))
+                        (slack-im-open (plist-get data :user))))
+      (slack-user-info-request (plist-get user :id)
+                               team
+                               :after-success #'after-success))))
 
 (defun slack-ws-handle-im-open (payload team)
   (cl-labels

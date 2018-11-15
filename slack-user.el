@@ -27,6 +27,10 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
+(require 'slack-team)
+(require 'slack-emoji)
+
+(defvar slack-completing-read-function)
 
 (defconst slack-dnd-team-info-url "https://slack.com/api/dnd.teamInfo")
 (defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
@@ -39,29 +43,33 @@
 (defvar slack-current-user-id nil)
 
 (defun slack-user--find (id team)
+  "Find user by ID from TEAM."
   (with-slots (users) team
     (cl-find-if (lambda (user)
                   (string= id (plist-get user :id)))
                 users)))
 
 (defun slack-user-find-by-name (name team)
+  "Find user by NAME from TEAM."
   (with-slots (users) team
     (cl-find-if (lambda (user)
                   (string= name (plist-get user :name)))
                 users)))
 
-(defun slack-user-get-id (name team)
-  (let ((user (slack-user-find-by-name name team)))
-    (if user
-        (plist-get user :id))))
+(defun slack-user-id (user)
+  "Get id of USER."
+  (when user
+    (plist-get user :id)))
 
 (defun slack-user-name (id team)
+  "Find user by ID in TEAM, then return user's name."
   (slack-if-let* ((user (slack-user--find id team)))
       (if (oref team full-and-display-names)
           (plist-get user :real_name)
         (plist-get user :name))))
 
 (defun slack-user-status (id team)
+  "Find user by ID in TEAM, then return user's status in string."
   (let* ((user (slack-user--find id team))
          (profile (and user (plist-get user :profile)))
          (emoji (and profile (plist-get profile :status_emoji)))
@@ -70,6 +78,7 @@
                " ")))
 
 (defun slack-user-names (team)
+  "Returns all users as alist (\"user-name\" . user) in TEAM."
   (with-slots (users) team
     (mapcar (lambda (u) (cons (plist-get u :name) u))
             (cl-remove-if #'slack-user-hidden-p users))))
@@ -157,10 +166,6 @@
   "Face used to user property."
   :group 'slack)
 
-(define-derived-mode slack-user-profile-mode fundamental-mode "Slack User"
-  ""
-  (setq-local default-directory slack-default-directory))
-
 (defun slack-user-profile (user)
   (plist-get user :profile))
 
@@ -196,37 +201,6 @@
                (propertize title 'face 'slack-user-profile-property-name-face)
                value)))
 
-(defun slack-user-profile-to-string (id team)
-  (let* ((user (slack-user--find id team))
-         (image (slack-image-string (list (slack-user-image-url user 512)
-                                          nil nil nil (window-width
-                                                       (get-buffer-window
-                                                        (current-buffer))
-                                                       t))
-                                    nil t))
-         (profile (slack-user-profile user))
-         (header (propertize (slack-user-header user)
-                             'face 'slack-user-profile-header-face))
-         (presence (slack-user-property-to-str (plist-get user :presence) "Presence"))
-         (status (slack-user-property-to-str (slack-user-status id team) "Status"))
-         (timezone (slack-user-property-to-str (slack-user-timezone user) "Timezone"))
-         (email (slack-user-property-to-str (plist-get profile :email) "Email"))
-         (phone (slack-user-property-to-str (plist-get profile :phone) "Phone"))
-         (skype (slack-user-property-to-str (plist-get profile :skype) "Skype"))
-         (body (mapconcat #'identity
-                          (cl-remove-if #'null
-                                        (list presence status timezone email phone skype))
-                          "\n"))
-         (dm-button (propertize "[Open Direct Message]"
-                                'face '(:underline t)
-                                'keymap (let ((map (make-sparse-keymap)))
-                                          (define-key map (kbd "RET")
-                                            #'(lambda ()
-                                                (interactive)
-                                                (slack-if-let* ((buf slack-current-buffer))
-                                                    (slack-buffer-display-im buf))))
-                                          map))))
-    (format "\n%s\n\n%s%s\n%s\n\n%s" image header (format "  (%s)" id) body dm-button)))
 
 (defun slack-user-self-p (user-id team)
   (string= user-id (oref team self-id)))
@@ -243,17 +217,6 @@
 (defun slack--user-select (team)
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
 
-(defun slack-user-select ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (alist (slack-user-name-alist
-                 team
-                 :filter #'(lambda (users)
-                             (cl-remove-if #'slack-user-hidden-p users)))))
-    (slack-select-from-list (alist "Select User: ")
-        (let ((buf (slack-create-user-profile-buffer team (plist-get selected :id))))
-          (slack-buffer-display buf)))))
-
 (cl-defun slack-user-info-request (user-id team &key after-success)
   (cl-labels
       ((on-success
@@ -264,8 +227,7 @@
                                 (cl-remove-if #'(lambda (user)
                                                   (string= (plist-get user :id) user-id))
                                               (oref team users))))
-         (slack-im-open (plist-get data :user))
-         (when after-success (funcall after-success)))))
+         (when after-success (funcall after-success data)))))
     (slack-request
      (slack-request-create
       slack-user-info-url

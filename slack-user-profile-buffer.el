@@ -27,13 +27,17 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-user)
+(require 'slack-im)
 
+(defvar slack-completing-read-function)
 (define-derived-mode slack-user-profile-buffer-mode slack-buffer-mode "Slack User Profile")
 
 (defclass slack-user-profile-buffer (slack-buffer)
   ((user-id :initarg :user-id :type string)))
 
 (defun slack-create-user-profile-buffer (team user-id)
+  "Create User Profile Buffer of USER-ID in TEAM."
   (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
                                           user-id team)))
       buf
@@ -47,7 +51,7 @@
         buf)
     (slack-buffer-init-buffer this)))
 
-(defmethod slack-buffer-name :static ((class slack-user-profile-buffer) user-id team)
+(defmethod slack-buffer-name :static ((_class slack-user-profile-buffer) user-id team)
   (format "*Slack - %s : Profile - %s*" (oref team name) (slack-user-name user-id team)))
 
 (defmethod slack-buffer-name ((this slack-user-profile-buffer))
@@ -72,7 +76,7 @@
         (slack-display-image)))))
 
 (defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
-  (let ((buf (call-next-method)))
+  (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-user-profile-buffer-mode)
       (slack-buffer-set-current-buffer this))
@@ -90,7 +94,53 @@
       (delete-region (point-min) (point-max))
       (slack-buffer--insert this))))
 
+(defun slack-user-profile-to-string (id team)
+  "Print user's profile according to ID in TEAM."
+  (let* ((user (slack-user--find id team))
+         (image (slack-image-string (list (slack-user-image-url user 512)
+                                          nil nil nil (window-width
+                                                       (get-buffer-window
+                                                        (current-buffer))
+                                                       t))
+                                    nil t))
+         (profile (slack-user-profile user))
+         (header (propertize (slack-user-header user)
+                             'face 'slack-user-profile-header-face))
+         (presence (slack-user-property-to-str (plist-get user :presence) "Presence"))
+         (status (slack-user-property-to-str (slack-user-status id team) "Status"))
+         (timezone (slack-user-property-to-str (slack-user-timezone user) "Timezone"))
+         (email (slack-user-property-to-str (plist-get profile :email) "Email"))
+         (phone (slack-user-property-to-str (plist-get profile :phone) "Phone"))
+         (skype (slack-user-property-to-str (plist-get profile :skype) "Skype"))
+         (body (mapconcat #'identity
+                          (cl-remove-if #'null
+                                        (list presence status timezone email phone skype))
+                          "\n"))
+         (dm-button (propertize "[Open Direct Message]"
+                                'face '(:underline t)
+                                'keymap (let ((map (make-sparse-keymap)))
+                                          (define-key map (kbd "RET")
+                                            #'slack-user-profile-buffer-display-im)
+                                          map))))
+    (format "\n%s\n\n%s%s\n%s\n\n%s" image header (format "  (%s)" id) body dm-button)))
 
+(defun slack-user-profile-buffer-display-im ()
+  "Display im buffer from user profile buffer."
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-im buf)))
+
+(defun slack-user-select ()
+  "Select user from team, then display the user's profile."
+  (interactive)
+  (let* ((team (slack-team-select))
+         (alist (slack-user-name-alist
+                 team
+                 :filter #'(lambda (users)
+                             (cl-remove-if #'slack-user-hidden-p users)))))
+    (slack-select-from-list (alist "Select User: ")
+        (let ((buf (slack-create-user-profile-buffer team (plist-get selected :id))))
+          (slack-buffer-display buf)))))
 
 (provide 'slack-user-profile-buffer)
 ;;; slack-user-profile-buffer.el ends here

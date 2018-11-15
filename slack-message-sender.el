@@ -56,7 +56,8 @@
    "@\\<\\([A-Za-z0-9._\-]+\\)\\>"
    #'(lambda (text)
        (let* ((username (match-string 1 text))
-              (user-id (slack-user-get-id username team)))
+              (user (slack-user-find-by-name username team))
+              (user-id (slack-user-id user)))
          (if user-id
              (format "<@%s|%s>" user-id username)
            (slack-if-let* ((group-id (slack-usergroup-get-id username team)))
