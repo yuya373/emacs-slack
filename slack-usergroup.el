@@ -26,6 +26,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-team)
 
 (defconst slack-usergroup-list-url "https://slack.com/api/usergroups.list")
 
