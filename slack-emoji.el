@@ -24,6 +24,12 @@
 
 ;;; Code:
 (require 'slack-request)
+(require 'slack-team)
+
+(declare-function emojify-create-emojify-emojis "emojify")
+(declare-function emojify-get-emoji "emojify")
+(declare-function emojify-image-dir "emojify")
+(defvar emojify-user-emojis)
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
@@ -88,6 +94,11 @@
           slack-emoji-list
           team
           :success #'on-success)))))
+
+(defun slack-select-emoji ()
+  (if (fboundp 'emojify-completing-read)
+      (emojify-completing-read "Select Emoji: ")
+    (read-from-minibuffer "Emoji: ")))
 
 (provide 'slack-emoji)
 ;;; slack-emoji.el ends here

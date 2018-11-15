@@ -30,6 +30,7 @@
 (require 'slack-room)
 (require 'slack-file)
 (require 'slack-request)
+(require 'slack-emoji)
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
@@ -89,11 +90,6 @@
     (slack-select-from-list
         (list "Select Reaction: ")
         selected)))
-
-(defun slack-select-emoji ()
-  (if (fboundp 'emojify-completing-read)
-      (emojify-completing-read "Select Emoji: ")
-    (read-from-minibuffer "Emoji: ")))
 
 (defun slack-message-reaction-input ()
   (let ((reaction (slack-select-emoji)))
