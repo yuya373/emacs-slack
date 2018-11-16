@@ -590,5 +590,37 @@
                  #'slack-message-buffer-detect-ts-changed
                  t))))
 
+(defun slack-thread-start ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-start-thread buf (slack-get-ts))))
+
+(defun slack-room-unread-threads ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-unread-threads buf)))
+
+(defmethod slack-thread-show-messages ((thread slack-thread) room team)
+  (cl-labels
+      ((after-success ()
+                      (let ((buf (slack-create-thread-message-buffer
+                                  room team (oref thread thread-ts))))
+                        (slack-buffer-display buf))))
+    (slack-thread-request-messages thread room team
+                                   :after-success #'after-success)))
+
+(defun slack-thread-show-or-create ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (if (slack-thread-message-buffer-p buf)
+          (error "Already in thread")
+        (slack-buffer-display-thread buf (slack-get-ts)))))
+
+(defvar slack-message-thread-status-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-1] #'slack-thread-show-or-create)
+    (define-key map (kbd "RET") #'slack-thread-show-or-create)
+    map))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

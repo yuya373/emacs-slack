@@ -134,7 +134,7 @@
 
 (defmethod slack-message-set-thread ((m slack-message) team payload)
   (when (slack-message-thread-parentp m)
-    (oset m thread (slack-thread-create m team payload))))
+    (oset m thread (slack-thread-create m payload))))
 
 (defun slack-reply-broadcast-message-create (payload)
   (let ((parent (cl-first (plist-get payload :attachments))))
@@ -201,10 +201,10 @@
 (defmethod slack-message-equal ((m slack-message) n)
   (string= (slack-ts m) (slack-ts n)))
 
-(defmethod slack-message-get-thread ((parent slack-message) team)
+(defmethod slack-message-get-thread ((parent slack-message))
   (let ((thread (oref parent thread)))
     (unless thread
-      (oset parent thread (slack-thread-create parent team)))
+      (oset parent thread (slack-thread-create parent)))
     (oref parent thread)))
 
 (defmethod slack-message-sender-name ((m slack-message) team)
@@ -333,7 +333,7 @@
                               (slack-reply-broadcast-message-p old-message)
                             replace)))
             (slack-room-update-buffer room team message replace)))
-        (slack-if-let* ((thread (slack-message-get-thread parent team))
+        (slack-if-let* ((thread (slack-message-get-thread parent))
                         (buf (slack-buffer-find 'slack-thread-message-buffer
                                                 room
                                                 (oref thread thread-ts)
@@ -373,7 +373,7 @@
 (defmethod slack-message-deleted ((message slack-message) room team)
   (if (slack-thread-message-p message)
       (slack-if-let* ((parent (slack-room-find-thread-parent room message))
-                      (thread (slack-message-get-thread parent team)))
+                      (thread (slack-message-get-thread parent)))
           (progn
             (slack-thread-delete-message thread message)
             (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer

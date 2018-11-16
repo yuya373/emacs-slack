@@ -26,7 +26,10 @@
 
 (require 'eieio)
 (require 'slack-util)
-(require 'slack-room-buffer)
+(require 'slack-message-sender)
+(require 'slack-message-reaction)
+(require 'slack-message-edit-buffer)
+(require 'slack-message-share-buffer)
 
 (define-derived-mode slack-thread-message-buffer-mode
   slack-buffer-mode
@@ -41,6 +44,7 @@
   (slack-buffer-find-4 class room ts team))
 
 (defun slack-create-thread-message-buffer (room team thread-ts)
+  "Create thread message buffer according to ROOM, TEAM, THREAD-TS."
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                           room thread-ts team)))
       buf
@@ -48,7 +52,7 @@
                                  :team team
                                  :thread-ts thread-ts)))
 
-(defmethod slack-buffer-name :static ((class slack-thread-message-buffer) room ts team)
+(defmethod slack-buffer-name :static ((_class slack-thread-message-buffer) room ts team)
   (format "*Slack - %s : %s Thread - %s"
           (oref team name)
           (slack-room-name room team)
@@ -84,17 +88,35 @@
 
     buf))
 
-(defmethod slack-buffer-display-message-compose-buffer
-  ((this slack-thread-message-buffer))
-  (with-slots (room team thread-ts) this
-    (let ((buf (slack-create-thread-message-compose-buffer
-                room thread-ts team)))
-      (slack-buffer-display buf))))
-
-
 (defmethod slack-buffer-send-message ((this slack-thread-message-buffer) message)
   (with-slots (room team thread-ts) this
     (slack-thread-send-message room team message thread-ts)))
+
+(defun slack-thread-send-message (room team message thread-ts)
+  (let ((message (slack-message-prepare-links
+                  (slack-escape-message message)
+                  team))
+        (broadcast (if (eq slack-thread-also-send-to-room 'ask)
+                       (y-or-n-p (format "Also send to %s ? "
+                                         (slack-room-name room team)))
+                     slack-thread-also-send-to-room)))
+    (progn
+      (slack-team-inc-message-id team)
+      (with-slots (message-id sent-message self-id) team
+        (let* ((payload (list :id message-id
+                              :channel (oref room id)
+                              :reply_broadcast broadcast
+                              :thread_ts thread-ts
+                              :type "message"
+                              :user self-id
+                              :text message))
+               (obj (slack-message-create payload team :room room)))
+          (slack-team-send-message team payload)
+          (puthash message-id obj sent-message))))))
+
+(defun slack-thread-message--send (message)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-send-message buf message)))
 
 (defmethod slack-buffer-add-reaction-to-message
   ((this slack-thread-message-buffer) reaction ts)

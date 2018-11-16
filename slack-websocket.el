@@ -485,7 +485,7 @@ TEAM is one of `slack-teams'"
      ((and subtype (string= subtype "message_deleted"))
       (slack-ws-delete-message payload team))
      ((and subtype (string= subtype "message_replied"))
-      (slack-thread-update-state payload team))
+      (slack-ws-handle-message-replied payload team))
      (t
       (slack-ws-update-message payload team)))))
 
@@ -945,6 +945,25 @@ TEAM is one of `slack-teams'"
                                                   (string= (oref e id)
                                                            (oref usergroup id)))
                                               (oref team usergroups))))))
+
+(defun slack-ws-handle-message-replied (payload team)
+  (slack-if-let* ((message-payload (plist-get payload :message))
+                  (thread-ts (plist-get message-payload :thread_ts))
+                  (room (slack-room-find (plist-get payload :channel)
+                                         team))
+                  (message (slack-room-find-message room thread-ts))
+                  (thread (slack-message-get-thread message))
+                  (new-thread (slack-thread-create message
+                                                   message-payload)))
+      (progn
+        (slack-merge thread new-thread)
+        (slack-message-update message team t t))
+    (message "THREAD_TS: %s, ROOM: %s, MESSAGE: %s THREAD: %s, NEW_THREAD:%s"
+             thread-ts
+             (not (null room))
+             (not (null message))
+             (not (null thread))
+             (not (null new-thread)))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
