@@ -39,11 +39,14 @@
    (user-name :initarg :user-name :initform nil)))
 
 (defun slack-typing-user-create (user-name limit)
+  "Create `slack-typing-user' instance from USER-NAME and LIMIT."
   (make-instance 'slack-typing-user
                  :limit limit
                  :user-name user-name))
 
 (defun slack-typing-create (room limit &rest user-names)
+  "Create `slack-typing' instance from ROOM and LIMIT.
+If USER-NAMES provided, also create `slack-typing-user' instances."
   (let ((users (mapcar #'(lambda (user-name)
                            (slack-typing-user-create user-name limit))
                        user-names)))
@@ -67,7 +70,7 @@
   (oset this limit limit))
 
 (defun slack-typing-display (team)
-  (message "DISPLAY")
+  "Display currentrly typing users according to TEAM and it's `slack-typing' instance."
   (with-slots (typing typing-timer) team
     (let ((current (float-time)))
       (if (or (null typing)
