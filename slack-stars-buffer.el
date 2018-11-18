@@ -28,6 +28,7 @@
 (require 'slack-util)
 (require 'slack-team)
 (require 'slack-buffer)
+(require 'slack-star)
 
 (define-derived-mode slack-stars-buffer-mode slack-buffer-mode "Slack Stars Buffer")
 
@@ -135,6 +136,51 @@
                      #'(lambda ()
                          (string= (get-text-property (point) 'ts)
                                   ts)))))))
+
+(defun slack-stars-list ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (buf (slack-buffer-find 'slack-stars-buffer team)))
+    (if buf (slack-buffer-display buf)
+      (slack-stars-list-request
+       team nil
+       #'(lambda () (slack-buffer-display (slack-create-stars-buffer team)))))))
+
+(defmethod slack-star-remove ((this slack-star) payload team)
+  (let ((date-create (format "%s" (plist-get payload :date_create))))
+    (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
+                                                          date-create))
+                                   (oref this items)))
+    (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
+        (slack-buffer-message-delete buffer date-create))))
+
+(defmethod slack-star-add ((this slack-star) payload team)
+  (setq payload (append payload nil))
+  (cl-labels
+      ((create-star (payload)
+                    (slack-create-star-item payload team))
+       (append-star-item (item)
+                         (oset this items (append (oref this items) (list item))))
+       (insert-to-buffer (item)
+                         (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer
+                                                                    team)))
+                             (with-current-buffer (slack-buffer-buffer buffer)
+                               (slack-buffer-insert buffer item)))))
+    (if (plist-get payload :file)
+        (cl-labels
+            ((insert-star (payload file)
+                          (let ((item (create-star (plist-put payload :file file))))
+                            (append-star-item item)
+                            (insert-to-buffer item))))
+          (let ((file-id (plist-get (plist-get payload :file) :id)))
+            (slack-if-let* ((file (slack-file-find file-id team)))
+                (insert-star payload file)
+              (slack-file-request-info file-id 1 team
+                                       #'(lambda (file _team)
+                                           (insert-star payload file))))))
+      (let ((item (create-star payload)))
+        (append-star-item item)
+        (insert-to-buffer item)))))
 
 (provide 'slack-stars-buffer)
 ;;; slack-stars-buffer.el ends here
