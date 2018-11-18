@@ -28,11 +28,15 @@
 (require 'slack-room)
 (require 'slack-team)
 (require 'slack-request)
+(require 'slack-message-formatter)
 
 (defconst slack-reminder-list-url "https://slack.com/api/reminders.list")
 (defconst slack-reminder-delete-url "https://slack.com/api/reminders.delete")
 (defconst slack-reminder-complete-url "https://slack.com/api/reminders.complete")
 (defconst slack-reminder-info-url "https://slack.com/api/reminders.info")
+
+(defvar slack-buffer-function)
+(defvar slack-completing-read-function)
 
 (defclass slack-reminder-base ()
   ((id :initarg :id :type string)
@@ -106,7 +110,7 @@
 (defmethod slack-reminder-sort-key ((r slack-reminder))
   (oref r time))
 
-(defmethod slack-reminder-sort-key ((r slack-recurring-reminder))
+(defmethod slack-reminder-sort-key ((_r slack-recurring-reminder))
   0)
 
 (defun slack-reminder-sort (team)
