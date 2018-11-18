@@ -27,6 +27,11 @@
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-request)
+(require 'slack-channel)
+(require 'slack-file)
+(require 'slack-team)
+
+(defvar slack-completing-read-function)
 
 (defface slack-search-result-message-header-face
   '((t (:weight bold :height 1.1 :underline t)))
@@ -195,32 +200,6 @@
         (sort-dir (funcall slack-completing-read-function "Direction: " `("desc" "asc")
                            nil t)))
     (list team query sort sort-dir)))
-
-(defun slack-search-from-messages ()
-  (interactive)
-  (cl-destructuring-bind (team query sort sort-dir) (slack-search-query-params)
-    (let ((instance (make-instance 'slack-search-result
-                                   :sort sort
-                                   :sort-dir sort-dir
-                                   :query query)))
-      (cl-labels
-          ((after-success ()
-                          (let ((buffer (slack-create-search-result-buffer instance team)))
-                            (slack-buffer-display buffer))))
-        (slack-search-request instance #'after-success team)))))
-
-(defun slack-search-from-files ()
-  (interactive)
-  (cl-destructuring-bind (team query sort sort-dir) (slack-search-query-params)
-    (let ((instance (make-instance 'slack-file-search-result
-                                   :sort sort
-                                   :sort-dir sort-dir
-                                   :query query)))
-      (cl-labels
-          ((after-success ()
-                          (let ((buffer (slack-create-search-result-buffer instance team)))
-                            (slack-buffer-display buffer))))
-        (slack-search-request instance #'after-success team)))))
 
 (defmethod slack-search-request-url ((_this slack-search-result))
   "https://slack.com/api/search.messages")
