@@ -27,10 +27,10 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-team)
 
 (defcustom slack-request-worker-max-request-limit 30
   "Max request count perform simultaneously."
+  :type 'integer
   :group 'slack)
 
 (defvar slack-request-worker-instance nil)
@@ -46,9 +46,7 @@
   (make-instance 'slack-request-worker))
 
 (defmethod slack-request-worker-push ((this slack-request-worker) req)
-  (let ((l '()))
-    (cl-pushnew req (oref this queue)
-                :test #'slack-equalp)))
+  (cl-pushnew req (oref this queue) :test #'slack-equalp))
 
 (defun slack-request-worker-set-timer ()
   (cl-labels
@@ -114,7 +112,7 @@
     (cancel-timer (oref slack-request-worker-instance timer)))
   (setq slack-request-worker-instance nil))
 
-(defmethod slack-request-worker-remove-request ((team slack-team))
+(defun slack-request-worker-remove-request (team)
   "Remove request from TEAM in queue."
   (when slack-request-worker-instance
     (let ((to-remove '())
@@ -122,8 +120,7 @@
           (all (oref slack-request-worker-instance queue)))
 
       (dolist (req all)
-        (if (string= (oref (oref req team) id)
-                     (oref team id))
+        (if (slack-equalp (oref req team) team)
             (push req to-remove)
           (push req new-queue)))
 

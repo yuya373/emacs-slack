@@ -26,16 +26,27 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-team-ws)
+(require 'slack-room)
+;; (require 'slack-websocket)
+(declare-function slack-ws-send "slack-websocket")
+(declare-function slack-ws-open "slack-websocket")
+(declare-function slack-ws-close "slack-websocket")
+;; (require 'slack)
+(declare-function slack-start "slack")
+
 
 (defvar slack-teams nil)
 (defvar slack-current-team nil)
+(defvar slack-completing-read-function)
 (defcustom slack-prefer-current-team nil
   "If set to t, using `slack-current-team' for interactive function.
 use `slack-change-current-team' to change `slack-current-team'"
+  :type 'boolean
   :group 'slack)
 
 (defcustom slack-modeline-count-only-subscribed-channel t
   "Count unread only subscribed channel."
+  :type 'boolean
   :group 'slack)
 
 (defclass slack-team-threads ()
@@ -108,6 +119,9 @@ use `slack-change-current-team' to change `slack-current-team'"
                      (slack-collect-slots 'slack-team plist))))
     (oset team ws ws)
     team))
+
+(defmethod slack-equalp ((this slack-team) other)
+  (string= (oref this id) (oref other id)))
 
 (defmethod slack-team-set-ws-url ((this slack-team) url)
   (with-slots (ws) this
@@ -191,7 +205,7 @@ you can change current-team with `slack-change-current-team'"
         (if same-team
             (progn
               (slack-team-disconnect same-team)
-              (slack-start team))))
+              (slack-team-connect team))))
 
       (setq slack-teams
             (cons team
