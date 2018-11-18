@@ -44,6 +44,10 @@
   ((text :initarg :text :type string)
    (options :initarg :options :initform nil)))
 
+(defmethod slack-selectable-prompt ((_this slack-selectable))
+  "")
+
+
 (defmethod slack-selectable-text ((this slack-selectable-option))
   (oref this text))
 
