@@ -25,6 +25,7 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-message)
+(require 'slack-team)
 
 (defmethod slack-message-handle-reply ((m slack-reply) team)
   (with-slots (reply-to) m
