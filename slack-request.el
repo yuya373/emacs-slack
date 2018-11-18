@@ -24,13 +24,16 @@
 
 ;;; Code:
 
+(require 'subr-x)
 (require 'eieio)
 (require 'json)
 (require 'request)
 (require 'slack-util)
+(declare-function slack-team-token "slack-team")
 
 (defcustom slack-request-timeout 10
   "Request Timeout in seconds."
+  :type 'integer
   :group 'slack)
 
 (defun slack-parse ()
@@ -43,7 +46,10 @@
         (json-array-type 'list))
     (condition-case err-var
         (json-read-from-string payload)
-      (json-end-of-file nil))))
+      (error (message "[Slack] Error on parse JSON: %S, ERR: %S"
+                      payload
+                      err-var)
+             nil))))
 
 (defclass slack-request-request ()
   ((response :initform nil)
@@ -78,16 +84,16 @@
     (apply #'make-instance 'slack-request-request ret)))
 
 (defmethod slack-equalp ((this slack-request-request) other)
-  (and (string= (oref (oref this team) id)
-                (oref (oref other team) id))
+  (and (slack-equalp (oref this team)
+                     (oref other team))
        (string= "GET" (oref this type))
        (string= "GET" (oref other type))
        (string= (oref this url)
                 (oref other url))
-       (equalp (oref this params)
-               (oref other params))))
+       (equal (oref this params)
+              (oref other params))))
 
-(defmethod slack-request-retry-request ((req slack-request-request) retry-after team)
+(defmethod slack-request-retry-request ((req slack-request-request) retry-after)
   (oset req execute-at (+ retry-after (time-to-seconds)))
   (slack-request-worker-push req))
 
@@ -109,7 +115,7 @@
                      (slack-if-let* ((retry-after (request-response-header response "retry-after"))
                                      (retry-after-sec (string-to-number retry-after)))
                          (progn
-                           (slack-request-retry-request req retry-after-sec team)
+                           (slack-request-retry-request req retry-after-sec)
                            (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
                                               retry-after-sec
                                               url
@@ -136,7 +142,7 @@
                url
                :type type
                :sync sync
-               :params (cons (cons "token" (oref team token))
+               :params (cons (cons "token" (slack-team-token team))
                              params)
                :data data
                :files files
@@ -157,6 +163,116 @@
                   (plist-get ,data :error)))
      (progn
        ,@body)))
+
+;; Request Worker
+
+(defcustom slack-request-worker-max-request-limit 30
+  "Max request count perform simultaneously."
+  :type 'integer
+  :group 'slack)
+
+(defvar slack-request-worker-instance nil)
+
+(defclass slack-request-worker ()
+  ((queue :initform '() :type list)
+   (timer :initform nil)
+   (current-request-count :initform 0 :type integer)
+   ))
+
+(defun slack-request-worker-create ()
+  "Create `slack-request-worker' instance."
+  (make-instance 'slack-request-worker))
+
+(defmethod slack-request-worker-push ((this slack-request-worker) req)
+  (cl-pushnew req (oref this queue) :test #'slack-equalp))
+
+(defun slack-request-worker-set-timer ()
+  (cl-labels
+      ((on-timeout ()
+                   (slack-request-worker-execute)
+                   (when (timerp slack-request-worker-instance)
+                     (cancel-timer slack-request-worker-instance))
+                   (slack-request-worker-set-timer)))
+    (oset slack-request-worker-instance timer
+          (run-at-time 1 nil #'on-timeout))))
+
+(defun slack-request-worker-execute ()
+  "Pop request from queue until `slack-request-worker-max-request-limit', and execute."
+  (when slack-request-worker-instance
+    (let ((do '())
+          (skip '())
+          (current (time-to-seconds))
+          (limit (- slack-request-worker-max-request-limit
+                    (oref slack-request-worker-instance
+                          current-request-count))))
+
+      (cl-loop for req in (reverse (oref slack-request-worker-instance queue))
+               do (if (and (< (oref req execute-at) current)
+                           (< (length do) limit))
+                      (push req do)
+                    (push req skip)))
+
+      ;; (message "[WORKER] QUEUE: %s, LIMIT: %s, CURRENT: %s, DO: %s, SKIP: %s"
+      ;;          (length (oref slack-request-worker-instance queue))
+      ;;          slack-request-worker-max-request-limit
+      ;;          (oref slack-request-worker-instance current-request-count)
+      ;;          (length do)
+      ;;          (length skip))
+
+      (oset slack-request-worker-instance queue skip)
+
+      (cl-labels
+          ((decl-request-count
+            ()
+            (cl-decf (oref slack-request-worker-instance
+                           current-request-count))))
+        (cl-loop for req in do
+                 do (progn
+                      (cl-incf (oref slack-request-worker-instance
+                                     current-request-count))
+                      (slack-request req
+                                     :on-success #'decl-request-count
+                                     :on-error #'decl-request-count
+                                     )))))))
+
+(defmethod slack-request-worker-push ((req slack-request-request))
+  (unless slack-request-worker-instance
+    (setq slack-request-worker-instance
+          (slack-request-worker-create)))
+  (slack-request-worker-push slack-request-worker-instance req)
+  (unless (oref slack-request-worker-instance timer)
+    (slack-request-worker-set-timer)))
+
+(defun slack-request-worker-quit ()
+  "Cancel timer and remove `slack-request-worker-instance'."
+  (when (and slack-request-worker-instance
+             (timerp (oref slack-request-worker-instance timer)))
+    (cancel-timer (oref slack-request-worker-instance timer)))
+  (setq slack-request-worker-instance nil))
+
+(defun slack-request-worker-remove-request (team)
+  "Remove request from TEAM in queue."
+  (when slack-request-worker-instance
+    (let ((to-remove '())
+          (new-queue '())
+          (all (oref slack-request-worker-instance queue)))
+
+      (dolist (req all)
+        (if (slack-equalp (oref req team) team)
+            (push req to-remove)
+          (push req new-queue)))
+
+      (dolist (req to-remove)
+        (when (and (oref req response)
+                   (not (request-response-done-p (oref req response))))
+          (request-abort (oref req response))))
+
+      (oset slack-request-worker-instance queue new-queue)
+      (slack-log (format "Remove Request from Worker, ALL: %s, REMOVED: %s, NEW-QUEUE: %s"
+                         (length all)
+                         (length to-remove)
+                         (length new-queue))
+                 team :level 'debug))))
 
 (provide 'slack-request)
 ;;; slack-request.el ends here

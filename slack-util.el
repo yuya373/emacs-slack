@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'subr-x)
 (require 'eieio)
 (require 'timer)
 (require 'diary-lib)

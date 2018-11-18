@@ -369,5 +369,8 @@ you can change current-team with `slack-change-current-team'"
         (oset team emoji-download-watch-timer nil)
         (emojify-create-emojify-emojis t))))
 
+(defmethod slack-team-token ((this slack-team))
+  (oref this token))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here

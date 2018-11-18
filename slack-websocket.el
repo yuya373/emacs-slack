@@ -26,7 +26,6 @@
 (require 'websocket)
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-request-worker)
 (require 'slack-team)
 (require 'slack-team-ws)
 (require 'slack-reply)
