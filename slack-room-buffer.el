@@ -28,6 +28,11 @@
 (require 'slack-util)
 (require 'slack-buffer)
 (require 'slack-request)
+(require 'slack-file)
+(require 'slack-team)
+(require 'slack-buffer)
+
+(defvar slack-completing-read-function)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
@@ -35,7 +40,7 @@
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
 
-(defmethod slack-buffer-name :static ((class slack-room-buffer) room team)
+(defmethod slack-buffer-name :static ((_class slack-room-buffer) room team)
   (slack-if-let* ((room-name (slack-room-name room team)))
       (format  "*Slack - %s : %s"
                (oref team name)

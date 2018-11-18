@@ -233,6 +233,8 @@
 (defmethod slack-buffer-cant-execute ((this slack-buffer))
   (error "Can't execute this command from %s" (eieio-object-class-name this)))
 
+(cl-defmethod slack-buffer-update ((this slack-buffer) _message &key _replace)
+  (slack-buffer-cant-execute this))
 (defmethod slack-buffer-display-pins-list ((this slack-buffer))
   (slack-buffer-cant-execute this))
 (defmethod slack-buffer-pins-add ((this slack-buffer) ts)
