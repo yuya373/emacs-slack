@@ -137,8 +137,7 @@
                 (slack-log "Slack Im List Updated" team :level 'info))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
-                            team
-                            :sync nil)))
+                            team)))
 
 (defun slack-im-list-update (&optional team after-success)
   (interactive)

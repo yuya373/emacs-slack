@@ -61,12 +61,18 @@
                         (if success-callback
                             (funcall success-callback data)
                           (cl-labels
-                              ((on-open ()
+                              ((on-emoji-download (paths)
+                                                  (oset team
+                                                        emoji-download-watch-timer
+                                                        (run-with-idle-timer 5 t
+                                                                             #'slack-team-watch-emoji-download-complete
+                                                                             team paths)))
+                               (on-open ()
                                         (slack-channel-list-update team)
                                         (slack-group-list-update team)
                                         (slack-im-list-update team)
                                         (slack-bot-list-update team)
-                                        (slack-request-emoji team)
+                                        (slack-download-emoji team #'on-emoji-download)
                                         (slack-command-list-update team)
                                         (slack-usergroup-list-update team)
                                         (slack-update-modeline)))

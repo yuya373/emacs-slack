@@ -45,6 +45,7 @@
 (require 'slack-message-buffer)
 (require 'slack-authorize)
 (require 'slack-typing)
+(require 'slack-star)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -454,8 +455,7 @@ TEAM is one of `slack-teams'"
          :after-success #'(lambda (&rest _ignore)
                             (slack-log (format "Direct Message Channel with %s is Open"
                                                (slack-user-name (oref im user) team))
-                                       team :level 'info))
-         :async t)))
+                                       team :level 'info)))))
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
       (if exist
           (progn
@@ -627,8 +627,15 @@ TEAM is one of `slack-teams'"
                team :level 'info)))
 
 (defun slack-ws-handle-channel-deleted (payload team)
-  (let ((id (plist-get payload :channel)))
-    (slack-room-deleted id team)))
+  (let* ((id (plist-get payload :channel))
+         (room (slack-room-find id team)))
+    (cond
+     ((object-of-class-p room 'slack-channel)
+      (with-slots (channels) team
+        (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
+                                     channels)))
+      (message "Channel: %s deleted"
+               (slack-room-display-name room team))))))
 
 (defun slack-ws-handle-room-rename (payload team)
   (let* ((c (plist-get payload :channel))

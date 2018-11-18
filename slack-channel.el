@@ -102,8 +102,7 @@
                   (slack-log "Slack Channel List Updated" team :level 'info))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
-                              team
-                              :sync nil))))
+                              team))))
 
 (defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)

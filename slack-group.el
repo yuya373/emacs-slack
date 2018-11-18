@@ -112,8 +112,7 @@
                   (slack-log "Slack Group List Updated" team :level 'info))))
       (slack-room-list-update slack-group-list-url
                               #'on-list-update
-                              team
-                              :sync nil))))
+                              team))))
 
 
 (defmethod slack-room-update-mark-url ((_room slack-group))

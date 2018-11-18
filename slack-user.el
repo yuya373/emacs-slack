@@ -26,8 +26,6 @@
 
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-room)
-(require 'slack-team)
 (require 'slack-emoji)
 
 (defvar slack-completing-read-function)
@@ -78,7 +76,7 @@
                " ")))
 
 (defun slack-user-names (team)
-  "Returns all users as alist (\"user-name\" . user) in TEAM."
+  "Return all users as alist (\"user-name\" . user) in TEAM."
   (with-slots (users) team
     (mapcar (lambda (u) (cons (plist-get u :name) u))
             (cl-remove-if #'slack-user-hidden-p users))))

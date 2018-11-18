@@ -622,5 +622,43 @@
     (define-key map (kbd "RET") #'slack-thread-show-or-create)
     map))
 
+(defun slack-room-pins-list ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-pins-list buf)))
+
+(defun slack-room-user-select ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-user-profile buf)))
+
+(defun slack-room-display (room team)
+  (cl-labels
+      ((open (buf)
+             (slack-buffer-display buf)))
+    (let* ((buffer-class (or (and (slack-file-room-p room)
+                                  'slack-file-list-buffer)
+                             'slack-message-buffer))
+           (buf (slack-buffer-find buffer-class
+                                   room
+                                   team)))
+      (if buf (open buf)
+        (message "No Message in %s, fetching from server..." (slack-room-name room team))
+        (slack-room-history-request
+         room team
+         :after-success #'(lambda (&rest _ignore)
+                            (open (slack-create-message-buffer room team))))))))
+
+(defmethod slack-room-update-buffer ((this slack-room) team message replace)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
+      (slack-buffer-update buffer message :replace replace)
+    (and slack-buffer-create-on-notify
+         (slack-room-history-request
+          this team
+          :after-success #'(lambda (&rest _ignore)
+                             (tracking-add-buffer
+                              (slack-buffer-buffer
+                               (slack-create-message-buffer this team))))))))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

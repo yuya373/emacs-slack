@@ -337,5 +337,37 @@ you can change current-team with `slack-change-current-team'"
         (setq message-id 1)
       (cl-incf message-id))))
 
+(defun slack-select-rooms ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (append ims groups channels)))
+                team)))
+    (slack-room-display room team)))
+
+(defun slack-select-unread-rooms ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (cl-remove-if
+                                   #'(lambda (room)
+                                       (not (< 0 (oref room
+                                                       unread-count-display))))
+                                   (append ims groups channels))))
+                team)))
+    (slack-room-display room team)))
+
+(defun slack-team-watch-emoji-download-complete (team paths)
+  (if (eq (length (cl-remove-if #'identity (mapcar #'file-exists-p paths)))
+          0)
+      (when (timerp (oref team emoji-download-watch-timer))
+        (cancel-timer (oref team emoji-download-watch-timer))
+        (oset team emoji-download-watch-timer nil)
+        (emojify-create-emojify-emojis t))))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here
