@@ -25,6 +25,10 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-team)
+(require 'slack-channel)
+(require 'slack-user)
+(require 'slack-message-formatter)
 
 (defclass slack-command ()
   ((name :initarg :name :type string)
@@ -46,7 +50,7 @@
   (string= (oref this name) (oref other name)))
 
 (defun slack-slash-commands-parse (text team)
-  "Return (command . arguments) or nil."
+  "Parse TEXT, then return (command . arguments) or nil."
   (when (string-prefix-p "/" text)
     (let* ((tokens (split-string text " "))
            (maybe-command (car tokens))
