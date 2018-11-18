@@ -579,7 +579,13 @@ TEAM is one of `slack-teams'"
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
-              (slack-reaction-notify payload team room))))))))
+              (let* ((user-id (plist-get payload :user))
+                     (reaction (plist-get payload :reaction))
+                     (text (format "added reaction %s" reaction))
+                     (msg (make-instance 'slack-user-message
+                                         :text text
+                                         :user user-id)))
+                (slack-message-notify msg room team)))))))))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (let* ((item (plist-get payload :item))
@@ -598,7 +604,13 @@ TEAM is one of `slack-teams'"
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
-              (slack-reaction-notify payload team room))))))))
+              (let* ((user-id (plist-get payload :user))
+                     (reaction (plist-get payload :reaction))
+                     (text (format "removed reaction %s" reaction))
+                     (msg (make-instance 'slack-user-message
+                                         :text text
+                                         :user user-id)))
+                (slack-message-notify msg room team)))))))))
 
 (defun slack-ws-handle-channel-created (payload team)
   (let ((channel (slack-room-create (plist-get payload :channel)

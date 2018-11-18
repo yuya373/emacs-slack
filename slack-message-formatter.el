@@ -172,15 +172,12 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (slack-message-put-text-property raw-body))))
 
 
-(defun slack-format-reactions (reactions team)
-  (mapconcat #'(lambda (r) (slack-reaction-to-string r team))
-             reactions
-             " "))
-
-(defmethod slack-message-reaction-to-string ((m slack-message) team)
+(defmethod slack-message-reaction-to-string ((m slack-message))
   (let ((reactions (slack-message-reactions m)))
     (when reactions
-      (slack-format-reactions reactions team))))
+      (mapconcat #'slack-reaction-to-string
+                 reactions
+                 " "))))
 
 (defmethod slack-message-to-string ((m slack-message) team)
   (let ((text (if (slot-boundp m 'text) (oref m text))))
@@ -193,7 +190,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                                                   (slack-ts m)
                                                                   team)))
                              (oref m files) "\n"))
-           (reactions (slack-message-reaction-to-string m team))
+           (reactions (slack-message-reaction-to-string m))
            (thread (slack-thread-to-string m team)))
       (slack-format-message (propertize header
                                         'slack-message-header t)

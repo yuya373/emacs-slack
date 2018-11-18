@@ -31,6 +31,7 @@
 (require 'slack-file)
 (require 'slack-team)
 (require 'slack-buffer)
+(require 'slack-message-reaction)
 
 (defvar slack-completing-read-function)
 
@@ -39,6 +40,23 @@
 
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
+
+(defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
+  (let* ((reaction-users (oref reaction users))
+         (reaction-name (oref reaction name))
+         (team (oref this team))
+         (room (oref this room))
+         (self-id (oref team self-id)))
+    (if (cl-find-if #'(lambda (id) (string= id self-id)) reaction-users)
+        (slack-message-reaction-remove reaction-name
+                                       (slack-get-ts)
+                                       room
+                                       team)
+      (slack-message--add-reaction this reaction-name))))
+
+(defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
+  (with-slots (team) this
+    (slack-reaction-help-text reaction team)))
 
 (defmethod slack-buffer-name :static ((_class slack-room-buffer) room team)
   (slack-if-let* ((room-name (slack-room-name room team)))

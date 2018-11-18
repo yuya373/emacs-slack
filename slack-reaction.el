@@ -26,6 +26,12 @@
 
 (require 'eieio)
 (require 'slack-util)
+;; (require 'slack-room-buffer)
+(declare-function slack-buffer-toggle-reaction "slack-room-buffer")
+(declare-function slack-buffer-reaction-help-text "slack-room-buffer")
+(require 'slack-user)
+
+(defvar slack-current-buffer)
 
 (defclass slack-reaction ()
   ((name :initarg :name :type string)
@@ -50,12 +56,6 @@
 (defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
 
-(defmethod slack-reaction-help-text ((r slack-reaction) team)
-  (let ((user-names (slack-reaction-user-names r team)))
-    (format "%s reacted with :%s:"
-            (mapconcat #'identity user-names ", ")
-            (oref r name))))
-
 (defvar slack-reaction-keymap
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "RET") #'slack-reaction-toggle)
@@ -65,45 +65,27 @@
 (defun slack-reaction-toggle ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property (point) 'reaction))
-                  (reaction-name (oref reaction name))
-                  (reaction-users (oref reaction users))
-                  (team (oref buffer team))
-                  (self-id (oref team self-id)))
-      (if (cl-find-if #'(lambda (id) (string= id self-id)) reaction-users)
-          (slack-message-reaction-remove reaction-name
-                                         (slack-get-ts)
-                                         (oref buffer room)
-                                         team)
-        (slack-message--add-reaction buffer reaction-name))))
+                  (reaction (get-text-property (point) 'reaction)))
+      (slack-buffer-toggle-reaction buffer reaction)))
+
+(defmethod slack-reaction-help-text ((r slack-reaction) team)
+  (let ((user-names (slack-reaction-user-names r team)))
+    (format "%s reacted with :%s:"
+            (mapconcat #'identity user-names ", ")
+            (oref r name))))
 
 (defun slack-reaction-help-echo (_window _string pos)
   (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property pos 'reaction))
-                  (team (oref buffer team)))
-      (slack-reaction-help-text reaction team)))
+                  (reaction (get-text-property pos 'reaction)))
+      (slack-buffer-reaction-help-text buffer reaction)))
 
-(defmethod slack-reaction-to-string ((r slack-reaction) team)
+(defmethod slack-reaction-to-string ((r slack-reaction))
   (propertize (format " :%s: %d " (oref r name) (oref r count))
               'face 'slack-message-output-reaction
               'mouse-face 'highlight
               'keymap slack-reaction-keymap
               'reaction r
               'help-echo #'slack-reaction-help-echo))
-
-(defun slack-reaction-echo-description ()
-  (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property (point) 'reaction))
-                  (team (oref buffer team)))
-      (message (slack-reaction-help-text reaction team))))
-
-(defun slack-reaction-notify (payload team room)
-  (let* ((user-id (plist-get payload :user))
-         (reaction (plist-get payload :reaction))
-         (msg (slack-user-message "msg"
-                                  :text (format "added reaction %s" reaction)
-                                  :user user-id)))
-    (slack-message-notify msg room team)))
 
 (defun slack-reaction--find (reactions reaction)
   (cl-find-if #'(lambda (e) (slack-reaction-equalp e reaction))

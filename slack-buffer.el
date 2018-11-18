@@ -141,6 +141,12 @@
                                                  prev-point
                                                  type))
 
+(defun slack-reaction-echo-description ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (team (oref buffer team)))
+      (message (slack-reaction-help-text reaction team))))
+
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
       (progn
