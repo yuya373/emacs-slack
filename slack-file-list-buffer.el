@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room-buffer)
+(require 'slack-message-buffer)
 
 (define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack File List Buffer")
 
@@ -35,7 +36,7 @@
 (defmethod slack-buffer-name ((_this slack-file-list-buffer))
   (format "%s" (call-next-method)))
 
-(defmethod slack-buffer-major-mode ((this slack-file-list-buffer))
+(defmethod slack-buffer-major-mode ((_this slack-file-list-buffer))
   'slack-file-list-buffer-mode)
 
 (defmethod slack-create-message-buffer ((room slack-file-room) team)
