@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-message-compose-buffer)
+(require 'slack-message-editor)
 
 (define-derived-mode slack-message-edit-buffer-mode
   slack-edit-message-mode
@@ -54,7 +55,7 @@
   (slack-buffer-find-4 class room ts team))
 
 (defmethod slack-buffer-name :static
-  ((class slack-message-edit-buffer) room  ts team)
+  ((_class slack-message-edit-buffer) room  ts team)
   (format "*Slack - %s : %s Edit Message %s"
           (oref team name)
           (slack-room-name room team)
