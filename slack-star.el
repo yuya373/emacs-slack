@@ -184,7 +184,7 @@
 
 (defmethod slack-message-star-api-params ((this slack-star-message))
   (append (list (cons "channel" (oref this channel)))
-          (cl-call-next-method)))
+          (call-next-method)))
 
 (defmethod slack-star-remove-star ((this slack-star) ts team)
   (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))

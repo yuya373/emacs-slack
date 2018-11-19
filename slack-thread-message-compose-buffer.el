@@ -48,7 +48,7 @@
                        room thread-ts team)))
 
 (defmethod slack-buffer-init-buffer ((this slack-thread-message-compose-buffer))
-  (let ((buf (cl-call-next-method)))
+  (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-message-compose-buffer-mode)
       (slack-buffer-set-current-buffer this)
@@ -72,7 +72,7 @@
   ((this slack-thread-message-compose-buffer) message)
   (with-slots (room team thread-ts) this
     (slack-thread-send-message room team message thread-ts))
-  (cl-call-next-method))
+  (call-next-method))
 
 (defmethod slack-buffer-display-message-compose-buffer
   ((this slack-thread-message-buffer))
