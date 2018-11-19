@@ -88,12 +88,13 @@
     (slack-user-name user team)))
 
 (defun slack-im-names (team)
-  (with-slots (ims) team
-    (slack-room-names ims
+  (cl-labels
+      ((filter (ims)
+               (cl-remove-if #'(lambda (im) (not (oref im is-open)))
+                             ims)))
+    (slack-room-names (oref team ims)
                       team
-                      #'(lambda (ims)
-                          (cl-remove-if #'(lambda (im) (not (oref im is-open)))
-                                        ims)))))
+                      #'filter)))
 
 (defmethod slack-room-buffer-name ((room slack-im) team)
   (concat slack-im-buffer-name
