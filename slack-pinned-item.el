@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-file)
 
 (defclass slack-pinned-item ()
   ((message :initarg :message)))
