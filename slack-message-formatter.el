@@ -32,6 +32,7 @@
 (require 'slack-usergroup)
 (require 'slack-thread)
 (require 'slack-file)
+(require 'slack-attachment)
 
 (defvar slack-current-buffer)
 (defvar slack-channel-button-keymap)
@@ -463,6 +464,57 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (list from to cc subject date body)
                "\n")))
 
+(defmethod slack-message-to-string ((attachment slack-attachment) team)
+  (with-slots
+      (fallback text ts color from-url footer fields pretext actions) attachment
+    (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
+           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
+                    pad-raw))
+           (header-raw (slack-attachment-header attachment))
+           (header (and (not (slack-string-blankp header-raw))
+                        (format "%s\t%s" pad
+                                (propertize header-raw
+                                            'face 'slack-attachment-header))))
+           (pretext (and pretext (format "%s\t%s" pad pretext)))
+           (body (and text (format "%s\t%s" pad (mapconcat #'identity
+                                                           (split-string text "\n")
+                                                           (format "\n\t%s\t" pad)))))
+           (fields (if fields (mapconcat #'(lambda (field)
+                                             (slack-attachment-field-to-string field
+                                                                               (format "\t%s" pad)))
+                                         fields
+                                         (format "\n\t%s\n" pad))))
+           (actions (if actions
+                        (format "%s\t%s"
+                                pad
+                                (mapconcat #'(lambda (action)
+                                               (slack-attachment-action-to-string
+                                                action
+                                                attachment
+                                                team))
+                                           actions
+                                           " "))))
+           (footer (if footer
+                       (format "%s\t%s"
+                               pad
+                               (propertize
+                                (format "%s%s" footer
+                                        (or (and ts (format "|%s" (slack-message-time-to-string ts)))
+                                            ""))
+                                'face 'slack-attachment-footer))))
+           (image (slack-image-string (slack-image-spec attachment)
+                                      (format "\t%s\t" pad))))
+      (slack-message-unescape-string
+       (slack-format-message
+        (or (and header (format "\t%s\n" header)) "")
+        (or (and pretext (format "\t%s\n" pretext)) "")
+        (or (and body (format "\t%s" body)) "")
+        (or (and fields fields) "")
+        (or (and actions (format "\t%s" actions)) "")
+        (or (and footer (format "\n\t%s" footer)) "")
+        (or (and image (< 0 (length image))
+                 (format "\n\t%s\t%s" pad image)) ""))
+       team))))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here
