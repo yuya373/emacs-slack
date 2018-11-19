@@ -32,6 +32,12 @@
 (require 'slack-request)
 (require 'slack-action)
 
+(defvar slack-channel-button-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-message-display-room)
+    (define-key keymap [mouse-1] #'slack-message-display-room)
+    keymap))
+
 (defface slack-new-message-marker-face
   '((t (:foreground "#d33682"
                     :weight bold
@@ -130,6 +136,14 @@
           (slack-buffer-update-marker-overlay this))))
 
     buffer))
+
+(defmethod slack-thread-title ((thread slack-thread) team)
+  (with-slots (root) thread
+    (let ((room (slack-room-find (oref root channel) team))
+          (body (slack-message-body root team)))
+      (when room
+        (format "%s - %s" (slack-room-name room team)
+                (concat (substring body 0 (min 50 (length body))) "..."))))))
 
 (defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
   (with-slots (room team) this
@@ -769,6 +783,15 @@
   (interactive)
   (slack-buffer-remove-reaction-from-message slack-current-buffer
                                              (slack-get-ts)))
+
+(defun slack-message-display-room ()
+  (interactive)
+  (slack-if-let*
+      ((buffer slack-current-buffer)
+       (team (oref buffer team))
+       (room-id (get-text-property (point) 'room-id))
+       (room (slack-room-find room-id team)))
+      (slack-room-display room team)))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

@@ -29,6 +29,12 @@
 (require 'slack-user)
 (require 'slack-room)
 (require 'slack-message)
+(require 'slack-usergroup)
+(require 'slack-thread)
+(require 'slack-file)
+
+(defvar slack-current-buffer)
+(defvar slack-channel-button-keymap)
 
 (defface slack-profile-image-face
   '((t ()))
@@ -78,12 +84,6 @@
   "Face used to attachment field title."
   :group 'slack)
 
-(defvar slack-channel-button-keymap
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "RET") #'slack-message-display-room)
-    (define-key keymap [mouse-1] #'slack-message-display-room)
-    keymap))
-
 (defface slack-channel-button-face
   '((t (:underline t :foreground "cyan")))
   "Face used to channel button."
@@ -103,6 +103,7 @@
   "Date formats for Slack's date token.
 this format string passed to `format-time-string' function.
 see \"Formatting dates\" section in https://api.slack.com/docs/message-formatting"
+  :type '(repeat (cons symbol string))
   :group 'slack)
 
 (defun slack-message-put-header-property (header)
@@ -181,23 +182,22 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                  " "))))
 
 (defmethod slack-message-to-string ((m slack-message) team)
-  (let ((text (if (slot-boundp m 'text) (oref m text))))
-    (let* ((header (slack-message-header-to-string m team))
-           (attachment-body (slack-message-attachment-body m team))
-           (body (slack-message-body-to-string m team))
-           (files (mapconcat #'(lambda (file)
-                                 (format "%s\n"
-                                         (slack-message-to-string file
-                                                                  (slack-ts m)
-                                                                  team)))
-                             (oref m files) "\n"))
-           (reactions (slack-message-reaction-to-string m))
-           (thread (slack-thread-to-string m team)))
-      (slack-format-message (propertize header
-                                        'slack-message-header t)
-                            body
-                            files
-                            attachment-body reactions thread))))
+  (let* ((header (slack-message-header-to-string m team))
+         (attachment-body (slack-message-attachment-body m team))
+         (body (slack-message-body-to-string m team))
+         (files (mapconcat #'(lambda (file)
+                               (format "%s\n"
+                                       (slack-message-to-string file
+                                                                (slack-ts m)
+                                                                team)))
+                           (oref m files) "\n"))
+         (reactions (slack-message-reaction-to-string m))
+         (thread (slack-thread-to-string m team)))
+    (slack-format-message (propertize header
+                                      'slack-message-header t)
+                          body
+                          files
+                          attachment-body reactions thread)))
 
 (defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
@@ -342,15 +342,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (replace-regexp-in-string command-regexp
                                 #'unescape-command
                                 text nil t))))
-
-(defun slack-message-display-room ()
-  (interactive)
-  (slack-if-let*
-      ((buffer slack-current-buffer)
-       (team (oref buffer team))
-       (room-id (get-text-property (point) 'room-id))
-       (room (slack-room-find room-id team)))
-      (slack-room-display room team)))
 
 (defun slack-message-unescape-channel (text team)
   (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))

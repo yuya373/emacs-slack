@@ -32,7 +32,6 @@
 (require 'slack-im)
 (require 'slack-message)
 (require 'slack-request)
-(require 'slack-message-formatter)
 
 (defvar slack-message-thread-status-keymap)
 ;; (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
@@ -168,14 +167,6 @@ Any other non-nil value: send to the room."
 ;;                       (cons "current_ts" (or ts (format-time-string "%s"))))
 ;;         :success #'on-success
 ;;         :sync sync)))))
-
-(defmethod slack-thread-title ((thread slack-thread) team)
-  (with-slots (root) thread
-    (let ((room (slack-room-find (oref root channel) team))
-          (body (slack-message-body root team)))
-      (when room
-        (format "%s - %s" (slack-room-name room team)
-                (concat (substring body 0 (min 50 (length body))) "..."))))))
 
 ;; (defun slack-thread-select (&optional reload)
 ;;   (interactive)
