@@ -26,7 +26,10 @@
 
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-request)
 (require 'slack-selectable)
+(require 'slack-team)
+(require 'slack-room)
 
 (defclass slack-dialog ()
   ((title :initarg :title :type string)
@@ -169,7 +172,7 @@
     (when (< (length value) min-length)
       (error "%s must be greater than %s" label min-length))))
 
-(defmethod slack-dialog-execute ((this slack-dialog-text-element) _dialog-id team)
+(defmethod slack-dialog-execute ((this slack-dialog-text-element) _dialog-id _team)
   (with-slots (hint value placeholder label optional) this
     (let* ((prompt (format "%s%s%s : "
                            label
@@ -179,7 +182,7 @@
       (slack-dialog-element-validate this value)
       value)))
 
-(defmethod slack-dialog-execute ((this slack-dialog-textarea-element) _dialog-id team)
+(defmethod slack-dialog-execute ((_this slack-dialog-textarea-element) _dialog-id _team)
   (call-next-method))
 
 (defmethod slack-dialog-select-element-get-suggestions ((this slack-dialog-select-element)
@@ -293,30 +296,6 @@
                                     (cons (oref element name) value)))
                               elements)))
       (slack-dialog--submit this dialog-id team submission))))
-
-(defun slack-dialog-get (id team)
-  (let ((url "https://slack.com/api/dialog.get")
-        (params (list (cons "dialog_id" id))))
-    (cl-labels
-        ((on-success (&key data &allow-other-keys)
-                     (slack-request-handle-error
-                      (data "slack-dialog-get")
-                      (slack-if-let*
-                          ((payload (plist-get data :dialog))
-                           (dialog (slack-dialog-create payload)))
-                          ;; (slack-dialog-submit dialog id team)
-                          (slack-buffer-display
-                           (slack-create-dialog-buffer id
-                                                       dialog
-                                                       team))
-                        ))))
-      (slack-request
-       (slack-request-create
-        url
-        team
-        :type "POST"
-        :params params
-        :success #'on-success)))))
 
 (defmethod slack-dialog-notify-cancel ((this slack-dialog) dialog-id team)
   (slack-if-let* ((url "https://slack.com/api/dialog.notifyCancel")

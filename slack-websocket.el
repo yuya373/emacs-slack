@@ -30,7 +30,7 @@
 (require 'slack-team-ws)
 (require 'slack-reply)
 (require 'slack-file)
-(require 'slack-dialog)
+(require 'slack-dialog-buffer)
 (require 'slack-user)
 (require 'slack-group)
 (require 'slack-channel)

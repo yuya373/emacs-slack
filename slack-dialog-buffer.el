@@ -25,6 +25,7 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-request)
 (require 'slack-buffer)
 (require 'slack-dialog)
 
@@ -373,6 +374,30 @@
           (when (and (< (point-min) cur-point)
                      (< cur-point (point-max)))
             (goto-char cur-point))))))
+
+(defun slack-dialog-get (id team)
+  (let ((url "https://slack.com/api/dialog.get")
+        (params (list (cons "dialog_id" id))))
+    (cl-labels
+        ((on-success (&key data &allow-other-keys)
+                     (slack-request-handle-error
+                      (data "slack-dialog-get")
+                      (slack-if-let*
+                          ((payload (plist-get data :dialog))
+                           (dialog (slack-dialog-create payload)))
+                          ;; (slack-dialog-submit dialog id team)
+                          (slack-buffer-display
+                           (slack-create-dialog-buffer id
+                                                       dialog
+                                                       team))
+                        ))))
+      (slack-request
+       (slack-request-create
+        url
+        team
+        :type "POST"
+        :params params
+        :success #'on-success)))))
 
 (provide 'slack-dialog-buffer)
 ;;; slack-dialog-buffer.el ends here
