@@ -23,12 +23,11 @@
 ;;
 
 ;;; Code:
-
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-util)
-(require 'slack-buffer)
 (require 'slack-request)
+(require 'slack-buffer)
 
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
@@ -46,6 +45,7 @@
 (defconst slack-group-info-url "https://slack.com/api/groups.info")
 
 (defvar slack-buffer-function)
+(defvar slack-completing-read-function)
 
 (defclass slack-group (slack-room)
   ((is-group :initarg :is_group :initform nil)
@@ -80,16 +80,6 @@
   (concat slack-group-buffer-name
           " : "
           (slack-room-display-name room team)))
-
-(defun slack-group-select ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         for groups = (oref team groups)
-                         nconc groups)
-                team)))
-    (slack-room-display room team)))
 
 (defun slack-group-list-update (&optional team after-success)
   (interactive)
@@ -195,8 +185,9 @@
                           (cl-remove-if-not #'slack-room-archived-p
                                             groups)))))))
     (cl-labels
-        ((on-group-unarchive (&key _data &allow-other-keys)
-                             (data "slack-group-unarchive")))
+        ((on-group-unarchive (&key data &allow-other-keys)
+                             (slack-request-handle-error
+                              (data "slack-group-unarchive"))))
       (slack-room-request-with-id slack-group-unarchive-url
                                   (oref group id)
                                   team

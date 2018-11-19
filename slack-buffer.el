@@ -259,6 +259,8 @@
   (slack-buffer-cant-execute this))
 (defmethod slack-buffer-send-message ((this slack-buffer) _message)
   (slack-buffer-cant-execute this))
+(defmethod slack-buffer-room ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defvar lui-prompt-string "> ")
 

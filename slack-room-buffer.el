@@ -45,6 +45,9 @@
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
 
+(defmethod slack-buffer-room ((this slack-room-buffer))
+  (oref this room))
+
 (defun slack-message--add-reaction (buf reaction)
   (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
 

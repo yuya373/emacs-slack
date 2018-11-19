@@ -35,6 +35,8 @@
 (declare-function slack-team-name "slack-team")
 ;; (require 'slack-file)
 (declare-function slack-file-room-obj "slack-file")
+;; (require 'slack-buffer)
+(declare-function slack-buffer-room "slack-buffer")
 
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
@@ -277,14 +279,14 @@
                       (cons "name" name))
         :success #'on-rename-success)))))
 
-(defmacro slack-current-room-or-select (room-alist-func &optional select)
-  `(if (and (not ,select)
-            (bound-and-true-p slack-current-buffer)
-            (slot-boundp slack-current-buffer 'room))
-       (oref slack-current-buffer room)
-     (let* ((room-alist (funcall ,room-alist-func)))
-       (slack-select-from-list
-           (room-alist "Select Channel: ")))))
+(defun slack-current-room-or-select (room-alist-func &optional select)
+  (if (and (not select)
+           (bound-and-true-p slack-current-buffer)
+           (slot-boundp slack-current-buffer 'room))
+      (slack-buffer-room slack-current-buffer)
+    (let* ((room-alist (funcall room-alist-func)))
+      (slack-select-from-list
+          (room-alist "Select Channel: ")))))
 
 (defmacro slack-room-invite (url room-alist-func)
   `(cl-labels
