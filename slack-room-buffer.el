@@ -253,5 +253,15 @@ Execute this function when cursor is on some message."
       (let ((message (slack-room-find-message room ts)))
         (slack-message-notify message room team)))))
 
+(defun slack--get-channel-id ()
+  (interactive)
+  (with-current-buffer (current-buffer)
+    (slack-if-let* ((buffer slack-current-buffer)
+                    (boundp (slot-boundp buffer 'room))
+                    (room (oref buffer room)))
+        (progn
+          (kill-new (oref room id))
+          (message "%s" (oref room id))))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

@@ -45,6 +45,14 @@
               (oref file name)
               (oref file id))))
 
+(defmethod slack-buffer-display-file ((this slack-buffer) file-id)
+  (with-slots (team) this
+    (cl-labels
+        ((open (file _)
+               (slack-buffer-display
+                (slack-create-file-info-buffer team file))))
+      (slack-file-request-info file-id 1 team #'open))))
+
 (defun slack-create-file-info-buffer (team file)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                              file
