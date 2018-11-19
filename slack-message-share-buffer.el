@@ -27,6 +27,9 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room-buffer)
+(require 'slack-message-compose-buffer)
+(require 'slack-message-edit-buffer)
+(require 'slack-message-editor)
 
 (define-derived-mode slack-message-share-buffer-mode
   slack-message-compose-buffer-mode
@@ -45,7 +48,7 @@
 (defmethod slack-buffer-find :static ((class slack-message-share-buffer) room ts team)
   (slack-buffer-find-4 class room ts team))
 
-(defmethod slack-buffer-name :static ((class slack-message-share-buffer) room ts team)
+(defmethod slack-buffer-name :static ((_class slack-message-share-buffer) room ts team)
   (format "*Slack - %s : %s  Share Message - %s"
           (oref team name)
           (slack-room-name room team)
