@@ -34,7 +34,9 @@
 (require 'slack-message)
 (require 'slack-channel)
 (require 'slack-slash-commands)
+(require 'slack-conversations)
 
+(defvar slack-completing-read-function)
 (defvar slack-message-minibuffer-local-map nil)
 (defvar slack-buffer-function)
 
