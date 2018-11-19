@@ -32,6 +32,7 @@
 (require 'slack-request)
 
 (defvar slack-buffer-function)
+(defvar slack-completing-read-function)
 
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
@@ -68,16 +69,6 @@
 
 (defmethod slack-room-member-p ((room slack-channel))
   (oref room is-member))
-
-(defun slack-channel-select ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         for channels = (oref team channels)
-                         nconc channels)
-                team)))
-    (slack-room-display room team)))
 
 (defun slack-channel-list-update (&optional team after-success)
   (interactive)
