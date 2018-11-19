@@ -32,6 +32,7 @@
 (defconst slack-message-write-buffer-name "*Slack - Write message*")
 (defconst slack-message-share-buffer-name "*Slack - Share message*")
 (defconst slack-share-url "https://slack.com/api/chat.shareMessage")
+(defvar slack-completing-read-function)
 (defvar slack-buffer-function)
 (defvar slack-target-ts)
 (make-local-variable 'slack-target-ts)
