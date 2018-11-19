@@ -26,6 +26,7 @@
 
 (require 'eieio)
 (require 'slack-buffer)
+(require 'slack-message-editor)
 
 (define-derived-mode slack-message-compose-buffer-mode
   slack-edit-message-mode
