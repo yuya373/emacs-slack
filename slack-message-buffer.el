@@ -31,7 +31,13 @@
 (require 'slack-buffer)
 (require 'slack-request)
 (require 'slack-action)
+(require 'slack-message-sender)
+(require 'slack-thread-message-buffer)
+(require 'slack-room-message-compose-buffer)
+(require 'slack-pinned-items-buffer)
+(require 'slack-user-profile-buffer)
 
+(defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "RET") #'slack-message-display-room)
@@ -169,10 +175,10 @@
         (error "Can't start thread from broadcasted message"))
       (slack-buffer-display buf))))
 
-(defmethod slack-buffer-major-mode ((this slack-message-buffer))
+(defmethod slack-buffer-major-mode ((_this slack-message-buffer))
   'slack-message-buffer-mode)
 
-(defmethod slack-buffer-visible-message-p ((this slack-message-buffer) message)
+(defmethod slack-buffer-visible-message-p ((_this slack-message-buffer) message)
   (or (not (slack-thread-message-p message))
       (slack-reply-broadcast-message-p message)))
 
@@ -488,8 +494,6 @@
 (defmethod slack-buffer-insert ((this slack-message-buffer) message
                                 &optional not-tracked-p prev-message)
   (let* ((lui-time-stamp-time (slack-message-time-stamp message))
-         (room (oref this room))
-         (team (oref this team))
          (ts (slack-ts message))
          (prev (or prev-message (slack-buffer-prev-message this message)))
          (merge-message-p (slack-buffer-merge-message-p this message prev))
@@ -587,8 +591,8 @@
         (slack-buffer-update-mark buffer))))
 
 (defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
-                                                 window
-                                                 prev-point
+                                                 _window
+                                                 _prev-point
                                                  type)
   (cond
    ((eq type'entered)
