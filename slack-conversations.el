@@ -26,6 +26,9 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
+(require 'slack-channel)
+
+(defvar slack-completing-read-function)
 
 (defconst slack-conversations-archive-url
   "https://slack.com/api/conversations.archive")
