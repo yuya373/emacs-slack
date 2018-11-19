@@ -32,6 +32,11 @@
 (require 'slack-message-formatter)
 (require 'slack-message-reaction)
 
+(defvar slack-file-link-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-file-display)
+    map))
+
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
   (add-hook 'lui-post-output-hook 'slack-display-image t t))
 
@@ -152,6 +157,23 @@
       (with-current-buffer buffer
         (let ((inhibit-read-only t))
           (slack-buffer-insert this))))))
+
+(defun slack-file-update ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (file (oref buf file))
+                  (team (oref buf file))
+                  (page (oref file page)))
+      (slack-file-request-info
+       file page team
+       #'(lambda (file team)
+           (slack-redisplay file team)))))
+
+(defun slack-file-display ()
+  (interactive)
+  (slack-if-let* ((id (get-text-property (point) 'file))
+                  (buf slack-current-buffer))
+      (slack-buffer-display-file buf id)))
 
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

@@ -24,12 +24,12 @@
 
 ;;; Code:
 
-(require 'eieio)
 (require 'slack-util)
 (require 'slack-room)
 (require 'slack-request)
 (require 'slack-buffer)
 
+(defvar slack-file-link-keymap)
 (defvar slack-default-directory)
 (defvar slack-completing-read-function)
 (defvar slack-current-buffer)
@@ -324,16 +324,6 @@
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
-(defun slack-file-update ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (with-slots (file team) buf
-        (slack-if-let* ((page (oref file page)))
-            (slack-file-request-info
-             file page team
-             #'(lambda (file team)
-                 (slack-redisplay file team)))))))
-
 (defun slack-file-comment-create (payload)
   (apply 'make-instance 'slack-file-comment
          (slack-collect-slots 'slack-file-comment payload)))
@@ -553,10 +543,7 @@
   (propertize text
               'file file-id
               'face '(:underline t :weight bold)
-              'keymap (let ((map (make-sparse-keymap)))
-                        (define-key map (kbd "RET")
-                          #'slack-file-display)
-                        map)))
+              'keymap slack-file-link-keymap))
 
 (defmacro slack-with-file (id team &rest body)
   (declare (indent 2) (debug t))
@@ -572,12 +559,6 @@
   ""
   (setq-local default-directory slack-default-directory)
   )
-
-(defun slack-file-display ()
-  (interactive)
-  (slack-if-let* ((id (get-text-property (point) 'file))
-                  (buf slack-current-buffer))
-      (slack-buffer-display-file buf id)))
 
 (defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
