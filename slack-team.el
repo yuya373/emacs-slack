@@ -26,7 +26,6 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-team-ws)
-(require 'slack-room)
 ;; (require 'slack-websocket)
 (declare-function slack-ws-send "slack-websocket")
 (declare-function slack-ws-open "slack-websocket")
@@ -34,6 +33,7 @@
 ;; (require 'slack)
 (declare-function slack-start "slack")
 
+(declare-function emojify-create-emojify-emojis "emojify")
 
 (defvar slack-teams nil)
 (defvar slack-current-team nil)
@@ -290,18 +290,6 @@ you can change current-team with `slack-change-current-team'"
   (with-slots (token) team
     (or (not token) (< (length token) 1))))
 
-(defun slack-team-get-unread-messages (team)
-  (cl-labels
-      ((count-unread (rooms)
-                     (cl-reduce #'(lambda (a e) (+ a (oref e unread-count-display)))
-                                rooms :initial-value 0)))
-    (with-slots (ims channels groups) team
-      (let ((rooms (append ims channels groups)))
-        (+ (count-unread (if slack-modeline-count-only-subscribed-channel
-                             (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
-                                               rooms)
-                           rooms)))))))
-
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
@@ -337,30 +325,6 @@ you can change current-team with `slack-change-current-team'"
         (setq message-id 1)
       (cl-incf message-id))))
 
-(defun slack-select-rooms ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         append (with-slots (groups ims channels) team
-                                  (append ims groups channels)))
-                team)))
-    (slack-room-display room team)))
-
-(defun slack-select-unread-rooms ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         append (with-slots (groups ims channels) team
-                                  (cl-remove-if
-                                   #'(lambda (room)
-                                       (not (< 0 (oref room
-                                                       unread-count-display))))
-                                   (append ims groups channels))))
-                team)))
-    (slack-room-display room team)))
-
 (defun slack-team-watch-emoji-download-complete (team paths)
   (if (eq (length (cl-remove-if #'identity (mapcar #'file-exists-p paths)))
           0)
@@ -371,6 +335,19 @@ you can change current-team with `slack-change-current-team'"
 
 (defmethod slack-team-token ((this slack-team))
   (oref this token))
+
+(defun slack-file-room-obj (team)
+  (with-slots (file-room) team
+    (if file-room
+        file-room
+      (setq file-room (slack-file-room "file-room"
+                                       :name "Files"
+                                       :id "F"
+                                       :created (format-time-string "%s")
+                                       :latest nil
+                                       :unread_count 0
+                                       :unread_count_display 0
+                                       :messages '())))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

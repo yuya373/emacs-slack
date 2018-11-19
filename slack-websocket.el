@@ -44,7 +44,7 @@
 (require 'slack-message-buffer)
 (require 'slack-authorize)
 (require 'slack-typing)
-(require 'slack-star)
+(require 'slack-stars-buffer)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 

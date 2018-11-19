@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'alert)
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
@@ -32,8 +33,10 @@
 (require 'slack-team)
 (require 'slack-buffer)
 (require 'slack-message-reaction)
+(require 'slack-thread)
 
 (defvar slack-completing-read-function)
+(defvar slack-alert-icon)
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
@@ -188,6 +191,41 @@
         team
         :type "POST"
         :success #'on-success-list)))))
+
+(defmethod slack-message-deleted ((message slack-message) room team)
+  (if (slack-thread-message-p message)
+      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
+                      (thread (slack-message-get-thread parent)))
+          (progn
+            (slack-thread-delete-message thread message)
+            (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
+                                                       room
+                                                       (oref thread thread-ts)
+                                                       team)))
+                (slack-buffer-message-delete buffer (slack-ts message)))
+            (slack-message-update parent team t)))
+    (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
+                                            room
+                                            team)))
+        (slack-buffer-message-delete buf (slack-ts message))))
+
+  (if slack-message-custom-delete-notifier
+      (funcall slack-message-custom-delete-notifier message room team)
+    (alert "message deleted"
+           :icon slack-alert-icon
+           :title (format "\\[%s] from %s"
+                          (slack-room-display-name room team)
+                          (slack-message-sender-name message team))
+           :category 'slack)))
+
+(defun slack-message-delete ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-delete-message buf (slack-get-ts))))
+
+(defun slack-message-copy-link ()
+  (interactive)
+  (slack-buffer-copy-link slack-current-buffer (slack-get-ts)))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

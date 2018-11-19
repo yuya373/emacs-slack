@@ -132,6 +132,19 @@
                              teams)))
       (force-mode-line-update))))
 
+(defun slack-team-get-unread-messages (team)
+  (cl-labels
+      ((count-unread (rooms)
+                     (cl-reduce #'(lambda (a e) (+ a (oref e unread-count-display)))
+                                rooms :initial-value 0)))
+    (with-slots (ims channels groups) team
+      (let ((rooms (append ims channels groups)))
+        (+ (count-unread (if slack-modeline-count-only-subscribed-channel
+                             (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
+                                               rooms)
+                           rooms)))))))
+
+
 (defun slack-message-test-notification ()
   "Debug notification.
 Execute this function when cursor is on some message."

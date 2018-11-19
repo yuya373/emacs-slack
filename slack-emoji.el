@@ -25,7 +25,6 @@
 ;;; Code:
 (require 'slack-request)
 
-(declare-function emojify-create-emojify-emojis "emojify")
 (declare-function emojify-get-emoji "emojify")
 (declare-function emojify-image-dir "emojify")
 (defvar emojify-user-emojis)

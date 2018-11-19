@@ -149,15 +149,6 @@
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
 
-(defmethod slack-message-thread ((this slack-message) _room)
-  (oref this thread))
-
-(defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
-  (let ((message (slack-room-find-message room
-                                          (or (oref this broadcast-thread-ts)
-                                              (oref this thread-ts)))))
-    (slack-message-thread message room)))
-
 (defun slack-room-find-thread (room ts)
   (let ((message (slack-room-find-message room ts)))
     (when message
@@ -395,6 +386,27 @@
 
 (defmethod slack-room-member-p ((_this slack-room))
   t)
+
+(defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
+  (let ((message (slack-room-find-message room
+                                          (or (oref this broadcast-thread-ts)
+                                              (oref this thread-ts)))))
+    (slack-message-thread message room)))
+
+(defun slack-room-find (id team)
+  (if (and id team)
+      (cl-labels ((find-room (room)
+                             (string= id (oref room id))))
+        (cond
+         ((string-prefix-p "F" id) (slack-file-room-obj team))
+         ((string-prefix-p "C" id) (cl-find-if #'find-room
+                                               (oref team channels)))
+         ((string-prefix-p "G" id) (cl-find-if #'find-room
+                                               (oref team groups)))
+         ((string-prefix-p "D" id) (cl-find-if #'find-room
+                                               (oref team ims)))
+         ((string-prefix-p "Q" id) (cl-find-if #'find-room
+                                               (oref team search-results)))))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

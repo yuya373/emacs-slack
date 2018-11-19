@@ -233,12 +233,6 @@
    (is-intro :initarg :is_intro)
    (comment :initarg :comment :type string)))
 
-(defmethod slack-merge ((old slack-reaction) new)
-  (with-slots (count users) old
-    (setq count (oref new count))
-    (setq users (cl-remove-duplicates (append users (oref new users))
-                                      :test #'string=))))
-
 (defmethod slack-merge ((old string) _new) old)
 (defmethod slack-equalp ((old string) new) (string= old new))
 

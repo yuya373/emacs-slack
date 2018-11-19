@@ -28,6 +28,7 @@
 (require 'slack-util)
 (require 'slack-user)
 (require 'slack-room)
+(require 'slack-message)
 
 (defface slack-profile-image-face
   '((t ()))
@@ -368,6 +369,24 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (replace-regexp-in-string channel-regexp
                                 #'unescape-channel
                                 text t))))
+
+(defmethod slack-message--inspect ((this slack-message) room team)
+  (format "RAW: %s\nROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+          (oref this text)
+          (oref room id)
+          (eieio-object-class this)
+          (length (oref this attachments))
+          (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
+                                      (slack-message-unescape-channel
+                                       (oref e title)
+                                       team)
+                                      (oref e pretext)
+                                      (oref e text)))
+                  (oref this attachments))
+          (length (oref this files))
+          (mapcar (lambda (e) (format "(TITLE: %s)"
+                                      (oref e title)))
+                  (oref this files))))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here

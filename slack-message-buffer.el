@@ -660,5 +660,104 @@
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
 
+(defun slack-select-unread-rooms ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (cl-remove-if
+                                   #'(lambda (room)
+                                       (not (< 0 (oref room
+                                                       unread-count-display))))
+                                   (append ims groups channels))))
+                team)))
+    (slack-room-display room team)))
+
+(defun slack-select-rooms ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (room (slack-room-select
+                (cl-loop for team in (list team)
+                         append (with-slots (groups ims channels) team
+                                  (append ims groups channels)))
+                team)))
+    (slack-room-display room team)))
+
+(defun slack-message-inspect ()
+  (interactive)
+  (slack-if-let* ((ts (slack-get-ts))
+                  (buffer slack-current-buffer))
+      (with-slots (room team) buffer
+        (slack-if-let* ((message (slack-room-find-message room ts))
+                        (text (slack-message--inspect message room team)))
+            (message "%s" text)))))
+
+(defun slack-message-update-mark ()
+  "Update Channel's last-read marker to this message."
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-update-mark buffer :force t)))
+
+(defmethod slack-thread-message-update-buffer ((message slack-message)
+                                               room team replace old-message)
+  (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
+      (progn
+        (slack-room-update-buffer room team parent t)
+        (when (slack-reply-broadcast-message-p message)
+          (let* ((replace (if old-message
+                              (slack-reply-broadcast-message-p old-message)
+                            replace)))
+            (slack-room-update-buffer room team message replace)))
+        (slack-if-let* ((thread (slack-message-get-thread parent))
+                        (buf (slack-buffer-find 'slack-thread-message-buffer
+                                                room
+                                                (oref thread thread-ts)
+                                                team)))
+            (slack-buffer-update buf message :replace replace)))))
+
+(defmethod slack-message-update ((message slack-message) team &optional replace no-notify old-message)
+  (slack-if-let*
+      ((room (slack-room-find (oref message channel) team))
+       (ts (slack-ts message))
+       (no-same-message (if replace t
+                          (not (slack-room-find-message room ts)))))
+
+      (progn
+        (slack-room-push-message room message)
+        (slack-room-update-latest room message)
+
+        (if (or (slack-thread-message-p message)
+                (slack-reply-broadcast-message-p message))
+            (slack-thread-message-update-buffer message
+                                                room
+                                                team
+                                                replace
+                                                old-message)
+          (slack-room-update-buffer room team message replace)
+          (slack-room-inc-unread-count room))
+
+        (unless no-notify
+          (slack-message-notify message room team))
+        (slack-update-modeline))))
+
+(defun slack-message-remove-star ()
+  (interactive)
+  (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))
+
+(defun slack-message-add-star ()
+  (interactive)
+  (slack-buffer-add-star slack-current-buffer (slack-get-ts)))
+
+(defun slack-message-pins-add ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-pins-add buf (slack-get-ts))))
+
+(defun slack-message-pins-remove ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-pins-remove buf (slack-get-ts))))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
