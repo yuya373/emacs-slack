@@ -30,6 +30,7 @@
 (require 'request)
 (require 'slack-util)
 (declare-function slack-team-token "slack-team")
+(require 'slack-log)
 
 (defcustom slack-request-timeout 10
   "Request Timeout in seconds."
@@ -121,7 +122,7 @@
                                               url
                                               params)
                                       team))
-                       (slack-log (format "Request Failed. URL: %s, PARAMS: %s, ERROR-THROWN: %s, SYMBOL-STATUS: %s, DATA: %s"
+                       (slack-log (format "REQUEST FAILED. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
                                           url
                                           params
                                           error-thrown
@@ -273,6 +274,84 @@
                          (length to-remove)
                          (length new-queue))
                  team :level 'debug))))
+
+(cl-defun slack-url-copy-file (url newname &key (success nil) (error nil) (sync nil) (token nil))
+  (if (executable-find "curl")
+      (slack-curl-downloader url newname
+                             :success success
+                             :error error
+                             :token token)
+    (cl-labels
+        ((on-success (&key _data &allow-other-keys)
+                     (when (functionp success) (funcall success)))
+         (on-error (&key error-thrown symbol-status response _data)
+                   (message "Error Fetching Image: %s %s %s, url: %s"
+                            (request-response-status-code response)
+                            error-thrown symbol-status url)
+                   (if (file-exists-p newname)
+                       (delete-file newname))
+                   (cl-case (request-response-status-code response)
+                     (403 nil)
+                     (404 nil)
+                     (t (when (functionp error)
+                          (funcall error
+                                   (request-response-status-code response)
+                                   error-thrown
+                                   symbol-status
+                                   url)))))
+         (parser () (mm-write-region (point-min) (point-max)
+                                     newname nil nil nil 'binary t)))
+      (let* ((url-obj (url-generic-parse-url url))
+             (need-token-p (and url-obj
+                                (string-match-p "slack"
+                                                (url-host url-obj))))
+             (use-https-p (and url-obj
+                               (string= "https" (url-type url-obj)))))
+        (request
+         url
+         :success #'on-success
+         :error #'on-error
+         :parser #'parser
+         :sync sync
+         :headers (if (and token use-https-p need-token-p)
+                      (list (cons "Authorization" (format "Bearer %s" token)))))))))
+
+(cl-defun slack-curl-downloader (url name &key (success nil) (error nil) (token nil))
+  (cl-labels
+      ((sentinel (proc event)
+                 (cond
+                  ((string-equal "finished\n" event)
+                   (when (functionp success) (funcall success)))
+                  (t
+                   (let ((status (process-status proc))
+                         (output (with-current-buffer (process-buffer proc)
+                                   (buffer-substring-no-properties (point-min)
+                                                                   (point-max)))))
+                     (if (functionp error)
+                         (funcall error status output url name)
+                       (message "Download Failed. STATUS: %s, EVENT: %s, URL: %s, NAME: %s, OUTPUT: %s"
+                                status
+                                event
+                                url
+                                name
+                                output))
+                     (if (file-exists-p name)
+                         (delete-file name))
+                     (delete-process proc))))))
+    (let* ((url-obj (url-generic-parse-url url))
+           (need-token-p (and url-obj
+                              (string-match-p "slack" (url-host url-obj))))
+           (header (or (and token
+                            need-token-p
+                            (string-prefix-p "https" url)
+                            (format "-H 'Authorization: Bearer %s'" token))
+                       ""))
+           (output (format "--output '%s'" name))
+           (command (format "curl --silent --show-error --fail --location %s %s '%s'" output header url))
+           (proc (start-process-shell-command "slack-curl-downloader"
+                                              "slack-curl-downloader"
+                                              command)))
+      (set-process-sentinel proc #'sentinel))))
 
 (provide 'slack-request)
 ;;; slack-request.el ends here

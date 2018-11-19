@@ -29,6 +29,7 @@
 (require 'slack-buffer)
 (require 'slack-user)
 (require 'slack-im)
+(require 'slack-image)
 
 (defvar slack-completing-read-function)
 (define-derived-mode slack-user-profile-buffer-mode slack-buffer-mode "Slack User Profile")

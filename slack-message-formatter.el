@@ -33,6 +33,7 @@
 (require 'slack-thread)
 (require 'slack-file)
 (require 'slack-attachment)
+(require 'slack-image)
 
 (defvar slack-current-buffer)
 (defvar slack-channel-button-keymap)

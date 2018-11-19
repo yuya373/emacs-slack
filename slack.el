@@ -72,6 +72,8 @@
 (when (featurep 'helm)
   (require 'helm-slack))
 
+(require 'slack-company)
+
 (defgroup slack nil
   "Emacs Slack Client"
   :prefix "slack-"

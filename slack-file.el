@@ -28,6 +28,7 @@
 (require 'slack-room)
 (require 'slack-request)
 (require 'slack-buffer)
+(require 'slack-image)
 
 (defvar slack-file-link-keymap)
 (defvar slack-default-directory)

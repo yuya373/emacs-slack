@@ -29,6 +29,7 @@
 (require 'lui)
 (require 'slack-util)
 (require 'slack-room)
+(require 'slack-image)
 (declare-function emojify-mode "emojify")
 
 (defvar slack-buffer-function)

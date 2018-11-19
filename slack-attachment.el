@@ -29,6 +29,7 @@
 (require 'slack-selectable)
 (require 'slack-team)
 (require 'slack-room)
+(require 'slack-image)
 
 (defvar slack-attachment-action-keymap)
 (defvar slack-completing-read-function)

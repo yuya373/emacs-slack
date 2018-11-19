@@ -29,6 +29,7 @@
 (require 'slack-message-formatter)
 (require 'slack-util)
 (require 'slack-bot)
+(require 'slack-image)
 
 (defmethod slack-message-bot-id ((this slack-bot-message))
   (oref this bot-id))
