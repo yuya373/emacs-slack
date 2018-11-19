@@ -235,48 +235,50 @@
       (slack-dialog-buffer--submit buffer)))
 
 (defmethod slack-dialog-buffer--submit ((this slack-dialog-buffer))
-  (with-slots (dialog dialog-id team) this
-    (with-slots (elements) dialog
-      (dolist (element elements)
-        (let ((value (slack-dialog-element-value element)))
-          (slack-dialog-element-validate element value)))
-      (let ((params (mapcar #'(lambda (element)
-                                (cons (oref element name)
-                                      (slack-dialog-element-value element)))
-                            elements)))
-        (cl-labels
-            ((create-dialog-element-error
-              (payload)
-              (make-instance #'slack-dialog-element-error
-                             :name (plist-get payload :name)
-                             :error-message (plist-get payload :error)))
-             (set-dialog-element-error
-              (dialog-error elements)
-              (slack-if-let*
-                  ((element (cl-find-if #'(lambda (el)
-                                            (string= (oref el name)
-                                                     (oref dialog-error name)))
-                                        elements))
-                   (new-errors (cons dialog-error
-                                     (cl-remove-if #'(lambda (e)
-                                                       (string= (oref e name)
-                                                                (oref dialog-error
-                                                                      name)))
-                                                   (oref element errors)))))
-                  (oset element errors new-errors)))
-             (after-success
-              (data)
-              (slack-if-let* ((err (plist-get data :error)))
-                  (progn
-                    (oset dialog error-message err)
-                    (dolist (dialog-error (mapcar #'create-dialog-element-error
-                                                  (plist-get data :dialog_errors)))
-                      (set-dialog-element-error dialog-error elements))
+  (let* ((dialog (oref this dialog))
+         (dialog-id (oref this dialog-id))
+         (team (oref this team))
+         (elements (oref dialog elements)))
+    (dolist (element elements)
+      (let ((value (slack-dialog-element-value element)))
+        (slack-dialog-element-validate element value)))
+    (let ((params (mapcar #'(lambda (element)
+                              (cons (oref element name)
+                                    (slack-dialog-element-value element)))
+                          elements)))
+      (cl-labels
+          ((create-dialog-element-error
+            (payload)
+            (make-instance #'slack-dialog-element-error
+                           :name (plist-get payload :name)
+                           :error-message (plist-get payload :error)))
+           (set-dialog-element-error
+            (dialog-error elements)
+            (slack-if-let*
+                ((element (cl-find-if #'(lambda (el)
+                                          (string= (oref el name)
+                                                   (oref dialog-error name)))
+                                      elements))
+                 (new-errors (cons dialog-error
+                                   (cl-remove-if #'(lambda (e)
+                                                     (string= (oref e name)
+                                                              (oref dialog-error
+                                                                    name)))
+                                                 (oref element errors)))))
+                (oset element errors new-errors)))
+           (after-success
+            (data)
+            (slack-if-let* ((err (plist-get data :error)))
+                (progn
+                  (oset dialog error-message err)
+                  (dolist (dialog-error (mapcar #'create-dialog-element-error
+                                                (plist-get data :dialog_errors)))
+                    (set-dialog-element-error dialog-error elements))
 
-                    (slack-dialog-buffer-redisplay this))
-                (slack-dialog-buffer-kill-buffer this))))
-          (slack-dialog-clear-errors dialog)
-          (slack-dialog--submit dialog dialog-id team params #'after-success))))))
+                  (slack-dialog-buffer-redisplay this))
+              (slack-dialog-buffer-kill-buffer this))))
+        (slack-dialog-clear-errors dialog)
+        (slack-dialog--submit dialog dialog-id team params #'after-success)))))
 
 (defun slack-dialog-buffer-cancel ()
   (interactive)
