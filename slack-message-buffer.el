@@ -759,5 +759,19 @@
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-pins-remove buf (slack-get-ts))))
 
+(defun slack-message--add-reaction (buf reaction)
+  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
+
+(defun slack-message-add-reaction ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (reaction (slack-message-reaction-input)))
+      (slack-message--add-reaction buf reaction)))
+
+(defun slack-message-remove-reaction ()
+  (interactive)
+  (slack-buffer-remove-reaction-from-message slack-current-buffer
+                                             (slack-get-ts)))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
