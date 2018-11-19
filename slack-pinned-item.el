@@ -37,7 +37,10 @@
 
 (defmethod slack-message-to-string ((this slack-pinned-item) team)
   (with-slots (message) this
-    (slack-message-to-string message team)))
+    (if (or (slack-file-p message)
+            (slack-file-email-p message))
+        (slack-message-to-string message (slack-ts message) team)
+      (slack-message-to-string message team))))
 
 (provide 'slack-pinned-item)
 ;;; slack-pinned-item.el ends here

@@ -27,13 +27,14 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room-buffer)
+(require 'slack-pinned-item)
 
 (define-derived-mode slack-pinned-items-buffer-mode slack-buffer-mode "Slack Pinned Items")
 
 (defclass slack-pinned-items-buffer (slack-room-buffer)
   ((items :initarg :items :type list)))
 
-(defmethod slack-buffer-name :static ((class slack-pinned-items-buffer) room team)
+(defmethod slack-buffer-name :static ((_class slack-pinned-items-buffer) _room _team)
   (format "%s %s" (call-next-method) "Pinned Items"))
 
 (defmethod slack-buffer-name ((this slack-pinned-items-buffer))
@@ -62,7 +63,7 @@
             (cl-loop for m in items
                      do (slack-buffer-insert this m t))
           (let ((inhibit-read-only t))
-            (insert "No Pinned Items")))))))
+            (lui-insert "No Pinned Items" t)))))))
 
 (defmethod slack-buffer-init-buffer ((this slack-pinned-items-buffer))
   (let* ((buf (call-next-method)))
@@ -75,7 +76,6 @@
     buf))
 
 (defun slack-create-pinned-items-buffer (room team items)
-
   (cl-labels
       ((create-item
         (item)
@@ -96,6 +96,11 @@
                                  :team team
                                  :items (mapcar #'create-item items)))))
 
+(defmethod slack-buffer--replace ((this slack-pinned-items-buffer) ts)
+  (with-slots (items) this
+    (slack-if-let* ((message (cl-find-if #'(lambda (m) (string= ts (slack-ts m)))
+                                         items)))
+        (slack-buffer-replace this message))))
 
 
 (provide 'slack-pinned-items-buffer)
