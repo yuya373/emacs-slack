@@ -25,6 +25,8 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-buffer)
+(require 'slack-dialog)
 (require 'slack-dialog-buffer)
 
 (defclass slack-dialog-edit-element-buffer (slack-buffer)
@@ -107,6 +109,15 @@
                              element
                              (oref this team))))
 
+(defun slack-dialog-buffer-open-edit-element-buffer ()
+  (interactive)
+  (slack-if-let*
+      ((element (get-text-property (point) 'slack-dialog-element))
+       (buffer slack-current-buffer)
+       (team (oref buffer team))
+       (edit-buffer (slack-create-dialog-element-edit-buffer
+                     buffer element team)))
+      (slack-buffer-display edit-buffer)))
 
 (provide 'slack-dialog-edit-element-buffer)
 ;;; slack-dialog-edit-element-buffer.el ends here

@@ -28,6 +28,8 @@
 (require 'slack-request)
 (require 'slack-buffer)
 (require 'slack-dialog)
+(declare-function slack-dialog-buffer-open-edit-element-buffer
+                  "slack-dialog-edit-element-buffer")
 
 (define-derived-mode slack-dialog-buffer-mode fundamental-mode "Slack Dialog Buffer"
   (setq-local default-directory slack-default-directory)
@@ -140,16 +142,6 @@
                       'face '(:box (:line-width 1 :style released-button))
                       'keymap slack-dialog-element-edit-button-map
                       'slack-dialog-element this)))
-
-(defun slack-dialog-buffer-open-edit-element-buffer ()
-  (interactive)
-  (slack-if-let*
-      ((element (get-text-property (point) 'slack-dialog-element))
-       (buffer slack-current-buffer)
-       (team (oref buffer team))
-       (edit-buffer (slack-create-dialog-element-edit-buffer
-                     buffer element team)))
-      (slack-buffer-display edit-buffer)))
 
 (defmethod slack-buffer-insert-placeholder ((this slack-dialog-text-element))
   (with-slots (placeholder) this

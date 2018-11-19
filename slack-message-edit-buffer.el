@@ -26,8 +26,10 @@
 
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-buffer)
 (require 'slack-message-compose-buffer)
 (require 'slack-message-editor)
+;; (require 'slack-message-buffer)
 
 (define-derived-mode slack-message-edit-buffer-mode
   slack-edit-message-mode
@@ -36,13 +38,6 @@
 (defclass slack-message-edit-buffer (slack-message-compose-buffer)
   ((room :initarg :room :type slack-room)
    (ts :initarg :ts :type string)))
-
-(defun slack-buffer-find-4 (class a b team)
-  (slack-if-let* ((buf (cl-find-if #'(lambda (buf)
-                                       (string= (buffer-name buf)
-                                                (slack-buffer-name class a b team)))
-                                   (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
 
 (defun slack-create-edit-message-buffer (room team ts)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-edit-buffer
@@ -89,7 +84,6 @@
         (progn
           (slack-message--edit (oref room id) team ts message)
           (call-next-method)))))
-
 
 (provide 'slack-message-edit-buffer)
 ;;; slack-message-edit-buffer.el ends here

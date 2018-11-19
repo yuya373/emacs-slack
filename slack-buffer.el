@@ -236,6 +236,13 @@
                 (slack-create-file-info-buffer team file))))
       (slack-file-request-info file-id 1 team #'open))))
 
+(defun slack-buffer-find-4 (class a b team)
+  (slack-if-let* ((buf (cl-find-if #'(lambda (buf)
+                                       (string= (buffer-name buf)
+                                                (slack-buffer-name class a b team)))
+                                   (slot-value team class))))
+      (with-current-buffer buf slack-current-buffer)))
+
 (defmethod slack-buffer-cant-execute ((this slack-buffer))
   (error "Can't execute this command from %s" (eieio-object-class-name this)))
 
