@@ -28,6 +28,9 @@
 (require 'slack-util)
 (require 'slack-buffer)
 (require 'slack-message)
+(require 'slack-file)
+(require 'slack-message-formatter)
+(require 'slack-message-reaction)
 
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
   (add-hook 'lui-post-output-hook 'slack-display-image t t))
@@ -35,7 +38,7 @@
 (defclass slack-file-info-buffer (slack-buffer)
   ((file :initarg :file :type slack-file)))
 
-(defmethod slack-buffer-name :static ((class slack-file-info-buffer) file team)
+(defmethod slack-buffer-name :static ((_class slack-file-info-buffer) file team)
   (format "*Slack - %s File: %s"
           (oref team name)
           (or (oref file title)
