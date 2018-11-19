@@ -33,6 +33,8 @@
 ;; (require 'slack-team)
 (declare-function slack-team-select "slack-team")
 (declare-function slack-team-name "slack-team")
+;; (require 'slack-file)
+(declare-function slack-file-room-obj "slack-file")
 
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)

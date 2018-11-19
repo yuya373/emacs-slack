@@ -336,18 +336,5 @@ you can change current-team with `slack-change-current-team'"
 (defmethod slack-team-token ((this slack-team))
   (oref this token))
 
-(defun slack-file-room-obj (team)
-  (with-slots (file-room) team
-    (if file-room
-        file-room
-      (setq file-room (slack-file-room "file-room"
-                                       :name "Files"
-                                       :id "F"
-                                       :created (format-time-string "%s")
-                                       :latest nil
-                                       :unread_count 0
-                                       :unread_count_display 0
-                                       :messages '())))))
-
 (provide 'slack-team)
 ;;; slack-team.el ends here
