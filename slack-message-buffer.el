@@ -759,9 +759,6 @@
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-pins-remove buf (slack-get-ts))))
 
-(defun slack-message--add-reaction (buf reaction)
-  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
-
 (defun slack-message-add-reaction ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)

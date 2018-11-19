@@ -34,6 +34,7 @@
 (require 'slack-buffer)
 (require 'slack-message-reaction)
 (require 'slack-thread)
+(require 'slack-message-notification)
 
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)
@@ -43,6 +44,9 @@
 
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
+
+(defun slack-message--add-reaction (buf reaction)
+  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
 
 (defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
   (let* ((reaction-users (oref reaction users))
@@ -226,6 +230,15 @@
 (defun slack-message-copy-link ()
   (interactive)
   (slack-buffer-copy-link slack-current-buffer (slack-get-ts)))
+
+(defun slack-message-test-notification ()
+  "Debug notification.
+Execute this function when cursor is on some message."
+  (interactive)
+  (let ((ts (slack-get-ts)))
+    (with-slots (room team) slack-current-buffer
+      (let ((message (slack-room-find-message room ts)))
+        (slack-message-notify message room team)))))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

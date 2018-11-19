@@ -30,11 +30,14 @@
 (require 'slack-buffer)
 (require 'slack-im)
 (require 'alert)
+(require 'slack-group)
+(require 'slack-thread)
 
 (defvar alert-default-style)
 
 (defcustom slack-message-custom-notifier nil
   "Custom notification function.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :type 'function
   :group 'slack)
 
 (defcustom slack-message-im-notification-title-format-function
@@ -64,6 +67,7 @@
 
 (defcustom slack-modeline-formatter #'slack-default-modeline-formatter
   "Format modeline with Arg '((team-name . unread-count))."
+  :type 'function
   :group 'slack)
 
 (defun slack-message-notify (message room team)
@@ -143,16 +147,6 @@
                              (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
                                                rooms)
                            rooms)))))))
-
-
-(defun slack-message-test-notification ()
-  "Debug notification.
-Execute this function when cursor is on some message."
-  (interactive)
-  (let ((ts (slack-get-ts)))
-    (with-slots (room team) slack-current-buffer
-      (let ((message (slack-room-find-message room ts)))
-        (slack-message-notify message room team)))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here
