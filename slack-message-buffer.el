@@ -797,5 +797,16 @@
        (room (slack-room-find room-id team)))
       (slack-room-display room team)))
 
+(defun slack-im-select ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (candidates (cl-loop for team in (list team)
+                              for ims = (cl-remove-if #'(lambda (im)
+                                                          (not (oref im is-open)))
+                                                      (oref team ims))
+                              nconc ims))
+         (room (slack-room-select candidates team)))
+    (slack-room-display room team)))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
