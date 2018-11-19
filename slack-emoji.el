@@ -27,6 +27,7 @@
 
 (declare-function emojify-get-emoji "emojify")
 (declare-function emojify-image-dir "emojify")
+(declare-function emojify-create-emojify-emojis "emojify")
 (defvar emojify-user-emojis)
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
