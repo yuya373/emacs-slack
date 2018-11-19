@@ -75,5 +75,11 @@
                      (equal (get-text-property (point) 'ts)
                             (slack-ts message)))))))
 
+(defun slack-file-list ()
+  (interactive)
+  (let* ((team (slack-team-select))
+         (room (slack-file-room-obj team)))
+    (slack-room-display room team)))
+
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here

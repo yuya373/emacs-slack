@@ -39,6 +39,12 @@
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)
 
+(defvar slack-expand-email-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET")
+      #'slack-buffer-toggle-email-expand)
+    map))
+
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
 
@@ -128,16 +134,20 @@
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-buffer-replace this message))))
 
-(defmethod slack-buffer-toggle-email-expand ((this slack-room-buffer) ts file-id)
-  (with-slots (room) this
-    (slack-if-let* ((message (slack-room-find-message room ts))
-                    (file (cl-find-if
-                           #'(lambda (e) (string= (oref e id)
-                                                  file-id))
-                           (oref message files))))
-        (progn
-          (oset file is-expanded (not (oref file is-expanded)))
-          (slack-buffer-update this message :replace t)))))
+(defun slack-buffer-toggle-email-expand ()
+  (interactive)
+  (let ((buffer slack-current-buffer))
+    (with-slots (room) buffer
+      (slack-if-let* ((file-id (get-text-property (point) 'id))
+                      (ts (get-text-property (point) 'ts))
+                      (message (slack-room-find-message room ts))
+                      (file (cl-find-if
+                             #'(lambda (e) (string= (oref e id)
+                                                    file-id))
+                             (oref message files))))
+          (progn
+            (oset file is-expanded (not (oref file is-expanded)))
+            (slack-buffer-update buffer message :replace t))))))
 
 ;; POST
 (defconst slack-actions-list-url "https://slack.com/api/apps.actions.list")
