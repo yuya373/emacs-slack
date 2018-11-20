@@ -27,6 +27,8 @@
 (require 'eieio)
 (require 'slack-util)
 
+(defvar slack-completing-read-function)
+
 (defclass slack-selectable ()
   (
    ;; one of users, channels, conversations, external or static
