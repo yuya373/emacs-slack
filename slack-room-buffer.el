@@ -172,15 +172,13 @@
     (cl-labels
         ((select
           (app-actions)
-          (let ((choices (mapcan
-                          #'(lambda (app)
-                              (mapcar #'(lambda (action)
-                                          (cons (format "%s - %s"
-                                                        (plist-get action :name)
-                                                        (plist-get app :app_name))
-                                                (cons app action)))
-                                      (plist-get app :actions)))
-                          app-actions)))
+          (let ((choices (cl-loop for app in app-actions
+                                  nconc (mapcar #'(lambda (action)
+                                                    (cons (format "%s - %s"
+                                                                  (plist-get action :name)
+                                                                  (plist-get app :app_name))
+                                                          (cons app action)))
+                                                (plist-get app :actions)))))
             (cdr (cl-assoc (funcall slack-completing-read-function
                                     "Select Action: " choices)
                            choices :test #'string=))))
