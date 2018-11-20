@@ -110,7 +110,7 @@
                             :level 'error)
                  nil)))))))
 
-(cl-defmethod slack-ws-close ((ws slack-team-ws) &optional team (close-reconnection nil))
+(cl-defun slack-ws-close (ws &optional team (close-reconnection nil))
   (interactive)
   (unless team
     (setq team slack-teams))
