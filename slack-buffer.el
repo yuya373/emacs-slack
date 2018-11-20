@@ -49,6 +49,11 @@
     ;; (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
     map))
 
+(defvar slack-load-more-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-load-more-message)
+    map))
+
 (define-derived-mode slack-mode lui-mode "Slack"
   ""
   (setq-local default-directory slack-default-directory)
@@ -225,15 +230,15 @@
     (lui-insert "" t)
     ))
 
-(defmethod slack-buffer-insert-load-more ((this slack-buffer))
+(defun slack-load-more-message ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-load-more buffer)))
+
+(defmethod slack-buffer-insert-load-more ((_this slack-buffer))
   (let ((str (propertize "(load more)\n"
                          'face '(:underline t :weight bold)
-                         'keymap (let ((map (make-sparse-keymap)))
-                                   (define-key map (kbd "RET")
-                                     #'(lambda ()
-                                         (interactive)
-                                         (slack-buffer-load-more this)))
-                                   map)
+                         'keymap slack-load-more-keymap
                          'loading-message t)))
     (let ((lui-time-stamp-position nil))
       (lui-insert str t))))
