@@ -24,6 +24,8 @@
 
 ;;; Code:
 
+(eval-when-compile
+  (require 'cl))
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-util)
@@ -43,6 +45,12 @@
     (define-key keymap (kbd "RET") #'slack-message-display-room)
     (define-key keymap [mouse-1] #'slack-message-display-room)
     keymap))
+
+(defvar slack-open-direct-message-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET")
+      #'slack-user-profile-buffer-display-im)
+    map))
 
 (defface slack-new-message-marker-face
   '((t (:foreground "#d33682"
@@ -827,6 +835,17 @@
                          nconc channels)
                 team)))
     (slack-room-display room team)))
+
+(defmethod slack-buffer-display-im ((this slack-user-profile-buffer))
+  (with-slots (user-id team) this
+    (let ((im (slack-im-find-by-user-id user-id team)))
+      (slack-room-display im team))))
+
+(defun slack-user-profile-buffer-display-im ()
+  "Display im buffer from user profile buffer."
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-im buf)))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

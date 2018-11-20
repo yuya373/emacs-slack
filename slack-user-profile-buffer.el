@@ -31,6 +31,7 @@
 (require 'slack-im)
 (require 'slack-image)
 
+(defvar slack-open-direct-message-keymap)
 (defvar slack-completing-read-function)
 (define-derived-mode slack-user-profile-buffer-mode slack-buffer-mode "Slack User Profile")
 
@@ -84,11 +85,6 @@
     (slack-buffer--insert this)
     buf))
 
-(defmethod slack-buffer-display-im ((this slack-user-profile-buffer))
-  (with-slots (user-id team) this
-    (let ((im (slack-im-find-by-user-id user-id team)))
-      (slack-room-display im team))))
-
 (defmethod slack-buffer--replace ((this slack-user-profile-buffer) _ts)
   (with-current-buffer (current-buffer)
     (let ((inhibit-read-only t))
@@ -119,17 +115,8 @@
                           "\n"))
          (dm-button (propertize "[Open Direct Message]"
                                 'face '(:underline t)
-                                'keymap (let ((map (make-sparse-keymap)))
-                                          (define-key map (kbd "RET")
-                                            #'slack-user-profile-buffer-display-im)
-                                          map))))
+                                'keymap slack-open-direct-message-keymap)))
     (format "\n%s\n\n%s%s\n%s\n\n%s" image header (format "  (%s)" id) body dm-button)))
-
-(defun slack-user-profile-buffer-display-im ()
-  "Display im buffer from user profile buffer."
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-display-im buf)))
 
 (defun slack-user-select ()
   "Select user from team, then display the user's profile."
