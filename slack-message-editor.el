@@ -51,11 +51,6 @@
   ""
   (slack-buffer-enable-emojify))
 
-(defun slack-message-share ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-share-message buf (slack-get-ts))))
-
 (defun slack-message-share--send (team room ts msg)
   (let* ((slack-room-list (or (and (object-of-class-p room 'slack-channel)
                                    (slack-message-room-list team))
@@ -84,19 +79,8 @@
                       (cons "share_channel" share-channel-id))
         :success #'on-success)))))
 
-(defun slack-message-write-another-buffer ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-display-message-compose-buffer buf)))
-
 (defmethod slack-message-get-user-id ((m slack-user-message))
   (oref m user))
-
-(defun slack-message-edit ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-display-edit-message-buffer buf (slack-get-ts))))
-
 
 (defun slack-message-cancel-edit ()
   (interactive)

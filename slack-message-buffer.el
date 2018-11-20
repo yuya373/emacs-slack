@@ -847,5 +847,20 @@
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-im buf)))
 
+(defun slack-message-share ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-share-message buf (slack-get-ts))))
+
+(defun slack-message-write-another-buffer ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-message-compose-buffer buf)))
+
+(defun slack-message-edit ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-display-edit-message-buffer buf (slack-get-ts))))
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

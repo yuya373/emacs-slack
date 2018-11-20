@@ -38,6 +38,24 @@
       'if-let*
     'if-let))
 
+(cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
+  "Bind candidates from selected."
+  (declare (indent 2) (debug t))
+  (let ((key (cl-gensym)))
+    `(let* ((,key (let ((completion-ignore-case t))
+                    (funcall slack-completing-read-function (format "%s" ,prompt)
+                             ,alist nil t ,initial)))
+            (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
+       ,@body
+       selected)))
+
+(defmacro slack-merge-list (old-list new-list)
+  `(cl-loop for n in ,new-list
+            do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
+                                    ,old-list)))
+                 (if o (slack-merge o n)
+                   (push n ,old-list)))))
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
@@ -121,13 +139,6 @@
                     (encode-time 0 (% hhmm 100) (/ hhmm 100) (nth 3 now)
                                  (nth 4 now) (nth 5 now) (nth 8 now)))))))
   time)
-
-(defmacro slack-merge-list (old-list new-list)
-  `(cl-loop for n in ,new-list
-            do (let ((o (cl-find-if #'(lambda (e) (slack-equalp n e))
-                                    ,old-list)))
-                 (if o (slack-merge o n)
-                   (push n ,old-list)))))
 
 (cl-defun slack-select-multiple (prompt-fn collection &optional initial-input-fn)
   (let ((result '())

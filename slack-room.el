@@ -98,17 +98,6 @@
           " : "
           (slack-room-display-name room team)))
 
-(cl-defmacro slack-select-from-list ((alist prompt &key initial) &body body)
-  "Bind candidates from selected."
-  (declare (indent 2) (debug t))
-  (let ((key (cl-gensym)))
-    `(let* ((,key (let ((completion-ignore-case t))
-                    (funcall slack-completing-read-function (format "%s" ,prompt)
-                             ,alist nil t ,initial)))
-            (selected (cdr (cl-assoc ,key ,alist :test #'string=))))
-       ,@body
-       selected)))
-
 (defmethod slack-room-hidden-p ((room slack-room))
   (slack-room-hiddenp room))
 
