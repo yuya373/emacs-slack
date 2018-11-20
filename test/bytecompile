@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -eu
+
+error_log_file=test/emacs_"$EMACS_VERSION"_error.log
+log_file=test/emacs_"$EMACS_VERSION".log
+
+rm -rf $EMACS_VERSION $error_log_file $log_file | true
+mkdir $EMACS_VERSION
+cp *.el $EMACS_VERSION/
+
+
+emacs --batch -Q \
+      -L /slack \
+      -l ./test/setup.el \
+      -f batch-byte-compile ./$EMACS_VERSION/*.el \
+      2> ./$error_log_file \
+      1> ./$log_file
+
+rm -rf $EMACS_VERSION | true
+
