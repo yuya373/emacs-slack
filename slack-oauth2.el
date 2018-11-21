@@ -46,4 +46,8 @@
                                 slack-redirect-url))))
 
 (provide 'slack-oauth2)
+
+;; Local Variables:
+;; byte-compile-warnings: (not free-vars)
+;; End:
 ;;; slack-oauth2.el ends here
