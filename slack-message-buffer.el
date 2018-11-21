@@ -632,8 +632,8 @@
                       (let ((buf (slack-create-thread-message-buffer
                                   room team (oref thread thread-ts))))
                         (slack-buffer-display buf))))
-    (slack-thread-request-messages thread room team
-                                   :after-success #'after-success)))
+    (slack-thread-replies thread room team
+                          :after-success #'after-success)))
 
 (defun slack-thread-show-or-create ()
   (interactive)

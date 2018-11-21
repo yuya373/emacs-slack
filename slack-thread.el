@@ -64,7 +64,7 @@ Any other non-nil value: send to the room."
       t
     nil))
 
-(cl-defmethod slack-thread-request-messages ((thread slack-thread) room team &key after-success)
+(cl-defmethod slack-thread-replies ((thread slack-thread) room team &key after-success)
   (cl-labels
       ((on-success (&key data &allow-other-keys)
                    (slack-request-handle-error
