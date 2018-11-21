@@ -64,30 +64,17 @@ Any other non-nil value: send to the room."
       t
     nil))
 
-(cl-defmethod slack-thread-replies ((thread slack-thread) room team &key after-success)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data "slack-thread-request-messages")
-                    (let ((messages (mapcar #'(lambda (payload)
-                                                (slack-message-create payload
-                                                                      team
-                                                                      :room room))
-                                            (plist-get data :messages))))
-                      (oset thread messages
-                            (slack-room-sort-messages
-                             (cl-remove-if #'slack-message-thread-parentp
-                                           messages)))))
-                   (if after-success
-                       (funcall after-success))))
-
-    (slack-request
-     (slack-request-create
-      (slack-room-replies-url room)
-      team
-      :params (list (cons "thread_ts" (oref thread thread-ts))
-                    (cons "channel" (oref room id)))
-      :success #'on-success))))
+(cl-defmethod slack-thread-replies ((thread slack-thread) room team &key after-success (cursor nil))
+  (let ((ts (oref thread thread-ts)))
+    (slack-conversations-replies room ts team
+                                 #'(lambda (messages next-cursor)
+                                     (oset thread messages
+                                           (slack-room-sort-messages
+                                            (cl-remove-if #'slack-message-thread-parentp
+                                                          messages)))
+                                     (when (functionp after-success)
+                                       (funcall after-success next-cursor)))
+                                 cursor)))
 
 (cl-defmethod slack-thread-to-string ((m slack-message) team)
   (slack-if-let* ((thread (oref m thread)))

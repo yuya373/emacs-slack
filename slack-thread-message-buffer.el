@@ -38,19 +38,21 @@
   (setq lui-input-function 'slack-thread-message--send))
 
 (defclass slack-thread-message-buffer (slack-room-buffer)
-  ((thread-ts :initarg :thread-ts :type string)))
+  ((thread-ts :initarg :thread-ts :type string)
+   (next-cursor :initarg :next-cursor :type (or null string))))
 
 (cl-defmethod slack-buffer-find ((class (subclass slack-thread-message-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
 
-(defun slack-create-thread-message-buffer (room team thread-ts)
+(defun slack-create-thread-message-buffer (room team thread-ts next-cursor)
   "Create thread message buffer according to ROOM, TEAM, THREAD-TS."
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                           room thread-ts team)))
       buf
     (slack-thread-message-buffer :room room
                                  :team team
-                                 :thread-ts thread-ts)))
+                                 :thread-ts thread-ts
+                                 :next-cursor next-cursor)))
 
 (cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-buffer)) room ts team)
   (format "*Slack - %s : %s Thread - %s"
