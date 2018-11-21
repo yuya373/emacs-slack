@@ -338,7 +338,8 @@
 
 
 (defun slack-add-face-lazy ()
-  (let* ((start (or (get-text-property (point-min) 'slack-defer-face)
+  (let* ((start (or (and (get-text-property (point-min) 'slack-defer-face)
+                         (point-min))
                     (next-single-property-change (point-min) 'slack-defer-face)))
          (end (and start (next-single-property-change start 'slack-defer-face))))
     (when (and start end)
