@@ -123,79 +123,6 @@ Any other non-nil value: send to the room."
        (string-equal (oref (oref thread root) channel)
                      (oref (oref other root) channel))))
 
-;; (cl-defun slack-thread-get-all (&key (sync nil) (ts nil))
-;;   (let ((team (slack-team-select)))
-;;     (cl-labels
-;;         ((on-success (&key data &allow-other-keys)
-;;                      (slack-request-handle-error
-;;                       (data "slack-thread-get-all")
-;;                       (let ((threads-data (append (plist-get data :threads) nil))
-;;                             (total-unread (plist-get data :total_unread_replies))
-;;                             (more (if (eq :json-false (plist-get data :has_more)) nil t))
-;;                             (new-count (plist-get data :new_threads_count)))
-;;                         (with-slots (threads) team
-;;                           (with-slots
-;;                               (initializedp total-unread-replies new-threads-count has-more) threads
-;;                             (setq has-more more)
-;;                             (setq initializedp t)
-;;                             (setq total-unread-replies total-unread)
-;;                             (setq new-threads-count new-count)
-;;                             (let ((parents (cl-loop for thread in threads-data
-;;                                                     collect (slack-message-create
-;;                                                              (plist-get thread :root_msg) team))))
-;;                               (mapc #'(lambda (parent) (slack-message-update parent team nil t))
-;;                                     parents))))))))
-;;       (slack-request
-;;        (slack-request-create
-;;         all-threads-url
-;;         team
-;;         :type "POST"
-;;         :params (list (cons "limit" "10")
-;;                       (cons "current_ts" (or ts (format-time-string "%s"))))
-;;         :success #'on-success
-;;         :sync sync)))))
-
-;; (defun slack-thread-select (&optional reload)
-;;   (interactive)
-;;   (cl-labels
-;;       ((load-threads (threads)
-;;                      (slack-thread-get-all :sync t
-;;                                            :ts (cl-first
-;;                                                 (cl-sort
-;;                                                  (mapcar #'(lambda (thread) (oref thread thread-ts)) threads)
-;;                                                  #'string<))))
-;;        (select-thread (threads team has-more)
-;;                       (let* ((alist (cl-remove-if-not
-;;                                      #'(lambda (cons) (car cons))
-;;                                      (mapcar #'(lambda (thread)
-;;                                                  (let ((title (slack-thread-title thread team)))
-;;                                                    (and title (cons title thread))))
-;;                                              threads)))
-;;                              (maybe-has-more (if has-more
-;;                                                  (append alist (list (cons "(load more)" 'load-more))) alist))
-;;                              (selected (slack-select-from-list (maybe-has-more "Select Thread: "))))
-;;                         selected))
-;;        (collect-thread-parents (messages)
-;;                                (mapcar #'(lambda (m) (oref m thread))
-;;                                        (cl-remove-if #'(lambda (m) (not (slack-message-thread-parentp m)))
-;;                                                      messages)))
-;;        (collect-threads (team)
-;;                         (cl-loop for room in (with-slots (groups ims channels) team
-;;                                                (append ims groups channels))
-;;                                  append (collect-thread-parents (oref room messages)))))
-
-;;     (let* ((team (slack-team-select)))
-
-;;       (with-slots (initializedp has-more) (oref team threads)
-;;         (if (or (not initializedp) has-more) (load-threads (collect-threads team))))
-
-;;       (let ((selected (select-thread (collect-threads team) team nil)))
-;;         (if (eq selected 'load-more)
-;;             (slack-thread-select t)
-;;           (slack-thread-show-messages selected
-;;                                       (slack-room-find (oref (oref selected root) channel) team)
-;;                                       team))))))
-
 (cl-defmethod slack-thread-delete-message ((thread slack-thread) message)
   (with-slots (messages reply-count) thread
     (setq messages (cl-remove-if #'(lambda (e)
@@ -204,33 +131,11 @@ Any other non-nil value: send to the room."
                                  messages))
     (setq reply-count (length messages))))
 
-(cl-defmethod slack-thread-update-mark ((thread slack-thread) room msg team)
-  (with-slots (thread-ts) thread
-    (with-slots (id) room
-      (with-slots (ts) msg
-        (cl-labels
-            ((on-success (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-thread-mark"))))
-
-          (slack-request
-           (slack-request-create
-            thread-mark-url
-            team
-            :params (list (cons "channel" id)
-                          (cons "thread_ts" thread-ts)
-                          (cons "ts" ts))
-            :success #'on-success)))))))
-
 (cl-defmethod slack-thread-marked ((thread slack-thread) payload)
   (let ((unread-count (plist-get payload :unread_count))
         (last-read (plist-get payload :last_read)))
     (oset thread unread-count unread-count)
     (oset thread last-read last-read)))
-
-(cl-defmethod slack-thread-update-last-read ((thread slack-thread) msg)
-  (with-slots (ts) msg
-    (oset thread last-read ts)))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
