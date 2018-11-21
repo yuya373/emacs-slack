@@ -96,12 +96,12 @@
   (with-slots (comment) m
     (plist-get comment :user)))
 
-(defgeneric slack-message-sender-name  (slack-message team))
-(defgeneric slack-message-to-string (slack-message))
-(defgeneric slack-message-to-alert (slack-message))
+(cl-defgeneric slack-message-sender-name  (slack-message team))
+(cl-defgeneric slack-message-to-string (slack-message))
+(cl-defgeneric slack-message-to-alert (slack-message))
 (cl-defmethod slack-message-bot-id ((_this slack-message)) nil)
 
-(defgeneric slack-room-buffer-name (room team))
+(cl-defgeneric slack-room-buffer-name (room team))
 
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"

@@ -57,12 +57,12 @@
    (members :initarg :members :type list :initform '())))
 
 
-(defgeneric slack-room-name (room team))
-(defgeneric slack-room-history (room team &optional oldest after-success sync))
-(defgeneric slack-room-update-mark-url (room))
-(defgeneric slack-room-update-info (room data team))
-(defgeneric slack-room-get-info-url (room))
-(defgeneric slack-room-history-url (room))
+(cl-defgeneric slack-room-name (room team))
+(cl-defgeneric slack-room-history (room team &optional oldest after-success sync))
+(cl-defgeneric slack-room-update-mark-url (room))
+(cl-defgeneric slack-room-update-info (room data team))
+(cl-defgeneric slack-room-get-info-url (room))
+(cl-defgeneric slack-room-history-url (room))
 
 (cl-defmethod slack-equalp ((this slack-room) other)
   (string= (oref this id)
