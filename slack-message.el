@@ -71,11 +71,6 @@
   ((user :initarg :user :type string)
    (ts :initarg :ts :type string)))
 
-(defclass slack-reply (slack-message)
-  ((user :initarg :user :initform nil)
-   (reply-to :initarg :reply_to :type integer)
-   (id :initarg :id :type integer)))
-
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (id :initarg :id)
@@ -148,7 +143,7 @@
           (let ((subtype (plist-get payload :subtype)))
             (cond
              ((plist-member payload :reply_to)
-              (apply #'slack-reply "reply"
+              (apply #'make-instance 'slack-reply
                      (slack-collect-slots 'slack-reply payload)))
              ((or (and subtype (or (string-equal "reply_broadcast" subtype)
                                    (string= "thread_broadcast" subtype)))

@@ -35,9 +35,11 @@
 (require 'slack-message-reaction)
 (require 'slack-thread)
 (require 'slack-message-notification)
+(require 'slack-slash-commands)
 
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)
+(defvar slack-message-minibuffer-local-map nil)
 
 (defvar slack-expand-email-keymap
   (let ((map (make-sparse-keymap)))
@@ -361,6 +363,40 @@ Execute this function when cursor is on some message."
             :type "POST"
             :params params
             :success #'on-success))))))
+
+(defun slack-message--send (message)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (oref buf team))
+                  (room (oref buf room)))
+      (if (string-prefix-p "/" message)
+          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
+              (slack-command-run (car command-and-arg)
+                                 team
+                                 (oref room id)
+                                 :text (cdr command-and-arg))
+            (error "Unknown slash command: %s"
+                   (car (split-string message))))
+        (slack-buffer-send-message buf message))))
+
+(defun slack-message-send ()
+  (interactive)
+  (slack-message--send (slack-message-read-from-minibuffer)))
+
+(defun slack-message-setup-minibuffer-keymap ()
+  (unless slack-message-minibuffer-local-map
+    (setq slack-message-minibuffer-local-map
+          (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "RET") 'newline)
+            (set-keymap-parent map minibuffer-local-map)
+            map))))
+
+(defun slack-message-read-from-minibuffer ()
+  (let ((prompt "Message: "))
+    (slack-message-setup-minibuffer-keymap)
+    (read-from-minibuffer
+     prompt
+     nil
+     slack-message-minibuffer-local-map)))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

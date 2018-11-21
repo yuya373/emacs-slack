@@ -27,23 +27,17 @@
 (require 'eieio)
 (require 'json)
 (require 'slack-util)
-(require 'slack-websocket)
 (require 'slack-room)
 (require 'slack-im)
 (require 'slack-group)
 (require 'slack-message)
 (require 'slack-channel)
-(require 'slack-slash-commands)
 (require 'slack-conversations)
 (require 'slack-buffer)
+(require 'slack-usergroup)
 
 (defvar slack-completing-read-function)
-(defvar slack-message-minibuffer-local-map nil)
 (defvar slack-buffer-function)
-
-(defun slack-message-send ()
-  (interactive)
-  (slack-message--send (slack-message-read-from-minibuffer)))
 
 (defun slack-escape-message (message)
   "Escape '<,' '>' & '&' in MESSAGE."
@@ -93,20 +87,6 @@
 (defun slack-message-prepare-links (message team)
   (slack-link-channels (slack-link-users message team) team))
 
-(defun slack-message--send (message)
-  (slack-if-let* ((buf slack-current-buffer)
-                  (team (oref buf team))
-                  (room (oref buf room)))
-      (if (string-prefix-p "/" message)
-          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
-              (slack-command-run (car command-and-arg)
-                                 team
-                                 (oref room id)
-                                 :text (cdr command-and-arg))
-            (error "Unknown slash command: %s"
-                   (car (split-string message))))
-        (slack-buffer-send-message buf message))))
-
 (defun slack-message-send-internal (message room team)
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
@@ -146,22 +126,6 @@
   (append (slack-group-names team)
           (slack-im-names team)
           (slack-channel-names team)))
-
-(defun slack-message-read-from-minibuffer ()
-  (let ((prompt "Message: "))
-    (slack-message-setup-minibuffer-keymap)
-    (read-from-minibuffer
-     prompt
-     nil
-     slack-message-minibuffer-local-map)))
-
-(defun slack-message-setup-minibuffer-keymap ()
-  (unless slack-message-minibuffer-local-map
-    (setq slack-message-minibuffer-local-map
-          (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "RET") 'newline)
-            (set-keymap-parent map minibuffer-local-map)
-            map))))
 
 (defun slack-message-embed-channel ()
   (interactive)

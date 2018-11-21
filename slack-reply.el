@@ -26,6 +26,12 @@
 (require 'eieio)
 (require 'slack-message)
 (require 'slack-team)
+(require 'slack-message-buffer)
+
+(defclass slack-reply (slack-message)
+  ((user :initarg :user :initform nil)
+   (reply-to :initarg :reply_to :type integer)
+   (id :initarg :id :type integer)))
 
 (cl-defmethod slack-message-handle-reply ((m slack-reply) team)
   (with-slots (reply-to) m
