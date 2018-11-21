@@ -312,7 +312,8 @@
         team
         :params (list (cons "channel" channel)
                       (cons "ts" ts)
-                      (and cursor (cons "cursor" cursor)))
+                      (if cursor (cons "cursor" cursor)
+                        (cons "oldest" ts)))
         :success #'on-success)))))
 
 (provide 'slack-conversations)
