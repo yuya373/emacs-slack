@@ -38,22 +38,22 @@
    (count :initarg :count :type integer)
    (users :initarg :users :initform ())))
 
-(defmethod slack-reaction-join ((r slack-reaction) other)
+(cl-defmethod slack-reaction-join ((r slack-reaction) other)
   (if (string= (oref r name) (oref other name))
       (progn
         (cl-incf (oref r count))
         (oset r users (append (oref other users) (oref r users)))
         r)))
 
-(defmethod slack-reaction-user-names ((r slack-reaction) team)
+(cl-defmethod slack-reaction-user-names ((r slack-reaction) team)
   (with-slots (users) r
     (mapcar #'(lambda (u) (slack-user-name u team))
             users)))
 
-(defmethod slack-equalp ((r slack-reaction) other)
+(cl-defmethod slack-equalp ((r slack-reaction) other)
   (slack-reaction-equalp r other))
 
-(defmethod slack-reaction-equalp ((r slack-reaction) other)
+(cl-defmethod slack-reaction-equalp ((r slack-reaction) other)
   (string= (oref r name) (oref other name)))
 
 (defvar slack-reaction-keymap
@@ -68,7 +68,7 @@
                   (reaction (get-text-property (point) 'reaction)))
       (slack-buffer-toggle-reaction buffer reaction)))
 
-(defmethod slack-reaction-help-text ((r slack-reaction) team)
+(cl-defmethod slack-reaction-help-text ((r slack-reaction) team)
   (let ((user-names (slack-reaction-user-names r team)))
     (format "%s reacted with :%s:"
             (mapconcat #'identity user-names ", ")
@@ -79,7 +79,7 @@
                   (reaction (get-text-property pos 'reaction)))
       (slack-buffer-reaction-help-text buffer reaction)))
 
-(defmethod slack-reaction-to-string ((r slack-reaction))
+(cl-defmethod slack-reaction-to-string ((r slack-reaction))
   (propertize (format " :%s: %d " (oref r name) (oref r count))
               'face 'slack-message-output-reaction
               'mouse-face 'highlight
@@ -95,7 +95,7 @@
   (cl-delete-if #'(lambda (e) (slack-reaction-equalp e reaction))
                 reactions))
 
-(defmethod slack-merge ((old slack-reaction) new)
+(cl-defmethod slack-merge ((old slack-reaction) new)
   (with-slots (count users) old
     (setq count (oref new count))
     (setq users (cl-remove-duplicates (append users (oref new users))

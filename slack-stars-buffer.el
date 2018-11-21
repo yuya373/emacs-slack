@@ -35,19 +35,19 @@
 (defclass slack-stars-buffer (slack-buffer)
   ((oldest :type string :initform "")))
 
-(defmethod slack-buffer-name :static ((_class slack-stars-buffer) team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-stars-buffer)) team)
   (format "*Slack - %s : Stars*" (oref team name)))
 
-(defmethod slack-buffer-name ((this slack-stars-buffer))
+(cl-defmethod slack-buffer-name ((this slack-stars-buffer))
   (slack-buffer-name 'slack-stars-buffer (oref this team)))
 
-(defmethod slack-buffer-find :static ((class slack-stars-buffer) team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-stars-buffer)) team)
   (slack-if-let* ((buf (cl-find-if #'(lambda (e) (string= (buffer-name e)
                                                           (slack-buffer-name class team)))
                                    (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
-(defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
+(cl-defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
   (let ((lui-time-stamp-time (seconds-to-time
                               (string-to-number
                                (slack-ts
@@ -58,11 +58,11 @@
      'not-tracked-p not-tracked-p)
     (lui-insert "" t)))
 
-(defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
+(cl-defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
   (with-slots (team) this
     (slack-star-has-next-page-p (oref team star))))
 
-(defmethod slack-buffer-insert-history ((this slack-stars-buffer))
+(cl-defmethod slack-buffer-insert-history ((this slack-stars-buffer))
   (with-slots (team) this
     (let ((items (slack-star-items (oref team star)))
           (before-oldest (oref this oldest)))
@@ -76,18 +76,18 @@
                                                  before-oldest)))
           (goto-char point)))))
 
-(defmethod slack-buffer-request-history ((this slack-stars-buffer) after-success)
+(cl-defmethod slack-buffer-request-history ((this slack-stars-buffer) after-success)
   (with-slots (team) this
     (slack-stars-list-request team
                               (slack-next-page (oref (oref team star) paging))
                               after-success)))
 
 
-(defmethod slack-buffer-update-oldest ((this slack-stars-buffer) item)
+(cl-defmethod slack-buffer-update-oldest ((this slack-stars-buffer) item)
   (when (string< (oref this oldest) (slack-ts item))
     (oset this oldest (slack-ts item))))
 
-(defmethod slack-buffer-init-buffer ((this slack-stars-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-stars-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (star (oref (oref this team) star))
          (items (slack-star-items star))
@@ -112,12 +112,12 @@
     (make-instance 'slack-stars-buffer
                    :team team)))
 
-(defmethod slack-buffer-remove-star ((this slack-stars-buffer) ts)
+(cl-defmethod slack-buffer-remove-star ((this slack-stars-buffer) ts)
   (with-slots (team) this
     (with-slots (star) team
       (slack-star-remove-star star ts team))))
 
-(defmethod slack-buffer-message-delete ((this slack-stars-buffer) ts)
+(cl-defmethod slack-buffer-message-delete ((this slack-stars-buffer) ts)
   (let ((buffer (slack-buffer-buffer this))
         (inhibit-read-only t))
     (with-current-buffer buffer
@@ -125,7 +125,7 @@
                       (end (next-single-property-change beg 'ts)))
           (delete-region beg end)))))
 
-(defmethod slack-buffer--replace ((this slack-stars-buffer) ts)
+(cl-defmethod slack-buffer--replace ((this slack-stars-buffer) ts)
   (with-slots (team) this
     (with-slots (star) team
       (let* ((items (slack-star-items star))
@@ -146,7 +146,7 @@
        team nil
        #'(lambda () (slack-buffer-display (slack-create-stars-buffer team)))))))
 
-(defmethod slack-star-remove ((this slack-star) payload team)
+(cl-defmethod slack-star-remove ((this slack-star) payload team)
   (let ((date-create (format "%s" (plist-get payload :date_create))))
     (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
                                                           date-create))
@@ -154,7 +154,7 @@
     (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
         (slack-buffer-message-delete buffer date-create))))
 
-(defmethod slack-star-add ((this slack-star) payload team)
+(cl-defmethod slack-star-add ((this slack-star) payload team)
   (setq payload (append payload nil))
   (cl-labels
       ((create-star (payload)

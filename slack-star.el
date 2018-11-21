@@ -62,42 +62,42 @@
 (defclass slack-star-im (slack-star-item) ;; Dh ??
   ((channel :initarg :channel :type string))) ;; ID
 
-(defmethod slack-star-item-message ((this slack-star-message))
+(cl-defmethod slack-star-item-message ((this slack-star-message))
   (oref this message))
 
-(defmethod slack-star-item-message ((this slack-star-file))
+(cl-defmethod slack-star-item-message ((this slack-star-file))
   (oref this file))
 
-(defmethod slack-ts ((this slack-star-item))
+(cl-defmethod slack-ts ((this slack-star-item))
   (oref this date-create))
 
-(defmethod slack-next-page ((this slack-star-paging))
+(cl-defmethod slack-next-page ((this slack-star-paging))
   (with-slots (pages page) this
     (unless (< pages (1+ page))
       (1+ page))))
 
-(defmethod slack-star-has-next-page-p ((this slack-star))
+(cl-defmethod slack-star-has-next-page-p ((this slack-star))
   (slack-next-page (oref this paging)))
 
-(defmethod slack-per-page ((this slack-star-paging))
+(cl-defmethod slack-per-page ((this slack-star-paging))
   (oref this per-page))
 
-(defmethod slack-star-per-page ((this slack-star))
+(cl-defmethod slack-star-per-page ((this slack-star))
   (slack-per-page (oref this paging)))
 
-(defmethod slack-star-items ((this slack-star))
+(cl-defmethod slack-star-items ((this slack-star))
   (oref this items))
 
-(defmethod slack-merge ((old slack-star) new)
+(cl-defmethod slack-merge ((old slack-star) new)
   (with-slots (paging items) old
     (setq paging (oref new paging))
     (setq items (append (oref new items) items))))
 
-(defmethod slack-to-string ((this slack-star-message) team)
+(cl-defmethod slack-to-string ((this slack-star-message) team)
   (with-slots (message) this
     (slack-message-to-string message team)))
 
-(defmethod slack-to-string ((this slack-star-file) team)
+(cl-defmethod slack-to-string ((this slack-star-file) team)
   (with-slots (date-create file) this
     (slack-message-to-string file date-create team)))
 
@@ -179,14 +179,14 @@
       :success #'on-success))))
 
 
-(defmethod slack-message-star-api-params ((this slack-star-item))
+(cl-defmethod slack-message-star-api-params ((this slack-star-item))
   (list (slack-message-star-api-params (slack-star-item-message this))))
 
-(defmethod slack-message-star-api-params ((this slack-star-message))
+(cl-defmethod slack-message-star-api-params ((this slack-star-message))
   (append (list (cons "channel" (oref this channel)))
           (call-next-method)))
 
-(defmethod slack-star-remove-star ((this slack-star) ts team)
+(cl-defmethod slack-star-remove-star ((this slack-star) ts team)
   (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
                                     (oref this items))))
       (slack-message-star-api-request slack-message-stars-remove-url

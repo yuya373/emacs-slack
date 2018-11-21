@@ -107,10 +107,10 @@
                                  team-name room-name (slack-thread-messagep message)))
                :category 'slack))))
 
-(defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
+(cl-defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
 
-(defmethod slack-message-minep ((m slack-message) team)
+(cl-defmethod slack-message-minep ((m slack-message) team)
   (if team
       (with-slots (self-id) team
         (slack-message-sender-equalp m self-id))

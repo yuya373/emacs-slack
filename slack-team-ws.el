@@ -50,62 +50,62 @@
    (nowait :initarg :websocket-nowait :initform nil)
    ))
 
-(defmethod slack-ws-cancel-connect-timeout-timer ((ws slack-team-ws))
+(cl-defmethod slack-ws-cancel-connect-timeout-timer ((ws slack-team-ws))
   (when (timerp (oref ws connect-timeout-timer))
     (cancel-timer (oref ws connect-timeout-timer))
     (oset ws connect-timeout-timer nil)))
 
-(defmethod slack-ws-set-connect-timeout-timer ((ws slack-team-ws) fn &rest fn-args)
+(cl-defmethod slack-ws-set-connect-timeout-timer ((ws slack-team-ws) fn &rest fn-args)
   (slack-ws-cancel-connect-timeout-timer ws)
   (oset ws connect-timeout-timer
         (apply #'run-at-time (oref ws connect-timeout-sec)
                nil
                fn fn-args)))
 
-(defmethod slack-ws-cancel-ping-timer ((ws slack-team-ws))
+(cl-defmethod slack-ws-cancel-ping-timer ((ws slack-team-ws))
   (with-slots (ping-timer) ws
     (if (timerp ping-timer)
         (cancel-timer ping-timer))
     (setq ping-timer nil)))
 
-(defmethod slack-ws-set-ping-timer ((ws slack-team-ws) fn &rest fn-args)
+(cl-defmethod slack-ws-set-ping-timer ((ws slack-team-ws) fn &rest fn-args)
   (slack-ws-cancel-ping-timer ws)
   (oset ws ping-timer (apply #'run-at-time 10 nil fn fn-args)))
 
-(defmethod slack-ws-cancel-ping-check-timers ((ws slack-team-ws))
+(cl-defmethod slack-ws-cancel-ping-check-timers ((ws slack-team-ws))
   (maphash #'(lambda (_key value)
                (if (timerp value)
                    (cancel-timer value)))
            (oref ws ping-check-timers))
   (oset ws ping-check-timers (make-hash-table :test 'equal)))
 
-(defmethod slack-ws-set-ping-check-timer ((ws slack-team-ws) time fn &rest fn-args)
+(cl-defmethod slack-ws-set-ping-check-timer ((ws slack-team-ws) time fn &rest fn-args)
   (puthash time (apply #'run-at-time
                        (oref ws check-ping-timeout-sec)
                        nil fn fn-args)
            (oref ws ping-check-timers)))
 
-(defmethod slack-ws-cancel-reconnect-timer ((ws slack-team-ws))
+(cl-defmethod slack-ws-cancel-reconnect-timer ((ws slack-team-ws))
   (with-slots (reconnect-timer) ws
     (if (timerp reconnect-timer)
         (cancel-timer reconnect-timer))
     (setq reconnect-timer nil)))
 
-(defmethod slack-ws-set-reconnect-timer ((ws slack-team-ws) fn &rest fn-args)
+(cl-defmethod slack-ws-set-reconnect-timer ((ws slack-team-ws) fn &rest fn-args)
   (slack-ws-cancel-reconnect-timer ws)
   (oset ws reconnect-timer
         (apply #'run-at-time (oref ws reconnect-after-sec)
                nil
                fn fn-args)))
 
-(defmethod slack-ws-reconnect-count-exceed-p ((ws slack-team-ws))
+(cl-defmethod slack-ws-reconnect-count-exceed-p ((ws slack-team-ws))
   (< (oref ws reconnect-count-max)
      (oref ws reconnect-count)))
 
-(defmethod slack-ws-inc-reconnect-count ((ws slack-team-ws))
+(cl-defmethod slack-ws-inc-reconnect-count ((ws slack-team-ws))
   (incf (oref ws reconnect-count)))
 
-(defmethod slack-ws-use-reconnect-url-p ((ws slack-team-ws))
+(cl-defmethod slack-ws-use-reconnect-url-p ((ws slack-team-ws))
   (< 0 (length (oref ws reconnect-url))))
 
 (provide 'slack-team-ws)

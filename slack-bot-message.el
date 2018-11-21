@@ -31,10 +31,10 @@
 (require 'slack-bot)
 (require 'slack-image)
 
-(defmethod slack-message-bot-id ((this slack-bot-message))
+(cl-defmethod slack-message-bot-id ((this slack-bot-message))
   (oref this bot-id))
 
-(defmethod slack-bot-name ((m slack-bot-message) team)
+(cl-defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))
         (oref m username))
       (when (slot-boundp m 'bot-id)
@@ -42,7 +42,7 @@
           (plist-get bot :name)))
       "Unknown Bot"))
 
-(defmethod slack-message-to-alert ((m slack-bot-message) team)
+(cl-defmethod slack-message-to-alert ((m slack-bot-message) team)
   (let ((text (if (slot-boundp m 'text)
                   (oref m text))))
     (with-slots (attachments) m
@@ -51,10 +51,10 @@
         (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
           (slack-message-unescape-string attachment-string team))))))
 
-(defmethod slack-message-sender-name ((m slack-bot-message) team)
+(cl-defmethod slack-message-sender-name ((m slack-bot-message) team)
   (slack-bot-name m team))
 
-(defmethod slack-message-sender-id ((m slack-bot-message))
+(cl-defmethod slack-message-sender-id ((m slack-bot-message))
   (oref m bot-id))
 
 (defun slack-bot-image-url (bot size)
@@ -79,12 +79,12 @@
       (when image
         (create-image image nil nil :ascent 80)))))
 
-(defmethod slack-bot-find ((m slack-bot-message) team)
+(cl-defmethod slack-bot-find ((m slack-bot-message) team)
   (or (and (slot-boundp m 'bot-id)
            (slack-find-bot (slack-message-sender-id m) team))
       (slack-user-find-by-name (oref m username) team)))
 
-(defmethod slack-message-profile-image ((m slack-bot-message) team)
+(cl-defmethod slack-message-profile-image ((m slack-bot-message) team)
   (let ((bot (slack-bot-find m team)))
     (slack-bot-image bot team)))
 

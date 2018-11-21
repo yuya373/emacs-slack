@@ -55,18 +55,18 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
                    :limit limit
                    :users users)))
 
-(defmethod slack-equalp ((this slack-typing-user) other)
+(cl-defmethod slack-equalp ((this slack-typing-user) other)
   (string= (oref this user-name)
            (oref other user-name)))
 
-(defmethod slack-typing-add-user ((this slack-typing) user limit)
+(cl-defmethod slack-typing-add-user ((this slack-typing) user limit)
   (let ((new-user (slack-typing-user-create user limit)))
     (oset this users (cons new-user
                            (cl-remove-if #'(lambda (old-user)
                                              (slack-equalp new-user old-user))
                                          (oref this users))))))
 
-(defmethod slack-typing-set-limit ((this slack-typing) limit)
+(cl-defmethod slack-typing-set-limit ((this slack-typing) limit)
   (oset this limit limit))
 
 (defun slack-typing-display (team)

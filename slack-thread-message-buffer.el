@@ -40,7 +40,7 @@
 (defclass slack-thread-message-buffer (slack-room-buffer)
   ((thread-ts :initarg :thread-ts :type string)))
 
-(defmethod slack-buffer-find :static ((class slack-thread-message-buffer) room ts team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-thread-message-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
 
 (defun slack-create-thread-message-buffer (room team thread-ts)
@@ -52,18 +52,18 @@
                                  :team team
                                  :thread-ts thread-ts)))
 
-(defmethod slack-buffer-name :static ((_class slack-thread-message-buffer) room ts team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-buffer)) room ts team)
   (format "*Slack - %s : %s Thread - %s"
           (oref team name)
           (slack-room-name room team)
           ts))
 
-(defmethod slack-buffer-name ((this slack-thread-message-buffer))
+(cl-defmethod slack-buffer-name ((this slack-thread-message-buffer))
   (with-slots (room thread-ts team) this
     (slack-buffer-name 'slack-thread-message-buffer
                        room thread-ts team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-thread-message-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-thread-message-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buf
       (slack-thread-message-buffer-mode)
@@ -88,7 +88,7 @@
 
     buf))
 
-(defmethod slack-buffer-send-message ((this slack-thread-message-buffer) message)
+(cl-defmethod slack-buffer-send-message ((this slack-thread-message-buffer) message)
   (with-slots (room team thread-ts) this
     (slack-thread-send-message room team message thread-ts)))
 
@@ -118,12 +118,12 @@
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-send-message buf message)))
 
-(defmethod slack-buffer-add-reaction-to-message
+(cl-defmethod slack-buffer-add-reaction-to-message
   ((this slack-thread-message-buffer) reaction ts)
   (with-slots (room team) this
     (slack-message-reaction-add reaction ts room team)))
 
-(defmethod slack-buffer-remove-reaction-from-message
+(cl-defmethod slack-buffer-remove-reaction-from-message
   ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (let* ((message (slack-room-find-message room ts))
@@ -131,7 +131,7 @@
                       (slack-message-reactions message))))
       (slack-message-reaction-remove reaction ts room team))))
 
-(defmethod slack-buffer-add-star ((this slack-thread-message-buffer) ts)
+(cl-defmethod slack-buffer-add-star ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-add-url
@@ -139,7 +139,7 @@
                                               (slack-message-star-api-params message))
                                         team))))
 
-(defmethod slack-buffer-remove-star ((this slack-thread-message-buffer) ts)
+(cl-defmethod slack-buffer-remove-star ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-message-star-api-request slack-message-stars-remove-url
@@ -152,17 +152,17 @@
     (with-current-buffer (slack-buffer-buffer this)
       (slack-buffer-insert this message))))
 
-(defmethod slack-buffer-display-edit-message-buffer ((this slack-thread-message-buffer) ts)
+(cl-defmethod slack-buffer-display-edit-message-buffer ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (let ((buf (slack-create-edit-message-buffer room team ts)))
       (slack-buffer-display buf))))
 
-(defmethod slack-buffer-share-message ((this slack-thread-message-buffer) ts)
+(cl-defmethod slack-buffer-share-message ((this slack-thread-message-buffer) ts)
   (with-slots (room team) this
     (let ((buf (slack-create-message-share-buffer room team ts)))
       (slack-buffer-display buf))))
 
-(defmethod slack-file-upload-params ((this slack-thread-message-buffer))
+(cl-defmethod slack-file-upload-params ((this slack-thread-message-buffer))
   (list (cons "thread_ts" (oref this thread-ts))
         (cons "channels" (oref (oref this room) id))))
 

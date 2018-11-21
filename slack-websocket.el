@@ -139,7 +139,7 @@
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
 
-(defmethod slack-ws-send ((ws slack-team-ws) payload team)
+(cl-defmethod slack-ws-send ((ws slack-team-ws) payload team)
   (with-slots (waiting-send conn) ws
     (unless (slack-ws-payload-ping-p payload)
       (push payload waiting-send))
@@ -156,14 +156,14 @@
              (reconnect)))
         (reconnect)))))
 
-(defmethod slack-ws-resend ((ws slack-team-ws) team)
+(cl-defmethod slack-ws-resend ((ws slack-team-ws) team)
   (with-slots (waiting-send) ws
     (let ((candidate waiting-send))
       (setq waiting-send nil)
       (cl-loop for msg in candidate
                do (slack-ws-send ws msg team)))))
 
-(defmethod slack-ws-ping ((ws slack-team-ws) team)
+(cl-defmethod slack-ws-ping ((ws slack-team-ws) team)
   (slack-team-inc-message-id team)
   (with-slots (message-id) team
     (let* ((time (number-to-string (time-to-seconds (current-time))))
@@ -211,7 +211,7 @@
       :type "POST"
       :success #'on-success))))
 
-(defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
+(cl-defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
   (cl-labels ((abort ()
                      (slack-notify-abandon-reconnect team)
                      (slack-ws-close ws team t))
@@ -272,7 +272,7 @@
         (abort)
       (do-reconnect))))
 
-(defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
+(cl-defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
   "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
 if FORCE is t, ignore `reconnect-count-max'.
 TEAM is one of `slack-teams'"
@@ -280,7 +280,7 @@ TEAM is one of `slack-teams'"
 
 ;; Message handler
 
-(defmethod slack-ws-handle-pong ((ws slack-team-ws) payload team)
+(cl-defmethod slack-ws-handle-pong ((ws slack-team-ws) payload team)
   (slack-ws-remove-from-resend-queue ws payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref ws ping-check-timers))))
@@ -294,7 +294,7 @@ TEAM is one of `slack-teams'"
                  team :level 'trace))))
 
 ;; (:type error :error (:msg Socket URL has expired :code 1))
-(defmethod slack-ws-handle-error ((ws slack-team-ws) payload team)
+(cl-defmethod slack-ws-handle-error ((ws slack-team-ws) payload team)
   (let* ((err (plist-get payload :error))
          (code (plist-get err :code)))
     (cond
@@ -305,7 +305,7 @@ TEAM is one of `slack-teams'"
                            code (plist-get err :msg))
                    team)))))
 
-(defmethod slack-ws-on-message ((ws slack-team-ws) frame team)
+(cl-defmethod slack-ws-on-message ((ws slack-team-ws) frame team)
   ;; (message "%s" (slack-request-parse-payload
   ;;                (websocket-frame-payload frame)))
   (when (websocket-frame-completep frame)
@@ -411,7 +411,7 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-subteam-updated decoded-payload team))
          )))))
 
-(defmethod slack-ws-handle-reconnect-url ((ws slack-team-ws) payload)
+(cl-defmethod slack-ws-handle-reconnect-url ((ws slack-team-ws) payload)
   (oset ws reconnect-url (plist-get payload :url)))
 
 (defun slack-ws-handle-user-typing (payload team)
@@ -537,7 +537,7 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-payload-pong-p (payload)
   (string= "pong" (plist-get payload :type)))
 
-(defmethod slack-ws-remove-from-resend-queue ((ws slack-team-ws) payload team)
+(cl-defmethod slack-ws-remove-from-resend-queue ((ws slack-team-ws) payload team)
   (unless (slack-ws-payload-pong-p payload)
     (with-slots (waiting-send) ws
       (slack-log (format "waiting-send: %s" (length waiting-send))
@@ -549,7 +549,7 @@ TEAM is one of `slack-teams'"
       (slack-log (format "waiting-send: %s" (length waiting-send))
                  team :level 'trace))))
 
-(defmethod slack-ws-handle-reply ((ws slack-team-ws) payload team)
+(cl-defmethod slack-ws-handle-reply ((ws slack-team-ws) payload team)
   (let ((ok (plist-get payload :ok)))
     (if (eq ok :json-false)
         (let* ((err (plist-get payload :error))

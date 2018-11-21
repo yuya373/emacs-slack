@@ -59,7 +59,7 @@ Any other non-nil value: send to the room."
    (unread-count :initarg :unread_count :initform 0)
    (last-read :initarg :last_read :initform "0")))
 
-(defmethod slack-thread-messagep ((m slack-message))
+(cl-defmethod slack-thread-messagep ((m slack-message))
   (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
       t
     nil))
@@ -89,7 +89,7 @@ Any other non-nil value: send to the room."
                     (cons "channel" (oref room id)))
       :success #'on-success))))
 
-(defmethod slack-thread-to-string ((m slack-message) team)
+(cl-defmethod slack-thread-to-string ((m slack-message) team)
   (slack-if-let* ((thread (oref m thread)))
       (let* ((usernames (mapconcat #'identity
                                    (cl-remove-duplicates
@@ -108,7 +108,7 @@ Any other non-nil value: send to the room."
                     'keymap slack-message-thread-status-keymap))
     ""))
 
-(defmethod slack-thread-create ((m slack-message) &optional payload)
+(cl-defmethod slack-thread-create ((m slack-message) &optional payload)
   (if payload
       (let ((replies (plist-get payload :replies))
             (reply-count (plist-get payload :reply_count))
@@ -125,12 +125,12 @@ Any other non-nil value: send to the room."
                    :thread_ts (slack-ts m)
                    :root m)))
 
-(defmethod slack-merge ((old slack-thread) new)
+(cl-defmethod slack-merge ((old slack-thread) new)
   (oset old replies (oref new replies))
   (oset old reply-count (oref new reply-count))
   (oset old unread-count (oref new unread-count)))
 
-(defmethod slack-thread-equal ((thread slack-thread) other)
+(cl-defmethod slack-thread-equal ((thread slack-thread) other)
   (and (string-equal (oref thread thread-ts)
                      (oref other thread-ts))
        (string-equal (oref (oref thread root) channel)
@@ -209,7 +209,7 @@ Any other non-nil value: send to the room."
 ;;                                       (slack-room-find (oref (oref selected root) channel) team)
 ;;                                       team))))))
 
-(defmethod slack-thread-delete-message ((thread slack-thread) message)
+(cl-defmethod slack-thread-delete-message ((thread slack-thread) message)
   (with-slots (messages reply-count) thread
     (setq messages (cl-remove-if #'(lambda (e)
                                      (string= (slack-ts e)
@@ -217,7 +217,7 @@ Any other non-nil value: send to the room."
                                  messages))
     (setq reply-count (length messages))))
 
-(defmethod slack-thread-update-mark ((thread slack-thread) room msg team)
+(cl-defmethod slack-thread-update-mark ((thread slack-thread) room msg team)
   (with-slots (thread-ts) thread
     (with-slots (id) room
       (with-slots (ts) msg
@@ -235,13 +235,13 @@ Any other non-nil value: send to the room."
                           (cons "ts" ts))
             :success #'on-success)))))))
 
-(defmethod slack-thread-marked ((thread slack-thread) payload)
+(cl-defmethod slack-thread-marked ((thread slack-thread) payload)
   (let ((unread-count (plist-get payload :unread_count))
         (last-read (plist-get payload :last_read)))
     (oset thread unread-count unread-count)
     (oset thread last-read last-read)))
 
-(defmethod slack-thread-update-last-read ((thread slack-thread) msg)
+(cl-defmethod slack-thread-update-last-read ((thread slack-thread) msg)
   (with-slots (ts) msg
     (oset thread last-read ts)))
 

@@ -43,14 +43,14 @@
 (defclass slack-file-info-buffer (slack-buffer)
   ((file :initarg :file :type slack-file)))
 
-(defmethod slack-buffer-name :static ((_class slack-file-info-buffer) file team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-file-info-buffer)) file team)
   (format "*Slack - %s File: %s"
           (oref team name)
           (or (oref file title)
               (oref file name)
               (oref file id))))
 
-(defmethod slack-buffer-display-file ((this slack-buffer) file-id)
+(cl-defmethod slack-buffer-display-file ((this slack-buffer) file-id)
   (with-slots (team) this
     (cl-labels
         ((open (file _)
@@ -67,18 +67,18 @@
         buffer)
     (slack-file-info-buffer :team team :file file)))
 
-(defmethod slack-buffer-init-buffer :after ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-init-buffer :after ((this slack-file-info-buffer))
   (with-slots (file team) this
     (let ((class (eieio-object-class-name this)))
       (slack-buffer-push-new-3 class file team))))
 
-(defmethod slack-buffer-name ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-name ((this slack-file-info-buffer))
   (with-slots (file team) this
     (slack-buffer-name (eieio-object-class-name this)
                        file
                        team)))
 
-(defmethod slack-buffer-buffer ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-buffer ((this slack-file-info-buffer))
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (progn
         (with-current-buffer buf
@@ -87,7 +87,7 @@
         buf)
     (slack-buffer-init-buffer this)))
 
-(defmethod slack-buffer-init-buffer ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-file-info-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-file-info-buffer-mode)
@@ -95,7 +95,7 @@
       (slack-buffer-insert this))
     buf))
 
-(defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
   (with-slots (file team) this
     (let* ((header (format "%s %s\n"
                            (slack-message-put-header-property (oref file title))
@@ -115,7 +115,7 @@
                                         comments)
                   'file-id (oref file id)))))
 
-(defmethod slack-buffer-insert ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-insert ((this slack-file-info-buffer))
   (delete-region (point-min) lui-output-marker)
   (with-slots (file team) this
     (let ((lui-time-stamp-position nil))
@@ -125,19 +125,19 @@
        'file-id (oref file id)
        'ts (slack-ts file)))))
 
-(defmethod slack-buffer-add-reaction-to-message
+(cl-defmethod slack-buffer-add-reaction-to-message
   ((this slack-file-info-buffer) reaction _ts)
   (with-slots (file team) this
     (slack-file-add-reaction (oref file id) reaction team)))
 
-(defmethod slack-buffer-add-star ((this slack-file-info-buffer) _ts)
+(cl-defmethod slack-buffer-add-star ((this slack-file-info-buffer) _ts)
   (let ((url slack-message-stars-add-url))
     (with-slots (file team) this
       (slack-message-star-api-request url
                                       (list (slack-message-star-api-params file))
                                       team))))
 
-(defmethod slack-buffer-remove-star ((this slack-file-info-buffer) _ts)
+(cl-defmethod slack-buffer-remove-star ((this slack-file-info-buffer) _ts)
   (let ((url slack-message-stars-remove-url))
     (with-slots (file team) this
       (slack-message-star-api-request url
@@ -145,13 +145,13 @@
                                              file))
                                       team))))
 
-(defmethod slack-buffer--replace ((this slack-file-info-buffer) _ts)
+(cl-defmethod slack-buffer--replace ((this slack-file-info-buffer) _ts)
   (slack-if-let* ((buffer (get-buffer (slack-buffer-name this))))
       (with-current-buffer buffer
         (let ((inhibit-read-only t))
           (slack-buffer-insert this)))))
 
-(defmethod slack-buffer-update ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-update ((this slack-file-info-buffer))
   (with-slots (file team) this
     (let ((buffer (get-buffer (slack-buffer-name this))))
       (with-current-buffer buffer

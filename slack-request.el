@@ -84,7 +84,7 @@
           args)
     (apply #'make-instance 'slack-request-request ret)))
 
-(defmethod slack-equalp ((this slack-request-request) other)
+(cl-defmethod slack-equalp ((this slack-request-request) other)
   (and (slack-equalp (oref this team)
                      (oref other team))
        (string= "GET" (oref this type))
@@ -94,7 +94,7 @@
        (equal (oref this params)
               (oref other params))))
 
-(defmethod slack-request-retry-request ((req slack-request-request) retry-after)
+(cl-defmethod slack-request-retry-request ((req slack-request-request) retry-after)
   (oset req execute-at (+ retry-after (time-to-seconds)))
   (slack-request-worker-push req))
 
@@ -184,7 +184,7 @@
   "Create `slack-request-worker' instance."
   (make-instance 'slack-request-worker))
 
-(defmethod slack-request-worker-push ((this slack-request-worker) req)
+(cl-defmethod slack-request-worker-push ((this slack-request-worker) req)
   (cl-pushnew req (oref this queue) :test #'slack-equalp))
 
 (defun slack-request-worker-set-timer ()
@@ -236,7 +236,7 @@
                                      :on-error #'decl-request-count
                                      )))))))
 
-(defmethod slack-request-worker-push ((req slack-request-request))
+(cl-defmethod slack-request-worker-push ((req slack-request-request))
   (unless slack-request-worker-instance
     (setq slack-request-worker-instance
           (slack-request-worker-create)))

@@ -63,13 +63,13 @@
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
 
-(defmethod slack-buffer-room ((this slack-room-buffer))
+(cl-defmethod slack-buffer-room ((this slack-room-buffer))
   (oref this room))
 
 (defun slack-message--add-reaction (buf reaction)
   (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
 
-(defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
+(cl-defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
   (let* ((reaction-users (oref reaction users))
          (reaction-name (oref reaction name))
          (team (oref this team))
@@ -82,21 +82,21 @@
                                        team)
       (slack-message--add-reaction this reaction-name))))
 
-(defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
+(cl-defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
   (with-slots (team) this
     (slack-reaction-help-text reaction team)))
 
-(defmethod slack-buffer-name :static ((_class slack-room-buffer) room team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-room-buffer)) room team)
   (slack-if-let* ((room-name (slack-room-name room team)))
       (format  "*Slack - %s : %s"
                (oref team name)
                room-name)))
 
-(defmethod slack-buffer-name ((this slack-room-buffer))
+(cl-defmethod slack-buffer-name ((this slack-room-buffer))
   (with-slots (room team) this
     (slack-buffer-name (eieio-object-class-name this) room team)))
 
-(defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (cl-labels
@@ -115,13 +115,13 @@
                 :success #'on-delete))
             (message "Canceled"))))))
 
-(defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
   (let ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
                                       ts))))))
 
-(defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts))
                     (template "https://%s.slack.com/archives/%s/p%s%s"))
@@ -141,7 +141,7 @@
                           (cons "message_ts" ts))
             :success #'on-success))))))
 
-(defmethod slack-buffer--replace ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer--replace ((this slack-room-buffer) ts)
   (with-slots (room) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-buffer-replace this message))))
@@ -167,7 +167,7 @@
 ;; params (action_id, type, app_id, channel, message_ts)
 (defconst slack-actions-run-url "https://slack.com/api/apps.actions.run")
 
-(defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
   (with-slots (team room) this
     (cl-labels
         ((select
@@ -219,7 +219,7 @@
         :type "POST"
         :success #'on-success-list)))))
 
-(defmethod slack-message-deleted ((message slack-message) room team)
+(cl-defmethod slack-message-deleted ((message slack-message) room team)
   (if (slack-thread-message-p message)
       (slack-if-let* ((parent (slack-room-find-thread-parent room message))
                       (thread (slack-message-get-thread parent)))

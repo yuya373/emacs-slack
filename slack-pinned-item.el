@@ -33,10 +33,10 @@
 (defun slack-pinned-item-create (message)
   (slack-pinned-item :message message))
 
-(defmethod slack-ts ((this slack-pinned-item))
+(cl-defmethod slack-ts ((this slack-pinned-item))
   (slack-ts (oref this message)))
 
-(defmethod slack-message-to-string ((this slack-pinned-item) team)
+(cl-defmethod slack-message-to-string ((this slack-pinned-item) team)
   (with-slots (message) this
     (if (or (slack-file-p message)
             (slack-file-email-p message))

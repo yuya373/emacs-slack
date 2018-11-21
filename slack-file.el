@@ -238,10 +238,10 @@
    (is-intro :initarg :is_intro)
    (comment :initarg :comment :type string)))
 
-(defmethod slack-merge ((old string) _new) old)
-(defmethod slack-equalp ((old string) new) (string= old new))
+(cl-defmethod slack-merge ((old string) _new) old)
+(cl-defmethod slack-equalp ((old string) new) (string= old new))
 
-(defmethod slack-merge ((old slack-file) new)
+(cl-defmethod slack-merge ((old slack-file) new)
   (cl-labels
       ((slack-merge-string-list
         (new old)
@@ -310,13 +310,13 @@
          )
     file))
 
-(defmethod slack-message-equal ((f slack-file) other)
+(cl-defmethod slack-message-equal ((f slack-file) other)
   (string= (oref f id) (oref other id)))
 
-(defmethod slack-equalp ((old slack-file) new)
+(cl-defmethod slack-equalp ((old slack-file) new)
   (string= (oref old id) (oref new id)))
 
-(defmethod slack-file-pushnew ((f slack-file) team)
+(cl-defmethod slack-file-pushnew ((f slack-file) team)
   (let ((room (slack-file-room-obj team)))
     (slack-merge-list (oref room messages) (list f))
     ;; (oset room messages (slack-room-sort-messages (oref room messages)))
@@ -349,20 +349,20 @@
                     (cons "page" (number-to-string page)))
       :success #'on-file-info))))
 
-(defmethod slack-file-gdoc-p ((this slack-file))
+(cl-defmethod slack-file-gdoc-p ((this slack-file))
   (string= (oref this filetype) "gdoc"))
 
-(defmethod slack-team-display-image-inlinep ((_file slack-file) team)
+(cl-defmethod slack-team-display-image-inlinep ((_file slack-file) team)
   (slack-team-display-file-image-inlinep team))
 
-(defmethod slack-message-image-to-string ((file slack-file))
+(cl-defmethod slack-message-image-to-string ((file slack-file))
   (slack-image-string (slack-file-thumb-image-spec file)))
 
-(defmethod slack-file-image-p ((this slack-file))
+(cl-defmethod slack-file-image-p ((this slack-file))
   (string= (car (split-string (oref this mimetype) "/"))
            "image"))
 
-(defmethod slack-message-large-image-to-string ((file slack-file))
+(cl-defmethod slack-message-large-image-to-string ((file slack-file))
   (slack-image-string (slack-file-image-spec file)))
 
 (cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success)
@@ -512,13 +512,13 @@
 ;;         :params (list (cons "file" (oref deleting-file id)))
 ;;         :success #'on-file-delete)))))
 
-(defmethod slack-file-id ((file slack-file))
+(cl-defmethod slack-file-id ((file slack-file))
   (oref file id))
 
-(defmethod slack-file-channel ((_file slack-file))
+(cl-defmethod slack-file-channel ((_file slack-file))
   nil)
 
-(defmethod slack-file-thumb-image-spec ((file slack-file))
+(cl-defmethod slack-file-thumb-image-spec ((file slack-file))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
     (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
         (and thumb-160 (list thumb-160 nil nil))
@@ -527,7 +527,7 @@
         (and thumb-pdf (list thumb-pdf thumb-pdf-w thumb-pdf-h))
         (list nil nil nil))))
 
-(defmethod slack-file-image-spec ((this slack-file))
+(cl-defmethod slack-file-image-spec ((this slack-file))
   (with-slots (is-public url-download url-private-download) this
     (list url-private-download
           nil
@@ -535,7 +535,7 @@
           nil
           (floor (* 0.9 (frame-pixel-width))))))
 
-(defmethod slack-file-channel-ids ((file slack-file))
+(cl-defmethod slack-file-channel-ids ((file slack-file))
   (append (oref file channels)
           (oref file ims)
           (oref file groups)))
@@ -552,7 +552,7 @@
             do (when (string= (oref file id) ,id)
                  ,@body)))
 
-(defmethod slack-room-buffer-name ((this slack-file) _team)
+(cl-defmethod slack-room-buffer-name ((this slack-file) _team)
   (with-slots (name) this
     (format "*Slack File - %s*" name)))
 
@@ -561,13 +561,13 @@
   (setq-local default-directory slack-default-directory)
   )
 
-(defmethod slack-message-star-added ((this slack-file))
+(cl-defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
 
-(defmethod slack-message-star-removed ((this slack-file))
+(cl-defmethod slack-message-star-removed ((this slack-file))
   (oset this is-starred nil))
 
-(defmethod slack-message-star-api-params ((this slack-file))
+(cl-defmethod slack-message-star-api-params ((this slack-file))
   (cons "file" (oref this id)))
 
 (defun slack-file-process-star-api (url team file-id)
@@ -584,7 +584,7 @@
                                              team)))
       (slack-buffer-replace buffer file)))
 
-(defmethod slack-message-update ((this slack-file) team &rest _args)
+(cl-defmethod slack-message-update ((this slack-file) team &rest _args)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                              this
                                              team)))
@@ -592,10 +592,10 @@
         (oset buffer file this)
         (slack-buffer-update buffer))))
 
-(defmethod slack-ts ((this slack-file))
+(cl-defmethod slack-ts ((this slack-file))
   (number-to-string (oref this timestamp)))
 
-(defmethod slack-thread-message-p ((_this slack-file))
+(cl-defmethod slack-thread-message-p ((_this slack-file))
   nil)
 
 (provide 'slack-file)

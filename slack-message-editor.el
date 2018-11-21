@@ -79,7 +79,7 @@
                       (cons "share_channel" share-channel-id))
         :success #'on-success)))))
 
-(defmethod slack-message-get-user-id ((m slack-user-message))
+(cl-defmethod slack-message-get-user-id ((m slack-user-message))
   (oref m user))
 
 (defun slack-message-cancel-edit ()

@@ -55,7 +55,7 @@
    (topic :initarg :topic :initform nil)
    (purpose :initarg :purpose :initform nil)))
 
-(defmethod slack-merge ((this slack-group) other)
+(cl-defmethod slack-merge ((this slack-group) other)
   (call-next-method)
   (with-slots (is-group creator is-archived is-mpim members topic purpose) this
     (setq is-group (oref other is-group))
@@ -70,13 +70,13 @@
   (with-slots (groups) team
     (slack-room-names groups team filter)))
 
-(defmethod slack-room-subscribedp ((room slack-group) team)
+(cl-defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
 
-(defmethod slack-room-buffer-name ((room slack-group) team)
+(cl-defmethod slack-room-buffer-name ((room slack-group) team)
   (concat slack-group-buffer-name
           " : "
           (slack-room-display-name room team)))
@@ -105,7 +105,7 @@
                               team))))
 
 
-(defmethod slack-room-update-mark-url ((_room slack-group))
+(cl-defmethod slack-room-update-mark-url ((_room slack-group))
   slack-group-update-mark-url)
 
 (defun slack-create-group ()
@@ -152,7 +152,7 @@
                                   team
                                   #'on-group-leave))))
 
-(defmethod slack-room-archived-p ((room slack-group))
+(cl-defmethod slack-room-archived-p ((room slack-group))
   (oref room is-archived))
 
 (defun slack-group-archive ()
@@ -256,22 +256,22 @@
             :success #'on-success))))))
 
 
-(defmethod slack-mpim-p ((room slack-group))
+(cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
 
-(defmethod slack-room-get-info-url ((_room slack-group))
+(cl-defmethod slack-room-get-info-url ((_room slack-group))
   slack-group-info-url)
 
-(defmethod slack-room-update-info ((room slack-group) data team)
+(cl-defmethod slack-room-update-info ((room slack-group) data team)
   (let ((new-room (slack-room-create (plist-get data :group)
                                      team
                                      'slack-group)))
     (slack-merge room new-room)))
 
-(defmethod slack-room-history-url ((_room slack-group))
+(cl-defmethod slack-room-history-url ((_room slack-group))
   slack-group-history-url)
 
-(defmethod slack-room-replies-url ((_room slack-group))
+(cl-defmethod slack-room-replies-url ((_room slack-group))
   "https://slack.com/api/groups.replies")
 
 (provide 'slack-group)

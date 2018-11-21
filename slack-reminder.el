@@ -52,16 +52,16 @@
   ((time :initarg :time :type integer)
    (complete-ts :initarg :complete_ts :type integer)))
 
-(defmethod slack-reminder-user ((r slack-reminder-base) team)
+(cl-defmethod slack-reminder-user ((r slack-reminder-base) team)
   (slack-user-find r team))
 
-(defmethod slack-reminder-creator ((r slack-reminder-base) team)
+(cl-defmethod slack-reminder-creator ((r slack-reminder-base) team)
   (slack-user--find (oref r creator) team))
 
-(defmethod slack-reminder-completedp ((r slack-reminder))
+(cl-defmethod slack-reminder-completedp ((r slack-reminder))
   (not (eq 0 (oref r complete-ts))))
 
-(defmethod slack-reminder-completedp ((_r slack-recurring-reminder))
+(cl-defmethod slack-reminder-completedp ((_r slack-recurring-reminder))
   nil)
 
 (defun slack-reminder-create (payload)
@@ -71,7 +71,7 @@
     (apply #'make-instance klass
            (slack-collect-slots klass payload))))
 
-(defmethod slack-reminder-to-body ((r slack-reminder))
+(cl-defmethod slack-reminder-to-body ((r slack-reminder))
   (with-slots (text time complete-ts) r
     (let ((time-str (format "Remind At: %s"
                             (slack-message-time-to-string
@@ -83,10 +83,10 @@
                                 (number-to-string complete-ts))))))
       (format "%s\n%s\n\n%s" time-str completed text))))
 
-(defmethod slack-reminder-to-body ((r slack-recurring-reminder))
+(cl-defmethod slack-reminder-to-body ((r slack-recurring-reminder))
   (oref r text))
 
-(defmethod slack-reminder-to-string ((r slack-reminder-base) team)
+(cl-defmethod slack-reminder-to-string ((r slack-reminder-base) team)
   (with-slots (creator user) r
     (let* ((header (slack-message-put-header-property
                     (format "From: %s To: %s"
@@ -95,7 +95,7 @@
            (body (slack-reminder-to-body r)))
       (format "%s\n%s\n\n" header body))))
 
-(defmethod slack-create-reminder-buffer ((team slack-team))
+(cl-defmethod slack-create-reminder-buffer ((team slack-team))
   (let* ((buf-name "*Slack - Reminders*")
          (buf (get-buffer-create buf-name)))
     (with-current-buffer buf
@@ -108,10 +108,10 @@
       (setq buffer-read-only t))
     buf))
 
-(defmethod slack-reminder-sort-key ((r slack-reminder))
+(cl-defmethod slack-reminder-sort-key ((r slack-reminder))
   (oref r time))
 
-(defmethod slack-reminder-sort-key ((_r slack-recurring-reminder))
+(cl-defmethod slack-reminder-sort-key ((_r slack-recurring-reminder))
   0)
 
 (defun slack-reminder-sort (team)
@@ -146,7 +146,7 @@
         team
         :success #'on-reminder-list)))))
 
-(defmethod slack-reminders-alist ((team slack-team) &optional filter)
+(cl-defmethod slack-reminders-alist ((team slack-team) &optional filter)
   (cl-labels ((text (r)
                     (with-slots (creator user text) r
                       (format "Creator: %s Target: %s Content: %s"
@@ -160,7 +160,7 @@
                                     reminders)
                 reminders)))))
 
-(defmethod slack-team-delete-reminder ((team slack-team) r)
+(cl-defmethod slack-team-delete-reminder ((team slack-team) r)
   (with-slots (reminders) team
     (setq reminders
           (cl-remove-if #'(lambda (e)
@@ -188,7 +188,7 @@
         :params (list (cons "reminder" (oref reminder id)))
         :success #'on-reminder-delete)))))
 
-(defmethod slack-reminder-info ((r slack-reminder-base) team callback)
+(cl-defmethod slack-reminder-info ((r slack-reminder-base) team callback)
   (cl-labels
       ((on-reminder-info (&key data &allow-other-keys)
                          (slack-request-handle-error
@@ -204,7 +204,7 @@
       :params (list (cons "reminder" (oref r id)))
       :success #'on-reminder-info))))
 
-(defmethod slack-reminder-refresh ((r slack-reminder-base) team)
+(cl-defmethod slack-reminder-refresh ((r slack-reminder-base) team)
   (slack-reminder-info
    r team
    #'(lambda (reminder)
@@ -235,7 +235,7 @@
         :params (list (cons "reminder" (oref reminder id)))
         :success #'on-reminder-complete)))))
 
-(defmethod slack-user-find ((r slack-reminder-base) team)
+(cl-defmethod slack-user-find ((r slack-reminder-base) team)
   (slack-user--find (oref r user) team))
 
 (provide 'slack-reminder)

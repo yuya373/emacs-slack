@@ -33,13 +33,13 @@
 
 (defclass slack-file-list-buffer (slack-message-buffer) ())
 
-(defmethod slack-buffer-name ((_this slack-file-list-buffer))
+(cl-defmethod slack-buffer-name ((_this slack-file-list-buffer))
   (format "%s" (call-next-method)))
 
-(defmethod slack-buffer-major-mode ((_this slack-file-list-buffer))
+(cl-defmethod slack-buffer-major-mode ((_this slack-file-list-buffer))
   'slack-file-list-buffer-mode)
 
-(defmethod slack-create-message-buffer ((room slack-file-room) team)
+(cl-defmethod slack-create-message-buffer ((room slack-file-room) team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
                                              room
                                              team)))
@@ -53,7 +53,7 @@
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
-(defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
+(cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
         (ts (slack-ts message))
         (team (oref this team)))
@@ -65,7 +65,7 @@
     (lui-insert "" t)
     ))
 
-(defmethod slack-buffer-replace ((this slack-file-list-buffer)
+(cl-defmethod slack-buffer-replace ((this slack-file-list-buffer)
                                  message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)

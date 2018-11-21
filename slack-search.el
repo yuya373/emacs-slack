@@ -83,7 +83,7 @@
    (ts :initarg :ts :type string)
    (type :initarg :type :type string)))
 
-(defmethod slack-merge ((this slack-search-result) other)
+(cl-defmethod slack-merge ((this slack-search-result) other)
   (oset this query (oref other query))
   (oset this sort (oref other sort))
   (oset this sort-dir (oref other sort-dir))
@@ -91,7 +91,7 @@
   (oset this matches (append (oref this matches) (oref other matches)))
   (oset this paging (oref other paging)))
 
-(defmethod slack-message-to-string ((this slack-search-message) team)
+(cl-defmethod slack-message-to-string ((this slack-search-message) team)
   (with-slots (channel username) this
     (let* ((room (slack-room-find (oref channel id) team))
            (header (propertize (format "%s%s"
@@ -104,13 +104,13 @@
                           (slack-message-to-string (oref this message) team))
                   'ts (slack-ts this)))))
 
-(defmethod slack-ts ((this slack-search-message))
+(cl-defmethod slack-ts ((this slack-search-message))
   (slack-ts (oref this message)))
 
-(defmethod slack-search-has-next-page-p ((this slack-search-result))
+(cl-defmethod slack-search-has-next-page-p ((this slack-search-result))
   (slack-search-paging-next-page (oref this paging)))
 
-(defmethod slack-search-paging-next-page ((this slack-search-paging))
+(cl-defmethod slack-search-paging-next-page ((this slack-search-paging))
   (with-slots (pages page) this
     (unless (< pages (1+ page))
       (1+ page))))
@@ -201,10 +201,10 @@
                            nil t)))
     (list team query sort sort-dir)))
 
-(defmethod slack-search-request-url ((_this slack-search-result))
+(cl-defmethod slack-search-request-url ((_this slack-search-result))
   "https://slack.com/api/search.messages")
 
-(defmethod slack-search-request-url ((_this slack-file-search-result))
+(cl-defmethod slack-search-request-url ((_this slack-file-search-result))
   "https://slack.com/api/search.files")
 
 (cl-defmethod slack-search-request ((this slack-search-result)

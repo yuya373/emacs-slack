@@ -132,13 +132,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (format-time-string "%Y-%m-%d %H:%M:%S"
                         (seconds-to-time ts))))
 
-(defmethod slack-message-header ((m slack-message) team)
+(cl-defmethod slack-message-header ((m slack-message) team)
   (slack-message-sender-name m team))
 
-(defmethod slack-message-starred-p ((m slack-message))
+(cl-defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
-(defmethod slack-message-starred-str ((m slack-message))
+(cl-defmethod slack-message-starred-str ((m slack-message))
   (if (slack-message-starred-p m)
       ":star:"
     ""))
@@ -149,10 +149,10 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
                "\n")))
 
-(defmethod slack-message-profile-image ((m slack-message) team)
+(cl-defmethod slack-message-profile-image ((m slack-message) team)
   (slack-user-image (slack-user-find m team) team))
 
-(defmethod slack-message-header-with-image ((m slack-message) header team)
+(cl-defmethod slack-message-header-with-image ((m slack-message) header team)
   (let ((image (slack-message-profile-image m team)))
     (if image
         (format "%s %s" (propertize "image"
@@ -170,21 +170,21 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
         (slack-message-header-with-image m header team)
       header)))
 
-(defmethod slack-message-body-to-string ((m slack-message) team)
+(cl-defmethod slack-message-body-to-string ((m slack-message) team)
   (let ((raw-body (slack-message-body m team)))
     (if (oref m deleted-at)
         (slack-message-put-deleted-property raw-body)
       (slack-message-put-text-property raw-body))))
 
 
-(defmethod slack-message-reaction-to-string ((m slack-message))
+(cl-defmethod slack-message-reaction-to-string ((m slack-message))
   (let ((reactions (slack-message-reactions m)))
     (when reactions
       (mapconcat #'slack-reaction-to-string
                  reactions
                  " "))))
 
-(defmethod slack-message-to-string ((m slack-message) team)
+(cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
          (attachment-body (slack-message-attachment-body m team))
          (body (slack-message-body-to-string m team))
@@ -202,15 +202,15 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           files
                           attachment-body reactions thread)))
 
-(defmethod slack-message-body ((m slack-message) team)
+(cl-defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
     (slack-message-unescape-string text team)))
 
-(defmethod slack-message-body ((m slack-reply-broadcast-message) team)
+(cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "Replied to a thread: \n%s"
           (slack-message-unescape-string (oref m text) team)))
 
-(defmethod slack-message-body-to-string ((m slack-file-comment-message) team)
+(cl-defmethod slack-message-body-to-string ((m slack-file-comment-message) team)
   (with-slots (file comment deleted-at) m
     (let ((commented-user (slack-user-name (plist-get comment :user)
                                            team))
@@ -232,10 +232,10 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
               (funcall text-propertize
                        comment-body)))))
 
-(defmethod slack-team-display-image-inlinep ((_m slack-message) team)
+(cl-defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
 
-(defmethod slack-message-attachment-body ((m slack-message) team)
+(cl-defmethod slack-message-attachment-body ((m slack-message) team)
   (with-slots (attachments) m
     (let ((body (mapconcat #'(lambda (attachment)
                                (slack-message-to-string attachment team))
@@ -243,7 +243,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (if (< 0 (length body))
           (slack-message-unescape-string (format "\n%s" body) team)))))
 
-(defmethod slack-message-to-alert ((m slack-message) team)
+(cl-defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text attachments files) m
     (let ((alert-text
            (cond
@@ -364,7 +364,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 #'unescape-channel
                                 text t))))
 
-(defmethod slack-message--inspect ((this slack-message) room team)
+(cl-defmethod slack-message--inspect ((this slack-message) room team)
   (format "RAW: %s\nROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
           (oref this text)
           (oref room id)
@@ -382,14 +382,14 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                       (oref e title)))
                   (oref this files))))
 
-(defmethod slack-file-gdoc-to-string ((this slack-file))
+(cl-defmethod slack-file-gdoc-to-string ((this slack-file))
   (with-slots (pretty-type name title url-private permalink) this
     (let ((title (propertize (format "<%s|%s>" permalink (or title name))
                              'face '(:weight bold)))
           (description (format "<%s|%s>" url-private pretty-type)))
       (slack-format-message title description))))
 
-(defmethod slack-message-body-to-string ((file slack-file) _team)
+(cl-defmethod slack-message-body-to-string ((file slack-file) _team)
   (cond
    ((slack-file-gdoc-p file) (slack-file-gdoc-to-string file))
    (t (with-slots (name title size filetype permalink) file
@@ -397,17 +397,17 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
          (format "name: %s\nsize: %s\ntype: %s\n%s\n"
                  (or title name) size filetype permalink))))))
 
-(defmethod slack-message-to-string ((this slack-file-email) ts team)
+(cl-defmethod slack-message-to-string ((this slack-file-email) ts team)
   (let ((body (slack-file-summary this ts team))
         (thumb (slack-image-string (slack-file-thumb-image-spec this))))
     (slack-format-message body thumb)))
 
-(defmethod slack-message-to-string ((this slack-file) ts team)
+(cl-defmethod slack-message-to-string ((this slack-file) ts team)
   (let ((body (slack-file-summary this ts team))
         (thumb (slack-image-string (slack-file-thumb-image-spec this))))
     (slack-format-message body thumb)))
 
-(defmethod slack-message-to-string ((this slack-file-comment) team)
+(cl-defmethod slack-message-to-string ((this slack-file-comment) team)
   (with-slots (user comment) this
     (let ((name (slack-user-name user team))
           (status (slack-user-status user team)))
@@ -416,7 +416,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           'face 'slack-message-output-header)
               (slack-message-unescape-string comment team)))))
 
-(defmethod slack-file-summary ((file slack-file) _ts team)
+(cl-defmethod slack-file-summary ((file slack-file) _ts team)
   (with-slots (mode pretty-type mimetype permalink name title) file
     (if (string= mode "tombstone")
         "This file was deleted."
@@ -427,7 +427,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                                                    team))
               permalink))))
 
-(defmethod slack-file-summary ((this slack-file-email) ts team)
+(cl-defmethod slack-file-summary ((this slack-file-email) ts team)
   (with-slots (preview-plain-text plain-text is-expanded) this
     (let* ((has-more (< (length preview-plain-text)
                         (length plain-text)))
@@ -447,7 +447,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           'face '(:underline t)
                           'keymap slack-expand-email-keymap)))))
 
-(defmethod slack-message-body-to-string ((this slack-file-email) _team)
+(cl-defmethod slack-message-body-to-string ((this slack-file-email) _team)
   (let ((from (format "From: %s" (mapconcat #'(lambda (e) (oref e original))
                                             (oref this from)
                                             ", ")))
@@ -465,7 +465,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (list from to cc subject date body)
                "\n")))
 
-(defmethod slack-message-to-string ((attachment slack-attachment) team)
+(cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots
       (fallback text ts color from-url footer fields pretext actions) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))

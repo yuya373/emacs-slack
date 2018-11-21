@@ -100,30 +100,29 @@
   ((dialog-id :initarg :dialog-id :type string)
    (dialog :initarg :dialog :type slack-dialog)))
 
-(defmethod slack-buffer-name :static ((_class slack-dialog-buffer) dialog-id dialog team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-dialog-buffer)) dialog-id dialog team)
   (with-slots (title) dialog
     (format "*Slack Dialog - %s [%s] : %s*"
             title
             dialog-id
             (slack-team-name team))))
 
-(defmethod slack-buffer-name ((this slack-dialog-buffer))
+(cl-defmethod slack-buffer-name ((this slack-dialog-buffer))
   (with-slots (dialog-id dialog team) this
     (slack-buffer-name 'slack-dialog-buffer
                        dialog-id dialog team)))
 
-(defmethod slack-buffer-find :static ((class slack-dialog-buffer)
-                                      dialog-id dialog team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-dialog-buffer)) dialog-id dialog team)
   (slack-buffer-find-4 class dialog-id dialog team))
 
-(defmethod slack-buffer-insert-label ((this slack-dialog-element))
+(cl-defmethod slack-buffer-insert-label ((this slack-dialog-element))
   (with-slots (label optional) this
     (insert (propertize label
                         'face 'slack-dialog-element-label-face))
     (when optional
       (insert " (optional)"))))
 
-(defmethod slack-buffer-insert-hint ((this slack-dialog-text-element))
+(cl-defmethod slack-buffer-insert-hint ((this slack-dialog-text-element))
   (with-slots (hint) this
     (when hint
       (insert "\n")
@@ -137,18 +136,18 @@
     (define-key map [mouse-1] #'slack-dialog-buffer-open-edit-element-buffer)
     map))
 
-(defmethod slack-buffer-insert-edit-button ((this slack-dialog-text-element))
+(cl-defmethod slack-buffer-insert-edit-button ((this slack-dialog-text-element))
   (insert (propertize " Edit "
                       'face '(:box (:line-width 1 :style released-button))
                       'keymap slack-dialog-element-edit-button-map
                       'slack-dialog-element this)))
 
-(defmethod slack-buffer-insert-placeholder ((this slack-dialog-text-element))
+(cl-defmethod slack-buffer-insert-placeholder ((this slack-dialog-text-element))
   (with-slots (placeholder) this
     (insert (propertize placeholder
                         'face 'slack-dialog-element-placeholder-face))))
 
-(defmethod slack-buffer-insert-errors ((this slack-dialog-element))
+(cl-defmethod slack-buffer-insert-errors ((this slack-dialog-element))
   (with-slots (errors) this
     (mapc #'(lambda (err)
               (insert (propertize (oref err error-message)
@@ -156,7 +155,7 @@
               (insert "\n"))
           errors)))
 
-(defmethod slack-buffer-insert ((this slack-dialog-text-element))
+(cl-defmethod slack-buffer-insert ((this slack-dialog-text-element))
   (with-slots (value placeholder errors) this
     (slack-buffer-insert-label this)
     (insert " ")
@@ -171,7 +170,7 @@
     (slack-buffer-insert-errors this)
     (slack-buffer-insert-hint this)))
 
-(defmethod slack-buffer-insert ((this slack-dialog-textarea-element))
+(cl-defmethod slack-buffer-insert ((this slack-dialog-textarea-element))
   (with-slots (value placeholder) this
     (slack-buffer-insert-label this)
     (insert "  ")
@@ -210,7 +209,7 @@
         (oset dialog-element value value)
         (slack-dialog-buffer-redisplay buffer))))
 
-(defmethod slack-buffer-insert-select-button ((this slack-dialog-select-element))
+(cl-defmethod slack-buffer-insert-select-button ((this slack-dialog-select-element))
   (let ((label (slack-if-let*
                    ((selected (slack-dialog-selected-option this)))
                    (slack-selectable-text selected)
@@ -221,7 +220,7 @@
                         'keymap slack-dialog-select-element-map
                         'slack-dialog-element-name (oref this name)))))
 
-(defmethod slack-buffer-insert ((this slack-dialog-select-element))
+(cl-defmethod slack-buffer-insert ((this slack-dialog-select-element))
   (slack-buffer-insert-label this)
   (insert "\n")
   (slack-buffer-insert-select-button this)
@@ -234,7 +233,7 @@
       ((buffer slack-current-buffer))
       (slack-dialog-buffer--submit buffer)))
 
-(defmethod slack-dialog-buffer--submit ((this slack-dialog-buffer))
+(cl-defmethod slack-dialog-buffer--submit ((this slack-dialog-buffer))
   (let* ((dialog (oref this dialog))
          (dialog-id (oref this dialog-id))
          (team (oref this team))
@@ -287,7 +286,7 @@
         (slack-dialog-notify-cancel dialog dialog-id team)
         (slack-dialog-buffer-kill-buffer buffer))))
 
-(defmethod slack-dialog-buffer-kill-buffer ((this slack-dialog-buffer))
+(cl-defmethod slack-dialog-buffer-kill-buffer ((this slack-dialog-buffer))
   (slack-if-let* ((buffer-name (slack-buffer-name this))
                   (buf (get-buffer buffer-name))
                   (win (get-buffer-window buf)))
@@ -296,7 +295,7 @@
         (when (< 1 (count-windows))
           (delete-window win)))))
 
-(defmethod slack-buffer-insert ((this slack-dialog-buffer))
+(cl-defmethod slack-buffer-insert ((this slack-dialog-buffer))
   (with-slots (dialog) this
     (with-slots (error-message title elements submit-label) dialog
       (let ((inhibit-read-only t))
@@ -321,7 +320,7 @@
                             'keymap slack-dialog-submit-button-map))
         (goto-char (point-min))))))
 
-(defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (dialog (oref this dialog))
          (dialog-id (oref this dialog-id))
@@ -345,7 +344,7 @@
                    :dialog dialog
                    :team team)))
 
-(defmethod slack-dialog-buffer-save-element-value ((this slack-dialog-buffer)
+(cl-defmethod slack-dialog-buffer-save-element-value ((this slack-dialog-buffer)
                                                    name
                                                    value)
   (with-slots (dialog) this
@@ -357,7 +356,7 @@
         (oset element value value)
         (slack-dialog-buffer-redisplay this)))))
 
-(defmethod slack-dialog-buffer-redisplay ((this slack-dialog-buffer))
+(cl-defmethod slack-dialog-buffer-redisplay ((this slack-dialog-buffer))
   (slack-if-let* ((bufname (slack-buffer-name this))
                   (buf (get-buffer bufname)))
       (with-current-buffer buf

@@ -120,14 +120,14 @@ use `slack-change-current-team' to change `slack-current-team'"
     (oset team ws ws)
     team))
 
-(defmethod slack-equalp ((this slack-team) other)
+(cl-defmethod slack-equalp ((this slack-team) other)
   (string= (oref this id) (oref other id)))
 
-(defmethod slack-team-set-ws-url ((this slack-team) url)
+(cl-defmethod slack-team-set-ws-url ((this slack-team) url)
   (with-slots (ws) this
     (oset ws url url)))
 
-(defmethod slack-team-send-message ((this slack-team) message)
+(cl-defmethod slack-team-send-message ((this slack-team) message)
   (with-slots (ws) this
     (slack-ws-send ws message this)))
 
@@ -159,14 +159,14 @@ use `slack-change-current-team' to change `slack-current-team'"
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
               slack-teams))
 
-(defmethod slack-team-disconnect ((team slack-team))
+(cl-defmethod slack-team-disconnect ((team slack-team))
   (slack-ws-close (oref team ws) team))
 
-(defmethod slack-team-equalp ((team slack-team) other)
+(cl-defmethod slack-team-equalp ((team slack-team) other)
   (with-slots (token) team
     (string= token (oref other token))))
 
-(defmethod slack-team-name ((team slack-team))
+(cl-defmethod slack-team-name ((team slack-team))
   (oref team name))
 
 ;;;###autoload
@@ -242,7 +242,7 @@ you can change current-team with `slack-change-current-team'"
       ;;         (setq slack-current-team team)))
       team)))
 
-(defmethod slack-team-connectedp ((team slack-team))
+(cl-defmethod slack-team-connectedp ((team slack-team))
   (oref (oref team ws) connected))
 
 (defun slack-team-connected-list ()
@@ -269,7 +269,7 @@ you can change current-team with `slack-change-current-team'"
     (if team
         (slack-team-connect team))))
 
-(defmethod slack-team-connect ((team slack-team))
+(cl-defmethod slack-team-connect ((team slack-team))
   (unless (slack-team-connectedp team)
     (slack-start team)))
 
@@ -286,26 +286,26 @@ you can change current-team with `slack-change-current-team'"
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
 
-(defmethod slack-team-need-token-p ((team slack-team))
+(cl-defmethod slack-team-need-token-p ((team slack-team))
   (with-slots (token) team
     (or (not token) (< (length token) 1))))
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
-(defmethod slack-team-event-log-enabledp ((team slack-team))
+(cl-defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
 
-(defmethod slack-team-display-profile-imagep ((team slack-team))
+(cl-defmethod slack-team-display-profile-imagep ((team slack-team))
   (oref team display-profile-image))
 
-(defmethod slack-team-display-attachment-image-inlinep ((team slack-team))
+(cl-defmethod slack-team-display-attachment-image-inlinep ((team slack-team))
   (oref team display-attachment-image-inline))
 
-(defmethod slack-team-display-file-image-inlinep ((team slack-team))
+(cl-defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
 
-(defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
+(cl-defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))
 
 (defvar slack-team-random-numbers-for-client-token
@@ -314,12 +314,12 @@ you can change current-team with `slack-change-current-team'"
       (push (random 10) result))
     (mapconcat #'number-to-string result "")))
 
-(defmethod slack-team-client-token ((team slack-team))
+(cl-defmethod slack-team-client-token ((team slack-team))
   (format "EmacsSlack-%s-%s"
           (oref team id)
           slack-team-random-numbers-for-client-token))
 
-(defmethod slack-team-inc-message-id ((team slack-team))
+(cl-defmethod slack-team-inc-message-id ((team slack-team))
   (with-slots (message-id) team
     (if (eq message-id (1- most-positive-fixnum))
         (setq message-id 1)
@@ -333,7 +333,7 @@ you can change current-team with `slack-change-current-team'"
         (oset team emoji-download-watch-timer nil)
         (emojify-create-emojify-emojis t))))
 
-(defmethod slack-team-token ((this slack-team))
+(cl-defmethod slack-team-token ((this slack-team))
   (oref this token))
 
 (provide 'slack-team)

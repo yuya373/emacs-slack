@@ -73,10 +73,10 @@
 (defclass slack-dialog-select-option-group (slack-selectable-option-group)
   ((label :initarg :label :type string)))
 
-(defmethod slack-dialog-element-value ((this slack-dialog-element))
+(cl-defmethod slack-dialog-element-value ((this slack-dialog-element))
   (or (oref this value) ""))
 
-(defmethod slack-dialog-element-value ((this slack-dialog-select-element))
+(cl-defmethod slack-dialog-element-value ((this slack-dialog-select-element))
   (with-slots (data-source selected-options) this
     (or (cond
          ((string= data-source "external")
@@ -86,11 +86,11 @@
          (t (oref this value)))
         "")))
 
-(defmethod slack-equalp ((this slack-dialog-element) other)
+(cl-defmethod slack-equalp ((this slack-dialog-element) other)
   (string= (oref this name)
            (oref other name)))
 
-(defmethod slack-dialog-selected-option ((this slack-dialog-select-element))
+(cl-defmethod slack-dialog-selected-option ((this slack-dialog-select-element))
   (with-slots (data-source value options selected-options) this
     (if (string= data-source "static")
         (cl-find-if #'(lambda (op) (string= (oref op value)
@@ -98,13 +98,13 @@
                     options)
       (and selected-options (car selected-options)))))
 
-(defmethod slack-selectable-text ((this slack-dialog-select-option))
+(cl-defmethod slack-selectable-text ((this slack-dialog-select-option))
   (oref this label))
 
-(defmethod slack-selectable-text ((this slack-dialog-select-option-group))
+(cl-defmethod slack-selectable-text ((this slack-dialog-select-option-group))
   (oref this label))
 
-(defmethod slack-selectable-prompt ((this slack-dialog-select-element))
+(cl-defmethod slack-selectable-prompt ((this slack-dialog-select-element))
   (format "%s :"
           (oref this label)))
 
@@ -154,17 +154,17 @@
     (apply #'make-instance 'slack-dialog
            (slack-collect-slots 'slack-dialog payload))))
 
-(defmethod slack-dialog-element-validate ((this slack-dialog-element) value)
+(cl-defmethod slack-dialog-element-validate ((this slack-dialog-element) value)
   (with-slots (optional label) this
     (when (and (not optional)
                (or (null value)
                    (< (length value) 1)))
       (error "%s must not be empty" label))))
 
-(defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value)
+(cl-defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value)
   (call-next-method))
 
-(defmethod slack-dialog-element-validate ((this slack-dialog-text-element) value)
+(cl-defmethod slack-dialog-element-validate ((this slack-dialog-text-element) value)
   (call-next-method)
   (with-slots (min-length max-length label) this
     (when (< max-length (length value))
@@ -172,7 +172,7 @@
     (when (< (length value) min-length)
       (error "%s must be greater than %s" label min-length))))
 
-(defmethod slack-dialog-execute ((this slack-dialog-text-element) _dialog-id _team)
+(cl-defmethod slack-dialog-execute ((this slack-dialog-text-element) _dialog-id _team)
   (with-slots (hint value placeholder label optional) this
     (let* ((prompt (format "%s%s%s : "
                            label
@@ -182,10 +182,10 @@
       (slack-dialog-element-validate this value)
       value)))
 
-(defmethod slack-dialog-execute ((_this slack-dialog-textarea-element) _dialog-id _team)
+(cl-defmethod slack-dialog-execute ((_this slack-dialog-textarea-element) _dialog-id _team)
   (call-next-method))
 
-(defmethod slack-dialog-select-element-get-suggestions ((this slack-dialog-select-element)
+(cl-defmethod slack-dialog-select-element-get-suggestions ((this slack-dialog-select-element)
                                                         dialog-id team after-success)
   (let* ((url "https://slack.com/api/dialog.selectSuggestion")
          (min-query-length (oref this min-query-length))
@@ -207,11 +207,11 @@
         :sync t
         :success #'on-success)))))
 
-(defmethod slack-dialog-execute ((this slack-dialog-select-element) dialog-id team)
+(cl-defmethod slack-dialog-execute ((this slack-dialog-select-element) dialog-id team)
   (slack-if-let* ((selected (slack-dialog--execute this dialog-id team)))
       (cdr selected)))
 
-(defmethod slack-dialog--execute ((this slack-dialog-select-element) dialog-id team)
+(cl-defmethod slack-dialog--execute ((this slack-dialog-select-element) dialog-id team)
   (with-slots (data-source) this
     (cond
      ((string= data-source "external")
@@ -271,7 +271,7 @@
      (t (error "Unknown element's data-source: %s" data-source))
      )))
 
-(defmethod slack-dialog--submit ((_this slack-dialog)
+(cl-defmethod slack-dialog--submit ((_this slack-dialog)
                                  dialog-id team submission
                                  &optional after-success)
   (let ((url "https://slack.com/api/dialog.submit")
@@ -289,7 +289,7 @@
         :params params
         :success #'on-success)))))
 
-(defmethod slack-dialog-submit ((this slack-dialog) dialog-id team)
+(cl-defmethod slack-dialog-submit ((this slack-dialog) dialog-id team)
   (with-slots (elements) this
     (let ((submission (mapcar #'(lambda (element)
                                   (let ((value (slack-dialog-execute element dialog-id team)))
@@ -297,7 +297,7 @@
                               elements)))
       (slack-dialog--submit this dialog-id team submission))))
 
-(defmethod slack-dialog-notify-cancel ((this slack-dialog) dialog-id team)
+(cl-defmethod slack-dialog-notify-cancel ((this slack-dialog) dialog-id team)
   (slack-if-let* ((url "https://slack.com/api/dialog.notifyCancel")
                   (params (list (cons "dialog_id" dialog-id)))
                   (notify-cancelp (oref this notify-on-cancel)))
@@ -313,7 +313,7 @@
           :params params
           :success #'on-success)))))
 
-(defmethod slack-dialog-clear-errors ((this slack-dialog))
+(cl-defmethod slack-dialog-clear-errors ((this slack-dialog))
   (oset this error-message nil)
   (dolist (element (oref this elements))
     (oset element errors nil)))

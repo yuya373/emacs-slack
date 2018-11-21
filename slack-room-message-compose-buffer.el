@@ -38,17 +38,17 @@
       buf
     (slack-room-message-compose-buffer :room room :team team)))
 
-(defmethod slack-buffer-name :static ((_class slack-room-message-compose-buffer) room team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-room-message-compose-buffer)) room team)
   (format "*Slack - %s : %s Compose Message"
           (oref team name)
           (slack-room-name room team)))
 
-(defmethod slack-buffer-name ((this slack-room-message-compose-buffer))
+(cl-defmethod slack-buffer-name ((this slack-room-message-compose-buffer))
   (with-slots (room team) this
     (slack-buffer-name (eieio-object-class-name this)
                        room team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
   (let* ((buf (call-next-method)))
     (with-current-buffer buf
       (setq buffer-read-only nil)
@@ -59,7 +59,7 @@
                                room team))
     buf))
 
-(defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
+(cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
   (with-slots (room team) this
     (slack-message-send-internal message room team)
     (call-next-method)))

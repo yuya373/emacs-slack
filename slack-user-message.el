@@ -10,10 +10,10 @@
   (let ((keymap (make-sparse-keymap)))
     keymap))
 
-(defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
+(cl-defmethod slack-message-sender-equalp ((m slack-user-message) sender-id)
   (string= (oref m user) sender-id))
 
-(defmethod slack-message-header ((m slack-user-message) team)
+(cl-defmethod slack-message-header ((m slack-user-message) team)
   (with-slots (ts deleted-at) m
     (let* ((name (slack-message-sender-name m team))
            (status (slack-user-status (slack-message-sender-id m) team))

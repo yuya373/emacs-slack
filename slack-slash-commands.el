@@ -46,7 +46,7 @@
 (defclass slack-service-command (slack-command)
   ((service-name :initarg :service_name :type string)))
 
-(defmethod slack-equalp ((this slack-command) other)
+(cl-defmethod slack-equalp ((this slack-command) other)
   (string= (oref this name) (oref other name)))
 
 (defun slack-slash-commands-parse (text team)
@@ -112,7 +112,7 @@
                                              (oref command name)))
                 commands)))
 
-(defmethod slack-command-company-doc-string ((this slack-command) team)
+(cl-defmethod slack-command-company-doc-string ((this slack-command) team)
   (if (oref this alias-of)
       (let ((command (slack-command-find (oref this alias-of)
                                          team)))

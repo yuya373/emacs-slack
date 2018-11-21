@@ -46,17 +46,17 @@
   ((text :initarg :text :type string)
    (options :initarg :options :initform nil)))
 
-(defmethod slack-selectable-prompt ((_this slack-selectable))
+(cl-defmethod slack-selectable-prompt ((_this slack-selectable))
   "")
 
 
-(defmethod slack-selectable-text ((this slack-selectable-option))
+(cl-defmethod slack-selectable-text ((this slack-selectable-option))
   (oref this text))
 
-(defmethod slack-selectable-text ((this slack-selectable-option-group))
+(cl-defmethod slack-selectable-text ((this slack-selectable-option-group))
   (oref this text))
 
-(defmethod slack-selectable-select-from-static-data-source ((this slack-selectable))
+(cl-defmethod slack-selectable-select-from-static-data-source ((this slack-selectable))
   (cl-labels
       ((select-option (options)
                       (select (slack-selectable-prompt this)

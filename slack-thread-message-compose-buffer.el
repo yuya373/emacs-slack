@@ -32,22 +32,21 @@
   ((room :initarg :room :type slack-room)
    (thread-ts :initarg :thread-ts :type string)))
 
-(defmethod slack-buffer-find :static ((class slack-thread-message-compose-buffer) room ts team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-thread-message-compose-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
 
-(defmethod slack-buffer-name :static
-  ((_class slack-thread-message-compose-buffer) room ts team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-compose-buffer)) room ts team)
   (format "*Slack - %s : %s Compose Thread Message - %s*"
           (oref team name)
           (slack-room-name room team)
           ts))
 
-(defmethod slack-buffer-name ((this slack-thread-message-compose-buffer))
+(cl-defmethod slack-buffer-name ((this slack-thread-message-compose-buffer))
   (with-slots (room thread-ts team) this
     (slack-buffer-name 'slack-thread-message-compose-buffer
                        room thread-ts team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-thread-message-compose-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-thread-message-compose-buffer))
   (let ((buf (call-next-method)))
     (with-current-buffer buf
       (slack-message-compose-buffer-mode)
@@ -68,13 +67,13 @@
                                          :team team
                                          :thread-ts ts)))
 
-(defmethod slack-buffer-send-message
+(cl-defmethod slack-buffer-send-message
   ((this slack-thread-message-compose-buffer) message)
   (with-slots (room team thread-ts) this
     (slack-thread-send-message room team message thread-ts))
   (call-next-method))
 
-(defmethod slack-buffer-display-message-compose-buffer
+(cl-defmethod slack-buffer-display-message-compose-buffer
   ((this slack-thread-message-buffer))
   (with-slots (room team thread-ts) this
     (let ((buf (slack-create-thread-message-compose-buffer
