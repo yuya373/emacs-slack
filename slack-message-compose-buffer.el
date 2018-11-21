@@ -41,7 +41,7 @@
       (if (> (count-windows) 1) (delete-window)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
-  (let ((buf (call-next-method)))
+  (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-message-compose-buffer-mode)
       (slack-buffer-set-current-buffer this))

@@ -109,7 +109,7 @@
                (number-to-string created))))))
 
 (cl-defmethod slack-buffer-insert-created ((room slack-group) team)
-  (call-next-method)
+  (cl-call-next-method)
   (with-slots (creator) room
     (when creator
       (let ((user (slack-user--find creator team)))

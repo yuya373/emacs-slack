@@ -308,7 +308,7 @@
     (and thread-ts (string= (slack-ts m) thread-ts))))
 
 (cl-defmethod slack-message--inspect ((this slack-file-comment-message) _room _team)
-  (let ((super (call-next-method)))
+  (let ((super (cl-call-next-method)))
     (with-slots (file comment) this
       (format "%s\nFILE:%s\nCOMMENT:%s"
               super

@@ -134,7 +134,7 @@
 
 (cl-defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((buffer-already-exists-p (get-buffer (slack-buffer-name this)))
-        (buffer (call-next-method))
+        (buffer (cl-call-next-method))
         (last-read (slack-buffer-last-read this)))
     (with-current-buffer buffer
       (if (slack-team-mark-as-read-immediatelyp (oref this team))
@@ -211,7 +211,7 @@
         (slack-buffer-update-oldest this oldest-message)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-buffer))
-  (let ((buf (call-next-method)))
+  (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (funcall (slack-buffer-major-mode this))
       (slack-buffer-set-current-buffer this)

@@ -162,10 +162,10 @@
       (error "%s must not be empty" label))))
 
 (cl-defmethod slack-dialog-element-validate ((_this slack-dialog-select-element) _value)
-  (call-next-method))
+  (cl-call-next-method))
 
 (cl-defmethod slack-dialog-element-validate ((this slack-dialog-text-element) value)
-  (call-next-method)
+  (cl-call-next-method)
   (with-slots (min-length max-length label) this
     (when (< max-length (length value))
       (error "%s must be less than %s" label max-length))
@@ -183,7 +183,7 @@
       value)))
 
 (cl-defmethod slack-dialog-execute ((_this slack-dialog-textarea-element) _dialog-id _team)
-  (call-next-method))
+  (cl-call-next-method))
 
 (cl-defmethod slack-dialog-select-element-get-suggestions ((this slack-dialog-select-element)
                                                         dialog-id team after-success)

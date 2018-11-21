@@ -437,7 +437,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           preview-plain-text))
                   team)))
       (format "%s\n\n%s\n\n%s"
-              (call-next-method)
+              (cl-call-next-method)
               (propertize body
                           'slack-defer-face #'slack-put-preview-overlay)
               (propertize (or (and is-expanded "Collapse ↑")

@@ -356,7 +356,7 @@
 
 
 (cl-defmethod slack-attachment-action-display-text ((this slack-attachment-select-action))
-  (let ((base (call-next-method)))
+  (let ((base (cl-call-next-method)))
     (with-slots (selected-options) this
       (format "%s%s" base (if (and selected-options (car selected-options))
                               (format " (%s)"

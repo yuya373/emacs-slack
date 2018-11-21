@@ -78,7 +78,7 @@
         (slack-display-image)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
-  (let ((buf (call-next-method)))
+  (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-user-profile-buffer-mode)
       (slack-buffer-set-current-buffer this))

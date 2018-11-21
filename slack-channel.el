@@ -53,7 +53,7 @@
    (num-members :initarg :num_members :initform 0)))
 
 (cl-defmethod slack-merge ((this slack-channel) other)
-  (call-next-method)
+  (cl-call-next-method)
   (with-slots (is-member num-members) this
     (setq is-member (oref other is-member))
     (setq num-members (oref other num-members))))

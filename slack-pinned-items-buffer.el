@@ -35,7 +35,7 @@
   ((items :initarg :items :type list)))
 
 (cl-defmethod slack-buffer-name ((_class (subclass slack-pinned-items-buffer)) _room _team)
-  (format "%s %s" (call-next-method) "Pinned Items"))
+  (format "%s %s" (cl-call-next-method) "Pinned Items"))
 
 (cl-defmethod slack-buffer-name ((this slack-pinned-items-buffer))
   (with-slots (room team) this
@@ -66,7 +66,7 @@
             (lui-insert "No Pinned Items" t)))))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-pinned-items-buffer))
-  (let* ((buf (call-next-method)))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-pinned-items-buffer-mode)
       (slack-buffer-set-current-buffer this))

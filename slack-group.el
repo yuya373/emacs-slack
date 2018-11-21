@@ -56,7 +56,7 @@
    (purpose :initarg :purpose :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-group) other)
-  (call-next-method)
+  (cl-call-next-method)
   (with-slots (is-group creator is-archived is-mpim members topic purpose) this
     (setq is-group (oref other is-group))
     (setq creator (oref other creator))

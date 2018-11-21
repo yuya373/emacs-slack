@@ -60,7 +60,7 @@
                        room ts team)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
-  (let* ((buf (call-next-method)))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-message-share-buffer-mode)
       (slack-buffer-set-current-buffer this))
@@ -72,7 +72,7 @@
 (cl-defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)
   (with-slots (room team ts) this
     (slack-message-share--send team room ts message)
-    (call-next-method)))
+    (cl-call-next-method)))
 
 (provide 'slack-message-share-buffer)
 ;;; slack-message-share-buffer.el ends here

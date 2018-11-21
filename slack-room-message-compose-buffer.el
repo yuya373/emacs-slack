@@ -49,7 +49,7 @@
                        room team)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
-  (let* ((buf (call-next-method)))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (erase-buffer)
@@ -62,7 +62,7 @@
 (cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
   (with-slots (room team) this
     (slack-message-send-internal message room team)
-    (call-next-method)))
+    (cl-call-next-method)))
 
 
 (provide 'slack-room-message-compose-buffer)

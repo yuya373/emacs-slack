@@ -49,7 +49,7 @@
    (is-user-deleted :initarg :is_user_deleted :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-im) other)
-  (call-next-method)
+  (cl-call-next-method)
   (with-slots (user is-open) this
     (setq user (oref other user))
     (setq is-open (oref other is-open))))
