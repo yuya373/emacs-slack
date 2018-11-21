@@ -336,18 +336,19 @@
             (put-text-property beg end 'slack-disable-buttonize t)
             (goto-char end))))))
 
-
 (defun slack-add-face-lazy ()
-  (let* ((start (or (and (get-text-property (point-min) 'slack-defer-face)
-                         (point-min))
-                    (next-single-property-change (point-min) 'slack-defer-face)))
-         (end (and start (next-single-property-change start 'slack-defer-face))))
-    (when (and start end)
-      (let ((face-or-func (get-text-property start 'slack-defer-face)))
-        (if (functionp face-or-func)
-            (funcall face-or-func start end)
-          (add-text-properties start end
-                               (list 'face face-or-func)))))))
+  (let ((cur-point (point-min)))
+    (while (and cur-point (< cur-point (point-max)))
+      (let* ((start (or (and (get-text-property cur-point 'slack-defer-face) cur-point)
+                        (next-single-property-change cur-point 'slack-defer-face)))
+             (end (and start (next-single-property-change start 'slack-defer-face))))
+        (when (and start end)
+          (let ((face-or-func (get-text-property start 'slack-defer-face)))
+            (if (functionp face-or-func)
+                (funcall face-or-func start end)
+              (add-text-properties start end
+                                   (list 'face face-or-func)))))
+        (setq cur-point end)))))
 
 (defun slack-buffer-buttonize-link ()
   (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\([[:ascii:][:nonascii:]]*?\\)>"))
