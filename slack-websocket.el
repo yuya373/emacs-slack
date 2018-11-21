@@ -711,7 +711,10 @@ TEAM is one of `slack-teams'"
       (progn
         (oset room unread-count-display unread-count-display)
         (oset room last-read ts)
-        (slack-update-modeline))))
+        (slack-update-modeline)
+        (slack-if-let*
+            ((buffer (slack-buffer-find 'slack-message-buffer room team)))
+            (slack-buffer-update-marker-overlay buffer)))))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((subscription (plist-get payload :subscription))
