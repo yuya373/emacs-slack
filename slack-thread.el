@@ -68,6 +68,8 @@ Any other non-nil value: send to the room."
   (let ((ts (oref thread thread-ts)))
     (slack-conversations-replies room ts team
                                  #'(lambda (messages next-cursor)
+                                     (when cursor
+                                       (setq messages (append (oref thread messages) messages)))
                                      (oset thread messages
                                            (slack-room-sort-messages
                                             (cl-remove-if #'slack-message-thread-parentp
