@@ -85,6 +85,8 @@
     (unless (oref (oref this team) slack-all-threads-buffer)
       (oset (oref this team) slack-all-threads-buffer
             (list buf)))
+    (with-slots (team) this
+      (slack-subscriptions-thread-clear-all team))
     buf))
 
 (cl-defmethod slack-buffer-insert-thread ((this slack-all-threads-buffer) thread)

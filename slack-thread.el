@@ -36,6 +36,8 @@
 
 (defvar slack-message-thread-status-keymap)
 (defconst slack-subscriptions-thread-get-view-url "https://slack.com/api/subscriptions.thread.getView")
+;; TODO max_ts: 1542880668.4351
+(defconst slack-subscriptions-thread-clear-all-url "https://slack.com/api/subscriptions.thread.clearAll")
 (defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
 (defcustom slack-thread-also-send-to-room 'ask
@@ -184,6 +186,22 @@ Any other non-nil value: send to the room."
       (slack-request
        (slack-request-create
         slack-subscriptions-thread-get-view-url
+        team
+        :type "POST"
+        :params (list (cons "current_ts" current-ts))
+        :success #'success)))))
+
+(defun slack-subscriptions-thread-clear-all (team)
+  (let ((current-ts (substring
+                     (number-to-string (time-to-seconds (current-time)))
+                     0 15)))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-subscriptions-thread-clear-all"))))
+      (slack-request
+       (slack-request-create
+        slack-subscriptions-thread-clear-all-url
         team
         :type "POST"
         :params (list (cons "current_ts" current-ts))
