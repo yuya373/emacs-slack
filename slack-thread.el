@@ -35,7 +35,7 @@
 (require 'slack-conversations)
 
 (defvar slack-message-thread-status-keymap)
-;; (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
+(defconst slack-subscriptions-thread-get-view-url "https://slack.com/api/subscriptions.thread.getView")
 (defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
 (defcustom slack-thread-also-send-to-room 'ask
@@ -143,6 +143,51 @@ Any other non-nil value: send to the room."
         (last-read (plist-get payload :last_read)))
     (oset thread unread-count unread-count)
     (oset thread last-read last-read)))
+
+(defun slack-subscriptions-thread-get-view (team &optional current-ts after-success)
+  (let ((current-ts (or current-ts
+                        (substring
+                         (number-to-string (time-to-seconds (current-time)))
+                         0 15))))
+    (cl-labels
+        ((create-thread (payload)
+                        (slack-if-let*
+                            ((root-msg (plist-get payload :root_msg))
+                             (room-id (plist-get root-msg :channel))
+                             (room (slack-room-find room-id team))
+                             (ts (plist-get root-msg :ts))
+                             (message (slack-message-create root-msg team))
+                             (latest-replies (plist-get payload :latest_replies))
+                             (messages (mapcar #'(lambda (e)
+                                                   (slack-message-create e
+                                                                         team
+                                                                         :room room))
+                                               latest-replies))
+                             (thread (slack-message-thread message room)))
+
+                            (progn
+                              (oset thread messages messages)
+                              thread)))
+         (success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-subscriptions-thread-get-view")
+                   (let ((total-unread-replies (plist-get data :total_unread_replies))
+                         (new-threads-count (plist-get data :new_threads_count))
+                         (threads (plist-get data :threads))
+                         (has-more (plist-get data :has_more)))
+                     (when (functionp after-success)
+                       (funcall after-success
+                                total-unread-replies
+                                new-threads-count
+                                (mapcar #'create-thread threads)
+                                has-more))))))
+      (slack-request
+       (slack-request-create
+        slack-subscriptions-thread-get-view-url
+        team
+        :type "POST"
+        :params (list (cons "current_ts" current-ts))
+        :success #'success)))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
