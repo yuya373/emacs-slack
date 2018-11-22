@@ -288,7 +288,7 @@
                       (cons "user" user))
         :success (slack-conversations-success-handler team))))))
 
-(defun slack-conversations-replies (room ts team &optional after-success cursor)
+(cl-defun slack-conversations-replies (room ts team &key after-success (cursor nil) (oldest nil))
   (let ((channel (oref room id)))
     (cl-labels
         ((create-message (payload)
@@ -297,15 +297,17 @@
                                                :room room))
          (on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
-                      (data "slack-conversations-membe")
+                      (data "slack-conversations-replies")
                       (let* ((messages (mapcar #'create-message
                                                (plist-get data :messages)))
                              (meta (plist-get data :response_metadata))
-                             (next-cursor (plist-get meta :next_cursor)))
+                             (next-cursor (and meta (plist-get meta :next_cursor)))
+                             (has-more (eq t (plist-get data :has_more))))
                         (when (functionp after-success)
                           (funcall after-success
                                    messages
-                                   next-cursor))))))
+                                   next-cursor
+                                   has-more))))))
       (slack-request
        (slack-request-create
         slack-conversations-replies-url
@@ -313,7 +315,7 @@
         :params (list (cons "channel" channel)
                       (cons "ts" ts)
                       (if cursor (cons "cursor" cursor)
-                        (cons "oldest" ts)))
+                        (cons "oldest" oldest)))
         :success #'on-success)))))
 
 (provide 'slack-conversations)

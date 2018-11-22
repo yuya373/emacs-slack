@@ -32,6 +32,7 @@
 (require 'slack-im)
 (require 'slack-message)
 (require 'slack-request)
+(require 'slack-conversations)
 
 (defvar slack-message-thread-status-keymap)
 ;; (defconst all-threads-url "https://slack.com/api/subscriptions.thread.getView")
@@ -64,19 +65,23 @@ Any other non-nil value: send to the room."
       t
     nil))
 
-(cl-defmethod slack-thread-replies ((thread slack-thread) room team &key after-success (cursor nil))
-  (let ((ts (oref thread thread-ts)))
-    (slack-conversations-replies room ts team
-                                 #'(lambda (messages next-cursor)
-                                     (when cursor
-                                       (setq messages (append (oref thread messages) messages)))
-                                     (oset thread messages
-                                           (slack-room-sort-messages
-                                            (cl-remove-if #'slack-message-thread-parentp
-                                                          messages)))
-                                     (when (functionp after-success)
-                                       (funcall after-success next-cursor)))
-                                 cursor)))
+(cl-defmethod slack-thread-replies ((thread slack-thread) room team &key after-success (cursor nil) (oldest nil))
+  (let* ((ts (oref thread thread-ts))
+         (oldest (or oldest ts)))
+    (cl-labels ((success (messages next-cursor has-more)
+                         (when cursor
+                           (setq messages
+                                 (append (oref thread messages) messages)))
+                         (oset thread messages
+                               (slack-room-sort-messages
+                                (cl-remove-if #'slack-message-thread-parentp
+                                              messages)))
+                         (when (functionp after-success)
+                           (funcall after-success next-cursor has-more))))
+      (slack-conversations-replies room ts team
+                                   :after-success #'success
+                                   :cursor cursor
+                                   :oldest oldest))))
 
 (cl-defmethod slack-thread-to-string ((m slack-message) team)
   (slack-if-let* ((thread (oref m thread)))
