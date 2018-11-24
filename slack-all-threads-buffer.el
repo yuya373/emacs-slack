@@ -35,6 +35,11 @@
   slack-buffer-mode
   "Slack All Treads")
 
+(defface slack-all-thread-buffer-thread-header-face
+  '((t (:weight bold :height 1.2)))
+  "Face used to All Threads buffer's each threads header."
+  :group 'slack)
+
 (defclass slack-all-threads-buffer (slack-buffer)
   ((current-ts :initarg :current-ts :type string)
    (has-more :initarg :has-more :type boolean)
@@ -96,6 +101,19 @@
          ;; (reply-count (oref thread reply-count))
          ;; (more-replies-count (- reply-count (length replies)))
          )
+    (let* ((lui-time-stamp-position nil)
+           (team (oref this team))
+           (room (slack-room-find (oref root channel) team))
+           (prefix (or (and (slack-im-p room) "@") "#")))
+      (lui-insert (format "%s\n"
+                          (make-string lui-fill-column ?=))
+                  t)
+      (lui-insert (propertize (format "%s%s"
+                                      prefix
+                                      (slack-room-name room team))
+                              'face
+                              'slack-all-thread-buffer-thread-header-face)
+                  t))
     (slack-buffer-insert this root t)
     ;; (let ((lui-time-stamp-position nil))
     ;;   (when (< 1 more-replies-count)
@@ -104,11 +122,7 @@
     ;;   (when (= 1 more-replies-count)
     ;;     (lui-insert "1 more reply")))
     (cl-loop for reply in replies
-             do (slack-buffer-insert this reply t))
-    (let ((lui-time-stamp-position nil))
-      (lui-insert (format "%s\n"
-                          (make-string lui-fill-column ?=))
-                  t))))
+             do (slack-buffer-insert this reply t))))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-all-threads-buffer))
   (oref this has-more))
