@@ -59,6 +59,9 @@
                       (cl-case (prefix-type arg)
                         (user-or-usergroup
                          (nconc
+                          (cl-loop for special in '("here" "channel" "everyone")
+                                   if (string-prefix-p content special)
+                                   collect (concat "@" special))
                           (cl-loop for usergroup in (oref team usergroups)
                                    if (and (not (slack-usergroup-deleted-p usergroup))
                                            (string-prefix-p content
