@@ -60,7 +60,7 @@
            (slack-if-let* ((group-id (slack-usergroup-get-id username team)))
                (format "<!subteam^%s|@%s>" group-id username)
              (cond
-              ((string= username "here") "<!here|here>")
+              ((string= username "here") "<!here>")
               ((cl-find username '("channel" "group") :test #'string=) "<!channel>")
               ((string= username "everyone") "<!everyone>")
               (t text))))))
