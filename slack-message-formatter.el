@@ -264,44 +264,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (replace-regexp-in-string "\\(&amp;\\)\\|\\(&lt;\\)\\|\\(&gt;\\)"
                               #'replace text t t)))
 
-(defun slack-message-unescape-string (text team)
-  (when text
-    (slack-message-unescape-date-format
-     (slack-message-unescape-command
-      (slack-unescape-@
-       (slack-message-unescape-channel
-        (slack-unescape-&<> text)
-        team)
-       team)))))
-
-(defun slack-message-unescape-usergroup (text team)
-  (let ((regexp "<!subteam^\\(.*?\\)|\\(.*?\\)>"))
-    (cl-labels
-        ((replace (text)
-                  (let* ((id (match-string 1 text)))
-                    (or (match-string 2 text)
-                        (slack-if-let* ((usergroup (slack-usergroup-find id team)))
-                            (oref usergroup handle)
-                          "<Unknown USERGROUP>")))))
-      (replace-regexp-in-string regexp #'replace text t t))))
-
-(defun slack-unescape-@ (text team)
-  (let ((user-regexp "<@\\(U.*?\\)\\(|.*?\\)?>"))
-    (cl-labels ((replace
-                 (text)
-                 (let ((user-id (match-string 1 text))
-                       (label (match-string 2 text)))
-                   (concat "@" (or (and label (substring label 1))
-                                   (slack-if-let* ((user (slack-user--find user-id team)))
-                                       (plist-get user :name)
-                                     (slack-log (format "User not found. ID: %S" user-id) team)
-                                     nil)
-                                   "<Unknown USER")))))
-      (replace-regexp-in-string user-regexp
-                                #'replace
-                                text t t))))
-
-(defun slack-message-unescape-date-format (text)
+(defun slack-unescape-!date (text)
   (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|\\(.*\\)>")
         (time-format-regexp "{\\(.*?\\)}"))
     (cl-labels
@@ -332,17 +295,83 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 #'unescape-date-string
                                 text nil t))))
 
-(defun slack-message-unescape-command (text)
-  (let ((command-regexp "<!\\(.*?\\)>"))
-    (cl-labels ((unescape-command
+(defun slack-unescape-!subteam (text team)
+  (let ((regexp "<!subteam^\\(.*?\\)|\\(.*?\\)>"))
+    (cl-labels
+        ((replace (text)
+                  (let* ((id (match-string 1 text)))
+                    (or (match-string 2 text)
+                        (slack-if-let*
+                            ((usergroup
+                              (slack-usergroup-find id team)))
+                            (oref usergroup handle)
+                          "<Unknown USERGROUP>")))))
+      (replace-regexp-in-string regexp #'replace text t t))))
+
+(defun slack-unescape-variable (text)
+  (let ((regexp "<!\\(.*?\\)>")
+        (commands '("channel" "here" "everyone")))
+    (cl-labels
+        ((split-by-|
+          (text)
+          (let ((variable nil) (label nil) (found nil))
+            (cl-loop for c in (string-to-list text)
+                     do (if (eq ?| c) (setq found t)
+                          (if found
+                              (push c label)
+                            (push c variable))))
+            (list variable label)))
+         (replace
+          (text)
+          (let ((match (match-string 1 text)))
+            (if (string= "here|here" match)
+                "@here"
+              (slack-if-let*
+                  ((command (cl-find match commands :test #'string=)))
+                  (format "@%s" command)
+                (destructuring-bind (variable label)
+                    (split-by-| match)
+                  (or (and label (format "<%s>"
+                                         (mapconcat #'char-to-string
+                                                    (reverse label)
+                                                    "")))
+                      (format "<%s>"
+                              (mapconcat #'char-to-string
+                                         (reverse variable)
+                                         ""))))))
+            )))
+      (replace-regexp-in-string regexp #'replace text t t))))
+
+(defun slack-unescape-! (text team)
+  (slack-unescape-variable
+   (slack-unescape-!date
+    (slack-unescape-!subteam text team))))
+
+(defun slack-message-unescape-string (text team)
+  (when text
+    (slack-unescape-!
+     (slack-unescape-@
+      (slack-message-unescape-channel
+       (slack-unescape-&<> text)
+       team)
+      team)
+     team)))
+
+(defun slack-unescape-@ (text team)
+  (let ((user-regexp "<@\\(U.*?\\)\\(|.*?\\)?>"))
+    (cl-labels ((replace
                  (text)
-                 (let ((match (match-string 1 text)))
-                   (if (string-prefix-p "date" match)
-                       (format "<!%s>" match)
-                     (concat "@" match)))))
-      (replace-regexp-in-string command-regexp
-                                #'unescape-command
-                                text nil t))))
+                 (let ((user-id (match-string 1 text))
+                       (label (match-string 2 text)))
+                   (concat "@" (or (and label (substring label 1))
+                                   (slack-if-let* ((user (slack-user--find user-id team)))
+                                       (plist-get user :name)
+                                     (slack-log (format "User not found. ID: %S" user-id) team)
+                                     nil)
+                                   "<Unknown USER")))))
+      (replace-regexp-in-string user-regexp
+                                #'replace
+                                text t t))))
 
 (defun slack-message-unescape-channel (text team)
   (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))
