@@ -254,21 +254,25 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
              (mapconcat #'(lambda (file) (oref file title)) files " ")))))
       (slack-message-unescape-string alert-text team))))
 
+(defun slack-unescape-&<> (text)
+  (cl-labels
+      ((replace (text)
+                (cond
+                 ((match-string 1 text) "&")
+                 ((match-string 2 text) "<")
+                 ((match-string 3 text) ">"))))
+    (replace-regexp-in-string "\\(&amp;\\)\\|\\(&lt;\\)\\|\\(&gt;\\)"
+                              #'replace text t t)))
+
 (defun slack-message-unescape-string (text team)
   (when text
-    (let* ((and-unescpaed
-            (replace-regexp-in-string "&amp;" "&" text))
-           (lt-unescaped
-            (replace-regexp-in-string "&lt;" "<" and-unescpaed))
-           (gt-unescaped
-            (replace-regexp-in-string "&gt;" ">" lt-unescaped)))
-      (slack-message-unescape-date-format
-       (slack-message-unescape-command
-        (slack-message-unescape-user-id
-         (slack-message-unescape-channel
-          (slack-message-unescape-usergroup gt-unescaped team)
-          team)
-         team))))))
+    (slack-message-unescape-date-format
+     (slack-message-unescape-command
+      (slack-message-unescape-user-id
+       (slack-message-unescape-channel
+        (slack-unescape-&<> text)
+        team)
+       team)))))
 
 (defun slack-message-unescape-usergroup (text team)
   (let ((regexp "<!subteam^\\(.*?\\)|\\(.*?\\)>"))
