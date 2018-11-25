@@ -8,7 +8,7 @@ services:
     build:
       context: .
       dockerfile: ./test/Dockerfile.emacs25
-    command: ./test/bytecompile
+    command: ./test/test_all
     volumes:
       - .:/slack
       - dot_emacs25:/root/.emacs.d
@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: ./test/Dockerfile.emacs26
-    command: ./test/bytecompile
+    command: ./test/test_all
     volumes:
       - .:/slack
       - dot_emacs26:/root/.emacs.d
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: ./test/Dockerfile.master
-    command: ./test/bytecompile
+    command: ./test/test_all
     volumes:
       - .:/slack
       - dot_master:/root/.emacs.d

@@ -109,7 +109,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
    (commands :initform '() :type list)
-   (usergroups :initform '() :type list)
+   (usergroups :initarg :usergroups :initform '() :type list)
    (ws :type slack-team-ws)
    ))
 
