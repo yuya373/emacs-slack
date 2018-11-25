@@ -105,6 +105,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-dialog-buffer :initform nil :type (or null list))
    (slack-dialog-edit-element-buffer :initform nil :type (or null list))
    (slack-room-info-buffer :initform nil :type (or null list))
+   (slack-all-threads-buffer :initform nil :type (or null list))
    (full-and-display-names :initarg :full-and-display-names :initform nil)
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
    (commands :initform '() :type list)

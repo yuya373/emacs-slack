@@ -628,12 +628,12 @@
 
 (cl-defmethod slack-thread-show-messages ((thread slack-thread) room team)
   (cl-labels
-      ((after-success ()
+      ((after-success (_next-cursor has-more)
                       (let ((buf (slack-create-thread-message-buffer
-                                  room team (oref thread thread-ts))))
+                                  room team (oref thread thread-ts) has-more)))
                         (slack-buffer-display buf))))
-    (slack-thread-request-messages thread room team
-                                   :after-success #'after-success)))
+    (slack-thread-replies thread room team
+                          :after-success #'after-success)))
 
 (defun slack-thread-show-or-create ()
   (interactive)

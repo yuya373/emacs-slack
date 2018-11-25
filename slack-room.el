@@ -352,7 +352,7 @@
 (cl-defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
 
-(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest count after-success)
+(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest count after-success inclusive)
   (cl-labels
       ((on-request-update
         (&key data &allow-other-keys)
@@ -374,6 +374,7 @@
       :params (list (cons "channel" (oref room id))
                     (if oldest (cons "latest" oldest))
                     (if latest (cons "oldest" latest))
+                    (if inclusive (cons "inclusive" inclusive))
                     (cons "count" (number-to-string (or count 100))))
       :success #'on-request-update))))
 
