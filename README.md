@@ -1,5 +1,6 @@
 <p>
   <a href="https://melpa.org/#/slack"><img alt="MELPA" src="https://melpa.org/packages/slack-badge.svg"/></a>
+  <a href="https://travis-ci.com/yuya373/emacs-slack"><img src="https://travis-ci.com/yuya373/emacs-slack.svg?branch=master" alt="Build Status"></a>
 </p>
 <p align="center"><img src="https://raw.githubusercontent.com/yuya373/emacs-slack/assets/assets/slack-logo.svg?sanitize=true" width=300 height=126/></p>
 <p align="center"><b>Emacs Slack</b></p>
