@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -eu
+
+emacs --batch -Q \
+      -L /slack \
+      -l ./test/setup.el \
+      -l ./test/run-test.el

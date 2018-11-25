@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+./test/bytecompile
+./test/run_test
