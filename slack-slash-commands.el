@@ -25,6 +25,10 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-team)
+(require 'slack-channel)
+(require 'slack-user)
+(require 'slack-message-formatter)
 
 (defclass slack-command ()
   ((name :initarg :name :type string)
@@ -42,11 +46,11 @@
 (defclass slack-service-command (slack-command)
   ((service-name :initarg :service_name :type string)))
 
-(defmethod slack-equalp ((this slack-command) other)
+(cl-defmethod slack-equalp ((this slack-command) other)
   (string= (oref this name) (oref other name)))
 
 (defun slack-slash-commands-parse (text team)
-  "Return (command . arguments) or nil."
+  "Parse TEXT, then return (command . arguments) or nil."
   (when (string-prefix-p "/" text)
     (let* ((tokens (split-string text " "))
            (maybe-command (car tokens))
@@ -108,7 +112,7 @@
                                              (oref command name)))
                 commands)))
 
-(defmethod slack-command-company-doc-string ((this slack-command) team)
+(cl-defmethod slack-command-company-doc-string ((this slack-command) team)
   (if (oref this alias-of)
       (let ((command (slack-command-find (oref this alias-of)
                                          team)))

@@ -25,16 +25,28 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-team-ws)
+;; (require 'slack-websocket)
+(declare-function slack-ws-send "slack-websocket")
+(declare-function slack-ws-open "slack-websocket")
+(declare-function slack-ws-close "slack-websocket")
+;; (require 'slack)
+(declare-function slack-start "slack")
+
+(declare-function emojify-create-emojify-emojis "emojify")
 
 (defvar slack-teams nil)
 (defvar slack-current-team nil)
+(defvar slack-completing-read-function)
 (defcustom slack-prefer-current-team nil
   "If set to t, using `slack-current-team' for interactive function.
 use `slack-change-current-team' to change `slack-current-team'"
+  :type 'boolean
   :group 'slack)
 
 (defcustom slack-modeline-count-only-subscribed-channel t
   "Count unread only subscribed channel."
+  :type 'boolean
   :group 'slack)
 
 (defclass slack-team-threads ()
@@ -60,27 +72,13 @@ use `slack-change-current-team' to change `slack-current-team'"
    (search-results :initform nil)
    (users :initarg :users :initform nil)
    (bots :initarg :bots :initform nil)
-   (ws-url :initarg :ws-url)
-   (ws-conn :initarg :ws-conn :initform nil)
-   (ping-timer :initform nil)
-   (check-ping-timeout-timer :initform nil)
-   (check-ping-timeout-sec :initarg :check-ping-timeout-sec :initform 20)
-   (reconnect-auto :initarg :reconnect-auto :initform t)
-   (reconnect-timer :initform nil)
-   (reconnect-after-sec :initform 10)
-   (reconnect-count :initform 0)
-   (reconnect-count-max :initform 360)
-   (last-pong :initform nil)
-   (waiting-send :initform nil)
    (sent-message :initform (make-hash-table))
    (message-id :initform 0)
-   (connected :initform nil)
    (subscribed-channels :initarg :subscribed-channels
                         :type list :initform nil)
    (typing :initform nil)
    (typing-timer :initform nil)
    (reminders :initform nil :type list)
-   (ping-check-timers :initform (make-hash-table :test 'equal))
    (threads :type slack-team-threads :initform (make-instance 'slack-team-threads))
    (modeline-enabled :initarg :modeline-enabled :initform nil)
    (modeline-name :initarg :modeline-name :initform nil)
@@ -91,7 +89,6 @@ use `slack-change-current-team' to change `slack-current-team'"
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
-   (websocket-nowait :initarg :websocket-nowait :initform nil)
    (star :initform nil)
    (slack-message-buffer :initform nil :type (or null list))
    (slack-file-info-buffer :initform nil :type (or null list))
@@ -108,15 +105,37 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-dialog-buffer :initform nil :type (or null list))
    (slack-dialog-edit-element-buffer :initform nil :type (or null list))
    (slack-room-info-buffer :initform nil :type (or null list))
-   (reconnect-url :initform "" :type string)
    (full-and-display-names :initarg :full-and-display-names :initform nil)
-   (websocket-connect-timeout-timer :initform nil)
-   (websocket-connect-timeout-sec :type number :initform 20) ;; websocket url is valid for 30 seconds.
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
-   (inhibit-reconnection :initform nil)
    (commands :initform '() :type list)
    (usergroups :initform '() :type list)
+   (ws :type slack-team-ws)
    ))
+
+(defun slack-create-team (plist)
+  (let ((ws (apply #'make-instance 'slack-team-ws
+                   (slack-collect-slots 'slack-team-ws plist)))
+        (team (apply #'make-instance 'slack-team
+                     (slack-collect-slots 'slack-team plist))))
+    (oset team ws ws)
+    team))
+
+(cl-defmethod slack-equalp ((this slack-team) other)
+  (string= (oref this id) (oref other id)))
+
+(cl-defmethod slack-team-set-ws-url ((this slack-team) url)
+  (with-slots (ws) this
+    (oset ws url url)))
+
+(cl-defmethod slack-team-send-message ((this slack-team) message)
+  (with-slots (ws) this
+    (slack-ws-send ws message this)))
+
+(cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
+  (with-slots (ws) this
+    (slack-ws-open ws this
+                   :on-open on-open
+                   :ws-url ws-url)))
 
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
   (let* ((l (list 'slack-message-buffer
@@ -140,14 +159,14 @@ use `slack-change-current-team' to change `slack-current-team'"
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
               slack-teams))
 
-(defmethod slack-team-disconnect ((team slack-team))
-  (slack-ws-close team))
+(cl-defmethod slack-team-disconnect ((team slack-team))
+  (slack-ws-close (oref team ws) team))
 
-(defmethod slack-team-equalp ((team slack-team) other)
+(cl-defmethod slack-team-equalp ((team slack-team) other)
   (with-slots (token) team
     (string= token (oref other token))))
 
-(defmethod slack-team-name ((team slack-team))
+(cl-defmethod slack-team-name ((team slack-team))
   (oref team name))
 
 ;;;###autoload
@@ -179,15 +198,14 @@ you can change current-team with `slack-change-current-team'"
     (let ((missing (missing plist)))
       (if missing
           (error "Missing Keyword: %s" missing)))
-    (let ((team (apply #'slack-team "team"
-                       (slack-collect-slots 'slack-team plist))))
+    (let ((team (slack-create-team plist)))
       (let ((same-team (cl-find-if
                         #'(lambda (o) (slack-team-equalp team o))
                         slack-teams)))
         (if same-team
             (progn
               (slack-team-disconnect same-team)
-              (slack-start team))))
+              (slack-team-connect team))))
 
       (setq slack-teams
             (cons team
@@ -224,8 +242,8 @@ you can change current-team with `slack-change-current-team'"
       ;;         (setq slack-current-team team)))
       team)))
 
-(defmethod slack-team-connectedp ((team slack-team))
-  (oref team connected))
+(cl-defmethod slack-team-connectedp ((team slack-team))
+  (oref (oref team ws) connected))
 
 (defun slack-team-connected-list ()
   (cl-remove-if #'null
@@ -251,7 +269,7 @@ you can change current-team with `slack-change-current-team'"
     (if team
         (slack-team-connect team))))
 
-(defmethod slack-team-connect ((team slack-team))
+(cl-defmethod slack-team-connect ((team slack-team))
   (unless (slack-team-connectedp team)
     (slack-start team)))
 
@@ -268,46 +286,26 @@ you can change current-team with `slack-change-current-team'"
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
 
-(defmethod slack-team-init-ping-check-timers ((team slack-team))
-  (oset team ping-check-timers (make-hash-table :test 'equal)))
-
-(defmethod slack-team-get-ping-check-timers ((team slack-team))
-  (if (not (slot-boundp team 'ping-check-timers))
-      (slack-team-init-ping-check-timers team))
-  (oref team ping-check-timers))
-
-(defmethod slack-team-need-token-p ((team slack-team))
+(cl-defmethod slack-team-need-token-p ((team slack-team))
   (with-slots (token) team
     (or (not token) (< (length token) 1))))
-
-(defun slack-team-get-unread-messages (team)
-  (cl-labels
-      ((count-unread (rooms)
-                     (cl-reduce #'(lambda (a e) (+ a (oref e unread-count-display)))
-                                rooms :initial-value 0)))
-    (with-slots (ims channels groups) team
-      (let ((rooms (append ims channels groups)))
-        (+ (count-unread (if slack-modeline-count-only-subscribed-channel
-                             (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
-                                               rooms)
-                           rooms)))))))
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
-(defmethod slack-team-event-log-enabledp ((team slack-team))
+(cl-defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
 
-(defmethod slack-team-display-profile-imagep ((team slack-team))
+(cl-defmethod slack-team-display-profile-imagep ((team slack-team))
   (oref team display-profile-image))
 
-(defmethod slack-team-display-attachment-image-inlinep ((team slack-team))
+(cl-defmethod slack-team-display-attachment-image-inlinep ((team slack-team))
   (oref team display-attachment-image-inline))
 
-(defmethod slack-team-display-file-image-inlinep ((team slack-team))
+(cl-defmethod slack-team-display-file-image-inlinep ((team slack-team))
   (oref team display-file-image-inline))
 
-(defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
+(cl-defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))
 
 (defvar slack-team-random-numbers-for-client-token
@@ -316,10 +314,27 @@ you can change current-team with `slack-change-current-team'"
       (push (random 10) result))
     (mapconcat #'number-to-string result "")))
 
-(defmethod slack-team-client-token ((team slack-team))
+(cl-defmethod slack-team-client-token ((team slack-team))
   (format "EmacsSlack-%s-%s"
           (oref team id)
           slack-team-random-numbers-for-client-token))
+
+(cl-defmethod slack-team-inc-message-id ((team slack-team))
+  (with-slots (message-id) team
+    (if (eq message-id (1- most-positive-fixnum))
+        (setq message-id 1)
+      (cl-incf message-id))))
+
+(defun slack-team-watch-emoji-download-complete (team paths)
+  (if (eq (length (cl-remove-if #'identity (mapcar #'file-exists-p paths)))
+          0)
+      (when (timerp (oref team emoji-download-watch-timer))
+        (cancel-timer (oref team emoji-download-watch-timer))
+        (oset team emoji-download-watch-timer nil)
+        (emojify-create-emojify-emojis t))))
+
+(cl-defmethod slack-team-token ((this slack-team))
+  (oref this token))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

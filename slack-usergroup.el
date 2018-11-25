@@ -26,6 +26,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-team)
 
 (defconst slack-usergroup-list-url "https://slack.com/api/usergroups.list")
 
@@ -86,7 +87,7 @@
                           (oref team usergroups))))
       (oref group id)))
 
-(defmethod slack-usergroup-deleted-p ((this slack-usergroup))
+(cl-defmethod slack-usergroup-deleted-p ((this slack-usergroup))
   (not (eq 0 (oref this date-delete))))
 
 (provide 'slack-usergroup)

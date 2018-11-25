@@ -32,6 +32,7 @@
 (require 'slack-request)
 
 (defvar slack-buffer-function)
+(defvar slack-completing-read-function)
 
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-list-url "https://slack.com/api/channels.list")
@@ -51,13 +52,13 @@
   ((is-member :initarg :is_member :initform nil)
    (num-members :initarg :num_members :initform 0)))
 
-(defmethod slack-merge ((this slack-channel) other)
-  (call-next-method)
+(cl-defmethod slack-merge ((this slack-channel) other)
+  (cl-call-next-method)
   (with-slots (is-member num-members) this
     (setq is-member (oref other is-member))
     (setq num-members (oref other num-members))))
 
-(defmethod slack-room-buffer-name ((room slack-channel) team)
+(cl-defmethod slack-room-buffer-name ((room slack-channel) team)
   (concat slack-channel-buffer-name
           " : "
           (slack-room-display-name room team)))
@@ -66,18 +67,8 @@
   (with-slots (channels) team
     (slack-room-names channels team filter)))
 
-(defmethod slack-room-member-p ((room slack-channel))
+(cl-defmethod slack-room-member-p ((room slack-channel))
   (oref room is-member))
-
-(defun slack-channel-select ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         for channels = (oref team channels)
-                         nconc channels)
-                team)))
-    (slack-room-display room team)))
 
 (defun slack-channel-list-update (&optional team after-success)
   (interactive)
@@ -102,10 +93,9 @@
                   (slack-log "Slack Channel List Updated" team :level 'info))))
       (slack-room-list-update slack-channel-list-url
                               #'on-list-update
-                              team
-                              :sync nil))))
+                              team))))
 
-(defmethod slack-room-update-mark-url ((_room slack-channel))
+(cl-defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)
 
 (defun slack-create-channel ()
@@ -222,32 +212,32 @@
                                   team
                                   #'on-channel-unarchive))))
 
-(defmethod slack-room-subscribedp ((room slack-channel) team)
+(cl-defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
 
-(defmethod slack-room-get-info-url ((_room slack-channel))
+(cl-defmethod slack-room-get-info-url ((_room slack-channel))
   slack-channel-info-url)
 
-(defmethod slack-room-update-info ((room slack-channel) data team)
+(cl-defmethod slack-room-update-info ((room slack-channel) data team)
   (let ((new-room (slack-room-create (plist-get data :channel)
                                      team
                                      'slack-channel)))
 
     (slack-merge room new-room)))
 
-(defmethod slack-room-history-url ((_room slack-channel))
+(cl-defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)
 
-(defmethod slack-room-replies-url ((_room slack-channel))
+(cl-defmethod slack-room-replies-url ((_room slack-channel))
   "https://slack.com/api/channels.replies")
 
-(defmethod slack-room-hidden-p ((room slack-channel))
+(cl-defmethod slack-room-hidden-p ((room slack-channel))
   (slack-room-archived-p room))
 
-(defmethod slack-room-member-p ((this slack-channel))
+(cl-defmethod slack-room-member-p ((this slack-channel))
   (oref this is-member))
 
 (provide 'slack-channel)

@@ -24,10 +24,40 @@
 
 ;;; Code:
 
+(require 'alert)
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
 (require 'slack-request)
+(require 'slack-file)
+(require 'slack-team)
+(require 'slack-buffer)
+(require 'slack-message-reaction)
+(require 'slack-thread)
+(require 'slack-message-notification)
+(require 'slack-slash-commands)
+
+(defvar slack-completing-read-function)
+(defvar slack-alert-icon)
+(defvar slack-message-minibuffer-local-map nil)
+
+(defvar slack-expand-email-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET")
+      #'slack-buffer-toggle-email-expand)
+    map))
+
+(defvar slack-attachment-action-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-attachment-action-run)
+    (define-key keymap [mouse-1] #'slack-attachment-action-run)
+    keymap))
+
+(defvar slack-action-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-action-run)
+    (define-key keymap [mouse-1] #'slack-action-run)
+    keymap))
 
 (defconst slack-message-delete-url "https://slack.com/api/chat.delete")
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
@@ -35,17 +65,40 @@
 (defclass slack-room-buffer (slack-buffer)
   ((room :initarg :room :type slack-room)))
 
-(defmethod slack-buffer-name :static ((class slack-room-buffer) room team)
+(cl-defmethod slack-buffer-room ((this slack-room-buffer))
+  (oref this room))
+
+(defun slack-message--add-reaction (buf reaction)
+  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
+
+(cl-defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
+  (let* ((reaction-users (oref reaction users))
+         (reaction-name (oref reaction name))
+         (team (oref this team))
+         (room (oref this room))
+         (self-id (oref team self-id)))
+    (if (cl-find-if #'(lambda (id) (string= id self-id)) reaction-users)
+        (slack-message-reaction-remove reaction-name
+                                       (slack-get-ts)
+                                       room
+                                       team)
+      (slack-message--add-reaction this reaction-name))))
+
+(cl-defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
+  (with-slots (team) this
+    (slack-reaction-help-text reaction team)))
+
+(cl-defmethod slack-buffer-name ((_class (subclass slack-room-buffer)) room team)
   (slack-if-let* ((room-name (slack-room-name room team)))
       (format  "*Slack - %s : %s"
                (oref team name)
                room-name)))
 
-(defmethod slack-buffer-name ((this slack-room-buffer))
+(cl-defmethod slack-buffer-name ((this slack-room-buffer))
   (with-slots (room team) this
     (slack-buffer-name (eieio-object-class-name this) room team)))
 
-(defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (cl-labels
@@ -64,13 +117,13 @@
                 :success #'on-delete))
             (message "Canceled"))))))
 
-(defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
   (let ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (lui-delete #'(lambda () (equal (get-text-property (point) 'ts)
                                       ts))))))
 
-(defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts))
                     (template "https://%s.slack.com/archives/%s/p%s%s"))
@@ -90,21 +143,25 @@
                           (cons "message_ts" ts))
             :success #'on-success))))))
 
-(defmethod slack-buffer--replace ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer--replace ((this slack-room-buffer) ts)
   (with-slots (room) this
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-buffer-replace this message))))
 
-(defmethod slack-buffer-toggle-email-expand ((this slack-room-buffer) ts file-id)
-  (with-slots (room) this
-    (slack-if-let* ((message (slack-room-find-message room ts))
-                    (file (cl-find-if
-                           #'(lambda (e) (string= (oref e id)
-                                                  file-id))
-                           (oref message files))))
-        (progn
-          (oset file is-expanded (not (oref file is-expanded)))
-          (slack-buffer-update this message :replace t)))))
+(defun slack-buffer-toggle-email-expand ()
+  (interactive)
+  (let ((buffer slack-current-buffer))
+    (with-slots (room) buffer
+      (slack-if-let* ((file-id (get-text-property (point) 'id))
+                      (ts (get-text-property (point) 'ts))
+                      (message (slack-room-find-message room ts))
+                      (file (cl-find-if
+                             #'(lambda (e) (string= (oref e id)
+                                                    file-id))
+                             (oref message files))))
+          (progn
+            (oset file is-expanded (not (oref file is-expanded)))
+            (slack-buffer-update buffer message :replace t))))))
 
 ;; POST
 (defconst slack-actions-list-url "https://slack.com/api/apps.actions.list")
@@ -112,20 +169,18 @@
 ;; params (action_id, type, app_id, channel, message_ts)
 (defconst slack-actions-run-url "https://slack.com/api/apps.actions.run")
 
-(defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
+(cl-defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
   (with-slots (team room) this
     (cl-labels
         ((select
           (app-actions)
-          (let ((choices (mapcan
-                          #'(lambda (app)
-                              (mapcar #'(lambda (action)
-                                          (cons (format "%s - %s"
-                                                        (plist-get action :name)
-                                                        (plist-get app :app_name))
-                                                (cons app action)))
-                                      (plist-get app :actions)))
-                          app-actions)))
+          (let ((choices (cl-loop for app in app-actions
+                                  nconc (mapcar #'(lambda (action)
+                                                    (cons (format "%s - %s"
+                                                                  (plist-get action :name)
+                                                                  (plist-get app :app_name))
+                                                          (cons app action)))
+                                                (plist-get app :actions)))))
             (cdr (cl-assoc (funcall slack-completing-read-function
                                     "Select Action: " choices)
                            choices :test #'string=))))
@@ -165,6 +220,183 @@
         team
         :type "POST"
         :success #'on-success-list)))))
+
+(cl-defmethod slack-message-deleted ((message slack-message) room team)
+  (if (slack-thread-message-p message)
+      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
+                      (thread (slack-message-get-thread parent)))
+          (progn
+            (slack-thread-delete-message thread message)
+            (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
+                                                       room
+                                                       (oref thread thread-ts)
+                                                       team)))
+                (slack-buffer-message-delete buffer (slack-ts message)))
+            (slack-message-update parent team t)))
+    (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
+                                            room
+                                            team)))
+        (slack-buffer-message-delete buf (slack-ts message))))
+
+  (if slack-message-custom-delete-notifier
+      (funcall slack-message-custom-delete-notifier message room team)
+    (alert "message deleted"
+           :icon slack-alert-icon
+           :title (format "\\[%s] from %s"
+                          (slack-room-display-name room team)
+                          (slack-message-sender-name message team))
+           :category 'slack)))
+
+(defun slack-message-delete ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-delete-message buf (slack-get-ts))))
+
+(defun slack-message-copy-link ()
+  (interactive)
+  (slack-buffer-copy-link slack-current-buffer (slack-get-ts)))
+
+(defun slack-message-test-notification ()
+  "Debug notification.
+Execute this function when cursor is on some message."
+  (interactive)
+  (let ((ts (slack-get-ts)))
+    (with-slots (room team) slack-current-buffer
+      (let ((message (slack-room-find-message room ts)))
+        (slack-message-notify message room team)))))
+
+(defun slack--get-channel-id ()
+  (interactive)
+  (with-current-buffer (current-buffer)
+    (slack-if-let* ((buffer slack-current-buffer)
+                    (boundp (slot-boundp buffer 'room))
+                    (room (oref buffer room)))
+        (progn
+          (kill-new (oref room id))
+          (message "%s" (oref room id))))))
+
+(defun slack-attachment-action-run ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (room (oref buffer room))
+                  (team (oref buffer team))
+                  (type (get-text-property (point) 'type))
+                  (attachment-id (get-text-property (point) 'attachment-id))
+                  (ts (slack-get-ts))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property (point) 'action)))
+      (when (slack-attachment-action-confirm action)
+        (slack-if-let* ((callback-id (get-text-property (point) 'callback-id))
+                        (common-payload (list
+                                         (cons "attachment_id" (number-to-string
+                                                                attachment-id))
+                                         (cons "callback_id" callback-id)
+                                         (cons "is_ephemeral" (oref message
+                                                                    is-ephemeral))
+                                         (cons "message_ts" ts)
+                                         (cons "channel_id" (oref room id))))
+                        (service-id (if (slack-bot-message-p message)
+                                        (slack-message-bot-id message)
+                                      "B01")))
+            (let ((url "https://slack.com/api/chat.attachmentAction")
+                  (params (list (cons "payload"
+                                      (json-encode-alist
+                                       (slack-attachment-action-run-payload
+                                        action
+                                        team
+                                        common-payload
+                                        service-id)))
+                                (cons "service_id" service-id)
+                                (cons "client_token"
+                                      (slack-team-client-token team)))))
+              (cl-labels
+                  ((log-error (err)
+                              (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
+                                                 err
+                                                 url
+                                                 params)
+                                         team
+                                         :level 'error))
+                   (on-success (&key data &allow-other-keys)
+                               (slack-request-handle-error
+                                (data "slack-attachment-action-run" #'log-error))))
+                (slack-request
+                 (slack-request-create
+                  url
+                  team
+                  :type "POST"
+                  :params params
+                  :success #'on-success))))
+          (slack-if-let* ((url (oref action url)))
+              (browse-url url))))))
+
+(defun slack-message-run-action ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (room (oref buffer room))
+                  (ts (slack-get-ts))
+                  (message (slack-room-find-message room ts))
+                  (not-ephemeral-messagep (not (oref message is-ephemeral))))
+      (slack-buffer-execute-message-action buffer ts)))
+
+(defun slack-action-run ()
+  (interactive)
+  (slack-if-let* ((bot (get-text-property (point) 'bot))
+                  (payload (get-text-property (point) 'payload))
+                  (buffer slack-current-buffer)
+                  (team (oref buffer team)))
+      (let ((url "https://slack.com/api/chat.action")
+            (params (list (cons "bot" bot)
+                          (cons "payload" payload))))
+        (cl-labels
+            ((log-error (err) (format "Error: %s, URL: %s, PARAMS: %s"
+                                      err
+                                      url
+                                      params))
+             (on-success (&key data &allow-other-keys)
+                         (slack-request-handle-error
+                          (data "slack-action-run" #'log-error))))
+          (slack-request
+           (slack-request-create
+            url
+            team
+            :type "POST"
+            :params params
+            :success #'on-success))))))
+
+(defun slack-message--send (message)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (oref buf team))
+                  (room (oref buf room)))
+      (if (string-prefix-p "/" message)
+          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
+              (slack-command-run (car command-and-arg)
+                                 team
+                                 (oref room id)
+                                 :text (cdr command-and-arg))
+            (error "Unknown slash command: %s"
+                   (car (split-string message))))
+        (slack-buffer-send-message buf message))))
+
+(defun slack-message-send ()
+  (interactive)
+  (slack-message--send (slack-message-read-from-minibuffer)))
+
+(defun slack-message-setup-minibuffer-keymap ()
+  (unless slack-message-minibuffer-local-map
+    (setq slack-message-minibuffer-local-map
+          (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "RET") 'newline)
+            (set-keymap-parent map minibuffer-local-map)
+            map))))
+
+(defun slack-message-read-from-minibuffer ()
+  (let ((prompt "Message: "))
+    (slack-message-setup-minibuffer-keymap)
+    (read-from-minibuffer
+     prompt
+     nil
+     slack-message-minibuffer-local-map)))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

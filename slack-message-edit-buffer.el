@@ -26,7 +26,10 @@
 
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-buffer)
 (require 'slack-message-compose-buffer)
+(require 'slack-message-editor)
+;; (require 'slack-message-buffer)
 
 (define-derived-mode slack-message-edit-buffer-mode
   slack-edit-message-mode
@@ -36,38 +39,29 @@
   ((room :initarg :room :type slack-room)
    (ts :initarg :ts :type string)))
 
-(defun slack-buffer-find-4 (class a b team)
-  (slack-if-let* ((buf (cl-find-if #'(lambda (buf)
-                                       (string= (buffer-name buf)
-                                                (slack-buffer-name class a b team)))
-                                   (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
-
 (defun slack-create-edit-message-buffer (room team ts)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-edit-buffer
                                              room ts team)))
       buffer
     (slack-message-edit-buffer :room room :team team :ts ts)))
 
-(defmethod slack-buffer-find :static
-  ((class slack-message-edit-buffer) room ts team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-message-edit-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
 
-(defmethod slack-buffer-name :static
-  ((class slack-message-edit-buffer) room  ts team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-message-edit-buffer)) room  ts team)
   (format "*Slack - %s : %s Edit Message %s"
           (oref team name)
           (slack-room-name room team)
           ts))
 
-(defmethod slack-buffer-name ((this slack-message-edit-buffer))
+(cl-defmethod slack-buffer-name ((this slack-message-edit-buffer))
   (with-slots (room team ts) this
     (slack-buffer-name (eieio-object-class-name this)
                        room ts team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-message-edit-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-message-edit-buffer))
   (with-slots (room team ts) this
-    (let* ((buf (call-next-method))
+    (let* ((buf (cl-call-next-method))
            (message (slack-room-find-message room ts)))
       (with-current-buffer buf
         (slack-message-edit-buffer-mode)
@@ -82,13 +76,12 @@
                                  team))
       buf)))
 
-(defmethod slack-buffer-send-message ((this slack-message-edit-buffer) message)
+(cl-defmethod slack-buffer-send-message ((this slack-message-edit-buffer) message)
   (with-slots (room team ts) this
     (slack-if-let* ((m (slack-room-find-message room ts)))
         (progn
           (slack-message--edit (oref room id) team ts message)
-          (call-next-method)))))
-
+          (cl-call-next-method)))))
 
 (provide 'slack-message-edit-buffer)
 ;;; slack-message-edit-buffer.el ends here

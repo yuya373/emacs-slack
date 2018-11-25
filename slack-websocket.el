@@ -26,42 +26,32 @@
 (require 'websocket)
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-message)
 (require 'slack-team)
+(require 'slack-team-ws)
 (require 'slack-reply)
 (require 'slack-file)
-(require 'slack-dialog)
+(require 'slack-dialog-buffer)
+(require 'slack-user)
+(require 'slack-group)
+(require 'slack-channel)
+(require 'slack-im)
+(require 'slack-thread)
+(require 'slack-bot)
+(require 'slack-usergroup)
+(require 'slack-slash-commands)
+(require 'slack-star)
+(require 'slack-message-notification)
+;; (require 'slack-message-buffer)
+(declare-function slack-buffer-load-missing-messages "slack-message-buffer")
+(require 'slack-room-buffer)
+(require 'slack-authorize)
+(require 'slack-typing)
+(require 'slack-stars-buffer)
+
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
-(defclass slack-typing ()
-  ((room :initarg :room :initform nil)
-   (limit :initarg :limit :initform nil)
-   (users :initarg :users :initform nil)))
-
-(defclass slack-typing-user ()
-  ((limit :initarg :limit :initform nil)
-   (user-name :initarg :user-name :initform nil)))
-
-(defun slack-ws-set-connect-timeout-timer (team)
-  (slack-ws-cancel-connect-timeout-timer team)
-  (cl-labels
-      ((on-timeout ()
-                   (slack-log (format "websocket open timeout")
-                              team)
-                   (slack-ws-close team)
-                   (slack-ws-set-reconnect-timer team)))
-    (oset team websocket-connect-timeout-timer
-          (run-at-time (oref team websocket-connect-timeout-sec)
-                       nil
-                       #'on-timeout))))
-
-(defun slack-ws-cancel-connect-timeout-timer (team)
-  (when (timerp (oref team websocket-connect-timeout-timer))
-    (cancel-timer (oref team websocket-connect-timeout-timer))
-    (oset team websocket-connect-timeout-timer nil)))
-
-(cl-defun slack-ws-open (team &key (on-open nil) (ws-url nil))
-  (slack-if-let* ((conn (oref team ws-conn))
+(cl-defmethod slack-ws-open ((ws slack-team-ws) team &key (on-open nil) (ws-url nil))
+  (slack-if-let* ((conn (oref ws conn))
                   (state (websocket-ready-state conn)))
       (cond ((websocket-openp conn)
              (slack-log "Websocket is Already Open" team))
@@ -71,66 +61,71 @@
              (slack-log "Websocket is closed" team)))
 
     (progn
-      (slack-ws-set-connect-timeout-timer team)
       (cl-labels
-          ((on-message (websocket frame)
-                       (slack-ws-on-message websocket frame team))
+          ((on-timeout ()
+                       (slack-log (format "websocket open timeout")
+                                  team)
+                       (slack-ws-close ws team)
+                       (slack-ws-reconnect ws team)))
+        (slack-ws-set-connect-timeout-timer ws #'on-timeout))
+
+      (cl-labels
+          ((on-message (_websocket frame)
+                       (slack-ws-on-message ws frame team))
            (handle-on-open (_websocket)
-                           (oset team reconnect-count 0)
-                           (oset team connected t)
+                           (oset ws reconnect-count 0)
+                           (oset ws connected t)
                            (slack-log "WebSocket on-open"
                                       team :level 'debug)
                            (when (functionp on-open)
                              (funcall on-open)))
            (on-close (websocket)
-                     (oset team ws-conn nil)
-                     (oset team connected nil)
+                     (oset ws conn nil)
+                     (oset ws connected nil)
                      (slack-log (format "Websocket on-close: STATE: %s"
                                         (websocket-ready-state websocket))
                                 team :level 'debug)
                      (unwind-protect
                          (progn
-                           (unless (oref team inhibit-reconnection)
-                             (slack-ws-set-reconnect-timer team)))
-                       (oset team inhibit-reconnection nil)))
+                           (unless (oref ws inhibit-reconnection)
+                             (slack-ws-reconnect ws team)))
+                       (oset ws inhibit-reconnection nil)))
            (on-error (_websocket type err)
                      (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                         type err)
                                 team
                                 :level 'error)))
-        (oset team ws-conn
+        (oset ws conn
               (condition-case error-var
-                  (websocket-open (or ws-url (oref team ws-url))
+                  (websocket-open (or ws-url (oref ws url))
                                   :on-message #'on-message
                                   :on-open #'handle-on-open
                                   :on-close #'on-close
                                   :on-error #'on-error
-                                  :nowait (oref team websocket-nowait))
+                                  :nowait (oref ws nowait))
                 (error
                  (slack-log (format "An Error occured while opening websocket connection: %s"
                                     error-var)
                             team
                             :level 'error)
-                 ;; (slack-ws-close team)
-                 ;; (slack-ws-set-reconnect-timer team)
                  nil)))))))
 
-(cl-defun slack-ws-close (&optional team (close-reconnection nil))
+(cl-defun slack-ws-close (ws &optional team (close-reconnection nil))
   (interactive)
   (unless team
     (setq team slack-teams))
   (let ((called-interactively (called-interactively-p 'any)))
     (cl-labels
         ((close (team)
-                (slack-ws-cancel-ping-timer team)
-                (slack-ws-cancel-ping-check-timers team)
+                (slack-ws-cancel-ping-timer ws)
+                (slack-ws-cancel-ping-check-timers ws)
                 (when (or close-reconnection
                           called-interactively)
-                  (slack-ws-cancel-reconnect-timer team)
-                  (oset team inhibit-reconnection t))
-                (with-slots (connected ws-conn last-pong) team
-                  (when ws-conn
-                    (websocket-close ws-conn)
+                  (slack-ws-cancel-reconnect-timer ws)
+                  (oset ws inhibit-reconnection t))
+                (with-slots (connected conn last-pong) ws
+                  (when conn
+                    (websocket-close conn)
                     (slack-log "Slack Websocket Closed" team)))))
       (if (listp team)
           (progn
@@ -144,43 +139,173 @@
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
 
-(defun slack-ws-send (payload team)
-  (with-slots (waiting-send ws-conn) team
+(cl-defmethod slack-ws-send ((ws slack-team-ws) payload team)
+  (with-slots (waiting-send conn) ws
     (unless (slack-ws-payload-ping-p payload)
       (push payload waiting-send))
     (cl-labels
         ((reconnect ()
-                    (slack-ws-close team)
-                    (slack-ws-set-reconnect-timer team)))
-      (if (websocket-openp ws-conn)
+                    (slack-ws-close ws team)
+                    (slack-ws-reconnect ws team)))
+      (if (websocket-openp conn)
           (condition-case err
-              (websocket-send-text ws-conn (json-encode payload))
+              (websocket-send-text conn (json-encode payload))
             (error
              (slack-log (format "Error in `slack-ws-send`: %s" err)
                         team :level 'debug)
              (reconnect)))
         (reconnect)))))
 
-(defun slack-ws-resend (team)
-  (with-slots (waiting-send) team
+(cl-defmethod slack-ws-resend ((ws slack-team-ws) team)
+  (with-slots (waiting-send) ws
     (let ((candidate waiting-send))
       (setq waiting-send nil)
       (cl-loop for msg in candidate
-               do (slack-ws-send msg team)))))
+               do (slack-ws-send ws msg team)))))
+
+(cl-defmethod slack-ws-ping ((ws slack-team-ws) team)
+  (slack-team-inc-message-id team)
+  (with-slots (message-id) team
+    (let* ((time (number-to-string (time-to-seconds (current-time))))
+           (m (list :id message-id
+                    :type "ping"
+                    :time time)))
+      (cl-labels
+          ((on-timeout ()
+                       (slack-log "Slack Websocket PING Timeout." team :level 'warn)
+                       (slack-ws-close ws team)
+                       (slack-ws-reconnect ws team)))
+        (slack-ws-set-ping-check-timer ws time #'on-timeout))
+      (slack-ws-send ws m team)
+      (slack-log (format "Send PING: %s" time)
+                 team :level 'trace))))
+
+(defvar slack-disconnected-timer nil)
+(defun slack-notify-abandon-reconnect (team)
+  (unless slack-disconnected-timer
+    (setq slack-disconnected-timer
+          (run-with-idle-timer 5 t
+                               #'(lambda ()
+                                   (slack-log
+                                    "Reconnect Count Exceeded. Manually invoke `slack-start'."
+                                    team :level 'error))))))
+
+(defun slack-cancel-notify-adandon-reconnect ()
+  (if (and slack-disconnected-timer
+           (timerp slack-disconnected-timer))
+      (progn
+        (cancel-timer slack-disconnected-timer)
+        (setq slack-disconnected-timer nil))))
+
+(defun slack-request-api-test (team &optional after-success)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-request-api-test")
+                    (if after-success
+                        (funcall after-success)))))
+    (slack-request
+     (slack-request-create
+      slack-api-test-url
+      team
+      :type "POST"
+      :success #'on-success))))
+
+(cl-defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
+  (cl-labels ((abort ()
+                     (slack-notify-abandon-reconnect team)
+                     (slack-ws-close ws team t))
+              (use-reconnect-url ()
+                                 (slack-log "Reconnect with reconnect-url" team)
+                                 (slack-ws-open ws team
+                                                :ws-url (oref ws reconnect-url)))
+              (on-authorize-error (&key error-thrown symbol-status &allow-other-keys)
+                                  (slack-log (format "Reconnect Failed: %s, %s"
+                                                     error-thrown
+                                                     symbol-status)
+                                             team)
+                                  (slack-ws-reconnect ws team))
+              (on-open ()
+                       (slack-channel-list-update team)
+                       (slack-group-list-update team)
+                       (slack-im-list-update team)
+                       (slack-bot-list-update team)
+                       (cl-loop for buffer in (oref team slack-message-buffer)
+                                do (slack-if-let*
+                                       ((live-p (buffer-live-p buffer))
+                                        (buffer (with-current-buffer buffer
+                                                  (and (bound-and-true-p
+                                                        slack-current-buffer)
+                                                       slack-current-buffer))))
+                                       (slack-buffer-load-missing-messages buffer)))
+                       (slack-team-kill-buffers
+                        team :except '(slack-message-buffer
+                                       slack-message-edit-buffer
+                                       slack-message-share-buffer
+                                       slack-room-message-compose-buffer)))
+              (on-authorize-success (data)
+                                    (let ((team-data (plist-get data :team))
+                                          (self-data (plist-get data :self)))
+                                      (slack-team-set-ws-url team (plist-get data :url))
+                                      (oset team domain (plist-get team-data :domain))
+                                      (oset team id (plist-get team-data :id))
+                                      (oset team name (plist-get team-data :name))
+                                      (oset team self self-data)
+                                      (oset team self-id (plist-get self-data :id))
+                                      (oset team self-name (plist-get self-data :name))
+                                      (slack-ws-open ws team :on-open #'on-open)))
+              (do-reconnect ()
+                            (slack-ws-inc-reconnect-count ws)
+                            (slack-ws-close ws team)
+                            (if (slack-ws-use-reconnect-url-p ws)
+                                (slack-request-api-test team #'use-reconnect-url)
+                              (slack-authorize team
+                                               #'on-authorize-error
+                                               #'on-authorize-success))
+                            (slack-log (format "Reconnecting... [%s/%s]"
+                                               (oref ws reconnect-count)
+                                               (oref ws reconnect-count-max))
+                                       team
+                                       :level 'warn)))
+    (if (and (not force)
+             (slack-ws-reconnect-count-exceed-p ws))
+        (abort)
+      (do-reconnect))))
+
+(cl-defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
+  "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
+if FORCE is t, ignore `reconnect-count-max'.
+TEAM is one of `slack-teams'"
+  (slack-ws-set-reconnect-timer ws #'slack-ws--reconnect ws team force))
+
+;; Message handler
+
+(cl-defmethod slack-ws-handle-pong ((ws slack-team-ws) payload team)
+  (slack-ws-remove-from-resend-queue ws payload team)
+  (let* ((key (plist-get payload :time))
+         (timer (gethash key (oref ws ping-check-timers))))
+    (slack-log (format "Receive PONG: %s" key)
+               team :level 'trace)
+    (slack-ws-set-ping-timer ws #'slack-ws-ping ws team)
+    (when timer
+      (cancel-timer timer)
+      (remhash key (oref ws ping-check-timers))
+      (slack-log (format "Remove PING Check Timer: %s" key)
+                 team :level 'trace))))
 
 ;; (:type error :error (:msg Socket URL has expired :code 1))
-(defun slack-ws-handle-error (payload team)
+(cl-defmethod slack-ws-handle-error ((ws slack-team-ws) payload team)
   (let* ((err (plist-get payload :error))
          (code (plist-get err :code)))
     (cond
      ((eq 1 code)
-      (slack-ws-close team)
-      (slack-ws-set-reconnect-timer team))
+      (slack-ws-close ws team)
+      (slack-ws-reconnect ws team))
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))
                    team)))))
 
-(defun slack-ws-on-message (_websocket frame team)
+(cl-defmethod slack-ws-on-message ((ws slack-team-ws) frame team)
   ;; (message "%s" (slack-request-parse-payload
   ;;                (websocket-frame-payload frame)))
   (when (websocket-frame-completep frame)
@@ -195,18 +320,18 @@
       (when decoded-payload
         (cond
          ((string= type "error")
-          (slack-ws-handle-error decoded-payload team))
+          (slack-ws-handle-error ws decoded-payload team))
          ((string= type "pong")
-          (slack-ws-handle-pong decoded-payload team))
+          (slack-ws-handle-pong ws decoded-payload team))
          ((string= type "hello")
-          (slack-ws-cancel-connect-timeout-timer team)
-          (slack-ws-cancel-reconnect-timer team)
+          (slack-ws-cancel-connect-timeout-timer ws)
+          (slack-ws-cancel-reconnect-timer ws)
           (slack-cancel-notify-adandon-reconnect)
-          (slack-ws-set-ping-timer team)
-          (slack-ws-resend team)
+          (slack-ws-set-ping-timer ws #'slack-ws-ping ws team)
+          (slack-ws-resend ws team)
           (slack-log "Slack Websocket Is Ready!" team :level 'info))
          ((plist-get decoded-payload :reply_to)
-          (slack-ws-handle-reply decoded-payload team))
+          (slack-ws-handle-reply ws decoded-payload team))
          ((string= type "message")
           (slack-ws-handle-message decoded-payload team))
          ((string= type "reaction_added")
@@ -273,7 +398,7 @@
          ((string= type "star_removed")
           (slack-ws-handle-star-removed decoded-payload team))
          ((string= type "reconnect_url")
-          (slack-ws-handle-reconnect-url decoded-payload team))
+          (slack-ws-handle-reconnect-url ws decoded-payload team))
          ((string= type "app_conversation_invite_request")
           (slack-ws-handle-app-conversation-invite-request decoded-payload team))
          ((string= type "commands_changed")
@@ -286,36 +411,8 @@
           (slack-ws-handle-subteam-updated decoded-payload team))
          )))))
 
-(defun slack-ws-handle-reconnect-url (payload team)
-  (oset team reconnect-url (plist-get payload :url)))
-
-(defun slack-user-typing (team)
-  (with-slots (typing typing-timer) team
-    (let ((current (float-time)))
-      (if (or (null typing)
-              (and typing-timer
-                   (timerp typing-timer)
-                   typing
-                   (< (oref typing limit) current)))
-          (progn
-            (cancel-timer typing-timer)
-            (setq typing-timer nil)
-            (setq typing nil)
-            (message ""))
-        (with-slots (users room) typing
-          (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
-                          (show-typing-p (slack-buffer-show-typing-p
-                                          (get-buffer (slack-buffer-name buf)))))
-              (let ((visible-users (cl-remove-if
-                                    #'(lambda (u) (< (oref u limit) current))
-                                    users)))
-                (slack-log
-                 (format "%s is typing..."
-                         (mapconcat #'(lambda (u) (oref u user-name))
-                                    visible-users
-                                    ", "))
-                 team
-                 :level 'info))))))))
+(cl-defmethod slack-ws-handle-reconnect-url ((ws slack-team-ws) payload)
+  (oset ws reconnect-url (plist-get payload :url)))
 
 (defun slack-ws-handle-user-typing (payload team)
   (slack-if-let*
@@ -326,40 +423,29 @@
                                                    (slack-buffer-name buf)))))
       (let ((limit (+ 3 (float-time))))
         (with-slots (typing typing-timer) team
-          (if (and typing (string= (oref room id)
-                                   (oref (oref typing room) id)))
-              (with-slots ((typing-limit limit) (typing-room room) users) typing
-                (setq typing-limit limit)
-                (let ((typing-user (make-instance 'slack-typing-user
-                                                  :limit limit
-                                                  :user-name user)))
-                  (setq users
-                        (cons typing-user
-                              (cl-remove-if #'(lambda (u)
-                                                (string= (oref u user-name)
-                                                         user))
-                                            users)))))
-            (let ((new-typing (make-instance 'slack-typing
-                                             :room room :limit limit))
-                  (typing-user (make-instance 'slack-typing-user
-                                              :limit limit :user-name user)))
-              (oset new-typing users (list typing-user))
-              (setq typing new-typing))
+          (if (and typing
+                   (string= (oref room id) (oref (oref typing room) id)))
+              (progn
+                (slack-typing-set-limit typing limit)
+                (slack-typing-add-user typing user limit))
+            (setq typing (slack-typing-create room limit user))
             (setq typing-timer
-                  (run-with-timer t 1 #'slack-user-typing team)))))))
+                  (run-with-timer t 1 #'slack-typing-display team)))))))
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
-    (slack-user-info-request
-     (plist-get user :id) team
-     :after-success #'(lambda ()
-                        (slack-log (format "User %s Joind Team: %s"
-                                           (plist-get (slack-user--find (plist-get user :id)
-                                                                        team)
-                                                      :name)
-                                           (slack-team-name team))
-                                   team
-                                   :level 'info)))))
+    (cl-labels
+        ((after-success (data)
+                        (let ((user-id (plist-get user :id)))
+                          (slack-log (format "User %s Joind Team: %s"
+                                             (slack-user-name user-id team)
+                                             (slack-team-name team))
+                                     team
+                                     :level 'info))
+                        (slack-im-open (plist-get data :user))))
+      (slack-user-info-request (plist-get user :id)
+                               team
+                               :after-success #'after-success))))
 
 (defun slack-ws-handle-im-open (payload team)
   (cl-labels
@@ -370,8 +456,7 @@
          :after-success #'(lambda (&rest _ignore)
                             (slack-log (format "Direct Message Channel with %s is Open"
                                                (slack-user-name (oref im user) team))
-                                       team :level 'info))
-         :async t)))
+                                       team :level 'info)))))
     (let ((exist (slack-room-find (plist-get payload :channel) team)))
       (if exist
           (progn
@@ -401,7 +486,7 @@
      ((and subtype (string= subtype "message_deleted"))
       (slack-ws-delete-message payload team))
      ((and subtype (string= subtype "message_replied"))
-      (slack-thread-update-state payload team))
+      (slack-ws-handle-message-replied payload team))
      (t
       (slack-ws-update-message payload team)))))
 
@@ -452,9 +537,9 @@
 (defun slack-ws-payload-pong-p (payload)
   (string= "pong" (plist-get payload :type)))
 
-(defun slack-ws-remove-from-resend-queue (payload team)
+(cl-defmethod slack-ws-remove-from-resend-queue ((ws slack-team-ws) payload team)
   (unless (slack-ws-payload-pong-p payload)
-    (with-slots (waiting-send) team
+    (with-slots (waiting-send) ws
       (slack-log (format "waiting-send: %s" (length waiting-send))
                  team :level 'trace)
       (setq waiting-send
@@ -464,7 +549,7 @@
       (slack-log (format "waiting-send: %s" (length waiting-send))
                  team :level 'trace))))
 
-(defun slack-ws-handle-reply (payload team)
+(cl-defmethod slack-ws-handle-reply ((ws slack-team-ws) payload team)
   (let ((ok (plist-get payload :ok)))
     (if (eq ok :json-false)
         (let* ((err (plist-get payload :error))
@@ -477,31 +562,7 @@
           (slack-message-handle-reply
            (slack-message-create payload team)
            team)
-          (slack-ws-remove-from-resend-queue payload team))))))
-
-(defun slack-ws-handle-reaction-added-to-file (file-id reaction team)
-  (let* ((file (slack-file-find file-id team))
-         (item-type "file"))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-append-reaction file reaction)
-                   (slack-message-update file team)
-                   (cl-loop for channel in (slack-file-channel-ids file)
-                            do (slack-if-let*
-                                   ((channel (slack-room-find channel team))
-                                    (message (slack-room-find-file-share-message
-                                              channel (oref file id))))
-
-                                   (progn
-                                     (slack-message-append-reaction message
-                                                                    reaction
-                                                                    item-type
-                                                                    file-id)
-                                     (slack-message-update message
-                                                           team t t)))))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
+          (slack-ws-remove-from-resend-queue ws payload team))))))
 
 (defun slack-ws-handle-reaction-added (payload team)
   (let* ((item (plist-get payload :item))
@@ -515,38 +576,18 @@
                          (slack-message-append-reaction message reaction item-type)
                          (slack-message-update message team t t)))
       (cond
-       ((string= item-type "file")
-        (slack-ws-handle-reaction-added-to-file (plist-get item :file)
-                                                reaction
-                                                team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
-              (slack-reaction-notify payload team room))))))))
-
-(defun slack-ws-handle-reaction-removed-from-file (file-id reaction team)
-  (let* ((file (slack-file-find file-id team))
-         (item-type "file"))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-pop-reaction file reaction)
-                   (slack-message-update file team)
-                   (cl-loop for channel in (slack-file-channel-ids file)
-                            do (slack-if-let*
-                                   ((channel (slack-room-find channel team))
-                                    (message (slack-room-find-file-share-message
-                                              channel (oref file id))))
-                                   (progn
-                                     (slack-message-pop-reaction message
-                                                                 reaction
-                                                                 item-type
-                                                                 file-id)
-                                     (slack-message-update message team t t)))))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
+              (let* ((user-id (plist-get payload :user))
+                     (reaction (plist-get payload :reaction))
+                     (text (format "added reaction %s" reaction))
+                     (msg (make-instance 'slack-user-message
+                                         :text text
+                                         :user user-id)))
+                (slack-message-notify msg room team)))))))))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (let* ((item (plist-get payload :item))
@@ -560,16 +601,18 @@
                          (slack-message-pop-reaction message reaction item-type)
                          (slack-message-update message team t t)))
       (cond
-       ((string= item-type "file")
-        (slack-ws-handle-reaction-removed-from-file (plist-get item :file)
-                                                    reaction
-                                                    team))
        ((string= item-type "message")
         (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
                         (message (slack-room-find-message room (plist-get item :ts))))
             (progn
               (update-message message)
-              (slack-reaction-notify payload team room))))))))
+              (let* ((user-id (plist-get payload :user))
+                     (reaction (plist-get payload :reaction))
+                     (text (format "removed reaction %s" reaction))
+                     (msg (make-instance 'slack-user-message
+                                         :text text
+                                         :user user-id)))
+                (slack-message-notify msg room team)))))))))
 
 (defun slack-ws-handle-channel-created (payload team)
   (let ((channel (slack-room-create (plist-get payload :channel)
@@ -597,8 +640,15 @@
                team :level 'info)))
 
 (defun slack-ws-handle-channel-deleted (payload team)
-  (let ((id (plist-get payload :channel)))
-    (slack-room-deleted id team)))
+  (let* ((id (plist-get payload :channel))
+         (room (slack-room-find id team)))
+    (cond
+     ((object-of-class-p room 'slack-channel)
+      (with-slots (channels) team
+        (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
+                                     channels)))
+      (message "Channel: %s deleted"
+               (slack-room-display-name room team))))))
 
 (defun slack-ws-handle-room-rename (payload team)
   (let* ((c (plist-get payload :channel))
@@ -653,186 +703,6 @@
       (setq messages (cl-remove-if #'(lambda (f)
                                        (string= file-id (oref f id)))
                                    messages)))))
-
-(defun slack-ws-cancel-ping-timer (team)
-  (with-slots (ping-timer) team
-    (if (timerp ping-timer)
-        (cancel-timer ping-timer))
-    (setq ping-timer nil)))
-
-(defun slack-ws-set-ping-timer (team)
-  (slack-ws-cancel-ping-timer team)
-  (cl-labels ((ping ()
-                    (slack-ws-ping team)))
-    (oset team ping-timer (run-at-time 10 nil #'ping))))
-
-(defun slack-ws-current-time-str ()
-  (number-to-string (time-to-seconds (current-time))))
-
-(defun slack-ws-ping (team)
-  (slack-message-inc-id team)
-  (with-slots (message-id) team
-    (let* ((time (slack-ws-current-time-str))
-           (m (list :id message-id
-                    :type "ping"
-                    :time time)))
-      (slack-ws-set-check-ping-timer team time)
-      (slack-ws-send m team)
-      (slack-log (format "Send PING: %s" time)
-                 team :level 'trace))))
-
-(defun slack-ws-set-check-ping-timer (team time)
-  (puthash time (run-at-time (oref team check-ping-timeout-sec)
-                             nil #'slack-ws-ping-timeout team)
-           (oref team ping-check-timers)))
-
-
-(defun slack-ws-ping-timeout (team)
-  (slack-log "Slack Websocket PING Timeout." team :level 'warn)
-  (slack-ws-close team)
-  (slack-ws-set-reconnect-timer team))
-
-(defun slack-ws-cancel-ping-check-timers (team)
-  (maphash #'(lambda (key value)
-               (if (timerp value)
-                   (cancel-timer value)))
-           (oref team ping-check-timers))
-  (slack-team-init-ping-check-timers team))
-
-(defvar slack-disconnected-timer nil)
-(defun slack-notify-abandon-reconnect (team)
-  (unless slack-disconnected-timer
-    (setq slack-disconnected-timer
-          (run-with-idle-timer 5 t
-                               #'(lambda ()
-                                   (slack-log
-                                    "Reconnect Count Exceeded. Manually invoke `slack-start'."
-                                    team :level 'error))))))
-
-(defun slack-cancel-notify-adandon-reconnect ()
-  (if (and slack-disconnected-timer
-           (timerp slack-disconnected-timer))
-      (progn
-        (cancel-timer slack-disconnected-timer)
-        (setq slack-disconnected-timer nil))))
-
-(defun slack-request-api-test (team &optional after-success)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data "slack-request-api-test")
-                    (if after-success
-                        (funcall after-success)))))
-    (slack-request
-     (slack-request-create
-      slack-api-test-url
-      team
-      :type "POST"
-      :success #'on-success))))
-
-(defun slack-on-authorize-for-reconnect (data team)
-  (let ((team-data (plist-get data :team))
-        (self-data (plist-get data :self)))
-    (oset team ws-url (plist-get data :url))
-    (oset team domain (plist-get team-data :domain))
-    (oset team id (plist-get team-data :id))
-    (oset team name (plist-get team-data :name))
-    (oset team self self-data)
-    (oset team self-id (plist-get self-data :id))
-    (oset team self-name (plist-get self-data :name))
-    (cl-labels
-        ((on-open ()
-                  (slack-channel-list-update team)
-                  (slack-group-list-update team)
-                  (slack-im-list-update team)
-                  (slack-bot-list-update team)
-                  (cl-loop for buffer in (oref team slack-message-buffer)
-                           do (slack-if-let*
-                                  ((live-p (buffer-live-p buffer))
-                                   (slack-buffer (with-current-buffer buffer
-                                                   (and (bound-and-true-p
-                                                         slack-current-buffer)
-                                                        slack-current-buffer))))
-                                  (slack-buffer-load-missing-messages
-                                   slack-buffer)))
-                  (slack-team-kill-buffers
-                   team :except '(slack-message-buffer
-                                  slack-message-edit-buffer
-                                  slack-message-share-buffer
-                                  slack-room-message-compose-buffer))))
-      (slack-ws-open team :on-open #'on-open))))
-
-(defun slack-authorize-for-reconnect (team)
-  (cl-labels
-      ((on-error (&key error-thrown symbol-status &allow-other-keys)
-                 (slack-log (format "Slack Reconnect Failed: %s, %s"
-                                    error-thrown
-                                    symbol-status)
-                            team)
-                 (slack-ws-set-reconnect-timer team))
-       (on-success (data)
-                   (slack-on-authorize-for-reconnect data team)))
-    (slack-authorize team #'on-error #'on-success)))
-
-(defun slack-ws-reconnect (team &optional force)
-  "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
-if FORCE is t, ignore `reconnect-count-max'.
-TEAM is one of `slack-teams'"
-  (cl-labels ((abort (team)
-                     (slack-notify-abandon-reconnect team)
-                     (slack-ws-close team t))
-              (use-reconnect-url ()
-                                 (slack-log "Reconnect with reconnect-url" team)
-                                 (slack-ws-open team
-                                                :ws-url (oref team reconnect-url)))
-              (do-reconnect (team)
-                            (cl-incf (oref team reconnect-count))
-                            (slack-ws-close team)
-                            (if (< 0 (length (oref team reconnect-url)))
-                                (slack-request-api-test team
-                                                        #'use-reconnect-url)
-                              (slack-authorize-for-reconnect team))))
-    (with-slots
-        (reconnect-count (reconnect-max reconnect-count-max)) team
-      (if (and (not force) reconnect-max (< reconnect-max reconnect-count))
-          (abort team)
-        (do-reconnect team)
-        (slack-log (format "Slack Websocket Try To Reconnect %s/%s"
-                           reconnect-count
-                           reconnect-max)
-                   team
-                   :level 'warn
-                   )))))
-
-(defun slack-ws-set-reconnect-timer (team)
-  (slack-ws-cancel-reconnect-timer team)
-  (cl-labels
-      ((on-timeout ()
-                   (slack-ws-reconnect team)))
-    (oset team reconnect-timer
-          (run-at-time (oref team reconnect-after-sec)
-                       nil
-                       #'on-timeout))))
-
-(defun slack-ws-cancel-reconnect-timer (team)
-  (with-slots (reconnect-timer) team
-    (if (timerp reconnect-timer)
-        (cancel-timer reconnect-timer))
-    (setq reconnect-timer nil)))
-
-(defun slack-ws-handle-pong (payload team)
-  (slack-ws-remove-from-resend-queue payload team)
-  (let* ((key (plist-get payload :time))
-         (timer (gethash key (oref team ping-check-timers))))
-    (slack-log (format "Receive PONG: %s" key)
-               team :level 'trace)
-    (slack-ws-set-ping-timer team)
-    (when timer
-      (cancel-timer timer)
-      (remhash key (oref team ping-check-timers))
-      (slack-log (format "Remove PING Check Timer: %s" key)
-                 team :level 'trace))))
-
 (defun slack-ws-handle-room-marked (payload team)
   (slack-if-let* ((channel (plist-get payload :channel))
                   (room (slack-room-find channel team))
@@ -841,7 +711,10 @@ TEAM is one of `slack-teams'"
       (progn
         (oset room unread-count-display unread-count-display)
         (oset room last-read ts)
-        (slack-update-modeline))))
+        (slack-update-modeline)
+        (slack-if-let*
+            ((buffer (slack-buffer-find 'slack-message-buffer room team)))
+            (slack-buffer-update-marker-overlay buffer)))))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((subscription (plist-get payload :subscription))
@@ -1096,6 +969,24 @@ TEAM is one of `slack-teams'"
                                                            (oref usergroup id)))
                                               (oref team usergroups))))))
 
+(defun slack-ws-handle-message-replied (payload team)
+  (slack-if-let* ((message-payload (plist-get payload :message))
+                  (thread-ts (plist-get message-payload :thread_ts))
+                  (room (slack-room-find (plist-get payload :channel)
+                                         team))
+                  (message (slack-room-find-message room thread-ts))
+                  (thread (slack-message-get-thread message))
+                  (new-thread (slack-thread-create message
+                                                   message-payload)))
+      (progn
+        (slack-merge thread new-thread)
+        (slack-message-update message team t t))
+    (message "THREAD_TS: %s, ROOM: %s, MESSAGE: %s THREAD: %s, NEW_THREAD:%s"
+             thread-ts
+             (not (null room))
+             (not (null message))
+             (not (null thread))
+             (not (null new-thread)))))
+
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
-

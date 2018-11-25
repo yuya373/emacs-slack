@@ -24,10 +24,62 @@
 
 ;;; Code:
 
+(require 'color)
 (require 'eieio)
 (require 'lui)
 (require 'slack-util)
 (require 'slack-room)
+(require 'slack-image)
+(declare-function emojify-mode "emojify")
+
+(defvar slack-buffer-function)
+(defvar-local slack-current-buffer nil)
+(defvar lui-prompt-string "> ")
+(defvar slack-typing-visibility)
+
+(defcustom slack-default-directory
+  (expand-file-name (concat (or (getenv "HOME") "~") "/"))
+  "default directory at Slack Buffer."
+  :type 'string
+  :group 'slack)
+
+(defvar slack-mode-map
+  (let ((map (make-sparse-keymap)))
+    ;; (define-key map (kbd "C-s C-r") #'slack-room-update-messages)
+    ;; (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
+    map))
+
+(defvar slack-load-more-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-load-more-message)
+    map))
+
+(define-derived-mode slack-mode lui-mode "Slack"
+  ""
+  (setq-local default-directory slack-default-directory)
+  (lui-set-prompt lui-prompt-string)
+  (setq lui-input-function 'slack-message--send))
+
+(define-derived-mode slack-info-mode lui-mode "Slack Info"
+  ""
+  (setq-local default-directory slack-default-directory)
+  (lui-set-prompt lui-prompt-string))
+
+(defcustom slack-buffer-emojify nil
+  "Show emoji with `emojify' if true."
+  :type 'boolean
+  :group 'slack)
+
+(defcustom slack-buffer-create-on-notify nil
+  "Create a room buffer when notification received if it does not yet exist"
+  :type 'boolean
+  :group 'slack)
+
+(defmacro slack-buffer-widen (&rest body)
+  `(save-excursion
+     (save-restriction
+       (widen)
+       ,@body)))
 
 (define-derived-mode slack-buffer-mode lui-mode "Slack Buffer"
   (setq-local default-directory slack-default-directory)
@@ -35,8 +87,6 @@
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (lui-set-prompt " "))
-
-(defvar-local slack-current-buffer nil)
 
 (defclass slack-buffer ()
   ((team :initarg :team :type slack-team)))
@@ -54,7 +104,7 @@
       (push buf (slot-value team class)))
     buf))
 
-(defmethod slack-buffer-find :static ((class slack-buffer) room team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-buffer)) room team)
   (slack-if-let* ((buf (cl-find-if
                         #'(lambda (buf)
                             (string= (buffer-name buf)
@@ -62,11 +112,11 @@
                         (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
-(defmethod slack-buffer-buffer ((this slack-buffer))
+(cl-defmethod slack-buffer-buffer ((this slack-buffer))
   (or (get-buffer (slack-buffer-name this))
       (slack-buffer-init-buffer this)))
 
-(defmethod slack-buffer-display ((this slack-buffer))
+(cl-defmethod slack-buffer-display ((this slack-buffer))
   (condition-case err
       (funcall slack-buffer-function (slack-buffer-buffer this))
     (error (progn
@@ -74,16 +124,16 @@
                  (kill-buffer buf))
              (signal (car err) (cdr err))))))
 
-(defmethod slack-buffer-name ((this slack-buffer))
+(cl-defmethod slack-buffer-name ((_this slack-buffer))
   "*Slack*")
 
 (defun slack-message-buffer-on-killed ()
   (slack-if-let* ((buf slack-current-buffer)
                   (class (eieio-object-class-name buf))
                   (cb (current-buffer)))
-      (set-slot-value (oref buf team) class
-                      (cl-remove-if #'(lambda (e) (equal e cb))
-                                    (slot-value (oref buf team) class)))))
+      (setf (slot-value (oref buf team) class)
+            (cl-remove-if #'(lambda (e) (equal e cb))
+                          (slot-value (oref buf team) class)))))
 
 (defun slack-buffer-replace-image (buffer ts)
   (and (buffer-live-p buffer)
@@ -113,7 +163,7 @@
                                    :success #'on-success
                                    :token token)))))))
 
-(defmethod slack-buffer-init-buffer :after (this)
+(cl-defmethod slack-buffer-init-buffer :after (this)
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (progn
         (with-current-buffer buf
@@ -121,14 +171,14 @@
           (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t))
         buf)))
 
-(defmethod slack-buffer-set-current-buffer ((this slack-buffer))
+(cl-defmethod slack-buffer-set-current-buffer ((this slack-buffer))
   (setq-local slack-current-buffer this))
 
 
-(defmethod slack-buffer-init-buffer ((this slack-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-buffer))
   (generate-new-buffer (slack-buffer-name this)))
 
-(defmethod slack-buffer-replace ((this slack-buffer) message)
+(cl-defmethod slack-buffer-replace ((this slack-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)
       (lui-replace (slack-message-to-string message team)
@@ -136,10 +186,16 @@
                      (equal (get-text-property (point) 'ts)
                             (slack-ts message)))))))
 
-(defmethod slack-buffer--subscribe-cursor-event ((this slack-buffer)
-                                                 window
-                                                 prev-point
-                                                 type))
+(cl-defmethod slack-buffer--subscribe-cursor-event ((_this slack-buffer)
+                                                 _window
+                                                 _prev-point
+                                                 _type))
+
+(defun slack-reaction-echo-description ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (team (oref buffer team)))
+      (message (slack-reaction-help-text reaction team))))
 
 (defun slack-buffer-subscribe-cursor-event (window prev-point type)
   (slack-if-let* ((buffer slack-current-buffer))
@@ -162,7 +218,7 @@
         (when (eq type 'left)
           (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
 
-(defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
+(cl-defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
         (team (oref this team)))
     (lui-insert-with-text-properties
@@ -174,31 +230,31 @@
     (lui-insert "" t)
     ))
 
-(defmethod slack-buffer-insert-load-more ((this slack-buffer))
+(defun slack-load-more-message ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-load-more buffer)))
+
+(cl-defmethod slack-buffer-insert-load-more ((_this slack-buffer))
   (let ((str (propertize "(load more)\n"
                          'face '(:underline t :weight bold)
-                         'keymap (let ((map (make-sparse-keymap)))
-                                   (define-key map (kbd "RET")
-                                     #'(lambda ()
-                                         (interactive)
-                                         (slack-buffer-load-more this)))
-                                   map)
+                         'keymap slack-load-more-keymap
                          'loading-message t)))
     (let ((lui-time-stamp-position nil))
       (lui-insert str t))))
 
-(defmethod slack-buffer-loading-message-end-point ((this slack-buffer))
+(cl-defmethod slack-buffer-loading-message-end-point ((_this slack-buffer))
   (next-single-property-change (point-min) 'loading-message))
 
-(defmethod slack-buffer-delete-load-more-string ((this slack-buffer))
+(cl-defmethod slack-buffer-delete-load-more-string ((this slack-buffer))
   (let ((loading-message-end
          (slack-buffer-loading-message-end-point this)))
     (delete-region (point-min) loading-message-end)))
 
-(defmethod slack-buffer-prepare-marker-for-history ((_this slack-buffer))
+(cl-defmethod slack-buffer-prepare-marker-for-history ((_this slack-buffer))
   (set-marker lui-output-marker (point-min)))
 
-(defmethod slack-buffer-insert--history ((this slack-buffer))
+(cl-defmethod slack-buffer-insert--history ((this slack-buffer))
   (if (slack-buffer-has-next-page-p this)
       (slack-buffer-insert-load-more this)
     (let ((lui-time-stamp-position nil))
@@ -206,84 +262,53 @@
 
   (slack-buffer-insert-history this))
 
-(defmethod slack-buffer-load-more ((this slack-buffer))
+(cl-defmethod slack-buffer-load-more ((this slack-buffer))
   (with-slots (team) this
-    (let ((cur-point (point)))
-      (if (slack-buffer-has-next-page-p this)
-          (cl-labels
-              ((after-success
-                ()
-                (with-current-buffer (slack-buffer-buffer this)
-                  (let ((inhibit-read-only t))
-                    (slack-buffer-delete-load-more-string this)
-                    (slack-buffer-prepare-marker-for-history this)
-                    (slack-buffer-insert--history this)
-                    (lui-recover-output-marker)))))
-            (slack-buffer-request-history this #'after-success))
-        (message "No more items.")))))
+    (if (slack-buffer-has-next-page-p this)
+        (cl-labels
+            ((after-success
+              ()
+              (with-current-buffer (slack-buffer-buffer this)
+                (let ((inhibit-read-only t))
+                  (slack-buffer-delete-load-more-string this)
+                  (slack-buffer-prepare-marker-for-history this)
+                  (slack-buffer-insert--history this)
+                  (lui-recover-output-marker)))))
+          (slack-buffer-request-history this #'after-success))
+      (message "No more items."))))
 
-(defmethod slack-buffer-display-file ((this slack-buffer) file-id)
-  (with-slots (team) this
-    (cl-labels
-        ((open (file _)
-               (slack-buffer-display
-                (slack-create-file-info-buffer team file))))
-      (slack-file-request-info file-id 1 team #'open))))
+(defun slack-buffer-find-4 (class a b team)
+  (slack-if-let* ((buf (cl-find-if #'(lambda (buf)
+                                       (string= (buffer-name buf)
+                                                (slack-buffer-name class a b team)))
+                                   (slot-value team class))))
+      (with-current-buffer buf slack-current-buffer)))
 
-(defmethod slack-buffer-cant-execute ((this slack-buffer))
+(cl-defmethod slack-buffer-cant-execute ((this slack-buffer))
   (error "Can't execute this command from %s" (eieio-object-class-name this)))
 
-(defmethod slack-buffer-display-pins-list ((this slack-buffer))
+(cl-defmethod slack-buffer-update ((this slack-buffer) _message &key _replace)
   (slack-buffer-cant-execute this))
-(defmethod slack-buffer-pins-add ((this slack-buffer) ts)
+(cl-defmethod slack-buffer-display-pins-list ((this slack-buffer))
   (slack-buffer-cant-execute this))
-(defmethod slack-buffer-pins-remove ((this slack-buffer) ts)
+(cl-defmethod slack-buffer-pins-add ((this slack-buffer) _ts)
   (slack-buffer-cant-execute this))
-(defmethod slack-buffer-display-user-profile ((this slack-buffer))
+(cl-defmethod slack-buffer-pins-remove ((this slack-buffer) _ts)
   (slack-buffer-cant-execute this))
-(defmethod slack-buffer-copy-link ((this slack-buffer) ts)
+(cl-defmethod slack-buffer-display-user-profile ((this slack-buffer))
   (slack-buffer-cant-execute this))
-(defmethod slack-file-upload-params ((this slack-buffer))
+(cl-defmethod slack-buffer-copy-link ((this slack-buffer) _ts)
   (slack-buffer-cant-execute this))
-(defmethod slack-buffer-execute-message-action ((this slack-buffer) _ts)
+(cl-defmethod slack-file-upload-params ((this slack-buffer))
   (slack-buffer-cant-execute this))
-
-(defvar lui-prompt-string "> ")
-
-(defvar slack-mode-map
-  (let ((map (make-sparse-keymap)))
-    ;; (define-key map (kbd "C-s C-r") #'slack-room-update-messages)
-    ;; (define-key map (kbd "C-s C-b") #'slack-message-write-another-buffer)
-    map))
-
-(defcustom slack-default-directory
-  (expand-file-name (concat (or (getenv "HOME") "~") "/"))
-  "default directory at Slack Buffer.")
-
-(define-derived-mode slack-mode lui-mode "Slack"
-  ""
-  (setq-local default-directory slack-default-directory)
-  (lui-set-prompt lui-prompt-string)
-  (setq lui-input-function 'slack-message--send))
-
-(define-derived-mode slack-info-mode lui-mode "Slack Info"
-  ""
-  (setq-local default-directory slack-default-directory)
-  (lui-set-prompt lui-prompt-string))
-
-(defcustom slack-buffer-emojify nil
-  "Show emoji with `emojify' if true."
-  :group 'slack)
-
-(defcustom slack-buffer-create-on-notify nil
-  "Create a room buffer when notification received if it does not yet exist"
-  :group 'slack)
-
-(defmacro slack-buffer-widen (&rest body)
-  `(save-excursion
-     (save-restriction
-       (widen)
-       ,@body)))
+(cl-defmethod slack-buffer-execute-message-action ((this slack-buffer) _ts)
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-add-reaction-to-message ((this slack-buffer) _reaction _ts)
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-send-message ((this slack-buffer) _message)
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-room ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
@@ -447,15 +472,14 @@
                            ts)
                return i))))
 
-(defun slack--get-channel-id ()
-  (interactive)
-  (with-current-buffer (current-buffer)
-    (slack-if-let* ((buffer slack-current-buffer)
-                    (boundp (slot-boundp buffer 'room))
-                    (room (oref buffer room)))
-        (progn
-          (kill-new (oref room id))
-          (message "%s" (oref room id))))))
+(cl-defmethod slack-buffer--replace ((this slack-buffer) _ts)
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-has-next-page-p ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-insert-history ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
+  (slack-buffer-cant-execute this))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

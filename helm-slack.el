@@ -29,6 +29,9 @@
 (require 'slack-room-info-buffer)
 (require 'slack-conversations)
 (require 'slack-user-profile-buffer)
+(require 'slack-message-buffer)
+
+(defvar slack-display-team-name)
 
 (defvar helm-slack-actions
   (helm-make-actions

@@ -27,6 +27,13 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-selectable)
+(require 'slack-team)
+(require 'slack-room)
+(require 'slack-image)
+
+(defvar slack-attachment-action-keymap)
+(defvar slack-completing-read-function)
+(defvar slack-current-buffer)
 
 (defclass slack-attachment ()
   ((fallback :initarg :fallback :initform nil)
@@ -145,32 +152,31 @@
                (slack-collect-slots 'slack-attachment-action properties)))))))
 
 (defun slack-attachment-create (payload)
-  (let ((properties payload))
+  (setq payload
+        (plist-put payload :fields
+                   (mapcar #'(lambda (field)
+                               (apply #'slack-attachment-field
+                                      (slack-collect-slots 'slack-attachment-field
+                                                           field)))
+                           (append (plist-get payload :fields) nil))))
+  (setq payload
+        (plist-put payload :actions
+                   (mapcar #'slack-attachment-action-create
+                           (plist-get payload :actions))))
+
+  (when (numberp (plist-get payload :ts))
     (setq payload
-          (plist-put payload :fields
-                     (mapcar #'(lambda (field)
-                                 (apply #'slack-attachment-field
-                                        (slack-collect-slots 'slack-attachment-field
-                                                             field)))
-                             (append (plist-get payload :fields) nil))))
-    (setq payload
-          (plist-put payload :actions
-                     (mapcar #'slack-attachment-action-create
-                             (plist-get payload :actions))))
+          (plist-put payload :ts (number-to-string (plist-get payload :ts)))))
 
-    (when (numberp (plist-get payload :ts))
-      (setq payload
-            (plist-put payload :ts (number-to-string (plist-get payload :ts)))))
+  ;; (message "PAYLOAD: %s" payload)
 
-    ;; (message "PAYLOAD: %s" payload)
+  (if (plist-get payload :is_share)
+      (apply #'slack-shared-message "shared-attachment"
+             (slack-collect-slots 'slack-shared-message payload))
+    (apply #'slack-attachment "attachment"
+           (slack-collect-slots 'slack-attachment payload))))
 
-    (if (plist-get payload :is_share)
-        (apply #'slack-shared-message "shared-attachment"
-               (slack-collect-slots 'slack-shared-message payload))
-      (apply #'slack-attachment "attachment"
-             (slack-collect-slots 'slack-attachment payload)))))
-
-(defmethod slack-image-spec ((this slack-attachment))
+(cl-defmethod slack-image-spec ((this slack-attachment))
   (with-slots (image-url image-height image-width) this
     (when image-url
       (list image-url image-width image-height slack-image-max-height))))
@@ -187,16 +193,10 @@
   "Face used to danger action."
   :group 'slack)
 
-(defvar slack-attachment-action-keymap
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "RET") #'slack-attachment-action-run)
-    (define-key keymap [mouse-1] #'slack-attachment-action-run)
-    keymap))
-
-(defmethod slack-attachment-action-run-payload ((this slack-attachment-action)
-                                                team
+(cl-defmethod slack-attachment-action-run-payload ((this slack-attachment-action)
+                                                _team
                                                 common-payload
-                                                service-id)
+                                                _service-id)
   (with-slots (id name text type value style) this
     (cons (cons "actions" (list (list (cons "id" id)
                                       (cons "name" name)
@@ -206,7 +206,7 @@
                                       (cons "style" style))))
           common-payload)))
 
-(defmethod slack-attachment-action-get-suggestions ((this
+(cl-defmethod slack-attachment-action-get-suggestions ((this
                                                      slack-attachment-select-action)
                                                     team
                                                     common-payload
@@ -246,7 +246,7 @@
           :params params
           :sync t))))))
 
-(defmethod slack-attachment-action-selected-options ((this
+(cl-defmethod slack-attachment-action-selected-options ((this
                                                       slack-attachment-select-action)
                                                      team
                                                      common-payload
@@ -304,7 +304,7 @@
                (oref this name)
                (oref this data-source))))))
 
-(defmethod slack-attachment-action-run-payload ((this slack-attachment-select-action)
+(cl-defmethod slack-attachment-action-run-payload ((this slack-attachment-select-action)
                                                 team
                                                 common-payload
                                                 service-id)
@@ -326,7 +326,7 @@
               common-payload)
       (error "Option is not selected"))))
 
-(defmethod slack-attachment-action-confirm ((this slack-attachment-action))
+(cl-defmethod slack-attachment-action-confirm ((this slack-attachment-action))
   (with-slots (confirm) this
     (if confirm
         (with-slots (title text ok-text dismiss-text) confirm
@@ -337,68 +337,13 @@
                                text)))
       t)))
 
-(defun slack-attachment-action-run ()
-  (interactive)
-  (slack-if-let* ((buffer slack-current-buffer)
-                  (room (oref buffer room))
-                  (team (oref buffer team))
-                  (type (get-text-property (point) 'type))
-                  (attachment-id (get-text-property (point) 'attachment-id))
-                  (ts (slack-get-ts))
-                  (message (slack-room-find-message room ts))
-                  (action (get-text-property (point) 'action)))
-      (when (slack-attachment-action-confirm action)
-        (slack-if-let* ((callback-id (get-text-property (point) 'callback-id))
-                        (common-payload (list
-                                         (cons "attachment_id" (number-to-string
-                                                                attachment-id))
-                                         (cons "callback_id" callback-id)
-                                         (cons "is_ephemeral" (oref message
-                                                                    is-ephemeral))
-                                         (cons "message_ts" ts)
-                                         (cons "channel_id" (oref room id))))
-                        (service-id (if (slack-bot-message-p message)
-                                        (slack-message-bot-id message)
-                                      "B01")))
-            (let ((url "https://slack.com/api/chat.attachmentAction")
-                  (params (list (cons "payload"
-                                      (json-encode-alist
-                                       (slack-attachment-action-run-payload
-                                        action
-                                        team
-                                        common-payload
-                                        service-id)))
-                                (cons "service_id" service-id)
-                                (cons "client_token"
-                                      (slack-team-client-token team)))))
-              (cl-labels
-                  ((log-error (err)
-                              (slack-log (format "Error: %s, URL: %s, PARAMS: %s"
-                                                 err
-                                                 url
-                                                 params)
-                                         team
-                                         :level 'error))
-                   (on-success (&key data &allow-other-keys)
-                               (slack-request-handle-error
-                                (data "slack-attachment-action-run" #'log-error))))
-                (slack-request
-                 (slack-request-create
-                  url
-                  team
-                  :type "POST"
-                  :params params
-                  :success #'on-success))))
-          (slack-if-let* ((url (oref action url)))
-              (browse-url url))))))
-
-(defmethod slack-attachment-callback-id ((this slack-attachment))
+(cl-defmethod slack-attachment-callback-id ((this slack-attachment))
   (oref this callback-id))
 
-(defmethod slack-attachment-id ((this slack-attachment))
+(cl-defmethod slack-attachment-id ((this slack-attachment))
   (oref this id))
 
-(defmethod slack-attachment-action-face ((this slack-attachment-action))
+(cl-defmethod slack-attachment-action-face ((this slack-attachment-action))
   (with-slots (style) this
     (or (and (string= "danger" style)
              'slack-message-action-danger-face)
@@ -406,12 +351,12 @@
              'slack-message-action-primary-face)
         'slack-message-action-face)))
 
-(defmethod slack-attachment-action-display-text ((this slack-attachment-action))
+(cl-defmethod slack-attachment-action-display-text ((this slack-attachment-action))
   (replace-regexp-in-string ":" " " (oref this text)))
 
 
-(defmethod slack-attachment-action-display-text ((this slack-attachment-select-action))
-  (let ((base (call-next-method)))
+(cl-defmethod slack-attachment-action-display-text ((this slack-attachment-select-action))
+  (let ((base (cl-call-next-method)))
     (with-slots (selected-options) this
       (format "%s%s" base (if (and selected-options (car selected-options))
                               (format " (%s)"
@@ -419,8 +364,8 @@
                             "")))))
 
 
-(defmethod slack-attachment-action-to-string ((action slack-attachment-select-action)
-                                              attachment team)
+(cl-defmethod slack-attachment-action-to-string ((action slack-attachment-select-action)
+                                              attachment _team)
   (with-slots (id name text type data-source style options option-groups) action
     (let* ((callback-id (slack-attachment-callback-id attachment))
            (attachment-id (slack-attachment-id attachment))
@@ -433,8 +378,8 @@
                   'action action
                   'keymap slack-attachment-action-keymap))))
 
-(defmethod slack-attachment-action-to-string ((action slack-attachment-action)
-                                              attachment team)
+(cl-defmethod slack-attachment-action-to-string ((action slack-attachment-action)
+                                              attachment _team)
   (with-slots (id name text type value style) action
     (let* ((callback-id (slack-attachment-callback-id attachment))
            (attachment-id (slack-attachment-id attachment))
@@ -447,66 +392,15 @@
                   'callback-id callback-id
                   'action action))))
 
-(defmethod slack-message-to-string ((attachment slack-attachment) team)
-  (with-slots
-      (fallback text ts color from-url footer fields pretext actions) attachment
-    (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
-           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
-                    pad-raw))
-           (header-raw (slack-attachment-header attachment))
-           (header (and (not (slack-string-blankp header-raw))
-                        (format "%s\t%s" pad
-                                (propertize header-raw
-                                            'face 'slack-attachment-header))))
-           (pretext (and pretext (format "%s\t%s" pad pretext)))
-           (body (and text (format "%s\t%s" pad (mapconcat #'identity
-                                                           (split-string text "\n")
-                                                           (format "\n\t%s\t" pad)))))
-           (fields (if fields (mapconcat #'(lambda (field)
-                                             (slack-attachment-field-to-string field
-                                                                               (format "\t%s" pad)))
-                                         fields
-                                         (format "\n\t%s\n" pad))))
-           (actions (if actions
-                        (format "%s\t%s"
-                                pad
-                                (mapconcat #'(lambda (action)
-                                               (slack-attachment-action-to-string
-                                                action
-                                                attachment
-                                                team))
-                                           actions
-                                           " "))))
-           (footer (if footer
-                       (format "%s\t%s"
-                               pad
-                               (propertize
-                                (format "%s%s" footer
-                                        (or (and ts (format "|%s" (slack-message-time-to-string ts)))
-                                            ""))
-                                'face 'slack-attachment-footer))))
-           (image (slack-image-string (slack-image-spec attachment)
-                                      (format "\t%s\t" pad))))
-      (slack-message-unescape-string
-       (slack-format-message
-        (or (and header (format "\t%s\n" header)) "")
-        (or (and pretext (format "\t%s\n" pretext)) "")
-        (or (and body (format "\t%s" body)) "")
-        (or (and fields fields) "")
-        (or (and actions (format "\t%s" actions)) "")
-        (or (and footer (format "\n\t%s" footer)) "")
-        (or (and image (< 0 (length image))
-                 (format "\n\t%s\t%s" pad image)) ""))
-       team))))
 
-(defmethod slack-attachment-header ((attachment slack-attachment))
+(cl-defmethod slack-attachment-header ((attachment slack-attachment))
   (with-slots (title title-link author-name author-subname) attachment
     (concat (or (and title title-link (slack-linkfy title title-link))
                 title
                 "")
             (or author-name author-subname ""))))
 
-(defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
+(cl-defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
   (unless pad (setq pad ""))
   (let ((title (propertize (or (oref field title) "") 'face 'slack-attachment-field-title))
         (value (mapconcat #'(lambda (e) (format "\t%s" e))
@@ -514,7 +408,7 @@
                           (format "\n%s\t" pad))))
     (format "%s\t%s\n%s\t%s" pad title pad value)))
 
-(defmethod slack-attachment-to-alert ((a slack-attachment))
+(cl-defmethod slack-attachment-to-alert ((a slack-attachment))
   (with-slots (title fallback pretext) a
     (if (and title (< 0 (length title)))
         title
@@ -522,7 +416,7 @@
           (format "%s\n%s" pretext fallback)
         fallback))))
 
-(defmethod slack-selectable-prompt ((this slack-attachment-select-action))
+(cl-defmethod slack-selectable-prompt ((this slack-attachment-select-action))
   (format "%s :" (oref this text)))
 
 (provide 'slack-attachment)

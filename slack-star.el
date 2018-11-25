@@ -26,6 +26,9 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-team)
+(require 'slack-file)
+(require 'slack-buffer)
 
 (defconst slack-stars-list-url "https://slack.com/api/stars.list")
 
@@ -59,47 +62,46 @@
 (defclass slack-star-im (slack-star-item) ;; Dh ??
   ((channel :initarg :channel :type string))) ;; ID
 
-(defmethod slack-star-item-message ((this slack-star-message))
+(cl-defmethod slack-star-item-message ((this slack-star-message))
   (oref this message))
 
-(defmethod slack-star-item-message ((this slack-star-file))
+(cl-defmethod slack-star-item-message ((this slack-star-file))
   (oref this file))
 
-(defmethod slack-ts ((this slack-star-item))
+(cl-defmethod slack-ts ((this slack-star-item))
   (oref this date-create))
 
-(defmethod slack-next-page ((this slack-star-paging))
+(cl-defmethod slack-next-page ((this slack-star-paging))
   (with-slots (pages page) this
     (unless (< pages (1+ page))
       (1+ page))))
 
-(defmethod slack-star-has-next-page-p ((this slack-star))
+(cl-defmethod slack-star-has-next-page-p ((this slack-star))
   (slack-next-page (oref this paging)))
 
-(defmethod slack-per-page ((this slack-star-paging))
+(cl-defmethod slack-per-page ((this slack-star-paging))
   (oref this per-page))
 
-(defmethod slack-star-per-page ((this slack-star))
+(cl-defmethod slack-star-per-page ((this slack-star))
   (slack-per-page (oref this paging)))
 
-(defmethod slack-star-items ((this slack-star))
+(cl-defmethod slack-star-items ((this slack-star))
   (oref this items))
 
-(defmethod slack-merge ((old slack-star) new)
+(cl-defmethod slack-merge ((old slack-star) new)
   (with-slots (paging items) old
     (setq paging (oref new paging))
     (setq items (append (oref new items) items))))
 
-(defmethod slack-to-string ((this slack-star-message) team)
+(cl-defmethod slack-to-string ((this slack-star-message) team)
   (with-slots (message) this
     (slack-message-to-string message team)))
 
-(defmethod slack-to-string ((this slack-star-file) team)
+(cl-defmethod slack-to-string ((this slack-star-file) team)
   (with-slots (date-create file) this
     (slack-message-to-string file date-create team)))
 
 (defun slack-create-star-paging (payload)
-  ;; (:per_page 20 :spill 0 :page 1 :total 61 :pages 4)
   (make-instance 'slack-star-paging
                  :per-page (plist-get payload :per_page)
                  :spill (plist-get payload :spill)
@@ -120,8 +122,7 @@
                     (if (or (slack-file-p file-payload)
                             (slack-file-email-p file-payload))
                         file-payload
-                      (slack-file-create file-payload))))
-         (file-id (and file (oref file id))))
+                      (slack-file-create file-payload)))))
     (cond
      ((string= type "message")
       (make-instance 'slack-star-message
@@ -145,15 +146,6 @@
       (make-instance 'slack-star-group
                      :date-create date-create
                      :group (plist-get payload :group))))))
-
-;; (:per_page 20 :spill 0 :page 1 :total 61 :pages 4)
-(defun slack-create-star-paging (payload)
-  (make-instance 'slack-star-paging
-                 :per-page (plist-get payload :per_page)
-                 :spill (plist-get payload :spill)
-                 :page (plist-get payload :page)
-                 :total (plist-get payload :total)
-                 :pages (plist-get payload :pages)))
 
 (defun slack-create-star (payload team)
   (let ((items (slack-create-star-items (plist-get payload :items)
@@ -187,64 +179,20 @@
       :success #'on-success))))
 
 
-(defun slack-stars-list ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (buf (slack-buffer-find 'slack-stars-buffer team)))
-    (if buf (slack-buffer-display buf)
-      (slack-stars-list-request
-       team nil
-       #'(lambda () (slack-buffer-display (slack-create-stars-buffer team)))))))
-
-(defmethod slack-message-star-api-params ((this slack-star-item))
+(cl-defmethod slack-message-star-api-params ((this slack-star-item))
   (list (slack-message-star-api-params (slack-star-item-message this))))
 
-(defmethod slack-message-star-api-params ((this slack-star-message))
+(cl-defmethod slack-message-star-api-params ((this slack-star-message))
   (append (list (cons "channel" (oref this channel)))
-          (call-next-method)))
+          (cl-call-next-method)))
 
-(defmethod slack-star-remove-star ((this slack-star) ts team)
+(cl-defmethod slack-star-remove-star ((this slack-star) ts team)
   (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
                                     (oref this items))))
       (slack-message-star-api-request slack-message-stars-remove-url
                                       (slack-message-star-api-params item)
                                       team)))
 
-(defmethod slack-star-remove ((this slack-star) payload team)
-  (let ((date-create (format "%s" (plist-get payload :date_create))))
-    (oset this items (cl-remove-if #'(lambda (e) (string= (slack-ts e)
-                                                          date-create))
-                                   (oref this items)))
-    (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer team)))
-        (slack-buffer-message-delete buffer date-create))))
-
-(defmethod slack-star-add ((this slack-star) payload team)
-  (setq payload (append payload nil))
-  (cl-labels
-      ((create-star (payload)
-                    (slack-create-star-item payload team))
-       (append-star-item (item)
-                         (oset this items (append (oref this items) (list item))))
-       (insert-to-buffer (item)
-                         (slack-if-let* ((buffer (slack-buffer-find 'slack-stars-buffer
-                                                                    team)))
-                             (with-current-buffer (slack-buffer-buffer buffer)
-                               (slack-buffer-insert buffer item)))))
-    (if (plist-get payload :file)
-        (cl-labels
-            ((insert-star (payload file)
-                          (let ((item (create-star (plist-put payload :file file))))
-                            (append-star-item item)
-                            (insert-to-buffer item))))
-          (let ((file-id (plist-get (plist-get payload :file) :id)))
-            (slack-if-let* ((file (slack-file-find file-id team)))
-                (insert-star payload file)
-              (slack-file-request-info file-id 1 team
-                                       #'(lambda (file _team)
-                                           (insert-star payload file))))))
-      (let ((item (create-star payload)))
-        (append-star-item item)
-        (insert-to-buffer item)))))
 
 (provide 'slack-star)
-;;; slack-stars.el ends here
+;;; slack-star.el ends here

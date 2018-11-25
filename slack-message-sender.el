@@ -27,26 +27,17 @@
 (require 'eieio)
 (require 'json)
 (require 'slack-util)
-(require 'slack-websocket)
 (require 'slack-room)
 (require 'slack-im)
 (require 'slack-group)
 (require 'slack-message)
 (require 'slack-channel)
-(require 'slack-slash-commands)
+(require 'slack-conversations)
+(require 'slack-buffer)
+(require 'slack-usergroup)
 
-(defvar slack-message-minibuffer-local-map nil)
+(defvar slack-completing-read-function)
 (defvar slack-buffer-function)
-
-(defun slack-message-send ()
-  (interactive)
-  (slack-message--send (slack-message-read-from-minibuffer)))
-
-(defun slack-message-inc-id (team)
-  (with-slots (message-id) team
-    (if (eq message-id (1- most-positive-fixnum))
-        (setq message-id 1)
-      (cl-incf message-id))))
 
 (defun slack-escape-message (message)
   "Escape '<,' '>' & '&' in MESSAGE."
@@ -62,7 +53,8 @@
    "@\\<\\([A-Za-z0-9._\-]+\\)\\>"
    #'(lambda (text)
        (let* ((username (match-string 1 text))
-              (user-id (slack-user-get-id username team)))
+              (user (slack-user-find-by-name username team))
+              (user-id (slack-user-id user)))
          (if user-id
              (format "<@%s|%s>" user-id username)
            (slack-if-let* ((group-id (slack-usergroup-get-id username team)))
@@ -95,20 +87,6 @@
 (defun slack-message-prepare-links (message team)
   (slack-link-channels (slack-link-users message team) team))
 
-(defun slack-message--send (message)
-  (slack-if-let* ((buf slack-current-buffer)
-                  (team (oref buf team))
-                  (room (oref buf room)))
-      (if (string-prefix-p "/" message)
-          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
-              (slack-command-run (car command-and-arg)
-                                 team
-                                 (oref room id)
-                                 :text (cdr command-and-arg))
-            (error "Unknown slash command: %s"
-                   (car (split-string message))))
-        (slack-buffer-send-message buf message))))
-
 (defun slack-message-send-internal (message room team)
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
@@ -118,7 +96,7 @@
                                                       room
                                                       team)))
     (progn
-      (slack-message-inc-id team)
+      (slack-team-inc-message-id team)
       (with-slots (message-id sent-message self-id) team
         (let* ((channel-id (oref room id))
                (m (list :id message-id
@@ -129,7 +107,7 @@
                                (slack-escape-message message)
                                team)))
                (obj (slack-message-create m team)))
-          (slack-ws-send m team)
+          (slack-team-send-message team m)
           (puthash message-id obj sent-message))))))
 
 (defun slack-message-read-room (team)
@@ -149,22 +127,6 @@
           (slack-im-names team)
           (slack-channel-names team)))
 
-(defun slack-message-read-from-minibuffer ()
-  (let ((prompt "Message: "))
-    (slack-message-setup-minibuffer-keymap)
-    (read-from-minibuffer
-     prompt
-     nil
-     slack-message-minibuffer-local-map)))
-
-(defun slack-message-setup-minibuffer-keymap ()
-  (unless slack-message-minibuffer-local-map
-    (setq slack-message-minibuffer-local-map
-          (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "RET") 'newline)
-            (set-keymap-parent map minibuffer-local-map)
-            map))))
-
 (defun slack-message-embed-channel ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
@@ -179,7 +141,11 @@
       (with-slots (team) buf
         (let* ((pre-defined (list (list "here" :name "here")
                                   (list "channel" :name "channel")))
-               (alist (append pre-defined (slack-user-names team))))
+               (usergroups (mapcar #'(lambda (e) (list (oref e handle)
+                                                       :name (oref e handle)))
+                                   (cl-remove-if #'slack-usergroup-deleted-p
+                                                 (oref team usergroups))))
+               (alist (append pre-defined (slack-user-names team) usergroups)))
           (slack-select-from-list
               (alist "Select User: ")
               (insert (concat "@" (plist-get selected :name))))))))

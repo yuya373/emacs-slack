@@ -30,11 +30,14 @@
 (require 'slack-buffer)
 (require 'slack-im)
 (require 'alert)
+(require 'slack-group)
+(require 'slack-thread)
 
 (defvar alert-default-style)
 
 (defcustom slack-message-custom-notifier nil
   "Custom notification function.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :type 'function
   :group 'slack)
 
 (defcustom slack-message-im-notification-title-format-function
@@ -64,6 +67,7 @@
 
 (defcustom slack-modeline-formatter #'slack-default-modeline-formatter
   "Format modeline with Arg '((team-name . unread-count))."
+  :type 'function
   :group 'slack)
 
 (defun slack-message-notify (message room team)
@@ -103,10 +107,10 @@
                                  team-name room-name (slack-thread-messagep message)))
                :category 'slack))))
 
-(defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
+(cl-defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)
   nil)
 
-(defmethod slack-message-minep ((m slack-message) team)
+(cl-defmethod slack-message-minep ((m slack-message) team)
   (if team
       (with-slots (self-id) team
         (slack-message-sender-equalp m self-id))
@@ -132,14 +136,17 @@
                              teams)))
       (force-mode-line-update))))
 
-(defun slack-message-test-notification ()
-  "Debug notification.
-Execute this function when cursor is on some message."
-  (interactive)
-  (let ((ts (slack-get-ts)))
-    (with-slots (room team) slack-current-buffer
-      (let ((message (slack-room-find-message room ts)))
-        (slack-message-notify message room team)))))
+(defun slack-team-get-unread-messages (team)
+  (cl-labels
+      ((count-unread (rooms)
+                     (cl-reduce #'(lambda (a e) (+ a (oref e unread-count-display)))
+                                rooms :initial-value 0)))
+    (with-slots (ims channels groups) team
+      (let ((rooms (append ims channels groups)))
+        (+ (count-unread (if slack-modeline-count-only-subscribed-channel
+                             (cl-remove-if-not #'(lambda (e) (slack-room-subscribedp e team))
+                                               rooms)
+                           rooms)))))))
 
 (provide 'slack-message-notification)
 ;;; slack-message-notification.el ends here

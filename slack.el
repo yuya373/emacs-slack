@@ -26,7 +26,6 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'subr-x)
-(require 'oauth2)
 (require 'color)
 
 (require 'slack-util)
@@ -65,47 +64,62 @@
 
 (require 'slack-websocket)
 (require 'slack-request)
-(require 'slack-request-worker)
 (require 'slack-usergroup)
+
+(require 'slack-oauth2)
+(require 'slack-authorize)
 
 (when (featurep 'helm)
   (require 'helm-slack))
+
+(require 'slack-company)
 
 (defgroup slack nil
   "Emacs Slack Client"
   :prefix "slack-"
   :group 'tools)
 
-(defcustom slack-redirect-url "http://localhost:8080"
-  "Redirect url registered for Slack.")
 (defcustom slack-buffer-function #'switch-to-buffer-other-window
-  "Function to print buffer.")
+  "Function to print buffer."
+  :type 'function
+  :group 'slack)
 
 (defvar slack-use-register-team-string
   "use `slack-register-team' instead.")
 
 (defcustom slack-client-id nil
-  "Client ID provided by Slack.")
+  "Client ID provided by Slack."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-client-id slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-client-secret nil
-  "Client Secret Provided by Slack.")
+  "Client Secret Provided by Slack."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-client-secret slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-token nil
   "Slack token provided by Slack.
-set this to save request to Slack if already have.")
+set this to save request to Slack if already have."
+  :type 'string
+  :group 'slack)
 (make-obsolete-variable
  'slack-token slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-room-subscription '()
   "Group or Channel list to subscribe notification."
+  :type '(repeat string)
   :group 'slack)
 (make-obsolete-variable
  'slack-room-subscription slack-use-register-team-string
  "0.0.2")
+
 (defcustom slack-typing-visibility 'frame
   "When to display typing indicator.
 When `frame', typing slack buffer is in the current frame.
@@ -113,99 +127,19 @@ When `buffer', typing slack buffer is the current buffer.
 When `never', never display typing indicator."
   :type '(choice (const frame)
                  (const buffer)
-                 (const never)))
+                 (const never))
+  :group 'slack)
 
 (defcustom slack-display-team-name t
   "If nil, only display channel, im, group name."
+  :type 'boolean
   :group 'slack)
 
 (defcustom slack-completing-read-function #'completing-read
   "Require same argument with `completing-read'."
+  :type 'function
   :group 'slack)
 
-(defconst slack-oauth2-authorize "https://slack.com/oauth/authorize")
-(defconst slack-oauth2-access "https://slack.com/api/oauth.access")
-(defconst slack-authorize-url "https://slack.com/api/rtm.start")
-(defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
-
-(defun slack-authorize (team &optional error-callback success-callback)
-  (let ((authorize-request (oref team authorize-request)))
-    (if (and authorize-request (not (request-response-done-p authorize-request)))
-        (slack-log "Authorize Already Requested" team)
-      (cl-labels
-          ((on-error (&key error-thrown symbol-status response data)
-                     (oset team authorize-request nil)
-                     (slack-log (format "Slack Authorize Failed: %s" error-thrown)
-                                team)
-                     (when (functionp error-callback)
-                       (funcall error-callback
-                                :error-thrown error-thrown
-                                :symbol-status symbol-status
-                                :response response
-                                :data data)))
-           (on-success (&key data &allow-other-keys)
-                       (oset team authorize-request nil)
-                       (if success-callback
-                           (funcall success-callback data)
-                         (slack-on-authorize data team))))
-        (let ((request (slack-request
-                        (slack-request-create
-                         slack-rtm-connect-url
-                         team
-                         :params (list (cons "mpim_aware" "1"))
-                         :success #'on-success
-                         :error #'on-error))))
-          (oset team authorize-request request))))))
-
-(defun slack-update-team (data team)
-  (let ((self (plist-get data :self))
-        (team-data (plist-get data :team)))
-    (oset team id (plist-get team-data :id))
-    (oset team name (plist-get team-data :name))
-    (oset team self self)
-    (oset team self-id (plist-get self :id))
-    (oset team self-name (plist-get self :name))
-    (oset team ws-url (plist-get data :url))
-    (oset team domain (plist-get team-data :domain))
-    team))
-
-(cl-defun slack-on-authorize (data team)
-  (slack-request-handle-error
-   (data "slack-authorize")
-   (slack-log (format "Slack Authorization Finished" (oref team name)) team)
-   (let ((team (slack-update-team data team)))
-     (cl-labels
-         ((on-open ()
-                   (slack-channel-list-update team)
-                   (slack-group-list-update team)
-                   (slack-im-list-update team)
-                   (slack-bot-list-update team)
-                   (slack-request-emoji team)
-                   (slack-command-list-update team)
-                   (slack-usergroup-list-update team)
-                   (slack-update-modeline)))
-       (slack-ws-open team :on-open #'on-open)))))
-
-(defun slack-on-authorize-e
-    (&key error-thrown &allow-other-keys &rest_)
-  (error "slack-authorize: %s" error-thrown))
-
-(defun slack-oauth2-auth (team)
-  (with-slots (client-id client-secret) team
-    (oauth2-auth
-     slack-oauth2-authorize
-     slack-oauth2-access
-     client-id
-     client-secret
-     "client"
-     nil
-     slack-redirect-url)))
-
-(defun slack-request-token (team)
-  (with-slots (token) team
-    (setq token
-          (oauth2-token-access-token
-           (slack-oauth2-auth team)))))
 
 ;;;###autoload
 (defun slack-start (&optional team)
@@ -213,10 +147,12 @@ When `never', never display typing indicator."
   (cl-labels ((start
                (team)
                (slack-team-kill-buffers team)
-               (slack-ws-close team)
+               (when (slot-boundp team 'ws)
+                 (slack-ws-close (oref team ws) team))
                (when (slack-team-need-token-p team)
-                 (slack-request-token team)
-                 (kill-new (oref team token))
+                 (let ((token (slack-oauth2-get-token team)))
+                   (oset team token token)
+                   (kill-new token))
                  (message "Your Token is added to kill ring."))
                (slack-authorize team)))
     (if team

@@ -23,16 +23,24 @@
 ;;
 
 ;;; Code:
-
 (require 'eieio)
 (require 'subr-x)
 (require 'slack-util)
 (require 'slack-reaction)
 (require 'slack-request)
-(require 'slack-attachment)
+;; (require 'slack-attachment)
+(declare-function slack-attachment-create "slack-attachment")
+(require 'slack-team)
+;; (require 'slack-file)
+(declare-function slack-file-create "slack-file")
+;; (require 'slack-thread)
+(declare-function slack-thread-create "slack-thread")
+
+(defvar slack-current-buffer)
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
+  :type 'function
   :group 'slack)
 
 (defconst slack-message-pins-add-url "https://slack.com/api/pins.add")
@@ -63,11 +71,6 @@
   ((user :initarg :user :type string)
    (ts :initarg :ts :type string)))
 
-(defclass slack-reply (slack-message)
-  ((user :initarg :user :initform nil)
-   (reply-to :initarg :reply_to :type integer)
-   (id :initarg :id :type integer)))
-
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (id :initarg :id)
@@ -85,56 +88,41 @@
   ((file :initarg :file :initform nil)
    (comment :initarg :comment :initform nil)))
 
-(defmethod slack-message-sender-name ((m slack-file-comment-message) team)
+(cl-defmethod slack-message-sender-name ((m slack-file-comment-message) team)
   (with-slots (comment) m
     (slack-user-name (plist-get comment :user) team)))
 
-(defmethod slack-message-sender-id ((m slack-file-comment-message))
+(cl-defmethod slack-message-sender-id ((m slack-file-comment-message))
   (with-slots (comment) m
     (plist-get comment :user)))
 
-(defgeneric slack-message-sender-name  (slack-message team))
-(defgeneric slack-message-to-string (slack-message))
-(defgeneric slack-message-to-alert (slack-message))
-(defmethod slack-message-bot-id ((_this slack-message)) nil)
+(cl-defgeneric slack-message-sender-name  (slack-message team))
+(cl-defgeneric slack-message-to-string (slack-message))
+(cl-defgeneric slack-message-to-alert (slack-message))
+(cl-defmethod slack-message-bot-id ((_this slack-message)) nil)
 
-(defgeneric slack-room-buffer-name (room team))
-
-(defun slack-room-find (id team)
-  (if (and id team)
-      (cl-labels ((find-room (room)
-                             (string= id (oref room id))))
-        (cond
-         ((string-prefix-p "F" id) (slack-file-room-obj team))
-         ((string-prefix-p "C" id) (cl-find-if #'find-room
-                                               (oref team channels)))
-         ((string-prefix-p "G" id) (cl-find-if #'find-room
-                                               (oref team groups)))
-         ((string-prefix-p "D" id) (cl-find-if #'find-room
-                                               (oref team ims)))
-         ((string-prefix-p "Q" id) (cl-find-if #'find-room
-                                               (oref team search-results)))))))
+(cl-defgeneric slack-room-buffer-name (room team))
 
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
 
-(defmethod slack-message-set-attachments ((m slack-message) payload)
+(cl-defmethod slack-message-set-attachments ((m slack-message) payload)
   (let ((attachments (append (plist-get payload :attachments) nil)))
     (if (< 0 (length attachments))
         (oset m attachments
               (mapcar #'slack-attachment-create attachments))))
   m)
 
-(defmethod slack-message-set-file ((m slack-message) payload team)
+(cl-defmethod slack-message-set-file ((m slack-message) payload)
   (let ((files (mapcar #'(lambda (file) (slack-file-create file))
                        (plist-get payload :files))))
     (oset m files files)
     m))
 
-(defmethod slack-message-set-thread ((m slack-message) team payload)
+(cl-defmethod slack-message-set-thread ((m slack-message) payload)
   (when (slack-message-thread-parentp m)
-    (oset m thread (slack-thread-create m team payload))))
+    (oset m thread (slack-thread-create m payload))))
 
 (defun slack-reply-broadcast-message-create (payload)
   (let ((parent (cl-first (plist-get payload :attachments))))
@@ -155,7 +143,7 @@
           (let ((subtype (plist-get payload :subtype)))
             (cond
              ((plist-member payload :reply_to)
-              (apply #'slack-reply "reply"
+              (apply #'make-instance 'slack-reply
                      (slack-collect-slots 'slack-reply payload)))
              ((or (and subtype (or (string-equal "reply_broadcast" subtype)
                                    (string= "thread_broadcast" subtype)))
@@ -183,45 +171,35 @@
           (slack-message-set-attachments message payload)
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
-          (slack-message-set-file message payload team)
-          (slack-message-set-thread message team payload)
+          (slack-message-set-file message payload)
+          (slack-message-set-thread message payload)
           message)))))
 
-(defmethod slack-message-set-edited ((this slack-message) payload)
+(cl-defmethod slack-message-set-edited ((this slack-message) payload)
   (if (plist-get payload :edited)
-      (oset this edited (apply #'make-instance slack-message-edited
+      (oset this edited (apply #'make-instance 'slack-message-edited
                                (slack-collect-slots 'slack-message-edited
                                                     (plist-get payload :edited))))))
 
-(defmethod slack-message-edited-at ((this slack-message))
+(cl-defmethod slack-message-edited-at ((this slack-message))
   (with-slots (edited) this
     (when edited
       (oref edited ts))))
 
-(defmethod slack-message-equal ((m slack-message) n)
+(cl-defmethod slack-message-equal ((m slack-message) n)
   (string= (slack-ts m) (slack-ts n)))
 
-(defmethod slack-message-get-thread ((parent slack-message) team)
+(cl-defmethod slack-message-get-thread ((parent slack-message))
   (let ((thread (oref parent thread)))
     (unless thread
-      (oset parent thread (slack-thread-create parent team)))
+      (oset parent thread (slack-thread-create parent)))
     (oref parent thread)))
 
-(defmethod slack-message-sender-name ((m slack-message) team)
+(cl-defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
 
-(defmethod slack-message-sender-id ((m slack-message))
+(cl-defmethod slack-message-sender-id ((m slack-message))
   (oref m user))
-
-(defun slack-message-pins-add ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-pins-add buf (slack-get-ts))))
-
-(defun slack-message-pins-remove ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-pins-remove buf (slack-get-ts))))
 
 (defun slack-message-pins-request (url room team ts)
   (cl-labels ((on-pins-add
@@ -237,7 +215,7 @@
       :success #'on-pins-add
       ))))
 
-(defmethod slack-ts ((this slack-message))
+(cl-defmethod slack-ts ((this slack-message))
   (oref this ts))
 
 (defun slack-ts-to-time (ts)
@@ -246,17 +224,13 @@
 (defun slack-message-time-stamp (message)
   (slack-ts-to-time (slack-ts message)))
 
-(defmethod slack-user-find ((m slack-message) team)
+(cl-defmethod slack-user-find ((m slack-message) team)
   (slack-user--find (slack-message-sender-id m) team))
 
-(defun slack-message-copy-link ()
-  (interactive)
-  (slack-buffer-copy-link slack-current-buffer (slack-get-ts)))
-
-(defmethod slack-message-star-added ((m slack-message))
+(cl-defmethod slack-message-star-added ((m slack-message))
   (oset m is-starred t))
 
-(defmethod slack-message-star-removed ((m slack-message))
+(cl-defmethod slack-message-star-removed ((m slack-message))
   (oset m is-starred nil))
 
 (defun slack-message-star-api-request (url params team)
@@ -271,39 +245,31 @@
       :params params
       :success #'on-success))))
 
-(defun slack-message-remove-star ()
-  (interactive)
-  (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))
-
-(defun slack-message-add-star ()
-  (interactive)
-  (slack-buffer-add-star slack-current-buffer (slack-get-ts)))
-
-(defmethod slack-message-star-api-params ((m slack-message))
+(cl-defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (slack-ts m)))
 
-(defmethod slack-reaction-delete ((this slack-message) reaction)
+(cl-defmethod slack-reaction-delete ((this slack-message) reaction)
   (with-slots (reactions) this
     (setq reactions (slack-reaction--delete reactions reaction))))
 
-(defmethod slack-reaction-push ((this slack-message) reaction)
+(cl-defmethod slack-reaction-push ((this slack-message) reaction)
   (push reaction (oref this reactions)))
 
-(defmethod slack-reaction-find ((m slack-message) reaction)
+(cl-defmethod slack-reaction-find ((m slack-message) reaction)
   (slack-reaction--find (oref m reactions) reaction))
 
-(defmethod slack-message-reactions ((this slack-message))
+(cl-defmethod slack-message-reactions ((this slack-message))
   (oref this reactions))
 
-(defmethod slack-message-get-param-for-reaction ((m slack-message))
+(cl-defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (slack-ts m)))
 
-(defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
+(cl-defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
   (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
       (slack-reaction-join old-reaction reaction)
     (slack-reaction-push m reaction)))
 
-(defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type _file-id)
+(cl-defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type _file-id)
   (slack-message--pop-reaction m reaction))
 
 (defun slack-message--pop-reaction (message reaction)
@@ -320,134 +286,31 @@
                        users)))
       (slack-reaction-delete message reaction))))
 
-(defmethod slack-message-get-text ((m slack-message))
+(cl-defmethod slack-message-get-text ((m slack-message))
   (oref m text))
 
-(defmethod slack-thread-message-update-buffer ((message slack-message)
-                                               room team replace old-message)
-  (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
-      (progn
-        (slack-room-update-buffer room team parent t)
-        (when (slack-reply-broadcast-message-p message)
-          (let* ((replace (if old-message
-                              (slack-reply-broadcast-message-p old-message)
-                            replace)))
-            (slack-room-update-buffer room team message replace)))
-        (slack-if-let* ((thread (slack-message-get-thread parent team))
-                        (buf (slack-buffer-find 'slack-thread-message-buffer
-                                                room
-                                                (oref thread thread-ts)
-                                                team)))
-            (slack-buffer-update buf message :replace replace)))))
-
-(defmethod slack-message-update ((message slack-message) team &optional replace no-notify old-message)
-  (slack-if-let*
-      ((room (slack-room-find (oref message channel) team))
-       (ts (slack-ts message))
-       (no-same-message (if replace t
-                          (not (slack-room-find-message room ts)))))
-
-      (progn
-        (slack-room-push-message room message)
-        (slack-room-update-latest room message)
-
-        (if (or (slack-thread-message-p message)
-                (slack-reply-broadcast-message-p message))
-            (slack-thread-message-update-buffer message
-                                                room
-                                                team
-                                                replace
-                                                old-message)
-          (slack-room-update-buffer room team message replace)
-          (slack-room-inc-unread-count room))
-
-        (unless no-notify
-          (slack-message-notify message room team))
-        (slack-update-modeline))))
-
-(defun slack-message-delete ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-delete-message buf (slack-get-ts))))
-
-(defmethod slack-message-deleted ((message slack-message) room team)
-  (if (slack-thread-message-p message)
-      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
-                      (thread (slack-message-get-thread parent team)))
-          (progn
-            (slack-thread-delete-message thread message)
-            (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
-                                                       room
-                                                       (oref thread thread-ts)
-                                                       team)))
-                (slack-buffer-message-delete buffer (slack-ts message)))
-            (slack-message-update parent team t)))
-    (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
-                                            room
-                                            team)))
-        (slack-buffer-message-delete buf (slack-ts message))))
-
-  (if slack-message-custom-delete-notifier
-      (funcall slack-message-custom-delete-notifier message room team)
-    (alert "message deleted"
-           :icon slack-alert-icon
-           :title (format "\\[%s] from %s"
-                          (slack-room-display-name room team)
-                          (slack-message-sender-name message team))
-           :category 'slack)))
-
-(defmethod slack-thread-message-p ((this slack-message))
+(cl-defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
-(defmethod slack-thread-message-p ((this slack-reply-broadcast-message))
+(cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
   nil)
 
-(defmethod slack-message-thread-parentp ((m slack-message))
+(cl-defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread (oref m thread))
          (thread-ts (or (and thread (oref thread thread-ts))
                         (oref m thread-ts))))
     (and thread-ts (string= (slack-ts m) thread-ts))))
 
-(defun slack-message-update-mark ()
-  "Update Channel's last-read marker to this message."
-  (interactive)
-  (slack-if-let* ((buffer slack-current-buffer))
-      (slack-buffer-update-mark buffer :force t)))
-
-(defmethod slack-message--inspect ((this slack-message) room team)
-  (format "RAW: %s\nROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
-          (oref this text)
-          (oref room id)
-          (eieio-object-class this)
-          (length (oref this attachments))
-          (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
-                                      (slack-message-unescape-channel
-                                       (oref e title)
-                                       team)
-                                      (oref e pretext)
-                                      (oref e text)))
-                  (oref this attachments))
-          (length (oref this files))
-          (mapcar (lambda (e) (format "(TITLE: %s)"
-                                      (oref e title)))
-                  (oref this files))))
-
-(defmethod slack-message--inspect ((this slack-file-comment-message) room team)
-  (let ((super (call-next-method)))
+(cl-defmethod slack-message--inspect ((this slack-file-comment-message) _room _team)
+  (let ((super (cl-call-next-method)))
     (with-slots (file comment) this
       (format "%s\nFILE:%s\nCOMMENT:%s"
               super
               file comment))))
 
-(defun slack-message-inspect ()
-  (interactive)
-  (slack-if-let* ((ts (slack-get-ts))
-                  (buffer slack-current-buffer))
-      (with-slots (room team) buffer
-        (slack-if-let* ((message (slack-room-find-message room ts))
-                        (text (slack-message--inspect message room team)))
-            (message "%s" text)))))
+(cl-defmethod slack-message-thread ((this slack-message) _room)
+  (oref this thread))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

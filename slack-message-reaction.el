@@ -30,11 +30,16 @@
 (require 'slack-room)
 (require 'slack-file)
 (require 'slack-request)
+(require 'slack-emoji)
+
+(defvar slack-current-buffer)
+(defvar slack-completing-read-function)
 
 (defconst slack-message-reaction-add-url "https://slack.com/api/reactions.add")
 (defconst slack-message-reaction-remove-url "https://slack.com/api/reactions.remove")
 (defcustom slack-invalid-emojis '("^:flag_" "tone[[:digit:]]:$" "-" "^[^:].*[^:]$" "\\Ca")
-  "Invalid emoji regex. Slack server treated some emojis as Invalid."
+  "Invalid emoji regex.  Slack server treated some emojis as Invalid."
+  :type '(repeat regexp)
   :group 'slack)
 
 (defun slack-get-file-id ()
@@ -45,15 +50,6 @@
                                             (cons "file" file-id))
                                       team))
 
-(defun slack-message--add-reaction (buf reaction)
-  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
-
-(defun slack-message-add-reaction ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer)
-                  (reaction (slack-message-reaction-input)))
-      (slack-message--add-reaction buf reaction)))
-
 (defun slack-file-remove-reaction (file-id team)
   (slack-with-file file-id team
     (let ((reaction (slack-message-reaction-select
@@ -62,11 +58,6 @@
        (list (cons "file" file-id)
              (cons "name" reaction))
        team))))
-
-(defun slack-message-remove-reaction ()
-  (interactive)
-  (slack-buffer-remove-reaction-from-message slack-current-buffer
-                                             (slack-get-ts)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)
@@ -89,11 +80,6 @@
     (slack-select-from-list
         (list "Select Reaction: ")
         selected)))
-
-(defun slack-select-emoji ()
-  (if (fboundp 'emojify-completing-read)
-      (emojify-completing-read "Select Emoji: ")
-    (read-from-minibuffer "Emoji: ")))
 
 (defun slack-message-reaction-input ()
   (let ((reaction (slack-select-emoji)))

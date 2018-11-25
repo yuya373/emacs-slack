@@ -25,6 +25,8 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-buffer)
+(require 'slack-dialog)
 (require 'slack-dialog-buffer)
 
 (defclass slack-dialog-edit-element-buffer (slack-buffer)
@@ -62,19 +64,17 @@
     (when (< 1 (count-windows))
       (delete-window win))))
 
-(defmethod slack-buffer-name :static ((_class slack-dialog-edit-element-buffer)
-                                      dialog-buffer element team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-dialog-edit-element-buffer)) dialog-buffer element team)
   (with-slots (dialog dialog-id) dialog-buffer
     (with-slots (name) element
       (with-slots (title) dialog
         (format "* Slack Dialog Edit Element - %s [%s] edit %s : %s"
                 title dialog-id name (slack-team-name team))))))
 
-(defmethod slack-buffer-find :static ((class slack-dialog-edit-element-buffer)
-                                      dialog-buffer element team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-dialog-edit-element-buffer)) dialog-buffer element team)
   (slack-buffer-find-4 class dialog-buffer element team))
 
-(defmethod slack-buffer-name ((this slack-dialog-edit-element-buffer))
+(cl-defmethod slack-buffer-name ((this slack-dialog-edit-element-buffer))
   (with-slots (dialog-buffer element team) this
     (slack-buffer-name 'slack-dialog-edit-element-buffer
                        dialog-buffer element team)))
@@ -91,7 +91,7 @@
                    :element element
                    :team team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-dialog-edit-element-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-dialog-edit-element-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (element (oref this element)))
     (with-current-buffer buf
@@ -107,6 +107,15 @@
                              element
                              (oref this team))))
 
+(defun slack-dialog-buffer-open-edit-element-buffer ()
+  (interactive)
+  (slack-if-let*
+      ((element (get-text-property (point) 'slack-dialog-element))
+       (buffer slack-current-buffer)
+       (team (oref buffer team))
+       (edit-buffer (slack-create-dialog-element-edit-buffer
+                     buffer element team)))
+      (slack-buffer-display edit-buffer)))
 
 (provide 'slack-dialog-edit-element-buffer)
 ;;; slack-dialog-edit-element-buffer.el ends here

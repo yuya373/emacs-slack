@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
+(require 'slack-search)
 
 (define-derived-mode slack-search-result-buffer-mode slack-buffer-mode "Slack Search Result"
   (remove-hook 'lui-post-output-hook 'slack-display-image t))
@@ -34,7 +35,7 @@
 (defclass slack-search-result-buffer (slack-buffer)
   ((search-result :initarg :search-result :type slack-search-result)))
 
-(defmethod slack-buffer-name :static ((class slack-search-result-buffer) search-result team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-search-result-buffer)) search-result team)
   (with-slots (query sort sort-dir) search-result
     (format "*Slack - %s : Search Result - QUERY: %s, ORDER BY: %s %s"
             (oref team name)
@@ -42,7 +43,7 @@
             sort
             (upcase sort-dir))))
 
-(defmethod slack-buffer-name ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-name ((this slack-search-result-buffer))
   (with-slots (search-result team) this
     (slack-buffer-name (eieio-object-class-name this) search-result team)))
 
@@ -55,7 +56,7 @@
                    :team team
                    :search-result search-result)))
 
-(defmethod slack-buffer-insert ((this slack-search-result-buffer) match)
+(cl-defmethod slack-buffer-insert ((this slack-search-result-buffer) match)
   (with-slots (team) this
     (let* ((time (slack-ts-to-time (slack-ts match)))
            (lui-time-stamp-time time)
@@ -63,11 +64,11 @@
       (lui-insert (slack-message-to-string match team) t)
       (lui-insert "" t))))
 
-(defmethod slack-buffer-has-next-page-p ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-has-next-page-p ((this slack-search-result-buffer))
   (with-slots (search-result) this
     (slack-search-has-next-page-p search-result)))
 
-(defmethod slack-buffer-insert-history ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-insert-history ((this slack-search-result-buffer))
   (with-slots (team search-result) this
     (let* ((paging (oref search-result paging))
            (per-page (oref paging count))
@@ -77,13 +78,13 @@
                do (slack-buffer-insert this match))
       (goto-char cur-point))))
 
-(defmethod slack-buffer-request-history ((this slack-search-result-buffer) after-success)
+(cl-defmethod slack-buffer-request-history ((this slack-search-result-buffer) after-success)
   (with-slots (team search-result) this
     (slack-search-request search-result after-success team
                           (slack-search-paging-next-page
                            (oref search-result paging)))))
 
-(defmethod slack-buffer-init-buffer ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-search-result-buffer))
   (let ((buffer (generate-new-buffer (slack-buffer-name this))))
     (with-current-buffer buffer
       (slack-search-result-buffer-mode)
@@ -102,11 +103,11 @@
                                team))
     buffer))
 
-(defmethod slack-buffer-loading-message-end-point ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-loading-message-end-point ((_this slack-search-result-buffer))
   (previous-single-property-change (point-max)
                                    'loading-message))
 
-(defmethod slack-buffer-delete-load-more-string ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-delete-load-more-string ((this slack-search-result-buffer))
   (let* ((inhibit-read-only t)
          (loading-message-end
           (slack-buffer-loading-message-end-point this))
@@ -116,14 +117,40 @@
     (delete-region loading-message-start
                    loading-message-end)))
 
-(defmethod slack-buffer-prepare-marker-for-history ((_this slack-search-result-buffer)))
+(cl-defmethod slack-buffer-prepare-marker-for-history ((_this slack-search-result-buffer)))
 
-(defmethod slack-buffer-insert--history ((this slack-search-result-buffer))
+(cl-defmethod slack-buffer-insert--history ((this slack-search-result-buffer))
   (slack-buffer-insert-history this)
   (if (slack-buffer-has-next-page-p this)
       (slack-buffer-insert-load-more this)
     (let ((lui-time-stamp-position nil))
       (lui-insert "(no more messages)\n" t))))
+
+(defun slack-search-from-messages ()
+  (interactive)
+  (cl-destructuring-bind (team query sort sort-dir) (slack-search-query-params)
+    (let ((instance (make-instance 'slack-search-result
+                                   :sort sort
+                                   :sort-dir sort-dir
+                                   :query query)))
+      (cl-labels
+          ((after-success ()
+                          (let ((buffer (slack-create-search-result-buffer instance team)))
+                            (slack-buffer-display buffer))))
+        (slack-search-request instance #'after-success team)))))
+
+(defun slack-search-from-files ()
+  (interactive)
+  (cl-destructuring-bind (team query sort sort-dir) (slack-search-query-params)
+    (let ((instance (make-instance 'slack-file-search-result
+                                   :sort sort
+                                   :sort-dir sort-dir
+                                   :query query)))
+      (cl-labels
+          ((after-success ()
+                          (let ((buffer (slack-create-search-result-buffer instance team)))
+                            (slack-buffer-display buffer))))
+        (slack-search-request instance #'after-success team)))))
 
 (provide 'slack-search-result-buffer)
 ;;; slack-search-result-buffer.el ends here

@@ -1,0 +1,31 @@
+version: "3"
+volumes:
+  dot_emacs25:
+  dot_emacs26:
+  dot_master:
+services:
+  emacs25:
+    build:
+      context: .
+      dockerfile: ./test/Dockerfile.emacs25
+    command: ./test/bytecompile
+    volumes:
+      - .:/slack
+      - dot_emacs25:/root/.emacs.d
+  emacs26:
+    build:
+      context: .
+      dockerfile: ./test/Dockerfile.emacs26
+    command: ./test/bytecompile
+    volumes:
+      - .:/slack
+      - dot_emacs26:/root/.emacs.d
+  master:
+    build:
+      context: .
+      dockerfile: ./test/Dockerfile.master
+    command: ./test/bytecompile
+    volumes:
+      - .:/slack
+      - dot_master:/root/.emacs.d
+      

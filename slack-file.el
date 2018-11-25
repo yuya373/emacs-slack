@@ -24,11 +24,16 @@
 
 ;;; Code:
 
-(require 'eieio)
 (require 'slack-util)
 (require 'slack-room)
 (require 'slack-request)
+(require 'slack-buffer)
+(require 'slack-image)
 
+(defvar slack-file-link-keymap)
+(defvar slack-default-directory)
+(defvar slack-completing-read-function)
+(defvar slack-current-buffer)
 (defconst slack-file-history-url "https://slack.com/api/files.list")
 (defconst slack-file-list-url "https://slack.com/api/files.list")
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
@@ -233,16 +238,10 @@
    (is-intro :initarg :is_intro)
    (comment :initarg :comment :type string)))
 
-(defmethod slack-merge ((old slack-reaction) new)
-  (with-slots (count users) old
-    (setq count (oref new count))
-    (setq users (cl-remove-duplicates (append users (oref new users))
-                                      :test #'string=))))
+(cl-defmethod slack-merge ((old string) _new) old)
+(cl-defmethod slack-equalp ((old string) new) (string= old new))
 
-(defmethod slack-merge ((old string) _new) old)
-(defmethod slack-equalp ((old string) new) (string= old new))
-
-(defmethod slack-merge ((old slack-file) new)
+(cl-defmethod slack-merge ((old slack-file) new)
   (cl-labels
       ((slack-merge-string-list
         (new old)
@@ -264,14 +263,14 @@
   (with-slots (file-room) team
     (if file-room
         file-room
-      (setq file-room (slack-file-room "file-room"
-                                       :name "Files"
-                                       :id "F"
-                                       :created (format-time-string "%s")
-                                       :latest nil
-                                       :unread_count 0
-                                       :unread_count_display 0
-                                       :messages '())))))
+      (setq file-room (make-instance 'slack-file-room
+                                     :name "Files"
+                                     :id "F"
+                                     :created (format-time-string "%s")
+                                     :latest nil
+                                     :unread_count 0
+                                     :unread_count_display 0
+                                     :messages '())))))
 
 (defun slack-file-create-email-from (payload &optional type)
   (and payload
@@ -311,13 +310,13 @@
          )
     file))
 
-(defmethod slack-message-equal ((f slack-file) other)
+(cl-defmethod slack-message-equal ((f slack-file) other)
   (string= (oref f id) (oref other id)))
 
-(defmethod slack-equalp ((old slack-file) new)
+(cl-defmethod slack-equalp ((old slack-file) new)
   (string= (oref old id) (oref new id)))
 
-(defmethod slack-file-pushnew ((f slack-file) team)
+(cl-defmethod slack-file-pushnew ((f slack-file) team)
   (let ((room (slack-file-room-obj team)))
     (slack-merge-list (oref room messages) (list f))
     ;; (oset room messages (slack-room-sort-messages (oref room messages)))
@@ -325,16 +324,6 @@
     ))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
-
-(defun slack-file-update ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (with-slots (file team) buf
-        (slack-if-let* ((page (oref file page)))
-            (slack-file-request-info
-             file page team
-             #'(lambda (file team)
-                 (slack-redisplay file team)))))))
 
 (defun slack-file-comment-create (payload)
   (apply 'make-instance 'slack-file-comment
@@ -345,8 +334,7 @@
       ((on-file-info (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-file-info")
-                      (let* ((paging (plist-get data :paging))
-                             (file (slack-file-create (plist-get data :file)))
+                      (let* ((file (slack-file-create (plist-get data :file)))
                              (comments (mapcar #'slack-file-comment-create
                                                (plist-get data :comments))))
                         (oset file comments comments)
@@ -361,63 +349,23 @@
                     (cons "page" (number-to-string page)))
       :success #'on-file-info))))
 
-(defmethod slack-file-gdoc-p ((this slack-file))
+(cl-defmethod slack-file-gdoc-p ((this slack-file))
   (string= (oref this filetype) "gdoc"))
 
-(defmethod slack-file-gdoc-to-string ((this slack-file))
-  (with-slots (pretty-type name title url-private permalink) this
-    (let ((title (propertize (format "<%s|%s>" permalink (or title name))
-                             'face '(:weight bold)))
-          (description (format "<%s|%s>" url-private pretty-type)))
-      (slack-format-message title description))))
-
-(defmethod slack-message-body-to-string ((file slack-file) team)
-  (cond
-   ((slack-file-gdoc-p file) (slack-file-gdoc-to-string file))
-   (t (with-slots (name title size filetype permalink) file
-        (slack-message-put-text-property
-         (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-                 (or title name) size filetype permalink))))))
-
-(defmethod slack-team-display-image-inlinep ((_file slack-file) team)
+(cl-defmethod slack-team-display-image-inlinep ((_file slack-file) team)
   (slack-team-display-file-image-inlinep team))
 
-(defmethod slack-message-image-to-string ((file slack-file))
+(cl-defmethod slack-message-image-to-string ((file slack-file))
   (slack-image-string (slack-file-thumb-image-spec file)))
 
-(defmethod slack-file-image-p ((this slack-file))
+(cl-defmethod slack-file-image-p ((this slack-file))
   (string= (car (split-string (oref this mimetype) "/"))
            "image"))
 
-(defmethod slack-message-large-image-to-string ((file slack-file))
+(cl-defmethod slack-message-large-image-to-string ((file slack-file))
   (slack-image-string (slack-file-image-spec file)))
 
-(defmethod slack-message-to-string ((this slack-file-email) ts team)
-  (let ((body (slack-file-summary this ts team))
-        (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-    (slack-format-message body thumb)))
-
-(defmethod slack-message-to-string ((this slack-file) ts team)
-  (let ((body (slack-file-summary this ts team))
-        (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-    (slack-format-message body thumb)))
-
-(defmethod slack-message-to-string ((this slack-file-comment) team)
-  (with-slots (user comment) this
-    (let ((name (slack-user-name user team))
-          (status (slack-user-status user team)))
-      (format "%s\n%s\n"
-              (propertize (format "%s %s" name status)
-                          'face 'slack-message-output-header)
-              (slack-message-unescape-string comment team)))))
-
-(defun slack-file-list ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-file-room-obj team)))
-    (slack-room-display room team)))
-
-(cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success async)
+(cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success)
   (cl-labels
       ((on-file-list
         (&key data &allow-other-keys)
@@ -505,8 +453,8 @@
 (defun slack-file-upload ()
   (interactive)
   (slack-if-let*
-      ((slack-buffer slack-current-buffer)
-       (team (oref slack-buffer team))
+      ((buffer slack-current-buffer)
+       (team (oref buffer team))
        (buf (slack-file-select-upload-file-as-buffer))
        (filename (read-from-minibuffer "Filename: "
                                        (file-name-nondirectory
@@ -524,7 +472,7 @@
           slack-file-upload-url
           team
           :type "POST"
-          :params (append (slack-file-upload-params slack-buffer)
+          :params (append (slack-file-upload-params buffer)
                           (list
                            (cons "filename" filename)
                            (cons "filetype" filetype)
@@ -534,42 +482,43 @@
           :headers (list (cons "Content-Type" "multipart/form-data"))
           :success #'on-file-upload)))
     (error "Call from message buffer or thread buffer")))
+;; TODO implement this
+;; (defun slack-file-delete ()
+;;   (interactive)
+;;   (cl-labels
+;;       ((on-file-delete (&key data &allow-other-keys)
+;;                        (slack-request-handle-error
+;;                         (data "slack-file-delete"))))
+;;     (let* ((team (slack-team-select))
+;;            (files (oref (slack-file-room-obj team) messages))
+;;            (your-files (cl-remove-if #'(lambda (f)
+;;                                          (not (string= (oref f user)
+;;                                                        (oref team self-id))))
+;;                                      files))
+;;            (candidates (mapcar #'(lambda (f)
+;;                                    (cons (concat
+;;                                           (slack-message-time-to-string (slack-ts f))
+;;                                           " "
+;;                                           (or (oref f title)
+;;                                               (oref f name)))
+;;                                          f))
+;;                                your-files))
+;;            (selected (funcall slack-completing-read-function "Select File: " candidates))
+;;            (deleting-file (cdr (cl-assoc selected candidates :test #'string=))))
+;;       (slack-request
+;;        (slack-request-create
+;;         slack-file-delete-url
+;;         team
+;;         :params (list (cons "file" (oref deleting-file id)))
+;;         :success #'on-file-delete)))))
 
-(defun slack-file-delete ()
-  (interactive)
-  (cl-labels
-      ((on-file-delete (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data "slack-file-delete"))))
-    (let* ((team (slack-team-select))
-           (files (oref (slack-file-room-obj team) messages))
-           (your-files (cl-remove-if #'(lambda (f)
-                                         (not (string= (oref f user)
-                                                       (oref team self-id))))
-                                     files))
-           (candidates (mapcar #'(lambda (f)
-                                   (cons (concat
-                                          (slack-message-time-to-string (slack-ts f))
-                                          " "
-                                          (oref f (or title name)))
-                                         f))
-                               your-files))
-           (selected (funcall slack-completing-read-function "Select File: " candidates))
-           (deleting-file (cdr (cl-assoc selected candidates :test #'string=))))
-      (slack-request
-       (slack-request-create
-        slack-file-delete-url
-        team
-        :params (list (cons "file" (oref deleting-file id)))
-        :success #'on-file-delete)))))
-
-(defmethod slack-file-id ((file slack-file))
+(cl-defmethod slack-file-id ((file slack-file))
   (oref file id))
 
-(defmethod slack-file-channel ((_file slack-file))
+(cl-defmethod slack-file-channel ((_file slack-file))
   nil)
 
-(defmethod slack-file-thumb-image-spec ((file slack-file))
+(cl-defmethod slack-file-thumb-image-spec ((file slack-file))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
     (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
         (and thumb-160 (list thumb-160 nil nil))
@@ -578,7 +527,7 @@
         (and thumb-pdf (list thumb-pdf thumb-pdf-w thumb-pdf-h))
         (list nil nil nil))))
 
-(defmethod slack-file-image-spec ((this slack-file))
+(cl-defmethod slack-file-image-spec ((this slack-file))
   (with-slots (is-public url-download url-private-download) this
     (list url-private-download
           nil
@@ -586,7 +535,7 @@
           nil
           (floor (* 0.9 (frame-pixel-width))))))
 
-(defmethod slack-file-channel-ids ((file slack-file))
+(cl-defmethod slack-file-channel-ids ((file slack-file))
   (append (oref file channels)
           (oref file ims)
           (oref file groups)))
@@ -595,46 +544,7 @@
   (propertize text
               'file file-id
               'face '(:underline t :weight bold)
-              'keymap (let ((map (make-sparse-keymap)))
-                        (define-key map (kbd "RET")
-                          #'slack-file-display)
-                        map)))
-
-(defmethod slack-file-summary ((file slack-file) _ts team)
-  (with-slots (mode pretty-type mimetype permalink name title) file
-    (if (string= mode "tombstone")
-        "This file was deleted."
-      (format "uploaded this %s: %s <%s|open in browser>"
-              (or pretty-type mimetype)
-              (slack-file-link-info (oref file id)
-                                    (slack-message-unescape-string (or title name)
-                                                                   team))
-              permalink))))
-
-(defmethod slack-file-summary ((this slack-file-email) ts team)
-  (with-slots (preview-plain-text plain-text is-expanded) this
-    (let* ((has-more (< (length preview-plain-text)
-                        (length plain-text)))
-           (body (slack-message-unescape-string
-                  (or (and is-expanded plain-text)
-                      (or (and has-more (format "%s…" preview-plain-text))
-                          preview-plain-text))
-                  team)))
-      (format "%s\n\n%s\n\n%s"
-              (call-next-method)
-              (propertize body
-                          'slack-defer-face #'slack-put-preview-overlay)
-              (propertize (or (and is-expanded "Collapse ↑")
-                              "+ Click to expand inline")
-                          'face '(:underline t)
-                          'keymap (let ((map (make-sparse-keymap)))
-                                    (define-key map (kbd "RET")
-                                      #'(lambda ()
-                                          (interactive)
-                                          (slack-buffer-toggle-email-expand
-                                           slack-current-buffer
-                                           ts (oref this id))))
-                                    map))))))
+              'keymap slack-file-link-keymap))
 
 (defmacro slack-with-file (id team &rest body)
   (declare (indent 2) (debug t))
@@ -642,7 +552,7 @@
             do (when (string= (oref file id) ,id)
                  ,@body)))
 
-(defmethod slack-room-buffer-name ((this slack-file) _team)
+(cl-defmethod slack-room-buffer-name ((this slack-file) _team)
   (with-slots (name) this
     (format "*Slack File - %s*" name)))
 
@@ -651,19 +561,13 @@
   (setq-local default-directory slack-default-directory)
   )
 
-(defun slack-file-display ()
-  (interactive)
-  (slack-if-let* ((id (get-text-property (point) 'file))
-                  (buf slack-current-buffer))
-      (slack-buffer-display-file buf id)))
-
-(defmethod slack-message-star-added ((this slack-file))
+(cl-defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
 
-(defmethod slack-message-star-removed ((this slack-file))
+(cl-defmethod slack-message-star-removed ((this slack-file))
   (oset this is-starred nil))
 
-(defmethod slack-message-star-api-params ((this slack-file))
+(cl-defmethod slack-message-star-api-params ((this slack-file))
   (cons "file" (oref this id)))
 
 (defun slack-file-process-star-api (url team file-id)
@@ -671,24 +575,6 @@
     (slack-message-star-api-request url
                                     (list (slack-message-star-api-params file))
                                     team)))
-
-(defmethod slack-message-body-to-string ((this slack-file-email) _team)
-  (let ((from (format "From: %s" (mapconcat #'(lambda (e) (oref e original))
-                                            (oref this from)
-                                            ", ")))
-        (to (format "To: %s" (mapconcat #'(lambda (e) (oref e original))
-                                        (oref this to)
-                                        ", ")))
-        (cc (format "CC: %s" (mapconcat #'(lambda (e) (oref e original))
-                                        (oref this cc)
-                                        ", ")))
-        (subject (format "Subject: %s" (oref this subject)))
-        (body (propertize (format "\n%s" (oref this plain-text))
-                          'slack-defer-face #'slack-put-email-body-overlay))
-        (date (format "Date: %s" (slack-message-time-to-string (oref this created)))))
-    (mapconcat #'identity
-               (list from to cc subject date body)
-               "\n")))
 
 (defun slack-redisplay (file team)
   ;; (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
@@ -698,7 +584,7 @@
                                              team)))
       (slack-buffer-replace buffer file)))
 
-(defmethod slack-message-update ((this slack-file) team &rest _args)
+(cl-defmethod slack-message-update ((this slack-file) team &rest _args)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                              this
                                              team)))
@@ -706,10 +592,10 @@
         (oset buffer file this)
         (slack-buffer-update buffer))))
 
-(defmethod slack-ts ((this slack-file))
+(cl-defmethod slack-ts ((this slack-file))
   (number-to-string (oref this timestamp)))
 
-(defmethod slack-thread-message-p ((this slack-file))
+(cl-defmethod slack-thread-message-p ((_this slack-file))
   nil)
 
 (provide 'slack-file)

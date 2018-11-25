@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -eu
+
+function clean_up() {
+    rm -rf $EMACS_VERSION | true
+}
+
+function clean_up_on_error() {
+    code="$?"
+    clean_up
+    exit $code
+}
+
+clean_up
+mkdir $EMACS_VERSION
+cp *.el $EMACS_VERSION/
+
+
+emacs --batch -Q \
+      -L /slack \
+      -l ./test/setup.el \
+      -f batch-byte-compile ./$EMACS_VERSION/*.el \
+      || clean_up_on_error
+
+clean_up
+

@@ -28,6 +28,8 @@
 (require 'slack-room)
 (require 'slack-group)
 (require 'slack-room-buffer)
+(require 'slack-team)
+(require 'slack-message-formatter)
 
 (defclass slack-room-info-buffer (slack-room-buffer) ())
 
@@ -36,17 +38,17 @@
   (setq-local default-directory slack-default-directory)
   (setq-local buffer-read-only t))
 
-(defmethod slack-buffer-name :static ((class slack-room-info-buffer) room team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-room-info-buffer)) room team)
   (slack-if-let* ((room-name (slack-room-name room team)))
       (format "*Slack Room Info - %s : %s"
               (slack-team-name team)
               room-name)))
 
-(defmethod slack-buffer-name ((this slack-room-info-buffer))
+(cl-defmethod slack-buffer-name ((this slack-room-info-buffer))
   (with-slots (room team) this
     (slack-buffer-name (eieio-object-class-name this) room team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-room-info-buffer))
+(cl-defmethod slack-buffer-init-buffer ((this slack-room-info-buffer))
   (let* ((bufname (slack-buffer-name this))
          (buf (generate-new-buffer bufname)))
     (with-current-buffer buf
@@ -79,7 +81,7 @@
   "Used to room info section title."
   :group 'slack)
 
-(defmethod slack-buffer-insert ((this slack-room-info-buffer))
+(cl-defmethod slack-buffer-insert ((this slack-room-info-buffer))
   (with-slots (room team) this
     (let ((inhibit-read-only t))
       (insert (propertize "About "
@@ -97,7 +99,7 @@
       (slack-buffer-insert-created room team)
       )))
 
-(defmethod slack-buffer-insert-created ((room slack-room) _team)
+(cl-defmethod slack-buffer-insert-created ((room slack-room) _team)
   (with-slots (created) room
     (when created
       (insert (propertize "Created"
@@ -106,15 +108,15 @@
       (insert (slack-message-time-to-string
                (number-to-string created))))))
 
-(defmethod slack-buffer-insert-created ((room slack-group) team)
-  (call-next-method)
+(cl-defmethod slack-buffer-insert-created ((room slack-group) team)
+  (cl-call-next-method)
   (with-slots (creator) room
     (when creator
       (let ((user (slack-user--find creator team)))
         (insert (format " by %s" (plist-get user :real_name)))))
     ))
 
-(defmethod slack-buffer-insert-purpose ((room slack-group))
+(cl-defmethod slack-buffer-insert-purpose ((room slack-group))
   (with-slots (purpose) room
     (when purpose
       (insert (propertize "Purpose"
@@ -132,9 +134,9 @@
                                           released-button))))
         (insert "\n")))))
 
-(defmethod slack-buffer-insert-purpose ((room slack-room)))
+(cl-defmethod slack-buffer-insert-purpose ((_room slack-room)))
 
-(defmethod slack-buffer-insert-topic ((room slack-group))
+(cl-defmethod slack-buffer-insert-topic ((room slack-group))
   (with-slots (topic) room
     (when topic
       (insert (propertize "Topic"
@@ -152,15 +154,15 @@
                                           released-button))))
         (insert "\n")))))
 
-(defmethod slack-buffer-insert-topic ((room slack-room)))
+(cl-defmethod slack-buffer-insert-topic ((_room slack-room)))
 
-(defmethod slack-create-room-info-buffer ((room slack-room) team)
+(cl-defmethod slack-create-room-info-buffer ((room slack-room) team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-room-info-buffer
                                              room team)))
       buffer
     (slack-room-info-buffer :room room :team team)))
 
-(defmethod slack-buffer-buffer ((this slack-room-info-buffer))
+(cl-defmethod slack-buffer-buffer ((this slack-room-info-buffer))
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
       (with-current-buffer buf
         (let ((inhibit-read-only t))

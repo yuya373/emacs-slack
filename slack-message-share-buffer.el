@@ -27,6 +27,9 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room-buffer)
+(require 'slack-message-compose-buffer)
+(require 'slack-message-edit-buffer)
+(require 'slack-message-editor)
 
 (define-derived-mode slack-message-share-buffer-mode
   slack-message-compose-buffer-mode
@@ -42,22 +45,22 @@
       buf
     (slack-message-share-buffer :room room :team team :ts ts)))
 
-(defmethod slack-buffer-find :static ((class slack-message-share-buffer) room ts team)
+(cl-defmethod slack-buffer-find ((class (subclass slack-message-share-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
 
-(defmethod slack-buffer-name :static ((class slack-message-share-buffer) room ts team)
+(cl-defmethod slack-buffer-name ((_class (subclass slack-message-share-buffer)) room ts team)
   (format "*Slack - %s : %s  Share Message - %s"
           (oref team name)
           (slack-room-name room team)
           ts))
 
-(defmethod slack-buffer-name ((this slack-message-share-buffer))
+(cl-defmethod slack-buffer-name ((this slack-message-share-buffer))
   (with-slots (room ts team) this
     (slack-buffer-name 'slack-message-share-buffer
                        room ts team)))
 
-(defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
-  (let* ((buf (call-next-method)))
+(cl-defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-message-share-buffer-mode)
       (slack-buffer-set-current-buffer this))
@@ -66,10 +69,10 @@
                                room ts team))
     buf))
 
-(defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)
+(cl-defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)
   (with-slots (room team ts) this
     (slack-message-share--send team room ts message)
-    (call-next-method)))
+    (cl-call-next-method)))
 
 (provide 'slack-message-share-buffer)
 ;;; slack-message-share-buffer.el ends here

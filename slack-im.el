@@ -32,6 +32,8 @@
 (require 'slack-request)
 
 (defvar slack-buffer-function)
+(defvar slack-display-team-name)
+(defvar slack-completing-read-function)
 
 (defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
@@ -46,28 +48,28 @@
    (is-open :initarg :is_open :initform t)
    (is-user-deleted :initarg :is_user_deleted :initform nil)))
 
-(defmethod slack-merge ((this slack-im) other)
-  (call-next-method)
+(cl-defmethod slack-merge ((this slack-im) other)
+  (cl-call-next-method)
   (with-slots (user is-open) this
     (setq user (oref other user))
     (setq is-open (oref other is-open))))
 
-(defmethod slack-room-open-p ((room slack-im))
+(cl-defmethod slack-room-open-p ((room slack-im))
   (oref room is-open)
   (not (oref room is-user-deleted)))
 
-(defmethod slack-im-user-presence ((room slack-im) team)
+(cl-defmethod slack-im-user-presence ((room slack-im) team)
   (slack-user-presence-to-string (slack-user-find room team)))
 
-(defmethod slack-im-user-dnd-status ((room slack-im) team)
+(cl-defmethod slack-im-user-dnd-status ((room slack-im) team)
   (slack-user-dnd-status-to-string (slack-user-find room
                                                     team)))
 
-(defmethod slack-room-name ((room slack-im) team)
+(cl-defmethod slack-room-name ((room slack-im) team)
   (with-slots (user) room
     (slack-user-name user team)))
 
-(defmethod slack-room-display-name ((room slack-im) team)
+(cl-defmethod slack-room-display-name ((room slack-im) team)
   "To Display emoji in minibuffer configure `emojify-inhibit-in-buffer-functions'"
   (let* ((status (slack-user-status (oref room user) team))
          (room-name (or (and status
@@ -86,28 +88,18 @@
     (slack-user-name user team)))
 
 (defun slack-im-names (team)
-  (with-slots (ims) team
-    (slack-room-names ims
+  (cl-labels
+      ((filter (ims)
+               (cl-remove-if #'(lambda (im) (not (oref im is-open)))
+                             ims)))
+    (slack-room-names (oref team ims)
                       team
-                      #'(lambda (ims)
-                          (cl-remove-if #'(lambda (im) (not (oref im is-open)))
-                                        ims)))))
+                      #'filter)))
 
-(defmethod slack-room-buffer-name ((room slack-im) team)
+(cl-defmethod slack-room-buffer-name ((room slack-im) team)
   (concat slack-im-buffer-name
           " : "
           (slack-room-display-name room team)))
-
-(defun slack-im-select ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (candidates (cl-loop for team in (list team)
-                              for ims = (cl-remove-if #'(lambda (im)
-                                                          (not (oref im is-open)))
-                                                      (oref team ims))
-                              nconc ims))
-         (room (slack-room-select candidates team)))
-    (slack-room-display room team)))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
@@ -137,8 +129,7 @@
                 (slack-log "Slack Im List Updated" team :level 'info))))
     (slack-room-list-update slack-im-list-url
                             #'on-update-room-list
-                            team
-                            :sync nil)))
+                            team)))
 
 (defun slack-im-list-update (&optional team after-success)
   (interactive)
@@ -156,7 +147,7 @@
         team
         :success #'on-list-update)))))
 
-(defmethod slack-room-update-mark-url ((_room slack-im))
+(cl-defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
 
 (defun slack-im-close ()
@@ -213,37 +204,37 @@
         :params (list (cons "user" (plist-get user :id)))
         :success #'on-success)))))
 
-(defmethod slack-room-label-prefix ((room slack-im) team)
+(cl-defmethod slack-room-label-prefix ((room slack-im) team)
   (format "%s "
           (or
            (slack-im-user-dnd-status room team)
            (slack-im-user-presence room team))))
 
-(defmethod slack-room-get-info-url ((_room slack-im))
+(cl-defmethod slack-room-get-info-url ((_room slack-im))
   slack-im-open-url)
 
-(defmethod slack-room-update-info ((room slack-im) data team)
+(cl-defmethod slack-room-update-info ((room slack-im) data team)
   (let ((new-room (slack-room-create (plist-get data :channel)
                                      team
                                      'slack-im)))
 
     (slack-merge room new-room)))
 
-(defmethod slack-room-info-request-params ((room slack-im))
+(cl-defmethod slack-room-info-request-params ((room slack-im))
   (list (cons "user" (oref room user))
         (cons "return_im" "true")))
 
-(defmethod slack-room-get-members ((room slack-im))
+(cl-defmethod slack-room-get-members ((room slack-im))
   (list (oref room user)))
 
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
 
-(defmethod slack-room-history-url ((_room slack-im))
+(cl-defmethod slack-room-history-url ((_room slack-im))
   slack-im-history-url)
 
-(defmethod slack-room-replies-url ((_room slack-im))
+(cl-defmethod slack-room-replies-url ((_room slack-im))
   "https://slack.com/api/im.replies")
 
 (provide 'slack-im)

@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-file)
 
 (defclass slack-pinned-item ()
   ((message :initarg :message)))
@@ -32,12 +33,15 @@
 (defun slack-pinned-item-create (message)
   (slack-pinned-item :message message))
 
-(defmethod slack-ts ((this slack-pinned-item))
+(cl-defmethod slack-ts ((this slack-pinned-item))
   (slack-ts (oref this message)))
 
-(defmethod slack-message-to-string ((this slack-pinned-item) team)
+(cl-defmethod slack-message-to-string ((this slack-pinned-item) team)
   (with-slots (message) this
-    (slack-message-to-string message team)))
+    (if (or (slack-file-p message)
+            (slack-file-email-p message))
+        (slack-message-to-string message (slack-ts message) team)
+      (slack-message-to-string message team))))
 
 (provide 'slack-pinned-item)
 ;;; slack-pinned-item.el ends here

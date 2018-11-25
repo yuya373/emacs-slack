@@ -24,18 +24,16 @@
 
 ;;; Code:
 (require 'slack-request)
+(require 'slack-image)
+
+(declare-function emojify-get-emoji "emojify")
+(declare-function emojify-image-dir "emojify")
+(declare-function emojify-create-emojify-emojis "emojify")
+(defvar emojify-user-emojis)
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
-(defun slack-emoji-watch-download-complete (team paths)
-  (if (eq (length (cl-remove-if #'identity (mapcar #'file-exists-p paths)))
-          0)
-      (when (timerp (oref team emoji-download-watch-timer))
-        (cancel-timer (oref team emoji-download-watch-timer))
-        (oset team emoji-download-watch-timer nil)
-        (emojify-create-emojify-emojis t))))
-
-(defun slack-request-emoji (team)
+(defun slack-download-emoji (team after-success)
   (if (require 'emojify nil t)
       (cl-labels
           ((handle-alias (name emojis)
@@ -54,7 +52,7 @@
            (on-success
             (&key data &allow-other-keys)
             (slack-request-handle-error
-             (data "slack-request-emoji")
+             (data "slack-download-emoji")
              (emojify-create-emojify-emojis)
              (let* ((emojis (plist-get data :emoji))
                     (names (cl-remove-if
@@ -79,15 +77,17 @@
 
                             path))
                       names)))
-
-               (oset team
-                     emoji-download-watch-timer
-                     (run-with-idle-timer 5 t #'slack-emoji-watch-download-complete team paths))))))
+               (funcall after-success paths)))))
         (slack-request
          (slack-request-create
           slack-emoji-list
           team
           :success #'on-success)))))
+
+(defun slack-select-emoji ()
+  (if (fboundp 'emojify-completing-read)
+      (emojify-completing-read "Select Emoji: ")
+    (read-from-minibuffer "Emoji: ")))
 
 (provide 'slack-emoji)
 ;;; slack-emoji.el ends here
