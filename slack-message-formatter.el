@@ -351,7 +351,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (when text
     (slack-unescape-!
      (slack-unescape-@
-      (slack-message-unescape-channel
+      (slack-unescape-channel
        (slack-unescape-&<> text)
        team)
       team)
@@ -373,7 +373,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 #'replace
                                 text t t))))
 
-(defun slack-message-unescape-channel (text team)
+(defun slack-unescape-channel (text team)
   (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))
     (cl-labels ((unescape-channel
                  (text)
@@ -382,7 +382,8 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                    (propertize (concat "#" (or (and name (substring name 1))
                                                (slack-if-let* ((room (slack-room-find id team)))
                                                    (oref room name)
-                                                 id)))
+                                                 (slack-log (format "Channel not found. ID: %S" id) team)
+                                                 "<Unknown CHANNEL>")))
                                'room-id id
                                'keymap slack-channel-button-keymap
                                'slack-defer-face 'slack-channel-button-face
@@ -398,7 +399,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (eieio-object-class this)
           (length (oref this attachments))
           (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
-                                      (slack-message-unescape-channel
+                                      (slack-unescape-channel
                                        (oref e title)
                                        team)
                                       (oref e pretext)
