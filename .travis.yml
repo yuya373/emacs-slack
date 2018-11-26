@@ -2,11 +2,14 @@ language: generic
 sudo: true
 services:
   - docker
+env:
+  matrix:
+    - EMACS_VERSION=emacs25
+    - EMACS_VERSION=emacs26
+    - EMACS_VERSION=master
 before_install:
-  - docker-compose build
+  - docker-compose build $EMACS_VERSION
 install:
-  - docker-compose run --rm  emacs25 emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
-  - docker-compose run --rm  emacs26 emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
-  - docker-compose run --rm  master emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
+  - docker-compose run --rm  $EMACS_VERSION emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
 script:
-  - docker-compose up
+  - docker-compose run --rm $EMACS_VERSION ./test/test_all
