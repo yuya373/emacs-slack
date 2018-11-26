@@ -113,9 +113,10 @@
           ((on-success (&key data &allow-other-keys)
                        (funcall success :data data)
                        (slack-log
-                        (format "Request Finished. URL: %s, PARAMS: %s"
+                        (format "REQUEST FINISHED. URL: %S, PARAMS: %S, DATA: %S"
                                 url
-                                params)
+                                params
+                                data)
                         team :level 'trace)
                        (when (functionp on-success)
                          (funcall on-success)))
