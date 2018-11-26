@@ -65,7 +65,7 @@
           ((on-timeout ()
                        (slack-log (format "websocket open timeout")
                                   team)
-                       (slack-ws-close ws team)
+                       (slack-ws--close ws team)
                        (slack-ws-reconnect ws team)))
         (slack-ws-set-connect-timeout-timer ws #'on-timeout))
 
@@ -110,31 +110,26 @@
                             :level 'error)
                  nil)))))))
 
-(cl-defun slack-ws-close (ws &optional team (close-reconnection nil))
+(defun slack-ws-close ()
   (interactive)
-  (unless team
-    (setq team slack-teams))
-  (let ((called-interactively (called-interactively-p 'any)))
-    (cl-labels
-        ((close (team)
-                (slack-ws-cancel-ping-timer ws)
-                (slack-ws-cancel-ping-check-timers ws)
-                (when (or close-reconnection
-                          called-interactively)
-                  (slack-ws-cancel-reconnect-timer ws)
-                  (oset ws inhibit-reconnection t))
-                (with-slots (connected conn last-pong) ws
-                  (when conn
-                    (websocket-close conn)
-                    (slack-log "Slack Websocket Closed" team)))))
-      (if (listp team)
-          (progn
-            (mapc #'close team)
-            (slack-request-worker-quit))
-        (close team)
-        (slack-request-worker-remove-request team)
-        )
-      )))
+  (mapc #'(lambda (team) (slack-ws--close (oref team ws) team t))
+        slack-teams)
+  (slack-request-worker-quit))
+
+(cl-defun slack-ws--close (ws team &optional (close-reconnection nil))
+  (cl-labels
+      ((close (ws team)
+              (slack-ws-cancel-ping-timer ws)
+              (slack-ws-cancel-ping-check-timers ws)
+              (when close-reconnection
+                (slack-ws-cancel-reconnect-timer ws)
+                (oset ws inhibit-reconnection t))
+              (with-slots (connected conn last-pong) ws
+                (when conn
+                  (websocket-close conn)
+                  (slack-log "Slack Websocket Closed" team)))))
+    (close ws team)
+    (slack-request-worker-remove-request team)))
 
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
@@ -145,7 +140,7 @@
       (push payload waiting-send))
     (cl-labels
         ((reconnect ()
-                    (slack-ws-close ws team)
+                    (slack-ws--close ws team)
                     (slack-ws-reconnect ws team)))
       (if (websocket-openp conn)
           (condition-case err
@@ -173,7 +168,7 @@
       (cl-labels
           ((on-timeout ()
                        (slack-log "Slack Websocket PING Timeout." team :level 'warn)
-                       (slack-ws-close ws team)
+                       (slack-ws--close ws team)
                        (slack-ws-reconnect ws team)))
         (slack-ws-set-ping-check-timer ws time #'on-timeout))
       (slack-ws-send ws m team)
@@ -214,7 +209,7 @@
 (cl-defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
   (cl-labels ((abort ()
                      (slack-notify-abandon-reconnect team)
-                     (slack-ws-close ws team t))
+                     (slack-ws--close ws team t))
               (use-reconnect-url ()
                                  (slack-log "Reconnect with reconnect-url" team)
                                  (slack-ws-open ws team
@@ -256,7 +251,7 @@
                                       (slack-ws-open ws team :on-open #'on-open)))
               (do-reconnect ()
                             (slack-ws-inc-reconnect-count ws)
-                            (slack-ws-close ws team)
+                            (slack-ws--close ws team)
                             (if (slack-ws-use-reconnect-url-p ws)
                                 (slack-request-api-test team #'use-reconnect-url)
                               (slack-authorize team
@@ -299,7 +294,7 @@ TEAM is one of `slack-teams'"
          (code (plist-get err :code)))
     (cond
      ((eq 1 code)
-      (slack-ws-close ws team)
+      (slack-ws--close ws team)
       (slack-ws-reconnect ws team))
      (t (slack-log (format "Unknown Error: %s, MSG: %s"
                            code (plist-get err :msg))

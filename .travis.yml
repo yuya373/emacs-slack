@@ -4,5 +4,9 @@ services:
   - docker
 before_install:
   - docker-compose build
+install:
+  - docker-compose run --rm  emacs25 emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
+  - docker-compose run --rm  emacs26 emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
+  - docker-compose run --rm  master emacs --batch -l ./test/setup.el -eval '(message "Setup finished")'
 script:
   - docker-compose up
