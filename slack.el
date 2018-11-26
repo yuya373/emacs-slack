@@ -149,7 +149,7 @@ When `never', never display typing indicator."
                (team)
                (slack-team-kill-buffers team)
                (when (slot-boundp team 'ws)
-                 (slack-ws-close (oref team ws) team))
+                 (slack-ws--close (oref team ws) team))
                (when (slack-team-need-token-p team)
                  (let ((token (slack-oauth2-get-token team)))
                    (oset team token token)

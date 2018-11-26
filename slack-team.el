@@ -161,7 +161,7 @@ use `slack-change-current-team' to change `slack-current-team'"
               slack-teams))
 
 (cl-defmethod slack-team-disconnect ((team slack-team))
-  (slack-ws-close (oref team ws) team))
+  (slack-ws--close (oref team ws) team))
 
 (cl-defmethod slack-team-equalp ((team slack-team) other)
   (with-slots (token) team
