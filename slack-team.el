@@ -29,7 +29,7 @@
 ;; (require 'slack-websocket)
 (declare-function slack-ws-send "slack-websocket")
 (declare-function slack-ws-open "slack-websocket")
-(declare-function slack-ws-close "slack-websocket")
+(declare-function slack-ws--close "slack-websocket")
 ;; (require 'slack)
 (declare-function slack-start "slack")
 
