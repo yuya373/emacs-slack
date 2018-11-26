@@ -116,7 +116,7 @@
         slack-teams)
   (slack-request-worker-quit))
 
-(cl-defun slack-ws--close (ws &optional team (close-reconnection nil))
+(cl-defun slack-ws--close (ws team &optional (close-reconnection nil))
   (cl-labels
       ((close (ws team)
               (slack-ws-cancel-ping-timer ws)
