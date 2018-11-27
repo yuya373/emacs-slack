@@ -309,6 +309,8 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-room ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-display-unread-threads ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
