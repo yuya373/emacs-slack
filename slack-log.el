@@ -97,7 +97,7 @@ One of 'info, 'debug"
 
 (defun slack-log-open-buffer ()
   (interactive)
-  (let ((team (slack-team-select)))
+  (let ((team (slack-team-select t t)))
     (funcall slack-buffer-function (get-buffer-create (slack-log-buffer-name team)))))
 
 (defun slack-event-log-buffer-name (team)
@@ -120,7 +120,7 @@ One of 'info, 'debug"
   (interactive)
   (if websocket-debug
       (progn
-        (let* ((team (slack-team-select))
+        (let* ((team (slack-team-select t t))
                (websocket (and (slot-boundp team 'ws)
                                (oref (oref team ws) conn))))
           (if websocket
@@ -131,7 +131,7 @@ One of 'info, 'debug"
 
 (defun slack-log-open-event-buffer ()
   (interactive)
-  (let* ((team (slack-team-select))
+  (let* ((team (slack-team-select t t))
          (bufname (slack-event-log-buffer-name team))
          (buf (get-buffer bufname)))
     (if buf
