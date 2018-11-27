@@ -686,20 +686,6 @@
                               (slack-buffer-buffer
                                (slack-create-message-buffer this team))))))))
 
-(defun slack-select-unread-rooms ()
-  (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-room-select
-                (cl-loop for team in (list team)
-                         append (with-slots (groups ims channels) team
-                                  (cl-remove-if
-                                   #'(lambda (room)
-                                       (not (< 0 (oref room
-                                                       unread-count-display))))
-                                   (append ims groups channels))))
-                team)))
-    (slack-room-display room team)))
-
 (defun slack-select-rooms ()
   (interactive)
   (let* ((team (slack-team-select))
