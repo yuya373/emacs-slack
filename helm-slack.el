@@ -30,6 +30,7 @@
 (require 'slack-conversations)
 (require 'slack-user-profile-buffer)
 (require 'slack-message-buffer)
+(require 'slack-unread)
 
 (defvar slack-display-team-name)
 
@@ -206,6 +207,57 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
   (helm
    :prompt "Select Channel : "
    :sources helm-slack-sources))
+
+(defvar helm-slack-unreads-actions
+  (helm-make-actions
+   "Display channel" #'helm-slack-display-room
+   "Collapse channel" #'helm-slack-unreads-collapse-room
+   "Expand channel" #'helm-slack-unreads-expand-room
+   ))
+
+(defun helm-slack-unreads-collapse-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-unread-collapse room team)))
+
+(defun helm-slack-unreads-expand-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-unread-expand room team)))
+
+(defun helm-slack-unreads ()
+  (interactive)
+  (let ((team (slack-team-select t)))
+    (cl-labels
+        ((build-candidate
+          (channel team)
+          (let ((room (slack-room-find (plist-get channel :channel_id)
+                                       team)))
+            (list (format "%s%s %s (%s)"
+                          (slack-room-label-prefix room team)
+                          (slack-room-display-name room team)
+                          (if (eq t (plist-get channel :collapsed))
+                              " :arrow_forward:"
+                            " :arrow_down_small:")
+                          (plist-get channel :total_unreads)
+                          )
+                  room
+                  team)))
+         (success
+          (channels-count _total_messages-count channels)
+          (if (< channels-count 1)
+              (slack-log "No unread messages"
+                         team
+                         :level 'info)
+            (let ((candidates (mapcar #'(lambda (e)
+                                          (build-candidate e team))
+                                      channels)))
+              (helm
+               :prompt "Select Channel : "
+               :sources (list (helm-build-sync-source "All Unreads"
+                                :persistent-action #'helm-slack-persistent-action
+                                :action helm-slack-unreads-actions
+                                :candidates candidates)))))))
+      (slack-unread-history team
+                            #'success))))
 
 (provide 'helm-slack)
 ;;; helm-slack.el ends here
