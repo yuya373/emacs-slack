@@ -254,9 +254,15 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
                      do (push (build-candidate channel team)
                               candidates))))
          (on-error (err team)
-                   (slack-log (format "Error in unread.history: %S" err)
-                              team
-                              :level 'error)
+                   (if (string= "not_allowed_token_type"
+                                err)
+                       (slack-log "Your workspace doesn't support unread.history. \
+use `slack-select-unread-rooms' instead."
+                                  team
+                                  :level 'info)
+                     (slack-log (format "Error in unread.history: %S" err)
+                                team
+                                :level 'error))
                    (cl-decf waiting-complete)))
       (mapc #'(lambda (team)
                 (cl-incf waiting-complete)
@@ -268,8 +274,8 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
                                               (success channels-count
                                                        channels
                                                        team)
-                                              (error (when (timerp timer)
-                                                       (cancel-timer timer)))))
+                                            (error (when (timerp timer)
+                                                     (cancel-timer timer)))))
                                       :on-error #'on-error))
             slack-teams))
 
