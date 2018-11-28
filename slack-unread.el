@@ -41,7 +41,6 @@
         (sort "newest"))
     (cl-labels
         ((success (&key data &allow-other-keys)
-                  (message "DATA")
                   (slack-request-handle-error
                    (data "slack-unread-history")
                    (let ((channels-count
