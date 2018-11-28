@@ -36,13 +36,15 @@
 (defconst slack-unread-collapse-url "https://slack.com/api/unread.collapse")
 (defconst slack-unread-expand-url "https://slack.com/api/unread.expand")
 
-(cl-defun slack-unread-history (team after-success &key (sync nil))
+(cl-defun slack-unread-history (team after-success &key (sync nil) (on-error))
   (let ((timestamp (number-to-string (time-to-seconds (current-time))))
         (sort "newest"))
     (cl-labels
         ((success (&key data &allow-other-keys)
                   (slack-request-handle-error
-                   (data "slack-unread-history")
+                   (data "slack-unread-history" (when (functionp on-error)
+                                                  #'(lambda (err)
+                                                      (funcall on-error err team))))
                    (let ((channels-count
                           (plist-get data :channels_count))
                          (total-messages-count

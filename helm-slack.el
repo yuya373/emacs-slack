@@ -225,39 +225,64 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
 
 (defun helm-slack-unreads ()
   (interactive)
-  (let ((team (slack-team-select t)))
+  (let ((waiting-complete 0)
+        (candidates nil)
+        (timer nil))
     (cl-labels
         ((build-candidate
           (channel team)
-          (let ((room (slack-room-find (plist-get channel :channel_id)
-                                       team)))
-            (list (format "%s%s %s (%s)"
-                          (slack-room-label-prefix room team)
-                          (slack-room-display-name room team)
-                          (if (eq t (plist-get channel :collapsed))
-                              " :arrow_forward:"
-                            " :arrow_down_small:")
-                          (plist-get channel :total_unreads)
-                          )
-                  room
-                  team)))
+          (slack-if-let*
+              ((room (slack-room-find (plist-get channel :channel_id)
+                                      team)))
+              (list (format "%s%s %s (%s)"
+                            (slack-room-label-prefix room team)
+                            (slack-room-display-name room team)
+                            (if (eq t (plist-get channel :collapsed))
+                                " :arrow_forward:"
+                              " :arrow_down_small:")
+                            (plist-get channel :total_unreads))
+                    room
+                    team)))
          (success
-          (channels-count _total_messages-count channels)
+          (channels-count channels team)
+          (cl-decf waiting-complete)
           (if (< channels-count 1)
               (slack-log "No unread messages"
                          team
                          :level 'info)
-            (let ((candidates (mapcar #'(lambda (e)
-                                          (build-candidate e team))
-                                      channels)))
-              (helm
-               :prompt "Select Channel : "
-               :sources (list (helm-build-sync-source "All Unreads"
-                                :persistent-action #'helm-slack-persistent-action
-                                :action helm-slack-unreads-actions
-                                :candidates candidates)))))))
-      (slack-unread-history team
-                            #'success))))
+            (cl-loop for channel in channels
+                     do (push (build-candidate channel team)
+                              candidates))))
+         (on-error (err team)
+                   (slack-log (format "Error in unread.history: %S" err)
+                              team
+                              :level 'error)
+                   (cl-decf waiting-complete)))
+      (mapc #'(lambda (team)
+                (cl-incf waiting-complete)
+                (slack-unread-history team
+                                      #'(lambda (channels-count
+                                                 _total_messages-count
+                                                 channels)
+                                          (condition-case _err
+                                              (success channels-count
+                                                       channels
+                                                       team)
+                                              (error (when (timerp timer)
+                                                       (cancel-timer timer)))))
+                                      :on-error #'on-error))
+            slack-teams))
+
+    (setq timer
+          (run-at-time t 0.5 #'(lambda ()
+                                 (when (< waiting-complete 1)
+                                   (cancel-timer timer)
+                                   (helm
+                                    :prompt "Select Channel : "
+                                    :sources (list (helm-build-sync-source "All Unreads"
+                                                     :persistent-action #'helm-slack-persistent-action
+                                                     :action helm-slack-unreads-actions
+                                                     :candidates candidates)))))))))
 
 (provide 'helm-slack)
 ;;; helm-slack.el ends here
