@@ -102,7 +102,6 @@
                                team
                                :level 'info))))
       (slack-unread-history team #'success))))
-(defalias 'slack-select-unread-rooms 'slack-all-unreads)
 
 (defun slack-unread-expand (room team)
   (let ((channel (oref room id)))
