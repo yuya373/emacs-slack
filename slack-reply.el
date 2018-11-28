@@ -24,6 +24,7 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-message)
 (require 'slack-team)
 (require 'slack-message-buffer)
@@ -39,7 +40,14 @@
       (if sent-msg
           (progn
             (oset sent-msg ts (slack-ts m))
-            (slack-message-update sent-msg team))))))
+            (slack-message-update sent-msg team)
+            (slack-if-let*
+                ((room (slack-room-find (oref sent-msg channel) team))
+                 (buffer (slack-buffer-find 'slack-message-buffer
+                                            room team))
+                 (ts (slack-ts sent-msg)))
+                (when (string< (slack-buffer-last-read buffer) ts)
+                  (slack-buffer-update-mark-request buffer ts))))))))
 
 (cl-defmethod slack-message-find-sent ((m slack-reply) team)
   (with-slots (reply-to) m
