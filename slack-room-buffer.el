@@ -398,5 +398,38 @@ Execute this function when cursor is on some message."
      nil
      slack-message-minibuffer-local-map)))
 
+(defun slack-message-follow ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-follow-message buffer)))
+
+(cl-defmethod slack-buffer-follow-message ((this slack-room-buffer))
+  (slack-if-let* ((ts (slack-get-ts)))
+      (with-slots (room team) this
+        (cl-labels
+            ((after-success ()
+                            (slack-log "Successfully followed."
+                                       team :level 'info)))
+          (slack-subscriptions-thread-add room ts team
+                                          #'after-success)))))
+
+(defun slack-message-unfollow ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-unfollow-message buffer)))
+
+(cl-defmethod slack-buffer-unfollow-message ((this slack-room-buffer))
+  (slack-if-let* ((ts (slack-get-ts)))
+      (with-slots (room team) this
+        (cl-labels
+            ((after-success ()
+                            (slack-log "Successfully unfollowed."
+                                       team :level 'info)))
+          (slack-subscriptions-thread-remove room ts team
+                                             #'after-success)))))
+
+
+
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here
