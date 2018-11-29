@@ -24,9 +24,16 @@
 
 ;;; Code:
 (require 'slack-util)
+(require 'slack-request)
 
 (defvar slack-current-buffer)
 (defvar slack-action-keymap)
+(defvar slack-completing-read-function)
+;; POST
+(defconst slack-actions-list-url "https://slack.com/api/apps.actions.list")
+;; POST
+;; params (action_id, type, app_id, channel, message_ts)
+(defconst slack-actions-run-url "https://slack.com/api/apps.actions.run")
 
 (defface slack-message-action-face
   '((t (:box (:line-width 1 :style released-button))))
@@ -46,6 +53,57 @@
                                    'payload payload
                                    'org-text (match-string 0)
                                    'keymap slack-action-keymap))))))
+
+(defun slack-actions-run (ts room type action-id app-id team)
+  (slack-if-let*
+      ((params (list (cons "message_ts" ts)
+                     (cons "channel" (oref room id))
+                     (cons "type" type)
+                     (cons "action_id" action-id)
+                     (cons "app_id" app-id)
+                     (cons "client_token"
+                           (slack-team-client-token team)))))
+      (cl-labels
+          ((success (&key data &allow-other-keys)
+                    (slack-request-handle-error
+                     (data "slack-actions-run"
+                           #'(lambda (err) (slack-log (format "%s" err)
+                                                      team
+                                                      :level 'error))))))
+        (slack-request
+         (slack-request-create
+          slack-actions-run-url
+          team
+          :type "POST"
+          :params params
+          :success #'success)))))
+
+(defun slack-actions-list (team &optional after-success)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-actions-list")
+                 (when (functionp after-success)
+                   (funcall after-success (plist-get data :app_actions))))))
+    (slack-request
+     (slack-request-create
+      slack-actions-list-url
+      team
+      :type "POST"
+      :success #'success))))
+
+(defun slack-actions-select (actions)
+  (cl-labels ((build-choice (action app)
+                            (cons (format "%s - %s"
+                                          (plist-get action :name)
+                                          (plist-get app :app_name))
+                                  (cons app action))))
+    (let ((choices (cl-loop for app in actions
+                            nconc (mapcar #'(lambda (action) (build-choice action app))
+                                          (plist-get app :actions)))))
+      (cdr (cl-assoc (funcall slack-completing-read-function
+                              "Select Action: " choices)
+                     choices :test #'string=)))))
 
 (provide 'slack-action)
 ;;; slack-action.el ends here
