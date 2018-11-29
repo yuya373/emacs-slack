@@ -179,6 +179,10 @@
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 ;; TODO
 ;; remind me about this
+;; add/remove star
+;; add/remove reaction
+;; share
+;; edit
 (cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
   (let ((display-follow nil))
     (with-slots (team room) this
