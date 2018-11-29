@@ -404,7 +404,33 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-subteam-created decoded-payload team))
          ((string= type "subteam_updated")
           (slack-ws-handle-subteam-updated decoded-payload team))
+         ((string= type "pin_removed")
+          (slack-ws-handle-pin-removed decoded-payload team))
+         ((string= type "pin_added")
+          (slack-ws-handle-pin-added decoded-payload team))
          )))))
+
+(defun slack-ws-handle-pin-added (payload team)
+  (let* ((item (plist-get payload :item))
+         (message (plist-get item :message))
+         (ts (plist-get message :ts))
+         (channel-id (plist-get payload :channel_id)))
+    (slack-if-let*
+        ((room (slack-room-find channel-id team))
+         (message (slack-room-find-message room ts)))
+        (cl-pushnew channel-id (oref message pinned-to)
+                    :test #'string=))))
+
+(defun slack-ws-handle-pin-removed (payload team)
+  (let* ((item (plist-get payload :item))
+         (message (plist-get item :message))
+         (ts (plist-get message :ts))
+         (channel-id (plist-get payload :channel_id)))
+    (slack-if-let*
+        ((room (slack-room-find channel-id team))
+         (message (slack-room-find-message room ts)))
+        (oset message pinned-to (cl-remove-if #'(lambda (e) (string= channel-id e))
+                                              (oref message pinned-to))))))
 
 (cl-defmethod slack-ws-handle-reconnect-url ((ws slack-team-ws) payload)
   (oset ws reconnect-url (plist-get payload :url)))
