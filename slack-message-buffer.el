@@ -288,15 +288,6 @@
            (reaction (slack-message-reaction-select reactions)))
       (slack-message-reaction-remove reaction ts room team))))
 
-(cl-defmethod slack-buffer-pins-remove ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (slack-message-pins-request slack-message-pins-remove-url
-                                room team ts)))
-
-(cl-defmethod slack-buffer-pins-add ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (slack-message-pins-request slack-message-pins-add-url
-                                room team ts)))
 (cl-defmethod slack-buffer-remove-star ((this slack-message-buffer) ts)
   (with-slots (room team) this
     (slack-if-let* ((message (slack-room-find-message room ts)))

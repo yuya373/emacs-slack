@@ -78,11 +78,11 @@
           :params params
           :success #'success)))))
 
-(defun slack-actions-list (team &optional after-success)
+(defun slack-actions-list (team &optional after-success handle-error)
   (cl-labels
       ((success (&key data &allow-other-keys)
                 (slack-request-handle-error
-                 (data "slack-actions-list")
+                 (data "slack-actions-list" handle-error)
                  (when (functionp after-success)
                    (funcall after-success (plist-get data :app_actions))))))
     (slack-request
@@ -93,17 +93,25 @@
       :success #'success))))
 
 (defun slack-actions-select (actions)
-  (cl-labels ((build-choice (action app)
+  (cl-labels ((display-p (action)
+                         (if (functionp (plist-get action :display-p))
+                             (funcall (plist-get action :display-p))
+                           t))
+              (build-choice (action app)
                             (cons (format "%s - %s"
                                           (plist-get action :name)
                                           (plist-get app :app_name))
                                   (cons app action))))
-    (let ((choices (cl-loop for app in actions
-                            nconc (mapcar #'(lambda (action) (build-choice action app))
-                                          (plist-get app :actions)))))
-      (cdr (cl-assoc (funcall slack-completing-read-function
-                              "Select Action: " choices)
-                     choices :test #'string=)))))
+    (let* ((choices (cl-loop for app in actions
+                             nconc (mapcar #'(lambda (action) (build-choice action app))
+                                           (cl-remove-if #'(lambda (action)
+                                                             (not (display-p action)))
+                                                         (plist-get app :actions)))))
+           (choice (funcall slack-completing-read-function
+                            "Select Action: "
+                            choices
+                            nil t)))
+      (cdr (cl-assoc choice choices :test #'string=)))))
 
 (provide 'slack-action)
 ;;; slack-action.el ends here

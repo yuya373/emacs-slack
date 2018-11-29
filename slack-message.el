@@ -312,5 +312,10 @@
 (cl-defmethod slack-message-thread ((this slack-message) _room)
   (oref this thread))
 
+(cl-defmethod slack-message-pinned-to-room-p ((this slack-message) room)
+  (cl-find (oref room id)
+           (oref this pinned-to)
+           :test #'string=))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
