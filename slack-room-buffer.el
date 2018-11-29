@@ -178,40 +178,58 @@
 
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 ;; TODO
-;; (follow/unfollow) message
 ;; remind me about this
-(cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts)
-  (with-slots (team room) this
-    (cl-labels
-        ((get-message () (slack-room-find-message room ts))
-         (handle-copy-link () (slack-buffer-copy-link this ts))
-         (handle-mark-unread () (slack-buffer-update-mark this :force t))
-         (handle-pin () (slack-buffer-pins-add this ts))
-         (handle-un-pin () (slack-buffer-pins-remove this ts))
-         (handle-delete-message () (slack-buffer-delete-message this ts))
-         (display-pin-p ()
-                        (slack-if-let* ((message (get-message)))
-                            (not (slack-message-pinned-to-room-p message room))))
-         (display-un-pin-p ()
-                           (slack-if-let* ((message (get-message)))
-                               (slack-message-pinned-to-room-p message room)))
-         (message-buffer-p () (slack-message-buffer-p this)))
-      `(:app_name
-        "Slack"
-        :actions
-        ((:name "Copy link"
-                :handler ,#'handle-copy-link)
-         (:name "Mark unread"
-                :display-p ,#'message-buffer-p
-                :handler ,#'handle-mark-unread)
-         (:name "Pin to this conversation..."
-                :display-p ,#'display-pin-p
-                :handler ,#'handle-pin)
-         (:name "Un-pin from this conversation"
-                :display-p ,#'display-un-pin-p
-                :handler ,#'handle-un-pin)
-         (:name "Delete message"
-                :handler ,#'handle-delete-message))))))
+(cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
+  (let ((display-follow nil))
+    (with-slots (team room) this
+      (cl-labels
+          ((get-message () (slack-room-find-message room ts))
+           (handle-follow-message () (slack-subscriptions-thread-add room ts team))
+           (handle-unfollow-message () (slack-subscriptions-thread-remove room ts team))
+           (handle-copy-link () (slack-buffer-copy-link this ts))
+           (handle-mark-unread () (slack-buffer-update-mark this :force t))
+           (handle-pin () (slack-buffer-pins-add this ts))
+           (handle-un-pin () (slack-buffer-pins-remove this ts))
+           (handle-delete-message () (slack-buffer-delete-message this ts))
+           (display-pin-p ()
+                          (slack-if-let* ((message (get-message)))
+                              (not (slack-message-pinned-to-room-p message room))))
+           (display-un-pin-p ()
+                             (slack-if-let* ((message (get-message)))
+                                 (slack-message-pinned-to-room-p message room)))
+           (display-follow-p () display-follow)
+           (display-unfollow-p () (not display-follow))
+           (message-buffer-p () (slack-message-buffer-p this)))
+        (let ((builtins `(:app_name
+                          "Slack"
+                          :actions
+                          ((:name "Follow message"
+                                  :handler ,#'handle-follow-message
+                                  :display-p ,#'display-follow-p)
+                           (:name "Unfollow message"
+                                  :handler ,#'handle-unfollow-message
+                                  :display-p ,#'display-unfollow-p)
+                           (:name "Copy link"
+                                  :handler ,#'handle-copy-link)
+                           (:name "Mark unread"
+                                  :display-p ,#'message-buffer-p
+                                  :handler ,#'handle-mark-unread)
+                           (:name "Pin to this conversation..."
+                                  :display-p ,#'display-pin-p
+                                  :handler ,#'handle-pin)
+                           (:name "Un-pin from this conversation"
+                                  :display-p ,#'display-un-pin-p
+                                  :handler ,#'handle-un-pin)
+                           (:name "Delete message"
+                                  :handler ,#'handle-delete-message)))))
+          (cl-labels
+              ((on-success (subscriptions)
+                           (if (cl-find ts subscriptions :test #'string=)
+                               (setq display-follow nil)
+                             (setq display-follow t))
+                           (funcall handler builtins))
+               (on-error (_err) (funcall handler builtins)))
+            (slack-subscriptions-thread-get room ts team #'on-success #'on-error)))))))
 
 (cl-defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
   (with-slots (team room) this
@@ -224,22 +242,23 @@
                           (action-id (plist-get action :action_id))
                           (app-id (plist-get app :app_id)))
                          (slack-actions-run ts room type action-id app-id team)))
+         (handler (builtin actions)
+                  (slack-if-let*
+                      ((selected (slack-actions-select (cons builtin actions)))
+                       (action (cdr selected)))
+                      (if (functionp (plist-get action :handler))
+                          (funcall (plist-get action :handler))
+                        (run-action selected))))
          (on-success
           (actions)
-          (slack-if-let*
-              ((builtin-action (slack-buffer-builtin-actions this ts))
-               (selected (slack-actions-select (cons builtin-action actions)))
-               (action (cdr selected)))
-              (if (functionp (plist-get action :handler))
-                  (funcall (plist-get action :handler))
-                (run-action selected))))
+          (slack-buffer-builtin-actions
+           this ts
+           #'(lambda (builtin) (handler builtin actions))))
          (on-error
           (_err)
-          (slack-if-let*
-              ((builtin-action (slack-buffer-builtin-actions this ts))
-               (selected (slack-actions-select (list builtin-action)))
-               (action (cdr selected)))
-              (funcall (plist-get action :handler)))))
+          (slack-buffer-builtin-actions
+           this ts
+           #'(lambda (builtin) (handler builtin nil)))))
       (slack-actions-list team #'on-success #'on-error))))
 
 (cl-defmethod slack-message-deleted ((message slack-message) room team)
