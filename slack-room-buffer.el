@@ -253,12 +253,12 @@
           (actions)
           (slack-buffer-builtin-actions
            this ts
-           #'(lambda (builtin) (handler builtin actions))))
+           #'(lambda (builtin) (run-at-time nil nil #'handler builtin actions))))
          (on-error
           (_err)
           (slack-buffer-builtin-actions
            this ts
-           #'(lambda (builtin) (handler builtin nil)))))
+           #'(lambda (builtin) (run-at-time nil nil #'handler builtin nil)))))
       (slack-actions-list team #'on-success #'on-error))))
 
 (cl-defmethod slack-message-deleted ((message slack-message) room team)
