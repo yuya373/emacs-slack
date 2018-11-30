@@ -76,10 +76,10 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
       (if (or (null typing)
               (and typing-timer
                    (timerp typing-timer)
-                   typing
                    (< (oref typing limit) current)))
           (progn
-            (cancel-timer typing-timer)
+            (and typing-timer
+                 (cancel-timer typing-timer))
             (setq typing-timer nil)
             (setq typing nil)
             (message ""))
