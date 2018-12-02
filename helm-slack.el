@@ -30,6 +30,7 @@
 (require 'slack-conversations)
 (require 'slack-user-profile-buffer)
 (require 'slack-message-buffer)
+(require 'slack-unread)
 
 (defvar slack-display-team-name)
 
@@ -206,6 +207,88 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
   (helm
    :prompt "Select Channel : "
    :sources helm-slack-sources))
+
+(defvar helm-slack-unreads-actions
+  (helm-make-actions
+   "Display channel" #'helm-slack-display-room
+   "Collapse channel" #'helm-slack-unreads-collapse-room
+   "Expand channel" #'helm-slack-unreads-expand-room
+   ))
+
+(defun helm-slack-unreads-collapse-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-unread-collapse room team)))
+
+(defun helm-slack-unreads-expand-room (candidate)
+  (helm-slack-bind-room-and-team candidate
+      (slack-unread-expand room team)))
+
+(defun helm-slack-unreads ()
+  (interactive)
+  (let ((waiting-complete 0)
+        (candidates nil)
+        (timer nil))
+    (cl-labels
+        ((build-candidate
+          (channel team)
+          (slack-if-let*
+              ((room (slack-room-find (plist-get channel :channel_id)
+                                      team)))
+              (list (format "%s%s %s (%s)"
+                            (slack-room-label-prefix room team)
+                            (slack-room-display-name room team)
+                            (if (eq t (plist-get channel :collapsed))
+                                " :arrow_forward:"
+                              " :arrow_down_small:")
+                            (plist-get channel :total_unreads))
+                    room
+                    team)))
+         (success
+          (channels-count channels team)
+          (cl-decf waiting-complete)
+          (if (< channels-count 1)
+              (slack-log "No unread messages"
+                         team
+                         :level 'info)
+            (cl-loop for channel in channels
+                     do (push (build-candidate channel team)
+                              candidates))))
+         (on-error (err team)
+                   (if (string= "not_allowed_token_type"
+                                err)
+                       (slack-log "Your workspace doesn't support unread.history. \
+use `slack-select-unread-rooms' instead."
+                                  team
+                                  :level 'info)
+                     (slack-log (format "Error in unread.history: %S" err)
+                                team
+                                :level 'error))
+                   (cl-decf waiting-complete)))
+      (mapc #'(lambda (team)
+                (cl-incf waiting-complete)
+                (slack-unread-history team
+                                      #'(lambda (channels-count
+                                                 _total_messages-count
+                                                 channels)
+                                          (condition-case _err
+                                              (success channels-count
+                                                       channels
+                                                       team)
+                                            (error (when (timerp timer)
+                                                     (cancel-timer timer)))))
+                                      :on-error #'on-error))
+            slack-teams))
+
+    (setq timer
+          (run-at-time t 0.5 #'(lambda ()
+                                 (when (< waiting-complete 1)
+                                   (cancel-timer timer)
+                                   (helm
+                                    :prompt "Select Channel : "
+                                    :sources (list (helm-build-sync-source "All Unreads"
+                                                     :persistent-action #'helm-slack-persistent-action
+                                                     :action helm-slack-unreads-actions
+                                                     :candidates candidates)))))))))
 
 (provide 'helm-slack)
 ;;; helm-slack.el ends here

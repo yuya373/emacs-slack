@@ -66,6 +66,7 @@
 (require 'slack-websocket)
 (require 'slack-request)
 (require 'slack-usergroup)
+(require 'slack-unread)
 
 (require 'slack-oauth2)
 (require 'slack-authorize)
