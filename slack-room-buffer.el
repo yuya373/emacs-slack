@@ -176,10 +176,25 @@
     (slack-message-pins-request slack-message-pins-add-url
                                 room team ts)))
 
+(cl-defmethod slack-buffer-remove-star ((this slack-room-buffer) ts)
+  (with-slots (room team) this
+    (slack-if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-remove-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
+
+(cl-defmethod slack-buffer-add-star ((this slack-room-buffer) ts)
+  (with-slots (room team) this
+    (slack-if-let* ((message (slack-room-find-message room ts)))
+        (slack-message-star-api-request slack-message-stars-add-url
+                                        (list (cons "channel" (oref room id))
+                                              (slack-message-star-api-params message))
+                                        team))))
+
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 ;; TODO
 ;; remind me about this
-;; add/remove star
 ;; add/remove reaction
 ;; share
 ;; edit
@@ -195,6 +210,8 @@
            (handle-pin () (slack-buffer-pins-add this ts))
            (handle-un-pin () (slack-buffer-pins-remove this ts))
            (handle-delete-message () (slack-buffer-delete-message this ts))
+           (handle-star-message () (slack-buffer-add-star this ts))
+           (handle-unstar-message () (slack-buffer-remove-star this ts))
            (display-pin-p ()
                           (slack-if-let* ((message (get-message)))
                               (not (slack-message-pinned-to-room-p message room))))
@@ -203,6 +220,10 @@
                                  (slack-message-pinned-to-room-p message room)))
            (display-follow-p () display-follow)
            (display-unfollow-p () (not display-follow))
+           (display-star-p () (slack-if-let* ((message (get-message)))
+                                  (not (slack-message-starred-p message))))
+           (display-unstar-p () (slack-if-let* ((message (get-message)))
+                                    (slack-message-starred-p message)))
            (message-buffer-p () (slack-message-buffer-p this)))
         (let ((builtins `(:app_name
                           "Slack"
@@ -213,6 +234,12 @@
                            (:name "Unfollow message"
                                   :handler ,#'handle-unfollow-message
                                   :display-p ,#'display-unfollow-p)
+                           (:name "Star message"
+                                  :handler ,#'handle-star-message
+                                  :display-p ,#'display-star-p)
+                           (:name "Unstar message"
+                                  :handler ,#'handle-unstar-message
+                                  :display-p ,#'display-unstar-p)
                            (:name "Copy link"
                                   :handler ,#'handle-copy-link)
                            (:name "Mark unread"

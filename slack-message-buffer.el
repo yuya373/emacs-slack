@@ -288,22 +288,6 @@
            (reaction (slack-message-reaction-select reactions)))
       (slack-message-reaction-remove reaction ts room team))))
 
-(cl-defmethod slack-buffer-remove-star ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (slack-if-let* ((message (slack-room-find-message room ts)))
-        (slack-message-star-api-request slack-message-stars-remove-url
-                                        (list (cons "channel" (oref room id))
-                                              (slack-message-star-api-params message))
-                                        team))))
-
-(cl-defmethod slack-buffer-add-star ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (slack-if-let* ((message (slack-room-find-message room ts)))
-        (slack-message-star-api-request slack-message-stars-add-url
-                                        (list (cons "channel" (oref room id))
-                                              (slack-message-star-api-params message))
-                                        team))))
-
 (cl-defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
   (when (and message (or (null (oref this oldest))
                          (string< (slack-ts message) (oref this oldest))))
@@ -760,11 +744,13 @@
 
 (defun slack-message-remove-star ()
   (interactive)
-  (slack-buffer-remove-star slack-current-buffer (slack-get-ts)))
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-remove-star buffer (slack-get-ts))))
 
 (defun slack-message-add-star ()
   (interactive)
-  (slack-buffer-add-star slack-current-buffer (slack-get-ts)))
+  (slack-if-let* ((buffer slack-current-buffer))
+      (slack-buffer-add-star buffer (slack-get-ts))))
 
 (defun slack-message-pins-add ()
   (interactive)
