@@ -40,6 +40,8 @@
 (defconst slack-subscriptions-thread-clear-all-url "https://slack.com/api/subscriptions.thread.clearAll")
 (defconst slack-subscriptions-thread-add-url "https://slack.com/api/subscriptions.thread.add")
 (defconst slack-subscriptions-thread-remove-url "https://slack.com/api/subscriptions.thread.remove")
+(defconst slack-subscriptions-thread-get-url
+  "https://slack.com/api/subscriptions.thread.get")
 (defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
 (defcustom slack-thread-also-send-to-room 'ask
@@ -240,6 +242,23 @@ Any other non-nil value: send to the room."
       :type "POST"
       :params (list (cons "thread_ts" ts)
                     (cons "last_read" ts)
+                    (cons "channel" (oref room id)))
+      :success #'success))))
+
+(defun slack-subscriptions-thread-get (room ts team &optional after-success handle-error)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-subscriptions-thread-get" handle-error)
+                 (when (functionp after-success)
+                   (let ((subscriptions (plist-get data :subscriptions)))
+                     (funcall after-success subscriptions))))))
+    (slack-request
+     (slack-request-create
+      slack-subscriptions-thread-get-url
+      team
+      :type "POST"
+      :params (list (cons "thread_ts" ts)
                     (cons "channel" (oref room id)))
       :success #'success))))
 

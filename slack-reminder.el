@@ -35,6 +35,7 @@
 (defconst slack-reminder-delete-url "https://slack.com/api/reminders.delete")
 (defconst slack-reminder-complete-url "https://slack.com/api/reminders.complete")
 (defconst slack-reminder-info-url "https://slack.com/api/reminders.info")
+(defconst slack-reminder-add-from-message-url "https://slack.com/api/reminders.addFromMessage")
 
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
@@ -237,6 +238,33 @@
 
 (cl-defmethod slack-user-find ((r slack-reminder-base) team)
   (slack-user--find (oref r user) team))
+
+(cl-defun slack-reminder-add-from-message (room message team)
+  (let ((message-channel (oref room id))
+        (message-ts (slack-ts message))
+        (respond-in-channel "false")
+        (time (funcall slack-completing-read-function
+                       "When: "
+                       '("In 20 minutes"
+                         "In 1 hour"
+                         "In 3 hour"
+                         "Tomorrow"
+                         "Next week")
+                       nil t)))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-remind-add-from-message")
+                   (message "DATA: %S" data))))
+      (slack-request
+       (slack-request-create
+        slack-reminder-add-from-message-url
+        team
+        :params (list (cons "message_channel" message-channel)
+                      (cons "message_ts" message-ts)
+                      (cons "respond_in_channel" respond-in-channel)
+                      (cons "time" time))
+        :success #'success)))))
 
 (provide 'slack-reminder)
 ;;; slack-reminder.el ends here

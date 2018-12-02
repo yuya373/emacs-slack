@@ -26,7 +26,6 @@
 
 (require 'eieio)
 (require 'slack-util)
-(require 'slack-room-buffer)
 (require 'slack-message-compose-buffer)
 (require 'slack-message-edit-buffer)
 (require 'slack-message-editor)
