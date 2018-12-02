@@ -270,11 +270,6 @@
     (slack-message-buffer :room room :team team)))
 
 
-(cl-defmethod slack-buffer-share-message ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (let ((buf (slack-create-message-share-buffer room team ts)))
-      (slack-buffer-display buf))))
-
 (cl-defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
   (when (and message (or (null (oref this oldest))
                          (string< (slack-ts message) (oref this oldest))))
