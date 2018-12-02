@@ -37,8 +37,6 @@
 (require 'slack-message-notification)
 (require 'slack-slash-commands)
 (require 'slack-action)
-;; (require 'slack-message-buffer)
-(declare-function slack-message-buffer-p "slack-message-buffer")
 (require 'slack-message-share-buffer)
 
 (defvar slack-completing-read-function)
@@ -250,7 +248,8 @@
                                   (not (slack-message-starred-p message))))
            (display-unstar-p () (slack-if-let* ((message (get-message)))
                                     (slack-message-starred-p message)))
-           (message-buffer-p () (slack-message-buffer-p this)))
+           (message-buffer-p () (eq (eieio-object-class this)
+                                    'slack-message-buffer)))
         (let ((builtins `(:app_name
                           "Slack"
                           :actions
