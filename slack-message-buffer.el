@@ -257,11 +257,6 @@
       (if thread (slack-thread-show-messages thread room team)
         (slack-thread-start)))))
 
-(cl-defmethod slack-buffer-display-edit-message-buffer ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (let ((buf (slack-create-edit-message-buffer room team ts)))
-      (slack-buffer-display buf))))
-
 (cl-defmethod slack-create-message-buffer ((room slack-room) team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer
                                              room

@@ -208,10 +208,14 @@
     (let ((buf (slack-create-message-share-buffer room team ts)))
       (slack-buffer-display buf))))
 
+(cl-defmethod slack-buffer-display-edit-message-buffer ((this slack-room-buffer) ts)
+  (with-slots (room team) this
+    (let ((buf (slack-create-edit-message-buffer room team ts)))
+      (slack-buffer-display buf))))
+
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 ;; TODO
 ;; remind me about this
-;; edit
 (cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
   (let ((display-follow nil))
     (with-slots (team room) this
@@ -232,6 +236,8 @@
            (handle-remove-reaction () (slack-buffer-remove-reaction-from-message
                                        this ts))
            (handle-share () (slack-buffer-share-message this ts))
+           (handle-edit () (slack-buffer-display-edit-message-buffer this
+                                                                     ts))
            (display-pin-p ()
                           (slack-if-let* ((message (get-message)))
                               (not (slack-message-pinned-to-room-p message room))))
@@ -264,6 +270,8 @@
                                   :handler ,#'handle-add-reaction)
                            (:name "Remove reaction from message"
                                   :handler ,#'handle-remove-reaction)
+                           (:name "Edit message"
+                                  :handler ,#'handle-edit)
                            (:name "Share message"
                                   :handler ,#'handle-share)
                            (:name "Copy link"
