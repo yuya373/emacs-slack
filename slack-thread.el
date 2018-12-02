@@ -38,6 +38,8 @@
 (defconst slack-subscriptions-thread-get-view-url "https://slack.com/api/subscriptions.thread.getView")
 ;; TODO max_ts: 1542880668.4351
 (defconst slack-subscriptions-thread-clear-all-url "https://slack.com/api/subscriptions.thread.clearAll")
+(defconst slack-subscriptions-thread-add-url "https://slack.com/api/subscriptions.thread.add")
+(defconst slack-subscriptions-thread-remove-url "https://slack.com/api/subscriptions.thread.remove")
 (defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
 
 (defcustom slack-thread-also-send-to-room 'ask
@@ -206,6 +208,40 @@ Any other non-nil value: send to the room."
         :type "POST"
         :params (list (cons "current_ts" current-ts))
         :success #'success)))))
+
+(defun slack-subscriptions-thread-add (room ts team &optional after-success)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-subscriptions-thread-add")
+                 (when (functionp after-success)
+                   (funcall after-success)))))
+    (slack-request
+     (slack-request-create
+      slack-subscriptions-thread-add-url
+      team
+      :type "POST"
+      :params (list (cons "thread_ts" ts)
+                    (cons "last_read" ts)
+                    (cons "channel" (oref room id)))
+      :success #'success))))
+
+(defun slack-subscriptions-thread-remove (room ts team &optional after-success)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-subscriptions-thread-remove")
+                 (when (functionp after-success)
+                   (funcall after-success)))))
+    (slack-request
+     (slack-request-create
+      slack-subscriptions-thread-remove-url
+      team
+      :type "POST"
+      :params (list (cons "thread_ts" ts)
+                    (cons "last_read" ts)
+                    (cons "channel" (oref room id)))
+      :success #'success))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
