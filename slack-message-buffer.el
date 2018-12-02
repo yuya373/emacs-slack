@@ -191,7 +191,7 @@
       (slack-reply-broadcast-message-p message)))
 
 (cl-defmethod slack-buffer-insert-messages ((this slack-message-buffer) messages
-                                         &optional filter-by-oldest)
+                                            &optional filter-by-oldest)
   (with-slots (room team latest oldest) this
     (let* ((latest-message (car (last messages)))
            (oldest-message (car messages)))
@@ -451,8 +451,8 @@
                 (eq prev-day current-day))))))
 
 (cl-defmethod slack-buffer-message-text ((this slack-message-buffer)
-                                      message
-                                      merge-message-p)
+                                         message
+                                         merge-message-p)
   (with-slots (team) this
     (let ((text (slack-message-to-string message team)))
       (or (and merge-message-p
@@ -462,7 +462,7 @@
           text))))
 
 (cl-defmethod slack-buffer-insert ((this slack-message-buffer) message
-                                &optional not-tracked-p prev-message)
+                                   &optional not-tracked-p prev-message)
   (let* ((lui-time-stamp-time (slack-message-time-stamp message))
          (ts (slack-ts message))
          (prev (or prev-message (slack-buffer-prev-message this message)))
@@ -561,9 +561,9 @@
         (slack-buffer-update-mark buffer))))
 
 (cl-defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
-                                                 _window
-                                                 _prev-point
-                                                 type)
+                                                    _window
+                                                    _prev-point
+                                                    type)
   (cond
    ((eq type'entered)
     (with-slots (team) this
@@ -688,7 +688,7 @@
       (slack-buffer-update-mark buffer :force t)))
 
 (cl-defmethod slack-thread-message-update-buffer ((message slack-message)
-                                               room team replace old-message)
+                                                  room team replace old-message)
   (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
       (progn
         (slack-room-update-buffer room team parent t)
