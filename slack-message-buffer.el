@@ -275,19 +275,6 @@
     (let ((buf (slack-create-message-share-buffer room team ts)))
       (slack-buffer-display buf))))
 
-(cl-defmethod slack-buffer-add-reaction-to-message
-  ((this slack-message-buffer) reaction ts)
-  (with-slots (room team) this
-    (slack-message-reaction-add reaction ts room team)))
-
-(cl-defmethod slack-buffer-remove-reaction-from-message
-  ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (let* ((message (slack-room-find-message room ts))
-           (reactions (slack-message-reactions message))
-           (reaction (slack-message-reaction-select reactions)))
-      (slack-message-reaction-remove reaction ts room team))))
-
 (cl-defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
   (when (and message (or (null (oref this oldest))
                          (string< (slack-ts message) (oref this oldest))))
@@ -766,12 +753,15 @@
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
                   (reaction (slack-message-reaction-input)))
-      (slack-message--add-reaction buf reaction)))
+      (slack-buffer-add-reaction-to-message buf
+                                            reaction
+                                            (slack-get-ts))))
 
 (defun slack-message-remove-reaction ()
   (interactive)
-  (slack-buffer-remove-reaction-from-message slack-current-buffer
-                                             (slack-get-ts)))
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-remove-reaction-from-message buf
+                                                 (slack-get-ts))))
 
 (defun slack-message-display-room ()
   (interactive)

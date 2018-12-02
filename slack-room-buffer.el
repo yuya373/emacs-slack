@@ -71,9 +71,6 @@
 (cl-defmethod slack-buffer-room ((this slack-room-buffer))
   (oref this room))
 
-(defun slack-message--add-reaction (buf reaction)
-  (slack-buffer-add-reaction-to-message buf reaction (slack-get-ts)))
-
 (cl-defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
   (let* ((reaction-users (oref reaction users))
          (reaction-name (oref reaction name))
@@ -85,7 +82,9 @@
                                        (slack-get-ts)
                                        room
                                        team)
-      (slack-message--add-reaction this reaction-name))))
+      (slack-buffer-add-reaction-to-message this
+                                            reaction-name
+                                            (slack-get-ts)))))
 
 (cl-defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
   (with-slots (team) this
@@ -192,10 +191,20 @@
                                               (slack-message-star-api-params message))
                                         team))))
 
+(cl-defmethod slack-buffer-add-reaction-to-message ((this slack-room-buffer) reaction ts)
+  (with-slots (room team) this
+    (slack-message-reaction-add reaction ts room team)))
+
+(cl-defmethod slack-buffer-remove-reaction-from-message ((this slack-room-buffer) ts)
+  (with-slots (room team) this
+    (let* ((message (slack-room-find-message room ts))
+           (reactions (slack-message-reactions message))
+           (reaction (slack-message-reaction-select reactions)))
+      (slack-message-reaction-remove reaction ts room team))))
+
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 ;; TODO
 ;; remind me about this
-;; add/remove reaction
 ;; share
 ;; edit
 (cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
@@ -212,6 +221,11 @@
            (handle-delete-message () (slack-buffer-delete-message this ts))
            (handle-star-message () (slack-buffer-add-star this ts))
            (handle-unstar-message () (slack-buffer-remove-star this ts))
+           (handle-add-reaction () (let ((reaction (slack-message-reaction-input)))
+                                     (slack-buffer-add-reaction-to-message
+                                      this reaction ts)))
+           (handle-remove-reaction () (slack-buffer-remove-reaction-from-message
+                                       this ts))
            (display-pin-p ()
                           (slack-if-let* ((message (get-message)))
                               (not (slack-message-pinned-to-room-p message room))))
@@ -240,6 +254,10 @@
                            (:name "Unstar message"
                                   :handler ,#'handle-unstar-message
                                   :display-p ,#'display-unstar-p)
+                           (:name "Add reaction to message"
+                                  :handler ,#'handle-add-reaction)
+                           (:name "Remove reaction from message"
+                                  :handler ,#'handle-remove-reaction)
                            (:name "Copy link"
                                   :handler ,#'handle-copy-link)
                            (:name "Mark unread"
