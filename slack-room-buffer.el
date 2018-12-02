@@ -284,10 +284,14 @@
                                   :handler ,#'handle-mark-unread)
                            (:name "Remind me about this"
                                   :handler ,#'handle-remind)
-                           (:name "Pin to this conversation..."
+                           (:name ,(format "Pin to %s%s"
+                                           (if (slack-im-p room) "@" "#")
+                                           (slack-room-name room team))
                                   :display-p ,#'display-pin-p
                                   :handler ,#'handle-pin)
-                           (:name "Un-pin from this conversation"
+                           (:name ,(format "Un-pin from %s%s"
+                                           (if (slack-im-p room) "@" "#")
+                                           (slack-room-name room team))
                                   :display-p ,#'display-un-pin-p
                                   :handler ,#'handle-un-pin)
                            (:name "Delete message"
