@@ -38,6 +38,7 @@
 (require 'slack-slash-commands)
 (require 'slack-action)
 (require 'slack-message-share-buffer)
+(require 'slack-reminder)
 
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)
@@ -212,8 +213,7 @@
       (slack-buffer-display buf))))
 
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
-;; TODO
-;; remind me about this
+
 (cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
   (let ((display-follow nil))
     (with-slots (team room) this
@@ -236,6 +236,10 @@
            (handle-share () (slack-buffer-share-message this ts))
            (handle-edit () (slack-buffer-display-edit-message-buffer this
                                                                      ts))
+           (handle-remind () (slack-if-let* ((message (get-message)))
+                                 (slack-reminder-add-from-message room
+                                                                  message
+                                                                  team)))
            (display-pin-p ()
                           (slack-if-let* ((message (get-message)))
                               (not (slack-message-pinned-to-room-p message room))))
@@ -278,6 +282,8 @@
                            (:name "Mark unread"
                                   :display-p ,#'message-buffer-p
                                   :handler ,#'handle-mark-unread)
+                           (:name "Remind me about this"
+                                  :handler ,#'handle-remind)
                            (:name "Pin to this conversation..."
                                   :display-p ,#'display-pin-p
                                   :handler ,#'handle-pin)
