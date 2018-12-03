@@ -106,11 +106,12 @@
 (cl-defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
   (with-slots (room team) this
     (when (slack-room-member-p room)
+      (oset room last-read ts)
+      (slack-buffer-update-marker-overlay this)
+
       (cl-labels ((on-update-mark (&key data &allow-other-keys)
                                   (slack-request-handle-error
                                    (data "slack-buffer-update-mark-request")
-                                   (oset room last-read ts)
-                                   (slack-buffer-update-marker-overlay this)
                                    (when (functionp after-success)
                                      (funcall after-success)))))
         (with-slots (id) room
