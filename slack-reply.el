@@ -45,9 +45,11 @@
                 ((room (slack-room-find (oref sent-msg channel) team))
                  (buffer (slack-buffer-find 'slack-message-buffer
                                             room team))
-                 (ts (slack-ts sent-msg)))
-                (when (string< (slack-buffer-last-read buffer) ts)
-                  (slack-buffer-update-mark-request buffer ts))))))))
+                 (ts (slack-ts sent-msg))
+                 (last-read (slack-buffer-last-read buffer)))
+                (when (or (string< last-read ts)
+                          (string= last-read ts))
+                  (slack-buffer-update-marker-overlay buffer))))))))
 
 (cl-defmethod slack-message-find-sent ((m slack-reply) team)
   (with-slots (reply-to) m
