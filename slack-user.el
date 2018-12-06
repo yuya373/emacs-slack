@@ -138,21 +138,6 @@
       :params (list (cons "bot" bot_id))
       :success #'on-success))))
 
-(defun slack-bot-list-update (&optional team)
-  (interactive)
-  (let ((team (or team (slack-team-select))))
-    (cl-labels
-        ((on-success
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-bot-list-update")
-           (oset team bots (append (plist-get data :bots) nil)))))
-      (slack-request
-       (slack-request-create
-        slack-bot-list-url
-        team
-        :success #'on-success)))))
-
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
                     :weight bold
@@ -362,6 +347,14 @@
   (with-slots (users) team
     (cl-pushnew user users :test #'slack-user-equal-p)))
 
+(defun slack-bot-pushnew (bot team)
+  (with-slots (bots) team
+    (cl-pushnew bot bots
+                :test #'(lambda (a b)
+                          (string= (plist-get a :id)
+                                   (plist-get b :id))))))
+
+(defalias 'slack-bot-list-update 'slack-user-list-update)
 (defun slack-user-list-update (&optional team)
   (interactive)
   (let ((team (or team (slack-team-select))))
@@ -376,7 +369,9 @@
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
                                                :next_cursor))))
-             (mapc #'(lambda (u) (slack-user-pushnew u team))
+             (mapc #'(lambda (u) (if (eq t (plist-get u :is_bot))
+                                     (slack-bot-pushnew u team)
+                                   (slack-user-pushnew u team)))
                    members)
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)

@@ -225,7 +225,6 @@
                        (slack-group-list-update team)
                        (slack-im-list-update team)
                        (slack-user-list-update team)
-                       (slack-bot-list-update team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))

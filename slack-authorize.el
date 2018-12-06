@@ -72,7 +72,6 @@
                                         (slack-group-list-update team)
                                         (slack-im-list-update team)
                                         (slack-user-list-update team)
-                                        (slack-bot-list-update team)
                                         (slack-download-emoji team #'on-emoji-download)
                                         (slack-command-list-update team)
                                         (slack-usergroup-list-update team)
