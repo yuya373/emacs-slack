@@ -181,40 +181,41 @@ you can change current-team with `slack-change-current-team'"
    (let ((name (read-from-minibuffer "Team Name: "))
          (client-id (read-from-minibuffer "Client Id: "))
          (client-secret (read-from-minibuffer "Client Secret: "))
-         (token (read-from-minibuffer "Token: ")))
+         (token nil))
+     (unless (and (and client-id (< 0 (length client-id)))
+                  (and client-secret (< 0 (length client-secret))))
+       (setq token (read-from-minibuffer "Token: ")))
      (list :name name :client-id client-id :client-secret client-secret
            :token token)))
-  (cl-labels ((same-client-id
-               (client-id)
-               (cl-find-if #'(lambda (team)
-                               (string= client-id (oref team client-id)))
-                           slack-teams))
-              (missing (plist)
-                       (cl-remove-if
-                        #'null
-                        (mapcar #'(lambda (key)
-                                    (unless (plist-member plist key)
-                                      key))
-                                '(:name :client-id :client-secret)))))
-    (let ((missing (missing plist)))
-      (if missing
-          (error "Missing Keyword: %s" missing)))
-    (let ((team (slack-create-team plist)))
-      (let ((same-team (cl-find-if
-                        #'(lambda (o) (slack-team-equalp team o))
-                        slack-teams)))
-        (if same-team
-            (progn
-              (slack-team-disconnect same-team)
-              (slack-team-connect team))))
+  (cl-labels ((has-client-id-and-client-secret-p
+               (plist)
+               (let ((id (plist-get plist :client-id))
+                     (secret (plist-get plist :client-secret)))
+                 (and id secret (< 0 (length id)) (< 0 (length secret)))))
+              (has-token-p (plist)
+                           (let ((token (plist-get plist :token)))
+                             (and token (< 0 (length token)))))
+              (register (team)
+                        (let ((same-team (cl-find-if
+                                          #'(lambda (o) (slack-team-equalp team o))
+                                          slack-teams)))
+                          (if same-team
+                              (progn
+                                (slack-team-disconnect same-team)
+                                (slack-team-connect team))))
+                        (setq slack-teams
+                              (cons team
+                                    (cl-remove-if #'(lambda (other)
+                                                      (slack-team-equalp team other))
+                                                  slack-teams)))
+                        (if (plist-get plist :default)
+                            (setq slack-current-team team))))
 
-      (setq slack-teams
-            (cons team
-                  (cl-remove-if #'(lambda (other)
-                                    (slack-team-equalp team other))
-                                slack-teams)))
-      (if (plist-get plist :default)
-          (setq slack-current-team team)))))
+    (if (or (has-client-id-and-client-secret-p plist)
+            (has-token-p plist))
+        (let ((team (slack-create-team plist)))
+          (register team))
+      (error ":client-id and :client-secret or :token is required"))))
 
 (defun slack-team-find-by-name (name)
   (if name
