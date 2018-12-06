@@ -35,7 +35,6 @@
 (defvar slack-completing-read-function)
 
 (defconst slack-channel-history-url "https://slack.com/api/channels.history")
-(defconst slack-channel-list-url "https://slack.com/api/channels.list")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")

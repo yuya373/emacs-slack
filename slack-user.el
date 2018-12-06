@@ -38,7 +38,6 @@
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
-(defconst slack-bot-list-url "https://slack.com/api/bots.list")
 (defvar slack-current-user-id nil)
 
 (defun slack-user--find (id team)

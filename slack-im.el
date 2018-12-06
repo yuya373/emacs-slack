@@ -37,7 +37,6 @@
 
 (defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
-(defconst slack-im-list-url "https://slack.com/api/im.list")
 (defconst slack-im-close-url "https://slack.com/api/im.close")
 (defconst slack-im-open-url "https://slack.com/api/im.open")
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")

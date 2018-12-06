@@ -32,7 +32,6 @@
 (defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
-(defconst slack-group-list-url "https://slack.com/api/groups.list")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 (defconst slack-create-group-url "https://slack.com/api/groups.create")
 (defconst slack-group-rename-url "https://slack.com/api/groups.rename")
