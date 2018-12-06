@@ -73,27 +73,19 @@
 (defun slack-channel-list-update (&optional team after-success)
   (interactive)
   (let ((team (or team (slack-team-select))))
-    (cl-labels ((on-list-update
-                 (&key data &allow-other-keys)
-                 (slack-request-handle-error
-                  (data "slack-channel-list-update")
+    (cl-labels
+        ((success (channels _groups _ims)
                   (slack-merge-list (oref team channels)
-                                    (mapcar #'(lambda (d)
-                                                (slack-room-create d
-                                                                   team
-                                                                   'slack-channel))
-                                            (plist-get data :channels)))
-
-                  (if after-success
-                      (funcall after-success team))
+                                    channels)
+                  (when (functionp after-success)
+                    (funcall after-success team))
                   (mapc #'(lambda (room)
                             (slack-request-worker-push
                              (slack-room-create-info-request room team)))
                         (oref team channels))
-                  (slack-log "Slack Channel List Updated" team :level 'info))))
-      (slack-room-list-update slack-channel-list-url
-                              #'on-list-update
-                              team))))
+                  (slack-log "Slack Channel List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success (list "public_channel")))))
 
 (cl-defmethod slack-room-update-mark-url ((_room slack-channel))
   slack-channel-update-mark-url)
