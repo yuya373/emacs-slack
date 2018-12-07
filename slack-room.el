@@ -374,19 +374,19 @@
 (defun slack-room-list-update (&optional team after-success)
   (interactive)
   (cl-labels
-      ((request-info (room)
-                     (slack-request-worker-push
-                      (slack-conversations-info-request room team)))
-       (success (channels groups ims)
+      ((success (channels groups ims)
                 (slack-merge-list (oref team channels)
                                   channels)
                 (slack-merge-list (oref team groups)
                                   groups)
                 (slack-merge-list (oref team ims)
                                   ims)
-                (mapc #'request-info (oref team channels))
-                (mapc #'request-info (oref team groups))
-                (mapc #'request-info (oref team ims))
+                (cl-loop for room in (append (oref team channels)
+                                             (oref team groups)
+                                             (oref team ims))
+                         do (slack-request-worker-push
+                             (slack-conversations-info-request
+                              room team)))
                 (slack-users-counts team)
                 (when (functionp after-success)
                   (funcall after-success team))
