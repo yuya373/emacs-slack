@@ -215,6 +215,9 @@
       :success #'on-pins-add
       ))))
 
+(cl-defmethod slack-ts ((ts string))
+  ts)
+
 (cl-defmethod slack-ts ((this slack-message))
   (oref this ts))
 

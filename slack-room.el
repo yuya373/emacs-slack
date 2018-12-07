@@ -49,7 +49,7 @@
   ((name :initarg :name :type (or null string) :initform nil)
    (id :initarg :id)
    (created :initarg :created)
-   (latest :initarg :latest)
+   (latest :initarg :latest :type (or null string))
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
@@ -87,7 +87,6 @@
                 p))
     (let* ((attributes (slack-collect-slots class (prepare payload)))
            (room (apply #'make-instance class attributes)))
-      (oset room latest (slack-message-create (plist-get payload :latest) team :room room))
       room)))
 
 (cl-defmethod slack-room-subscribedp ((_room slack-room) _team)
@@ -203,7 +202,7 @@
     (with-slots (latest) room
       (if (or (null latest)
               (string< (slack-ts latest) (slack-ts message)))
-          (setq latest message)))))
+          (setq latest (slack-ts message))))))
 
 (cl-defmethod slack-room-push-message ((room slack-room) message)
   (with-slots (messages) room
