@@ -36,6 +36,7 @@
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
+(defconst slack-users-count-url "https://slack.com/api/users.count")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
@@ -388,6 +389,14 @@
                                        (cons "cursor" next-cursor)))
                     :success #'on-list-update))))
       (request))))
+
+(defun slack-users-count (team)
+  (let ((mpim-aware "true")
+        (only-relevant-ims "true")
+        (simple-unreads "true")
+        (include-threads "false")
+        (mpdm-dm-users "false")))
+  )
 
 (provide 'slack-user)
 ;;; slack-user.el ends here
