@@ -68,9 +68,7 @@
                                                                              #'slack-team-watch-emoji-download-complete
                                                                              team paths)))
                                (on-open ()
-                                        (slack-channel-list-update team)
-                                        (slack-group-list-update team)
-                                        (slack-im-list-update team)
+                                        (slack-room-list-update team)
                                         (slack-user-list-update team)
                                         (slack-download-emoji team #'on-emoji-download)
                                         (slack-command-list-update team)

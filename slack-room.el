@@ -395,5 +395,31 @@
          ((string-prefix-p "Q" id) (cl-find-if #'find-room
                                                (oref team search-results)))))))
 
+(defun slack-room-list-update (&optional team after-success)
+  (interactive)
+  (cl-labels
+      ((request-info (room)
+                     (slack-request-worker-push
+                      (slack-room-create-info-request room team)))
+       (success (channels groups ims)
+                (slack-merge-list (oref team channels)
+                                  channels)
+                (slack-merge-list (oref team groups)
+                                  groups)
+                (slack-merge-list (oref team ims)
+                                  ims)
+                (mapc #'request-info (oref team channels))
+                (mapc #'request-info (oref team groups))
+                (mapc #'request-info (oref team ims))
+                (when (functionp after-success)
+                  (funcall after-success team))
+                (slack-log "Slack Channel List Updated"
+                           team :level 'info)
+                (slack-log "Slack Group List Updated"
+                           team :level 'info)
+                (slack-log "Slack Im List Updated"
+                           team :level 'info)))
+    (slack-conversations-list team #'success)))
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
