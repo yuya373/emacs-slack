@@ -41,7 +41,6 @@
 (defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
 (defconst slack-mpim-close-url "https://slack.com/api/mpim.close")
 (defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
-(defconst slack-group-info-url "https://slack.com/api/groups.info")
 
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
@@ -91,7 +90,7 @@
                     (funcall after-success team))
                   (mapc #'(lambda (room)
                             (slack-request-worker-push
-                             (slack-room-create-info-request room team)))
+                             (slack-conversations-info-request room team)))
                         (oref team groups))
                   (slack-log "Slack Group List Updated"
                              team :level 'info)))
@@ -251,15 +250,6 @@
 
 (cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
-
-(cl-defmethod slack-room-get-info-url ((_room slack-group))
-  slack-group-info-url)
-
-(cl-defmethod slack-room-update-info ((room slack-group) data team)
-  (let ((new-room (slack-room-create (plist-get data :group)
-                                     team
-                                     'slack-group)))
-    (slack-merge room new-room)))
 
 (cl-defmethod slack-room-history-url ((_room slack-group))
   slack-group-history-url)

@@ -42,10 +42,8 @@
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
 (defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
 (defconst slack-channel-join-url "https://slack.com/api/channels.join")
-(defconst slack-channel-info-url "https://slack.com/api/channels.info")
 (defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
 (defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
-(defconst slack-channel-info-url "https://slack.com/api/channels.info")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member :initform nil)
@@ -80,7 +78,7 @@
                     (funcall after-success team))
                   (mapc #'(lambda (room)
                             (slack-request-worker-push
-                             (slack-room-create-info-request room team)))
+                             (slack-conversations-info-request room team)))
                         (oref team channels))
                   (slack-log "Slack Channel List Updated"
                              team :level 'info)))
@@ -208,16 +206,6 @@
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
-
-(cl-defmethod slack-room-get-info-url ((_room slack-channel))
-  slack-channel-info-url)
-
-(cl-defmethod slack-room-update-info ((room slack-channel) data team)
-  (let ((new-room (slack-room-create (plist-get data :channel)
-                                     team
-                                     'slack-channel)))
-
-    (slack-merge room new-room)))
 
 (cl-defmethod slack-room-history-url ((_room slack-channel))
   slack-channel-history-url)

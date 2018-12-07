@@ -60,8 +60,6 @@
 (cl-defgeneric slack-room-name (room team))
 (cl-defgeneric slack-room-history (room team &optional oldest after-success sync))
 (cl-defgeneric slack-room-update-mark-url (room))
-(cl-defgeneric slack-room-update-info (room data team))
-(cl-defgeneric slack-room-get-info-url (room))
 (cl-defgeneric slack-room-history-url (room))
 
 (cl-defmethod slack-equalp ((this slack-room) other)
@@ -80,6 +78,10 @@
     (oset this last-read (oref other last-read))))
 
 (defun slack-room-create (payload team class)
+  (unless (stringp (plist-get payload :latest))
+    (setq payload (plist-put payload :latest
+                             (plist-get (plist-get payload :latest)
+                                        :ts))))
   (let* ((attributes (slack-collect-slots class payload)))
     (apply #'make-instance class attributes)))
 
@@ -119,13 +121,6 @@
   (let* ((alist (slack-room-names
                  rooms team #'(lambda (rs) (cl-remove-if #'slack-room-hidden-p rs)))))
     (slack-select-from-list (alist "Select Channel: "))))
-
-(cl-defun slack-room-list-update (url success team)
-  (slack-request
-   (slack-request-create
-    url
-    team
-    :success success)))
 
 (defun slack-room-find-message (room ts)
   (cl-find-if #'(lambda (m) (string= ts (slack-ts m)))
@@ -316,28 +311,9 @@
 (cl-defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
 
-(cl-defmethod slack-room-info-request-params ((room slack-room))
-  (list (cons "channel" (oref room id))))
-
-(cl-defmethod slack-room-create-info-request ((room slack-room) team)
-  (cl-labels
-      ((on-success
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-room-info-request"
-               #'(lambda (e)
-                   (if (not (string= e "user_disabled"))
-                       (message "Failed to request slack-room-info-request: %s" e))))
-         (slack-room-update-info room data team))))
-    (slack-request-create
-     (slack-room-get-info-url room)
-     team
-     :params (slack-room-info-request-params room)
-     :success #'on-success)))
-
 (cl-defmethod slack-room-info-request ((room slack-room) team)
   (slack-request
-   (slack-room-create-info-request room team)))
+   (slack-conversations-info-request room team)))
 
 (cl-defmethod slack-room-get-members ((room slack-room))
   (oref room members))
@@ -400,7 +376,7 @@
   (cl-labels
       ((request-info (room)
                      (slack-request-worker-push
-                      (slack-room-create-info-request room team)))
+                      (slack-conversations-info-request room team)))
        (success (channels groups ims)
                 (slack-merge-list (oref team channels)
                                   channels)

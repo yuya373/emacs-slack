@@ -110,8 +110,7 @@
                   (funcall after-success team))
                 (mapc #'(lambda (room)
                           (slack-request-worker-push
-                           (slack-room-create-info-request room
-                                                           team)))
+                           (slack-conversations-info-request room team)))
                       (oref team ims))
                 (slack-log "Slack Im List Updated"
                            team :level 'info)))
@@ -179,20 +178,6 @@
           (or
            (slack-im-user-dnd-status room team)
            (slack-im-user-presence room team))))
-
-(cl-defmethod slack-room-get-info-url ((_room slack-im))
-  slack-im-open-url)
-
-(cl-defmethod slack-room-update-info ((room slack-im) data team)
-  (let ((new-room (slack-room-create (plist-get data :channel)
-                                     team
-                                     'slack-im)))
-
-    (slack-merge room new-room)))
-
-(cl-defmethod slack-room-info-request-params ((room slack-im))
-  (list (cons "user" (oref room user))
-        (cons "return_im" "true")))
 
 (cl-defmethod slack-room-get-members ((room slack-im))
   (list (oref room user)))
