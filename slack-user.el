@@ -36,7 +36,7 @@
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
-(defconst slack-users-count-url "https://slack.com/api/users.count")
+(defconst slack-users-counts-url "https://slack.com/api/users.counts")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
@@ -385,13 +385,39 @@
                     :success #'on-list-update))))
       (request))))
 
-(defun slack-users-count (team)
+(defun slack-users-counts (team)
   (let ((mpim-aware "true")
-        (only-relevant-ims "true")
+        (only-relevant-ims "false")
         (simple-unreads "true")
         (include-threads "false")
-        (mpdm-dm-users "false")))
-  )
+        (mpdm-dm-users "false"))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-users-count")
+                   (let ((channels (plist-get data :channels))
+                         (groups (plist-get data :groups))
+                         (ims (plist-get data :ims))
+                         (mpims (plist-get data :mpims)))
+                     (cl-loop for channel in (append channels groups ims mpims)
+                              do (let ((room (slack-room-find (plist-get channel :id)
+                                                              team)))
+                                   (oset room
+                                         last-read
+                                         (plist-get channel :last_read))
+                                   (oset room
+                                         latest
+                                         (plist-get channel :latest))))))))
+      (slack-request
+       (slack-request-create
+        slack-users-counts-url
+        team
+        :params (list (cons "mpim_aware" mpim-aware)
+                      (cons "only_relevant_ims" only-relevant-ims)
+                      (cons "simple_unreads" simple-unreads)
+                      (cons "include_threads" include-threads)
+                      (cons "mpdm_dm_users" mpdm-dm-users))
+        :success #'success)))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

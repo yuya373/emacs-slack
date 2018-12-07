@@ -146,19 +146,13 @@
 (cl-defmethod slack-room-label-prefix ((_room slack-room) _team)
   "  ")
 
-(cl-defmethod slack-room-unread-count-str ((room slack-room))
-  (with-slots (unread-count-display) room
-    (if (< 0 unread-count-display)
-        (concat " ("
-                (number-to-string unread-count-display)
-                ")")
-      "")))
-
 (cl-defmethod slack-room-label ((room slack-room) team)
-  (format "%s%s%s"
-          (slack-room-label-prefix room team)
-          (slack-room-display-name room team)
-          (slack-room-unread-count-str room)))
+  (let ((str (format "%s%s"
+                     (slack-room-label-prefix room team)
+                     (slack-room-display-name room team))))
+    (if (slack-room-has-unread-p room)
+        (propertize str 'face '(:weight bold))
+      str)))
 
 (cl-defmethod slack-room-name ((room slack-room) _team)
   (oref room name))
@@ -371,6 +365,11 @@
          ((string-prefix-p "Q" id) (cl-find-if #'find-room
                                                (oref team search-results)))))))
 
+(cl-defmethod slack-room-has-unread-p ((this slack-room))
+  (with-slots (latest last-read) this
+    (and latest last-read
+         (string< last-read (slack-ts latest)))))
+
 (defun slack-room-list-update (&optional team after-success)
   (interactive)
   (cl-labels
@@ -387,6 +386,7 @@
                 (mapc #'request-info (oref team channels))
                 (mapc #'request-info (oref team groups))
                 (mapc #'request-info (oref team ims))
+                (slack-users-counts team)
                 (when (functionp after-success)
                   (funcall after-success team))
                 (slack-log "Slack Channel List Updated"
