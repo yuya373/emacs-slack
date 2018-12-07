@@ -80,14 +80,8 @@
     (oset this last-read (oref other last-read))))
 
 (defun slack-room-create (payload team class)
-  (cl-labels
-      ((prepare (p)
-                (plist-put p :members
-                           (append (plist-get p :members) nil))
-                p))
-    (let* ((attributes (slack-collect-slots class (prepare payload)))
-           (room (apply #'make-instance class attributes)))
-      room)))
+  (let* ((attributes (slack-collect-slots class payload)))
+    (apply #'make-instance class attributes)))
 
 (cl-defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
