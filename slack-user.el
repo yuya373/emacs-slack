@@ -343,17 +343,6 @@
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
 
-(defun slack-user-pushnew (user team)
-  (with-slots (users) team
-    (cl-pushnew user users :test #'slack-user-equal-p)))
-
-(defun slack-bot-pushnew (bot team)
-  (with-slots (bots) team
-    (cl-pushnew bot bots
-                :test #'(lambda (a b)
-                          (string= (plist-get a :id)
-                                   (plist-get b :id))))))
-
 (defalias 'slack-bot-list-update 'slack-user-list-update)
 (defun slack-user-list-update (&optional team)
   (interactive)
@@ -368,11 +357,17 @@
                                                 :response_metadata))
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
-                                               :next_cursor))))
-             (mapc #'(lambda (u) (if (eq t (plist-get u :is_bot))
-                                     (slack-bot-pushnew u team)
-                                   (slack-user-pushnew u team)))
-                   members)
+                                               :next_cursor)))
+                  (user-ids (mapcar #'(lambda (e) (plist-get e :id))
+                                    members)))
+             (oset team users
+                   (append
+                    (cl-remove-if #'(lambda (e)
+                                      (cl-find e members
+                                               :test #'slack-user-equal-p))
+                                  (oref team users))
+                    members))
+
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)
                (progn
