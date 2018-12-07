@@ -349,7 +349,7 @@
                                                     (eieio-object-class-name room))))
                    (slack-merge room new-room)))))
     (slack-request-create
-     slack-conversations-list-url
+     slack-conversations-info-url
      team
      :params (list (cons "channel" (oref room id)))
      :success #'success)))
