@@ -75,13 +75,29 @@
       (funcall slack-message-custom-notifier message room team)
     (slack-message-notify-alert message room team)))
 
+(defun slack-message-mentioned-p (message team)
+  (and (not (slack-message-minep message team))
+       (let ((body (or (slack-message-body message team) "")))
+         (or (string-match (format "@%s" (plist-get (oref team self) :name))
+                           body)
+             (cl-find-if #'(lambda (usergroup)
+                             (and (slack-usergroup-include-user-p
+                                   usergroup
+                                   (plist-get (oref team self) :id))
+                                  (string-match
+                                   (concat "@" (oref usergroup handle))
+                                   body)))
+                         (oref team usergroups))))))
+
+(defun slack-message-notify-p (message room team)
+  (and (not (slack-message-minep message team))
+       (or (slack-im-p room)
+           (and (slack-group-p room) (slack-mpim-p room))
+           (slack-room-subscribedp room team)
+           (slack-message-mentioned-p message team))))
+
 (defun slack-message-notify-alert (message room team)
-  (if (and (not (slack-message-minep message team))
-           (or (slack-im-p room)
-               (and (slack-group-p room) (slack-mpim-p room))
-               (slack-room-subscribedp room team)
-               (string-match (format "@%s" (plist-get (oref team self) :name))
-                             (or (slack-message-body message team) ""))))
+  (if (slack-message-notify-p message room team)
       (let ((team-name (oref team name))
             (room-name (slack-room-name room team))
             (text (with-temp-buffer
