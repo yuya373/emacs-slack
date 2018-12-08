@@ -702,6 +702,11 @@
                           (not (slack-room-find-message room ts)))))
 
       (progn
+        (when (and (not replace)
+                   (slack-message-mentioned-p message team))
+          (cl-incf (oref room mention-count-display))
+          (cl-incf (oref room mention-count)))
+
         (slack-room-push-message room message)
         (slack-room-update-latest room message)
 

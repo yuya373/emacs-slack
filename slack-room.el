@@ -55,7 +55,9 @@
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
    (last-read :initarg :last_read :type string :initform "0")
-   (members :initarg :members :type list :initform '())))
+   (members :initarg :members :type list :initform '())
+   (mention-count :initarg :mention_count :type integer :initform 0)
+   (mention-count-display :initarg :mention_count_display :type integer :initform 0)))
 
 
 (cl-defgeneric slack-room-name (room team))
@@ -148,10 +150,17 @@
 (cl-defmethod slack-room-label-prefix ((_room slack-room) _team)
   "  ")
 
+(cl-defmethod slack-room-mention-count-display ((room slack-room))
+  (with-slots (mention-count-display) room
+    (if (< 0 mention-count-display)
+        (format "(%s)" mention-count-display)
+      "")))
+
 (cl-defmethod slack-room-label ((room slack-room) team)
-  (let ((str (format "%s%s"
+  (let ((str (format "%s%s%s"
                      (slack-room-label-prefix room team)
-                     (slack-room-display-name room team))))
+                     (slack-room-display-name room team)
+                     (slack-room-mention-count-display room))))
     (if (slack-room-has-unread-p room)
         (propertize str 'face '(:weight bold))
       str)))
