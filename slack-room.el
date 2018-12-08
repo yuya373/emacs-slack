@@ -78,7 +78,7 @@
   (unless (string= "0" (oref other last-read))
     (oset this last-read (oref other last-read))))
 
-(defun slack-room-create (payload team class)
+(defun slack-room-create (payload class)
   (unless (stringp (plist-get payload :latest))
     (setq payload (plist-put payload :latest
                              (plist-get (plist-get payload :latest)

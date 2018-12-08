@@ -309,16 +309,13 @@
            (cl-loop for c in (plist-get data :channels)
                     do (cond
                         ((eq t (plist-get c :is_channel))
-                         (push (slack-room-create c team
-                                                  'slack-channel)
+                         (push (slack-room-create c 'slack-channel)
                                channels))
                         ((eq t (plist-get c :is_im))
-                         (push (slack-room-create c team
-                                                  'slack-im)
+                         (push (slack-room-create c 'slack-im)
                                ims))
                         ((eq t (plist-get c :is_group))
-                         (push (slack-room-create c team
-                                                  'slack-group)
+                         (push (slack-room-create c 'slack-group)
                                groups))))
            (slack-if-let*
                ((meta (plist-get data :response_metadata))
@@ -344,9 +341,9 @@
       ((success (&key data &allow-other-keys)
                 (slack-request-handle-error
                  (data "slack-conversations-info")
-                 (let ((new-room (slack-room-create (plist-get data :channel)
-                                                    team
-                                                    (eieio-object-class-name room))))
+                 (let ((new-room (slack-room-create
+                                  (plist-get data :channel)
+                                  (eieio-object-class-name room))))
                    (slack-merge room new-room)))))
     (slack-request-create
      slack-conversations-info-url

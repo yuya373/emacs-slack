@@ -485,7 +485,7 @@ TEAM is one of `slack-teams'"
           (let ((im (slack-room-create
                      (list :id (plist-get payload :channel)
                            :user (plist-get payload :user))
-                     team 'slack-im)))
+                     'slack-im)))
             (setq ims (cons im ims))
             (notify im)))))))
 
@@ -635,7 +635,7 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-channel-created (payload team)
   (let ((channel (slack-room-create (plist-get payload :channel)
-                                    team 'slack-channel)))
+                                    'slack-channel)))
     (push channel (oref team channels))
     (slack-room-info-request channel team)
     (slack-log (format "Created channel %s"
@@ -679,8 +679,11 @@ TEAM is one of `slack-teams'"
                        old-name
                        new-name)
                team :level 'info)))
+
 (defun slack-ws-handle-group-joined (payload team)
-  (let ((group (slack-room-create (plist-get payload :channel) team 'slack-group)))
+  (let ((group (slack-room-create
+                (plist-get payload :channel)
+                'slack-group)))
     (push group (oref team groups))
     (slack-room-info-request group team)
     (slack-log (format "Joined group %s"
