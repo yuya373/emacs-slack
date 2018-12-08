@@ -30,6 +30,7 @@
 (require 'slack-buffer)
 (require 'slack-util)
 (require 'slack-request)
+(require 'slack-conversations)
 
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)

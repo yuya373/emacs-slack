@@ -30,6 +30,7 @@
 (require 'slack-buffer)
 (require 'slack-user)
 (require 'slack-request)
+(require 'slack-conversations)
 
 (defvar slack-buffer-function)
 (defvar slack-display-team-name)

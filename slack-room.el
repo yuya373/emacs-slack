@@ -44,6 +44,7 @@
 (defvar slack-current-buffer)
 (defvar slack-buffer-create-on-notify)
 (defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
+(defconst slack-users-counts-url "https://slack.com/api/users.counts")
 
 (defclass slack-room ()
   ((name :initarg :name :type (or null string) :initform nil)
@@ -366,6 +367,40 @@
   (with-slots (latest last-read) this
     (and latest last-read
          (string< last-read (slack-ts latest)))))
+
+(defun slack-users-counts (team)
+  (let ((mpim-aware "true")
+        (only-relevant-ims "false")
+        (simple-unreads "true")
+        (include-threads "false")
+        (mpdm-dm-users "false"))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-users-count")
+                   (let ((channels (plist-get data :channels))
+                         (groups (plist-get data :groups))
+                         (ims (plist-get data :ims))
+                         (mpims (plist-get data :mpims)))
+                     (cl-loop for channel in (append channels groups ims mpims)
+                              do (let ((room (slack-room-find (plist-get channel :id)
+                                                              team)))
+                                   (oset room
+                                         last-read
+                                         (plist-get channel :last_read))
+                                   (oset room
+                                         latest
+                                         (plist-get channel :latest))))))))
+      (slack-request
+       (slack-request-create
+        slack-users-counts-url
+        team
+        :params (list (cons "mpim_aware" mpim-aware)
+                      (cons "only_relevant_ims" only-relevant-ims)
+                      (cons "simple_unreads" simple-unreads)
+                      (cons "include_threads" include-threads)
+                      (cons "mpdm_dm_users" mpdm-dm-users))
+        :success #'success)))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

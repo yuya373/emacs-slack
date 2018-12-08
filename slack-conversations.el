@@ -26,7 +26,6 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
-(require 'slack-channel)
 
 (defvar slack-completing-read-function)
 
@@ -146,7 +145,8 @@
 (defun slack-conversations-join (room team &optional on-success)
   (cl-labels
       ((success (data)
-                (when (slack-channel-p room)
+                (when (eq 'slack-channel
+                          (eieio-object-class-name room))
                   (oset room is-member t))
                 (when (functionp on-success)
                   (funcall on-success data))))
