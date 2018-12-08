@@ -357,9 +357,7 @@
                                                 :response_metadata))
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
-                                               :next_cursor)))
-                  (user-ids (mapcar #'(lambda (e) (plist-get e :id))
-                                    members)))
+                                               :next_cursor))))
              (oset team users
                    (append
                     (cl-remove-if #'(lambda (e)
