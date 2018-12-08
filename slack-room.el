@@ -306,10 +306,6 @@
 (cl-defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
 
-(cl-defmethod slack-room-info-request ((room slack-room) team)
-  (slack-request
-   (slack-conversations-info-request room team)))
-
 (cl-defmethod slack-room-get-members ((room slack-room))
   (oref room members))
 
@@ -370,33 +366,6 @@
   (with-slots (latest last-read) this
     (and latest last-read
          (string< last-read (slack-ts latest)))))
-
-(defun slack-room-list-update (&optional team after-success)
-  (interactive)
-  (cl-labels
-      ((success (channels groups ims)
-                (slack-merge-list (oref team channels)
-                                  channels)
-                (slack-merge-list (oref team groups)
-                                  groups)
-                (slack-merge-list (oref team ims)
-                                  ims)
-                (cl-loop for room in (append (oref team channels)
-                                             (oref team groups)
-                                             (oref team ims))
-                         do (slack-request-worker-push
-                             (slack-conversations-info-request
-                              room team)))
-                (slack-users-counts team)
-                (when (functionp after-success)
-                  (funcall after-success team))
-                (slack-log "Slack Channel List Updated"
-                           team :level 'info)
-                (slack-log "Slack Group List Updated"
-                           team :level 'info)
-                (slack-log "Slack Im List Updated"
-                           team :level 'info)))
-    (slack-conversations-list team #'success)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

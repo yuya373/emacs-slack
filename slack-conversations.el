@@ -336,6 +336,39 @@
                     :success #'on-success))))
       (request))))
 
+(defalias 'slack-room-list-update 'slack-conversations-list-update)
+(defun slack-conversations-list-update (&optional team after-success)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((success (channels groups ims)
+                  (slack-merge-list (oref team channels)
+                                    channels)
+                  (slack-merge-list (oref team groups)
+                                    groups)
+                  (slack-merge-list (oref team ims)
+                                    ims)
+                  (cl-loop for room in (append (oref team channels)
+                                               (oref team groups)
+                                               (oref team ims))
+                           do (slack-request-worker-push
+                               (slack-conversations-info-request
+                                room team)))
+                  (slack-users-counts team)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (slack-log "Slack Channel List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Group List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success))))
+
+(defun slack-conversations-info (room team)
+  (slack-request
+   (slack-conversations-info-request room team)))
+
 (defun slack-conversations-info-request (room team)
   (cl-labels
       ((success (&key data &allow-other-keys)
