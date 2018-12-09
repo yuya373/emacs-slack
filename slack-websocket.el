@@ -372,8 +372,9 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-thread-subscribed decoded-payload team))
          ((string= type "im_open")
           (slack-ws-handle-im-open decoded-payload team))
-         ((string= type "im_close")
-          (slack-ws-handle-im-close decoded-payload team))
+         ((or (string= type "im_close")
+              (string= type "group_close"))
+          (slack-ws-handle-close decoded-payload team))
          ((string= type "team_join")
           (slack-ws-handle-team-join decoded-payload team))
          ((string= type "user_typing")
@@ -490,13 +491,21 @@ TEAM is one of `slack-teams'"
             (setq ims (cons im ims))
             (notify im)))))))
 
-(defun slack-ws-handle-im-close (payload team)
-  (let ((im (slack-room-find (plist-get payload :channel) team)))
-    (when im
-      (oset im is-open nil)
-      (slack-log (format "Direct Message Channel with %s is Closed"
-                         (slack-user-name (oref im user) team))
-                 team :level 'info))))
+(defun slack-ws-handle-close (payload team)
+  (slack-if-let* ((room-id (plist-get payload :channel))
+                  (room (slack-room-find room-id team)))
+      (cond
+       ((slack-im-p room)
+        (oset room is-open nil)
+        (slack-log (format "Direct message with %s is closed"
+                           (slack-user-name
+                            (plist-get payload :user)
+                            team))
+                   team :level 'info))
+       ((slack-group-p room)
+        (oset team groups (cl-remove-if #'(lambda (e)
+                                            (slack-equalp e room))
+                                        (oref team groups)))))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
