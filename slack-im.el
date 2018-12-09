@@ -121,30 +121,15 @@
   slack-im-update-mark-url)
 
 (defun slack-im-close ()
+  "Close direct message."
   (interactive)
   (let* ((team (slack-team-select))
-         (alist (cl-remove-if #'(lambda (im-names)
-                                  (not (oref (cdr im-names) is-open)))
-                              (slack-im-names team))))
-    (slack-select-from-list
-        (alist "Select User: ")
-        (cl-labels
-            ((on-success
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-im-close")
-               (if (plist-get data :already_closed)
-                   (let ((im (slack-room-find (oref selected id) team)))
-                     (oset im is-open nil)
-                     (message "Direct Message Channel with %s Already Closed"
-                              (slack-user-name (oref im user) team)))))))
-          (slack-request
-           (slack-request-create
-            slack-im-close-url
-            team
-            :type "POST"
-            :params (list (cons "channel" (oref selected id)))
-            :success #'on-success))))))
+         (im (slack-current-room-or-select
+              #'(lambda ()
+                  (cl-remove-if #'(lambda (im-names)
+                                    (not (oref (cdr im-names) is-open)))
+                                (slack-im-names team))))))
+    (slack-conversations-close im team)))
 
 (defun slack-im-open (&optional user after-success)
   (interactive)

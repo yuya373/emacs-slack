@@ -205,34 +205,26 @@
         :success #'on-success)))))
 
 (defun slack-group-mpim-close ()
+  "Close mpim."
   (interactive)
-  (let* ((team (slack-team-select)))
-    (slack-select-from-list
-        ((slack-group-names team #'(lambda (groups)
-                                     (cl-remove-if-not #'slack-mpim-p
-                                                       groups)))
-         "Select MPIM: ")
-        (cl-labels
-            ((on-success
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-group-mpim-close")
-               (let ((group (slack-room-find (oref selected id) team)))
-                 (with-slots (groups) team
-                   (setq groups
-                         (cl-delete-if #'(lambda (g)
-                                           (slack-room-equal-p group g))
-                                       groups)))
-                 (if (plist-get data :already_closed)
-                     (message "Direct Message Channel with %s Already Closed"
-                              (slack-group-members-s group team)))))))
-          (slack-request
-           (slack-request-create
-            slack-mpim-close-url
-            team
-            :type "POST"
-            :params (list (cons "channel" (oref selected id)))
-            :success #'on-success))))))
+  (let* ((team (slack-team-select))
+         (mpim (slack-current-room-or-select
+                #'(lambda ()
+                    (slack-group-names
+                     team
+                     #'(lambda (groups)
+                         (cl-remove-if-not #'slack-mpim-p
+                                           groups)))))))
+    (cl-labels
+        ((success (_data)
+                  (oset team groups
+                        (cl-remove-if #'(lambda (e)
+                                          (slack-equalp e mpim))
+                                      (oref team groups)))
+                  (slack-log (format "%s closed"
+                                     (slack-room-name mpim team))
+                             team :level 'info)))
+      (slack-conversations-close mpim team #'success))))
 
 
 (cl-defmethod slack-mpim-p ((room slack-group))
