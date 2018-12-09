@@ -165,6 +165,7 @@
       :success #'on-channel-join))))
 
 (defun slack-channel-archive ()
+  "Archive selected channel."
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
@@ -174,16 +175,10 @@
                         #'(lambda (channels)
                             (cl-remove-if #'slack-room-archived-p
                                           channels)))))))
-    (cl-labels
-        ((on-channel-archive (&key data &allow-other-keys)
-                             (slack-request-handle-error
-                              (data "slack-channel-archive"))))
-      (slack-room-request-with-id slack-channel-archive-url
-                                  (oref channel id)
-                                  team
-                                  #'on-channel-archive))))
+    (slack-conversations-archive channel team)))
 
 (defun slack-channel-unarchive ()
+  "Unarchive selected channel."
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
@@ -193,14 +188,7 @@
                         #'(lambda (channels)
                             (cl-remove-if-not #'slack-room-archived-p
                                               channels)))))))
-    (cl-labels
-        ((on-channel-unarchive (&key data &allow-other-keys)
-                               (slack-request-handle-error
-                                (data "slack-channel-unarchive"))))
-      (slack-room-request-with-id slack-channel-unarchive-url
-                                  (oref channel id)
-                                  team
-                                  #'on-channel-unarchive))))
+    (slack-conversations-unarchive channel team)))
 
 (cl-defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team

@@ -158,14 +158,7 @@
                       #'(lambda (groups)
                           (cl-remove-if #'slack-room-archived-p
                                         groups)))))))
-    (cl-labels
-        ((on-group-archive (&key data &allow-other-keys)
-                           (slack-request-handle-error
-                            (data "slack-group-archive"))))
-      (slack-room-request-with-id slack-group-archive-url
-                                  (oref group id)
-                                  team
-                                  #'on-group-archive))))
+    (slack-conversations-archive group team)))
 
 (defun slack-group-unarchive ()
   (interactive)
@@ -177,14 +170,7 @@
                       #'(lambda (groups)
                           (cl-remove-if-not #'slack-room-archived-p
                                             groups)))))))
-    (cl-labels
-        ((on-group-unarchive (&key data &allow-other-keys)
-                             (slack-request-handle-error
-                              (data "slack-group-unarchive"))))
-      (slack-room-request-with-id slack-group-unarchive-url
-                                  (oref group id)
-                                  team
-                                  #'on-group-unarchive))))
+    (slack-conversations-unarchive group team)))
 
 
 (defun slack-group-members-s (group team)
