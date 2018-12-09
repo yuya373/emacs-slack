@@ -104,18 +104,18 @@
   (interactive)
   (let ((team (or team (slack-team-select))))
     (cl-labels
-      ((success (_channels _groups ims)
-                (slack-merge-list (oref team ims)
-                                  ims)
-                (when (functionp after-success)
-                  (funcall after-success team))
-                (mapc #'(lambda (room)
-                          (slack-request-worker-push
-                           (slack-conversations-info-request room team)))
-                      (oref team ims))
-                (slack-log "Slack Im List Updated"
-                           team :level 'info)))
-    (slack-conversations-list team #'success (list "im")))))
+        ((success (_channels _groups ims)
+                  (slack-merge-list (oref team ims)
+                                    ims)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (mapc #'(lambda (room)
+                            (slack-request-worker-push
+                             (slack-conversations-info-request room team)))
+                        (oref team ims))
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success (list "im")))))
 
 (cl-defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
