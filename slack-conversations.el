@@ -31,6 +31,8 @@
 
 (defconst slack-conversations-archive-url
   "https://slack.com/api/conversations.archive")
+(defconst slack-conversations-unarchive-url
+  "https://slack.com/api/conversations.unarchive")
 (defconst slack-conversations-invite-url
   "https://slack.com/api/conversations.invite")
 (defconst slack-conversations-join-url
@@ -92,6 +94,16 @@
       team
       :type "POST"
       :params (list (cons "channel" id))
+      :success (slack-conversations-success-handler team)))))
+
+(defun slack-conversations-unarchive (room team)
+  (let ((channel (oref room id)))
+    (slack-request
+     (slack-request-create
+      slack-conversations-unarchive-url
+      team
+      :type "POST"
+      :params (list (cons "channel" channel))
       :success (slack-conversations-success-handler team)))))
 
 (defun slack-conversations-invite (room team)
