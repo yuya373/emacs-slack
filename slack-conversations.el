@@ -55,6 +55,8 @@
   "https://slack.com/api/conversations.info")
 (defconst slack-conversations-replies-url
   "https://slack.com/api/conversations.replies")
+(defconst slack-conversations-close-url
+  "https://slack.com/api/conversations.close")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -425,6 +427,21 @@
                       (if cursor (cons "cursor" cursor)
                         (cons "oldest" oldest)))
         :success #'on-success)))))
+
+(defun slack-conversations-close (room team &optional after-success)
+  (let ((channel (oref room id)))
+    (cl-labels
+        ((on-success (data)
+                     (when (functionp after-success)
+                       (funcall after-success data))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-close-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel))
+        :success (slack-conversations-success-handler
+                  team :on-success #'on-success))))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
