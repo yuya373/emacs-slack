@@ -104,13 +104,7 @@
 (defun slack-create-group ()
   (interactive)
   (let ((team (slack-team-select)))
-    (cl-labels
-        ((on-create-group (&key data &allow-other-keys)
-                          (slack-request-handle-error
-                           (data "slack-create-group"))))
-      (slack-create-room slack-create-group-url
-                         team
-                         #'on-create-group))))
+    (slack-conversations-create team "true")))
 
 (defun slack-group-rename ()
   (interactive)

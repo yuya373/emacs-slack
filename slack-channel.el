@@ -91,13 +91,7 @@
 (defun slack-create-channel ()
   (interactive)
   (let ((team (slack-team-select)))
-    (cl-labels
-        ((on-create-channel (&key data &allow-other-keys)
-                            (slack-request-handle-error
-                             (data "slack-channel-create"))))
-      (slack-create-room slack-create-channel-url
-                         team
-                         #'on-create-channel))))
+    (slack-conversations-create team "false")))
 
 (defun slack-channel-rename ()
   (interactive)

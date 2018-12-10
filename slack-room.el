@@ -234,15 +234,6 @@
                       (cons "ts"  ts))
         :success #'on-update-mark)))))
 
-(defun slack-create-room (url team success)
-  (slack-request
-   (slack-request-create
-    url
-    team
-    :type "POST"
-    :params (list (cons "name" (read-from-minibuffer "Name: ")))
-    :success success)))
-
 (defun slack-room-rename (url room-alist-func)
   (cl-labels
       ((on-rename-success (&key data &allow-other-keys)
