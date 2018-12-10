@@ -57,6 +57,8 @@
   "https://slack.com/api/conversations.replies")
 (defconst slack-conversations-close-url
   "https://slack.com/api/conversations.close")
+(defconst slack-conversations-create-url
+  "https://slack.com/api/conversations.create")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -442,6 +444,20 @@
         :params (list (cons "channel" channel))
         :success (slack-conversations-success-handler
                   team :on-success #'on-success))))))
+
+(cl-defun slack-conversations-create (team &optional (is-private "false"))
+  (let ((name (read-from-minibuffer "Name: "))
+        (is-private (or is-private
+                        (if (y-or-n-p "Private? ")
+                            "true" "false"))))
+    (slack-request
+     (slack-request-create
+      slack-conversations-create-url
+      team
+      :type "POST"
+      :params (list (cons "name" name)
+                    (cons "is_private" is-private))
+      :success (slack-conversations-success-handler team)))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
