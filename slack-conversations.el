@@ -59,6 +59,8 @@
   "https://slack.com/api/conversations.close")
 (defconst slack-conversations-create-url
   "https://slack.com/api/conversations.create")
+(defconst slack-conversations-history-url
+  "https://slack.com/api/conversations.history")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -458,6 +460,35 @@
       :params (list (cons "name" name)
                     (cons "is_private" is-private))
       :success (slack-conversations-success-handler team)))))
+
+(cl-defun slack-conversations-history (room team &key
+                                            (after-success nil)
+                                            (cursor nil)
+                                            (latest nil)
+                                            (oldest nil)
+                                            (inclusive nil)
+                                            (limit "100"))
+  (let ((channel (oref room id)))
+    (cl-labels
+        ((success (data)
+                  (let* ((meta (plist-get data :response_metadata))
+                         (next-cursor (plist-get meta :next_cursor))
+                         (messages (cl-loop for e in (plist-get data :messages)
+                                            collect (slack-message-create e team))))
+                    (when (functionp after-success)
+                      (funcall after-success messages next-cursor)))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-history-url
+        team
+        :params (list (cons "channel" channel)
+                      (cons "limit" limit)
+                      (and cursor (cons "cursor" cursor))
+                      (and latest (cons "latest" latest))
+                      (and oldest (cons "oldest" oldest))
+                      (and inclusive (cons "inclusive" inclusive)))
+        :success (slack-conversations-success-handler
+                  team :on-success #'success))))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
