@@ -469,27 +469,26 @@ TEAM is one of `slack-teams'"
                                :after-success #'after-success))))
 
 (defun slack-ws-handle-im-open (payload team)
-  (cl-labels
-      ((notify
-        (im)
-        (slack-room-history-request
-         im team
-         :after-success #'(lambda (&rest _ignore)
-                            (slack-log (format "Direct Message Channel with %s is Open"
-                                               (slack-user-name (oref im user) team))
-                                       team :level 'info)))))
-    (let ((exist (slack-room-find (plist-get payload :channel) team)))
-      (if exist
-          (progn
-            (oset exist is-open t)
-            (notify exist))
-        (with-slots (ims) team
-          (let ((im (slack-room-create
-                     (list :id (plist-get payload :channel)
-                           :user (plist-get payload :user))
-                     'slack-im)))
-            (setq ims (cons im ims))
-            (notify im)))))))
+  (let* ((channel-id (plist-get payload :channel))
+         (im (slack-room-find channel-id team)))
+    (cl-labels
+        ((notify (im)
+                 (slack-log (format "Open direct message with %s"
+                                    (slack-user-name (oref im user)
+                                                     team))
+                            team :level 'info))
+         (update (im)
+                 (slack-conversations-info im team
+                                           #'(lambda ()
+                                               (notify im)))))
+      (unless im
+        (setq im (slack-room-create
+                  (list :id (plist-get payload :channel)
+                        :user (plist-get payload :user))
+                  'slack-im))
+        (push im (oref team ims)))
+      (oset im is-open t)
+      (update im))))
 
 (defun slack-ws-handle-close (payload team)
   (slack-if-let* ((room-id (plist-get payload :channel))

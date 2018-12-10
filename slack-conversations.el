@@ -383,11 +383,11 @@
                              team :level 'info)))
       (slack-conversations-list team #'success))))
 
-(defun slack-conversations-info (room team)
+(defun slack-conversations-info (room team &optional after-success)
   (slack-request
-   (slack-conversations-info-request room team)))
+   (slack-conversations-info-request room team after-success)))
 
-(defun slack-conversations-info-request (room team)
+(defun slack-conversations-info-request (room team &optional after-success)
   (cl-labels
       ((success (&key data &allow-other-keys)
                 (slack-request-handle-error
@@ -395,7 +395,9 @@
                  (let ((new-room (slack-room-create
                                   (plist-get data :channel)
                                   (eieio-object-class-name room))))
-                   (slack-merge room new-room)))))
+                   (slack-merge room new-room))
+                 (when (functionp after-success)
+                   (funcall after-success)))))
     (slack-request-create
      slack-conversations-info-url
      team
