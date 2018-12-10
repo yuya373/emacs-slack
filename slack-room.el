@@ -33,8 +33,6 @@
 ;; (require 'slack-team)
 (declare-function slack-team-select "slack-team")
 (declare-function slack-team-name "slack-team")
-;; (require 'slack-file)
-(declare-function slack-file-room-obj "slack-file")
 ;; (require 'slack-buffer)
 (declare-function slack-buffer-room "slack-buffer")
 
@@ -354,7 +352,6 @@
       (cl-labels ((find-room (room)
                              (string= id (oref room id))))
         (cond
-         ((string-prefix-p "F" id) (slack-file-room-obj team))
          ((string-prefix-p "C" id) (cl-find-if #'find-room
                                                (oref team channels)))
          ((string-prefix-p "G" id) (cl-find-if #'find-room

@@ -719,21 +719,18 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-file-created (payload team)
   (slack-if-let* ((file-id (plist-get (plist-get payload :file) :id))
-                  (room (slack-file-room-obj team))
                   (buffer (slack-buffer-find 'slack-file-list-buffer
-                                             room
                                              team)))
       (slack-file-request-info file-id 1 team
                                #'(lambda (file _team)
                                    (slack-buffer-update buffer file)))))
 
 (defun slack-ws-handle-file-deleted (payload team)
-  (let ((file-id (plist-get payload :file_id))
-        (room (slack-file-room-obj team)))
-    (with-slots (messages) room
-      (setq messages (cl-remove-if #'(lambda (f)
-                                       (string= file-id (oref f id)))
-                                   messages)))))
+  (let ((file-id (plist-get payload :file_id)))
+    (oset team files
+          (cl-remove-if #'(lambda (f) (string= file-id
+                                               (oref f id)))
+                        (oref team files)))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (slack-if-let* ((channel (plist-get payload :channel))

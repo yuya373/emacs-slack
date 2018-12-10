@@ -47,7 +47,7 @@
 (defvar slack-expand-email-keymap
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET")
-      #'slack-buffer-toggle-email-expand)
+      #'slack-toggle-email-expand)
     map))
 
 (defvar slack-attachment-action-keymap
@@ -150,20 +150,23 @@
     (slack-if-let* ((message (slack-room-find-message room ts)))
         (slack-buffer-replace this message))))
 
-(defun slack-buffer-toggle-email-expand ()
+(cl-defmethod slack-buffer-toggle-email-expand ((this slack-room-buffer) file-id)
+  (with-slots (room) this
+    (slack-if-let* ((ts (get-text-property (point) 'ts))
+                    (message (slack-room-find-message room ts))
+                    (file (cl-find-if
+                           #'(lambda (e) (string= (oref e id)
+                                                  file-id))
+                           (oref message files))))
+        (progn
+          (oset file is-expanded (not (oref file is-expanded)))
+          (slack-buffer-update this message :replace t)))))
+
+(defun slack-toggle-email-expand ()
   (interactive)
   (let ((buffer slack-current-buffer))
-    (with-slots (room) buffer
-      (slack-if-let* ((file-id (get-text-property (point) 'id))
-                      (ts (get-text-property (point) 'ts))
-                      (message (slack-room-find-message room ts))
-                      (file (cl-find-if
-                             #'(lambda (e) (string= (oref e id)
-                                                    file-id))
-                             (oref message files))))
-          (progn
-            (oset file is-expanded (not (oref file is-expanded)))
-            (slack-buffer-update buffer message :replace t))))))
+    (slack-if-let* ((file-id (get-text-property (point) 'id)))
+        (slack-buffer-toggle-email-expand buffer file-id))))
 
 (cl-defmethod slack-buffer-pins-remove ((this slack-room-buffer) ts)
   (with-slots (room team) this

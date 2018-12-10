@@ -252,25 +252,10 @@
     (slack-merge-list (oref old ims) (oref new ims))
     ))
 
-(defclass slack-file-room (slack-room) ())
-
 (defun slack-file-find (id team)
-  (let ((files (oref (slack-file-room-obj team) messages)))
+  (let ((files (oref team files)))
     (cl-find-if #'(lambda (file) (string= (oref file id) id))
                 files)))
-
-(defun slack-file-room-obj (team)
-  (with-slots (file-room) team
-    (if file-room
-        file-room
-      (setq file-room (make-instance 'slack-file-room
-                                     :name "Files"
-                                     :id "F"
-                                     :created (format-time-string "%s")
-                                     :latest nil
-                                     :unread_count 0
-                                     :unread_count_display 0
-                                     :messages '())))))
 
 (defun slack-file-create-email-from (payload &optional type)
   (and payload
@@ -317,11 +302,7 @@
   (string= (oref old id) (oref new id)))
 
 (cl-defmethod slack-file-pushnew ((f slack-file) team)
-  (let ((room (slack-file-room-obj team)))
-    (slack-merge-list (oref room messages) (list f))
-    ;; (oset room messages (slack-room-sort-messages (oref room messages)))
-    ;; (slack-room-update-latest room (car (last (oref room messages))))
-    ))
+  (slack-merge-list (oref team files) (list f)))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
@@ -364,27 +345,6 @@
 
 (cl-defmethod slack-message-large-image-to-string ((file slack-file))
   (slack-image-string (slack-file-image-spec file)))
-
-(cl-defmethod slack-room-history-request ((room slack-file-room) team &key oldest after-success)
-  (cl-labels
-      ((on-file-list
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-file-list")
-         (let ((files (cl-loop for e in (plist-get data :files)
-                               collect (slack-file-create e))))
-           (if oldest
-               (slack-room-set-prev-messages room files)
-             (slack-room-set-messages room files)))
-         (if after-success
-             (funcall after-success)))))
-    (slack-request
-     (slack-request-create
-      slack-file-list-url
-      team
-      :params (list (if oldest
-                        (cons "ts_to" oldest)))
-      :success #'on-file-list))))
 
 (defun slack-file-select-sharing-channels (current-room-name team)
   (let* ((channels (slack-room-names
@@ -482,6 +442,7 @@
           :headers (list (cons "Content-Type" "multipart/form-data"))
           :success #'on-file-upload)))
     (error "Call from message buffer or thread buffer")))
+
 ;; TODO implement this
 ;; (defun slack-file-delete ()
 ;;   (interactive)
@@ -548,7 +509,7 @@
 
 (defmacro slack-with-file (id team &rest body)
   (declare (indent 2) (debug t))
-  `(cl-loop for file in (oref (slack-file-room-obj ,team) messages)
+  `(cl-loop for file in (oref ,team files)
             do (when (string= (oref file id) ,id)
                  ,@body)))
 
@@ -580,7 +541,6 @@
   ;; (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
   ;;     (slack-buffer--replace buffer nil))
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
-                                             (slack-file-room-obj team)
                                              team)))
       (slack-buffer-replace buffer file)))
 
@@ -593,10 +553,37 @@
         (slack-buffer-update buffer))))
 
 (cl-defmethod slack-ts ((this slack-file))
-  (number-to-string (oref this timestamp)))
+  (number-to-string (oref this created)))
 
 (cl-defmethod slack-thread-message-p ((_this slack-file))
   nil)
+
+(cl-defun slack-file-list-request (team &key
+                                        (page "1")
+                                        (count "100")
+                                        (after-success nil))
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (let ((files (mapcar #'slack-file-create
+                                     (plist-get data :files)))
+                      (paging (plist-get data :paging)))
+                  (if (string= page "1")
+                      (oset team files files)
+                    (oset team files (append (oref team files) files)))
+                  (oset team files (cl-sort (oref team files)
+                                            #'<
+                                            :key #'(lambda (e) (oref e created))))
+                  (when (functionp after-success)
+                    (funcall after-success
+                             (plist-get paging :page)
+                             (plist-get paging :pages))))))
+    (slack-request
+     (slack-request-create
+      slack-file-list-url
+      team
+      :params (list (cons "page" page)
+                    (cons "count" count))
+      :success #'success))))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

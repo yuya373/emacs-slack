@@ -621,12 +621,9 @@
   (cl-labels
       ((open (buf)
              (slack-buffer-display buf)))
-    (let* ((buffer-class (or (and (slack-file-room-p room)
-                                  'slack-file-list-buffer)
-                             'slack-message-buffer))
-           (buf (slack-buffer-find buffer-class
-                                   room
-                                   team)))
+    (let ((buf (slack-buffer-find 'slack-message-buffer
+                                  room
+                                  team)))
       (if buf (open buf)
         (message "No Message in %s, fetching from server..." (slack-room-name room team))
         (slack-conversations-history
