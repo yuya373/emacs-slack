@@ -185,6 +185,7 @@
   (slack-room-set-messages room
                            (append (oref room messages)
                                    prev-messages)))
+(defalias 'slack-room-prepend-messages 'slack-room-set-prev-messages)
 
 (cl-defmethod slack-room-append-messages ((room slack-room) messages)
   (slack-room-set-messages room
