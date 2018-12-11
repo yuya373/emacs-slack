@@ -170,30 +170,22 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
       (helm-slack-members-in-room room team)))
 
 (defun helm-slack-members-in-room (room team)
-  (let ((candidates nil)
-        (cursor nil))
-    (cl-labels
-        ((inject-team (candidates)
-                      (mapcar #'(lambda (candidate)
-                                  (list (car candidate)
-                                        (cdr candidate)
-                                        team))
-                              candidates))
-         (on-members-success (members next-cursor)
-                             (setq candidates (append candidates
-                                                      members))
-                             (setq cursor next-cursor)))
-      (while (or (null cursor)
-                 (< 0 (length cursor)))
-        (slack-conversations-members room
-                                     team
-                                     cursor
-                                     #'on-members-success))
-      (helm
-       :prompt "Select Member : "
-       :sources (helm-build-sync-source "Members"
-                  :candidates (inject-team candidates)
-                  :action helm-slack-members-actions)))))
+  (slack-conversations-members
+   room team
+   #'(lambda ()
+       (helm
+        :prompt "Select Member : "
+        :sources (helm-build-sync-source "Members"
+                   :candidates (cl-loop for user in (slack-user-names team)
+                                        if (cl-find (plist-get (cdr user) :id)
+                                                    (oref room members)
+                                                    :test #'string=)
+                                        collect (list (car user)
+                                                      (cdr user)
+                                                      team))
+                   :action helm-slack-members-actions))
+
+       )))
 
 (defun helm-slack-display-user (candidate)
   (helm-slack-bind-user-and-team candidate
