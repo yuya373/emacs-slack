@@ -255,35 +255,11 @@
            (bound-and-true-p slack-current-buffer)
            (slot-boundp slack-current-buffer 'room))
       (slack-buffer-room slack-current-buffer)
-    (let* ((room-alist (funcall room-alist-func)))
+    (let* ((room-alist (if (functionp room-alist-func)
+                           (funcall room-alist-func)
+                         room-alist-func)))
       (slack-select-from-list
           (room-alist "Select Channel: ")))))
-
-(defmacro slack-room-invite (url room-alist-func)
-  `(cl-labels
-       ((on-group-invite (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-room-invite")
-                          (if (plist-get data :already_in_group)
-                              (message "User already in group")
-                            (message "Invited!")))))
-     (let* ((team (slack-team-select))
-            (room (slack-current-room-or-select
-                   #'(lambda ()
-                       (funcall ,room-alist-func team
-                                #'(lambda (rooms)
-                                    (cl-remove-if #'slack-room-archived-p
-                                                  rooms))))))
-            (user-id (plist-get (slack-select-from-list
-                                    ((slack-user-names team)
-                                     "Select User: ")) :id)))
-       (slack-request
-        (slack-request-create
-         ,url
-         team
-         :params (list (cons "channel" (oref room id))
-                       (cons "user" user-id))
-         :success #'on-group-invite)))))
 
 (cl-defmethod slack-room-member-p ((_room slack-room)) t)
 

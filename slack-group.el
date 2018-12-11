@@ -112,8 +112,13 @@
 
 (defun slack-group-invite ()
   (interactive)
-  (slack-room-invite slack-group-invite-url
-                     #'slack-group-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-group-names team
+                                   #'(lambda (rooms)
+                                       (cl-remove-if #'slack-room-archived-p
+                                                     rooms))))))
+    (slack-conversations-invite room team)))
 
 (defun slack-group-leave ()
   (interactive)

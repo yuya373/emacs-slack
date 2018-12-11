@@ -99,8 +99,13 @@
 
 (defun slack-channel-invite ()
   (interactive)
-  (slack-room-invite slack-channel-invite-url
-                     #'slack-channel-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-channel-names team
+                                     #'(lambda (rooms)
+                                         (cl-remove-if #'slack-room-archived-p
+                                                       rooms))))))
+    (slack-conversations-invite room team)))
 
 (defun slack-channel-leave (&optional team select)
   (interactive)
