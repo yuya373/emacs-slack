@@ -41,7 +41,6 @@
 (defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
 (defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
-(defconst slack-channel-join-url "https://slack.com/api/channels.join")
 (defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
 (defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
 
@@ -133,7 +132,7 @@
                                 team
                                 #'on-channel-leave)))
 
-(defun slack-channel-join (&optional team select)
+(defun slack-channel-join (&optional team)
   (interactive)
   (cl-labels
       ((filter-channel (channels)
@@ -144,23 +143,9 @@
                         channels)))
     (let* ((team (or team (slack-team-select)))
            (channel (slack-current-room-or-select
-                     #'(lambda ()
-                         (slack-channel-names team
-                                              #'filter-channel))
-                     select)))
-      (slack-channel-request-join channel team))))
-
-(defun slack-channel-request-join (channel team)
-  (cl-labels
-      ((on-channel-join (&key data &allow-other-keys)
-                        (slack-request-handle-error
-                         (data "slack-channel-join"))))
-    (slack-request
-     (slack-request-create
-      slack-channel-join-url
-      team
-      :params (list (cons "name" (slack-room-name channel team)))
-      :success #'on-channel-join))))
+                     (slack-channel-names team
+                                          #'filter-channel))))
+      (slack-conversations-join channel team))))
 
 (defun slack-channel-archive ()
   "Archive selected channel."
