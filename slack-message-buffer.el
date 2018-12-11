@@ -360,19 +360,22 @@
 
 (cl-defmethod slack-buffer-display-user-profile ((this slack-message-buffer))
   (with-slots (room team) this
-    (let* ((members (cl-remove-if
-                     #'(lambda (e)
-                         (or (slack-user-self-p e team)
-                             (slack-user-hidden-p
-                              (slack-user--find e team))))
-                     (slack-room-get-members room)))
-           (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
-                               members))
-           (user-id (if (eq 1 (length members))
-                        (car members)
-                      (slack-select-from-list (user-alist "Select User: ")))))
-      (let ((buf (slack-create-user-profile-buffer team user-id)))
-        (slack-buffer-display buf)))))
+    (slack-conversations-members
+     room team
+     #'(lambda ()
+         (let* ((members (cl-remove-if
+                          #'(lambda (e)
+                              (or (slack-user-self-p e team)
+                                  (slack-user-hidden-p
+                                   (slack-user--find e team))))
+                          (slack-room-get-members room)))
+                (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
+                                    members))
+                (user-id (if (eq 1 (length members))
+                             (car members)
+                           (slack-select-from-list (user-alist "Select User: ")))))
+           (let ((buf (slack-create-user-profile-buffer team user-id)))
+             (slack-buffer-display buf)))))))
 
 (cl-defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
   (when (oref this marker-overlay)
