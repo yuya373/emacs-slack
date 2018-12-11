@@ -35,7 +35,6 @@
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
 
-(defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")
@@ -189,9 +188,6 @@
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
-
-(cl-defmethod slack-room-history-url ((_room slack-channel))
-  slack-channel-history-url)
 
 (cl-defmethod slack-room-replies-url ((_room slack-channel))
   "https://slack.com/api/channels.replies")

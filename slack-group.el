@@ -30,7 +30,6 @@
 (require 'slack-buffer)
 (require 'slack-conversations)
 
-(defconst slack-group-history-url "https://slack.com/api/groups.history")
 (defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
@@ -223,9 +222,6 @@
 
 (cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
-
-(cl-defmethod slack-room-history-url ((_room slack-group))
-  slack-group-history-url)
 
 (cl-defmethod slack-room-replies-url ((_room slack-group))
   "https://slack.com/api/groups.replies")

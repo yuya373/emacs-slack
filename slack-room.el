@@ -59,9 +59,7 @@
 
 
 (cl-defgeneric slack-room-name (room team))
-(cl-defgeneric slack-room-history (room team &optional oldest after-success sync))
 (cl-defgeneric slack-room-update-mark-url (room))
-(cl-defgeneric slack-room-history-url (room))
 
 (cl-defmethod slack-equalp ((this slack-room) other)
   (string= (oref this id)
@@ -311,32 +309,6 @@
 
 (cl-defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
-
-(cl-defmethod slack-room-history-request ((room slack-room) team &key oldest latest count after-success inclusive)
-  (cl-labels
-      ((on-request-update
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-room-request-update")
-         (let ((messages
-                (cl-loop for message in (plist-get data :messages)
-                         collect (slack-message-create message team :room room)))
-               (has-more (not (eq :json-false (plist-get data :has_more)))))
-           (if oldest (slack-room-set-prev-messages room messages)
-             (if latest (slack-room-append-messages room messages)
-               (slack-room-set-messages room messages)))
-           (if (and after-success (functionp after-success))
-               (funcall after-success has-more))))))
-    (slack-request
-     (slack-request-create
-      (slack-room-history-url room)
-      team
-      :params (list (cons "channel" (oref room id))
-                    (if oldest (cons "latest" oldest))
-                    (if latest (cons "oldest" latest))
-                    (if inclusive (cons "inclusive" inclusive))
-                    (cons "count" (number-to-string (or count 100))))
-      :success #'on-request-update))))
 
 (cl-defmethod slack-room-member-p ((_this slack-room))
   t)

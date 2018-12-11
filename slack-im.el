@@ -36,7 +36,6 @@
 (defvar slack-display-team-name)
 (defvar slack-completing-read-function)
 
-(defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-im-close-url "https://slack.com/api/im.close")
 (defconst slack-im-open-url "https://slack.com/api/im.open")
@@ -171,9 +170,6 @@
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
-
-(cl-defmethod slack-room-history-url ((_room slack-im))
-  slack-im-history-url)
 
 (cl-defmethod slack-room-replies-url ((_room slack-im))
   "https://slack.com/api/im.replies")
