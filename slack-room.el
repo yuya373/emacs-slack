@@ -270,14 +270,6 @@
 (cl-defmethod slack-room-equal-p ((room slack-room) other)
   (string= (oref room id) (oref other id)))
 
-(cl-defun slack-room-request-with-id (url id team success)
-  (slack-request
-   (slack-request-create
-    url
-    team
-    :params (list (cons "channel" id))
-    :success success)))
-
 (cl-defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
 

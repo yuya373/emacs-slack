@@ -40,7 +40,6 @@
 (defconst slack-create-channel-url "https://slack.com/api/channels.create")
 (defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
 (defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
-(defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
 (defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
 (defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
 
@@ -106,31 +105,16 @@
                                                        rooms))))))
     (slack-conversations-invite room team)))
 
-(defun slack-channel-leave (&optional team select)
+(defun slack-channel-leave (&optional team)
   (interactive)
   (let* ((team (or team (slack-team-select)))
          (channel (slack-current-room-or-select
-                   #'(lambda ()
-                       (slack-channel-names
-                        team
-                        #'(lambda (channels)
-                            (cl-remove-if-not #'slack-room-member-p
-                                              channels))))
-                   select)))
-    (slack-channel-request-leave channel team)))
-
-(defun slack-channel-request-leave (channel team)
-  (cl-labels
-      ((on-channel-leave (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-channel-leave")
-                          (oset channel is-member nil)
-                          (message "Left Channel: %s"
-                                   (slack-room-name channel team)))))
-    (slack-room-request-with-id slack-channel-leave-url
-                                (oref channel id)
-                                team
-                                #'on-channel-leave)))
+                   (slack-channel-names
+                    team
+                    #'(lambda (channels)
+                        (cl-remove-if-not #'slack-room-member-p
+                                          channels))))))
+    (slack-conversations-leave channel team)))
 
 (defun slack-channel-join (&optional team)
   (interactive)

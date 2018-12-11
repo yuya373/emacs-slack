@@ -36,7 +36,6 @@
 (defconst slack-create-group-url "https://slack.com/api/groups.create")
 (defconst slack-group-rename-url "https://slack.com/api/groups.rename")
 (defconst slack-group-invite-url "https://slack.com/api/groups.invite")
-(defconst slack-group-leave-url "https://slack.com/api/groups.leave")
 (defconst slack-group-archive-url "https://slack.com/api/groups.archive")
 (defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
 (defconst slack-mpim-close-url "https://slack.com/api/mpim.close")
@@ -124,24 +123,8 @@
   (interactive)
   (let* ((team (slack-team-select))
          (group (slack-current-room-or-select
-                 #'(lambda ()
-                     (slack-group-names team)))))
-    (cl-labels
-        ((on-group-leave
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-group-leave")
-           (with-slots (groups) team
-             (setq groups
-                   (cl-delete-if #'(lambda (g)
-                                     (slack-room-equal-p group g))
-                                 groups)))
-           (message "Left Group: %s"
-                    (slack-room-display-name group team)))))
-      (slack-room-request-with-id slack-group-leave-url
-                                  (oref group id)
-                                  team
-                                  #'on-group-leave))))
+                 (slack-group-names team))))
+    (slack-conversations-leave group team)))
 
 (cl-defmethod slack-room-archived-p ((room slack-group))
   (oref room is-archived))
