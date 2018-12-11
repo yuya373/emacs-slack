@@ -114,7 +114,14 @@
 
 (defun slack-conversations-invite (room team)
   (let* ((channel (oref room id))
-         (user-names (slack-user-names team))
+         (user-names (slack-user-names
+                      team #'(lambda (users)
+                               (cl-remove-if #'(lambda (e)
+                                                 (or (string= (oref team self-id)
+                                                              (plist-get e :id))
+                                                     (string= (plist-get e :id)
+                                                              "USLACKBOT")))
+                                             users))))
          (users nil))
     (cl-labels
         ((already-selected-p

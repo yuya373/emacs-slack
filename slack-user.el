@@ -76,11 +76,14 @@
     (mapconcat #'identity (cl-remove-if #'null (list emoji text))
                " ")))
 
-(defun slack-user-names (team)
+(defun slack-user-names (team &optional filter)
   "Return all users as alist (\"user-name\" . user) in TEAM."
-  (with-slots (users) team
+  (let ((users (cl-remove-if #'slack-user-hidden-p
+                             (oref team users))))
     (mapcar (lambda (u) (cons (plist-get u :name) u))
-            (cl-remove-if #'slack-user-hidden-p users))))
+            (if (functionp filter)
+                (funcall filter users)
+              users))))
 
 (defun slack-user-dnd-in-range-p (user)
   (let ((current (time-to-seconds))
