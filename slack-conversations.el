@@ -61,6 +61,8 @@
   "https://slack.com/api/conversations.create")
 (defconst slack-conversations-history-url
   "https://slack.com/api/conversations.history")
+(defconst slack-conversations-open-url
+  "https://slack.com/api/conversations.open")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -490,6 +492,20 @@
                     :success (slack-conversations-success-handler
                               team :on-success #'success)))))
       (request))))
+
+(cl-defun slack-conversations-open (team &key room user-ids)
+  (let ((channel (or (and room (oref room id))
+                     ""))
+        (users (mapconcat #'identity user-ids ",")))
+    (slack-request
+     (slack-request-create
+      slack-conversations-open-url
+      team
+      :type "POST"
+      :params (list (if (< 0 (length users))
+                        (cons "users" users)
+                      (cons "channel" channel)))
+      :success (slack-conversations-success-handler team)))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
