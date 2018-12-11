@@ -461,30 +461,35 @@
                   team :on-success #'success))))))
 
 (defun slack-conversations-members (room team &optional after-success)
-  (cl-labels
-      ((success (data)
-                (let* ((meta (plist-get data :response_metadata))
-                       (next-cursor (and meta (plist-get meta :next_cursor)))
-                       (members (plist-get data :members)))
-                  (oset room members
-                        (cl-remove-duplicates (append (oref room members)
-                                                      members)
-                                              :test #'string=))
-                  (if (and next-cursor (< 0 (length next-cursor)))
-                      (request next-cursor)
-                    (when (functionp after-success)
-                      (funcall after-success)))))
-       (request (&optional cursor)
-                (slack-request
-                 (slack-request-create
-                  slack-conversations-members-url
-                  team
-                  :params (list (cons "channel" (oref room id))
-                                (and cursor (cons "cursor" cursor))
-                                (cons "limit" "1000"))
-                  :success (slack-conversations-success-handler
-                            team :on-success #'success)))))
-    (request)))
+  (if (oref room members-loaded-p)
+      (when (functionp after-success)
+        (funcall after-success))
+    (cl-labels
+        ((success (data)
+                  (let* ((meta (plist-get data :response_metadata))
+                         (next-cursor (and meta (plist-get meta :next_cursor)))
+                         (members (plist-get data :members)))
+                    (oset room members
+                          (cl-remove-duplicates (append (oref room members)
+                                                        members)
+                                                :test #'string=))
+                    (if (and next-cursor (< 0 (length next-cursor)))
+                        (request next-cursor)
+                      (progn
+                        (oset room members-loaded-p t)
+                        (when (functionp after-success)
+                          (funcall after-success))))))
+         (request (&optional cursor)
+                  (slack-request
+                   (slack-request-create
+                    slack-conversations-members-url
+                    team
+                    :params (list (cons "channel" (oref room id))
+                                  (and cursor (cons "cursor" cursor))
+                                  (cons "limit" "1000"))
+                    :success (slack-conversations-success-handler
+                              team :on-success #'success)))))
+      (request))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here

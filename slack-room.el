@@ -54,6 +54,7 @@
    (messages :initarg :messages :initform ())
    (last-read :initarg :last_read :type string :initform "0")
    (members :initarg :members :type list :initform '())
+   (members-loaded-p :type boolean :initform nil)
    (mention-count :initarg :mention_count :type integer :initform 0)
    (mention-count-display :initarg :mention_count_display :type integer :initform 0)))
 
