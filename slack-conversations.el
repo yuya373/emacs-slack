@@ -478,7 +478,9 @@
                          (messages (cl-loop for e in (plist-get data :messages)
                                             collect (slack-message-create e team))))
                     (when (functionp after-success)
-                      (funcall after-success messages next-cursor)))))
+                      (funcall after-success
+                               messages
+                               (or next-cursor ""))))))
       (slack-request
        (slack-request-create
         slack-conversations-history-url
