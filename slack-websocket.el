@@ -462,8 +462,7 @@ TEAM is one of `slack-teams'"
                                              (slack-user-name user-id team)
                                              (slack-team-name team))
                                      team
-                                     :level 'info))
-                        (slack-im-open (plist-get data :user))))
+                                     :level 'info))))
       (slack-user-info-request (plist-get user :id)
                                team
                                :after-success #'after-success))))
