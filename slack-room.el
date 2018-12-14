@@ -68,6 +68,8 @@
 
 (cl-defmethod slack-merge ((this slack-room) other)
   "except MESSAGES"
+  (oset this members (oref other members))
+  (oset this members-loaded-p (oref other members-loaded-p))
   (oset this name (oref other name))
   (oset this id (oref other id))
   (oset this created (oref other created))
