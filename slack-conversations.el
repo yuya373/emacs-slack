@@ -444,15 +444,35 @@
                                             (limit "100"))
   (let ((channel (oref room id)))
     (cl-labels
-        ((success (data)
+        ((callback (messages next-cursor)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              messages
+                              next-cursor)))
+         (success (data)
                   (let* ((meta (plist-get data :response_metadata))
-                         (next-cursor (plist-get meta :next_cursor))
+                         (next-cursor (or (plist-get meta :next_cursor) ""))
                          (messages (cl-loop for e in (plist-get data :messages)
-                                            collect (slack-message-create e team room))))
-                    (when (functionp after-success)
-                      (funcall after-success
-                               messages
-                               (or next-cursor ""))))))
+                                            collect (slack-message-create e team room)))
+                         (exists-user-ids (mapcar #'(lambda (e) (plist-get e :id))
+                                                  (oref team users)))
+                         (user-ids (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
+                                                 (cl-remove-duplicates
+                                                  (let ((result))
+                                                    (cl-loop for m in messages
+                                                             do (progn
+                                                                  (cl-loop for reaction in (slack-message-reactions m)
+                                                                           do (cl-loop for user in (oref reaction users)
+                                                                                       do (push user result)))
+                                                                  (push (slack-message-sender-id m) result)))
+                                                    result)
+                                                  :test #'string=))))
+                    (if (< 0 (length user-ids))
+                        (slack-user-info-request
+                         user-ids team
+                         :after-success #'(lambda ()
+                                            (callback messages next-cursor)))
+                      (callback messages next-cursor)))))
       (slack-request
        (slack-request-create
         slack-conversations-history-url
