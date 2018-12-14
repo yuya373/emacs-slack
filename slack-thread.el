@@ -163,16 +163,16 @@ Any other non-nil value: send to the room."
                              (room (slack-room-find room-id team))
                              (ts (plist-get root-msg :ts))
                              (message (slack-message-create root-msg team))
-                             (latest-replies (plist-get payload :latest_replies))
-                             (messages (mapcar #'(lambda (e)
-                                                   (slack-message-create e
-                                                                         team
-                                                                         :room room))
-                                               latest-replies))
                              (thread (slack-message-thread message room)))
 
                             (progn
-                              (oset thread messages messages)
+                              (oset thread messages
+                                    (mapcar #'(lambda (e)
+                                                (slack-message-create e
+                                                                      team
+                                                                      :room room))
+                                            (or (plist-get payload :latest_replies)
+                                                (plist-get payload :replies))))
                               thread)))
          (success (&key data &allow-other-keys)
                   (slack-request-handle-error
@@ -180,7 +180,7 @@ Any other non-nil value: send to the room."
                    (let ((total-unread-replies (plist-get data :total_unread_replies))
                          (new-threads-count (plist-get data :new_threads_count))
                          (threads (plist-get data :threads))
-                         (has-more (plist-get data :has_more)))
+                         (has-more (eq (plist-get data :has_more) t)))
                      (when (functionp after-success)
                        (funcall after-success
                                 total-unread-replies
