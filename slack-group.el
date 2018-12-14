@@ -169,18 +169,9 @@
                    "Select user: "))
          (user-ids ()
                    (mapcar #'(lambda (user) (plist-get user :id))
-                           (slack-select-multiple #'prompt users)))
-         (on-success
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-group-mpim-open"))))
-      (slack-request
-       (slack-request-create
-        slack-mpim-open-url
-        team
-        :type "POST"
-        :params (list (cons "users" (mapconcat #'identity (user-ids) ",")))
-        :success #'on-success)))))
+                           (slack-select-multiple #'prompt users))))
+      (slack-conversations-open team
+                                :user-ids (user-ids)))))
 
 (defun slack-group-mpim-close ()
   "Close mpim."
