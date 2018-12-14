@@ -30,15 +30,8 @@
 (require 'slack-buffer)
 (require 'slack-conversations)
 
-(defconst slack--group-open-url "https://slack.com/api/groups.open")
 (defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
-(defconst slack-create-group-url "https://slack.com/api/groups.create")
-(defconst slack-group-rename-url "https://slack.com/api/groups.rename")
-(defconst slack-group-invite-url "https://slack.com/api/groups.invite")
-(defconst slack-group-archive-url "https://slack.com/api/groups.archive")
-(defconst slack-group-unarchive-url "https://slack.com/api/groups.unarchive")
-(defconst slack-mpim-close-url "https://slack.com/api/mpim.close")
 (defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
 
 (defvar slack-buffer-function)
@@ -214,9 +207,6 @@
 
 (cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
-
-(cl-defmethod slack-room-replies-url ((_room slack-group))
-  "https://slack.com/api/groups.replies")
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

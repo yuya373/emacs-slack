@@ -37,11 +37,6 @@
 
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
-(defconst slack-create-channel-url "https://slack.com/api/channels.create")
-(defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
-(defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
-(defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
-(defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member :initform nil)
@@ -166,9 +161,6 @@
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
-
-(cl-defmethod slack-room-replies-url ((_room slack-channel))
-  "https://slack.com/api/channels.replies")
 
 (cl-defmethod slack-room-hidden-p ((room slack-channel))
   (slack-room-archived-p room))

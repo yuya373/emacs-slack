@@ -37,8 +37,6 @@
 (defvar slack-completing-read-function)
 
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
-(defconst slack-im-close-url "https://slack.com/api/im.close")
-(defconst slack-im-open-url "https://slack.com/api/im.open")
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 
 (defclass slack-im (slack-room)
@@ -154,9 +152,6 @@
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
-
-(cl-defmethod slack-room-replies-url ((_room slack-im))
-  "https://slack.com/api/im.replies")
 
 (provide 'slack-im)
 ;;; slack-im.el ends here
