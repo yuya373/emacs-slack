@@ -456,7 +456,7 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
     (cl-labels
-        ((after-success (_data)
+        ((after-success ()
                         (let ((user-id (plist-get user :id)))
                           (slack-log (format "User %s Joind Team: %s"
                                              (slack-user-name user-id team)

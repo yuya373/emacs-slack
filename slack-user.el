@@ -210,16 +210,32 @@
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-user-info-request")
-         (oset team users (cons (plist-get data :user)
-                                (cl-remove-if #'(lambda (user)
-                                                  (string= (plist-get user :id) user-id))
-                                              (oref team users))))
-         (when after-success (funcall after-success data)))))
+         (let ((users (plist-get data :users))
+               (user (plist-get data :user)))
+           (if users
+               (progn
+                 (oset team users (append users
+                                          (cl-remove-if
+                                           #'(lambda (u)
+                                               (cl-find (plist-get u :id)
+                                                        user-id
+                                                        :test #'string=))
+                                           (oref team users)))))
+             (oset team users
+                   (cons user
+                         (cl-remove-if #'(lambda (user)
+                                           (string= (plist-get user :id) user-id))
+                                       (oref team users)))))
+           (when (functionp after-success)
+             (funcall after-success))))))
     (slack-request
      (slack-request-create
       slack-user-info-url
       team
-      :params (list (cons "user" user-id))
+      :params (list (if (listp user-id)
+                        (cons "users"
+                              (mapconcat #'identity user-id ","))
+                      (cons "user" user-id)))
       :success #'on-success))))
 
 (defun slack-user-image-url-24 (user)
