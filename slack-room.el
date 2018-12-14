@@ -232,24 +232,6 @@
                       (cons "ts"  ts))
         :success #'on-update-mark)))))
 
-(defun slack-room-rename (url room-alist-func)
-  (cl-labels
-      ((on-rename-success (&key data &allow-other-keys)
-                          (slack-request-handle-error
-                           (data "slack-room-rename"))))
-    (let* ((team (slack-team-select))
-           (room-alist (funcall room-alist-func team))
-           (room (slack-select-from-list
-                     (room-alist "Select Channel: ")))
-           (name (read-from-minibuffer "New Name: ")))
-      (slack-request
-       (slack-request-create
-        url
-        team
-        :params (list (cons "channel" (oref room id))
-                      (cons "name" name))
-        :success #'on-rename-success)))))
-
 (defun slack-current-room-or-select (room-alist-func &optional select)
   (if (and (not select)
            (bound-and-true-p slack-current-buffer)

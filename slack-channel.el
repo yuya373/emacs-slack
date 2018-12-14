@@ -92,8 +92,12 @@
 
 (defun slack-channel-rename ()
   (interactive)
-  (slack-room-rename slack-channel-rename-url
-                     #'slack-channel-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-channel-names team #'(lambda (channels)
+                                              (cl-remove-if #'slack-room-member-p
+                                                            channels))))))
+    (slack-conversations-rename room team)))
 
 (defun slack-channel-invite ()
   (interactive)

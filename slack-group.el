@@ -106,8 +106,12 @@
 
 (defun slack-group-rename ()
   (interactive)
-  (slack-room-rename slack-group-rename-url
-                     #'slack-group-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-group-names team #'(lambda (groups)
+                                            (cl-remove-if #'slack-room-archived-p
+                                                          groups))))))
+    (slack-conversations-rename room team)))
 
 (defun slack-group-invite ()
   (interactive)
