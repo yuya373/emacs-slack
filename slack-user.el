@@ -204,39 +204,74 @@
 (defun slack--user-select (team)
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
 
+(cl-defun slack-users-info-request (user-ids team &key after-success)
+  (let* ((batch-size 400)
+         (iter-count (ceiling (/ (length user-ids) (float batch-size))))
+         (queue nil))
+    (cl-loop for i from 0 to (1- iter-count)
+             do (push (cl-subseq user-ids
+                                 (* i batch-size)
+                                 (min (+ (* i batch-size) batch-size)
+                                      (length user-ids)))
+                      queue))
+    (setq queue (reverse queue))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-users-info-request")
+           (let* ((users (plist-get data :users))
+                  (ids (mapcar #'(lambda (e) (plist-get e :id))
+                               users)))
+             (oset team users (append users
+                                      (cl-remove-if
+                                       #'(lambda (u)
+                                           (cl-find (plist-get u :id)
+                                                    ids
+                                                    :test #'string=))
+                                       (oref team users))))
+             (if (< 0 (length queue))
+                 (progn
+                   (slack-log (format "Fetching users... [%s/%s]"
+                                      (* batch-size (- iter-count (length queue)))
+                                      (length user-ids))
+                              team :level 'info)
+                   (request (pop queue)))
+               (when (functionp after-success)
+                 (funcall after-success))))))
+         (request (user-ids)
+                  (slack-request
+                   (slack-request-create
+                    slack-user-info-url
+                    team
+                    :params (list (cons "users"
+                                        (mapconcat #'identity user-ids ",")))
+                    :success #'on-success))))
+      (request (pop queue)))))
+
 (cl-defun slack-user-info-request (user-id team &key after-success)
-  (cl-labels
-      ((on-success
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-user-info-request")
-         (let ((users (plist-get data :users))
-               (user (plist-get data :user)))
-           (if users
-               (progn
-                 (oset team users (append users
-                                          (cl-remove-if
-                                           #'(lambda (u)
-                                               (cl-find (plist-get u :id)
-                                                        user-id
-                                                        :test #'string=))
-                                           (oref team users)))))
+  (if (listp user-id)
+      (slack-users-info-request user-id team
+                                :after-success after-success)
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-user-info-request")
+           (let ((user (plist-get data :user)))
              (oset team users
                    (cons user
                          (cl-remove-if #'(lambda (user)
                                            (string= (plist-get user :id) user-id))
-                                       (oref team users)))))
-           (when (functionp after-success)
-             (funcall after-success))))))
-    (slack-request
-     (slack-request-create
-      slack-user-info-url
-      team
-      :params (list (if (listp user-id)
-                        (cons "users"
-                              (mapconcat #'identity user-id ","))
-                      (cons "user" user-id)))
-      :success #'on-success))))
+                                       (oref team users))))
+             (when (functionp after-success)
+               (funcall after-success))))))
+      (slack-request
+       (slack-request-create
+        slack-user-info-url
+        team
+        :params (list (cons "user" user-id))
+        :success #'on-success)))))
 
 (defun slack-user-image-url-24 (user)
   (plist-get (slack-user-profile user) :image_24))
