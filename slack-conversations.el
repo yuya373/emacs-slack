@@ -341,6 +341,10 @@
                                (slack-conversations-info-request
                                 room team)))
                   (slack-users-counts team)
+                  (slack-user-info-request
+                   (mapcar #'(lambda (im) (oref im user))
+                           (oref team ims))
+                   team)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Channel List Updated"
