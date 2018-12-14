@@ -383,6 +383,12 @@
                          (slack-message-create payload
                                                team
                                                room))
+         (callback (messages next-cursor has-more)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              messages
+                              next-cursor
+                              has-more)))
          (on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-conversations-replies")
@@ -390,12 +396,17 @@
                                                (plist-get data :messages)))
                              (meta (plist-get data :response_metadata))
                              (next-cursor (and meta (plist-get meta :next_cursor)))
-                             (has-more (eq t (plist-get data :has_more))))
-                        (when (functionp after-success)
-                          (funcall after-success
-                                   messages
-                                   next-cursor
-                                   has-more))))))
+                             (has-more (eq t (plist-get data :has_more)))
+                             (user-ids (slack-team-missing-user-ids
+                                        team (cl-loop for m in messages
+                                                      nconc (slack-message-user-ids m)))))
+
+                        (if (< 0 (length user-ids))
+                            (slack-users-info-request
+                             user-ids team
+                             :after-success #'(lambda ()
+                                                (callback messages next-cursor has-more)))
+                          (callback messages next-cursor has-more))))))
       (slack-request
        (slack-request-create
         slack-conversations-replies-url
