@@ -491,20 +491,34 @@
       (when (functionp after-success)
         (funcall after-success))
     (cl-labels
-        ((success (data)
+        ((callback (next-cursor)
+                   (if (and next-cursor (< 0 (length next-cursor)))
+                       (request next-cursor)
+                     (progn
+                       (oset room members-loaded-p t)
+                       (when (functionp after-success)
+                         (funcall after-success)))))
+         (success (data)
                   (let* ((meta (plist-get data :response_metadata))
                          (next-cursor (and meta (plist-get meta :next_cursor)))
-                         (members (plist-get data :members)))
+                         (members (plist-get data :members))
+                         (user-ids (mapcar #'(lambda (e) (plist-get e :id))
+                                           (oref team users)))
+                         (missing-user-ids (cl-remove-if #'(lambda (e)
+                                                             (cl-find e user-ids :test #'string=))
+                                                         members)))
                     (oset room members
                           (cl-remove-duplicates (append (oref room members)
                                                         members)
                                                 :test #'string=))
-                    (if (and next-cursor (< 0 (length next-cursor)))
-                        (request next-cursor)
-                      (progn
-                        (oset room members-loaded-p t)
-                        (when (functionp after-success)
-                          (funcall after-success))))))
+
+                    (if (< 0 (length missing-user-ids))
+                        (slack-user-info-request
+                         missing-user-ids
+                         team
+                         :after-success #'(lambda ()
+                                            (callback next-cursor)))
+                      (callback next-cursor))))
          (request (&optional cursor)
                   (slack-request
                    (slack-request-create
