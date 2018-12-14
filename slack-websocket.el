@@ -223,7 +223,7 @@
                                   (slack-ws-reconnect ws team))
               (on-open ()
                        (slack-conversations-list-update team)
-                       (slack-user-list-update team)
+                       ;; (slack-user-list-update team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
