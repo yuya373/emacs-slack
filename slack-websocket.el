@@ -372,8 +372,9 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-thread-subscribed decoded-payload team))
          ((string= type "im_open")
           (slack-ws-handle-im-open decoded-payload team))
-         ((string= type "im_close")
-          (slack-ws-handle-im-close decoded-payload team))
+         ((or (string= type "im_close")
+              (string= type "group_close"))
+          (slack-ws-handle-close decoded-payload team))
          ((string= type "team_join")
           (slack-ws-handle-team-join decoded-payload team))
          ((string= type "user_typing")
@@ -461,42 +462,48 @@ TEAM is one of `slack-teams'"
                                              (slack-user-name user-id team)
                                              (slack-team-name team))
                                      team
-                                     :level 'info))
-                        (slack-im-open (plist-get data :user))))
+                                     :level 'info))))
       (slack-user-info-request (plist-get user :id)
                                team
                                :after-success #'after-success))))
 
 (defun slack-ws-handle-im-open (payload team)
-  (cl-labels
-      ((notify
-        (im)
-        (slack-room-history-request
-         im team
-         :after-success #'(lambda (&rest _ignore)
-                            (slack-log (format "Direct Message Channel with %s is Open"
-                                               (slack-user-name (oref im user) team))
-                                       team :level 'info)))))
-    (let ((exist (slack-room-find (plist-get payload :channel) team)))
-      (if exist
-          (progn
-            (oset exist is-open t)
-            (notify exist))
-        (with-slots (ims) team
-          (let ((im (slack-room-create
-                     (list :id (plist-get payload :channel)
-                           :user (plist-get payload :user))
-                     'slack-im)))
-            (setq ims (cons im ims))
-            (notify im)))))))
+  (let* ((channel-id (plist-get payload :channel))
+         (im (slack-room-find channel-id team)))
+    (cl-labels
+        ((notify (im)
+                 (slack-log (format "Open direct message with %s"
+                                    (slack-user-name (oref im user)
+                                                     team))
+                            team :level 'info))
+         (update (im)
+                 (slack-conversations-info im team
+                                           #'(lambda ()
+                                               (notify im)))))
+      (unless im
+        (setq im (slack-room-create
+                  (list :id (plist-get payload :channel)
+                        :user (plist-get payload :user))
+                  'slack-im))
+        (push im (oref team ims)))
+      (oset im is-open t)
+      (update im))))
 
-(defun slack-ws-handle-im-close (payload team)
-  (let ((im (slack-room-find (plist-get payload :channel) team)))
-    (when im
-      (oset im is-open nil)
-      (slack-log (format "Direct Message Channel with %s is Closed"
-                         (slack-user-name (oref im user) team))
-                 team :level 'info))))
+(defun slack-ws-handle-close (payload team)
+  (slack-if-let* ((room-id (plist-get payload :channel))
+                  (room (slack-room-find room-id team)))
+      (cond
+       ((slack-im-p room)
+        (oset room is-open nil)
+        (slack-log (format "Direct message with %s is closed"
+                           (slack-user-name
+                            (plist-get payload :user)
+                            team))
+                   team :level 'info))
+       ((slack-group-p room)
+        (oset team groups (cl-remove-if #'(lambda (e)
+                                            (slack-equalp e room))
+                                        (oref team groups)))))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
@@ -711,21 +718,18 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-file-created (payload team)
   (slack-if-let* ((file-id (plist-get (plist-get payload :file) :id))
-                  (room (slack-file-room-obj team))
                   (buffer (slack-buffer-find 'slack-file-list-buffer
-                                             room
                                              team)))
       (slack-file-request-info file-id 1 team
                                #'(lambda (file _team)
                                    (slack-buffer-update buffer file)))))
 
 (defun slack-ws-handle-file-deleted (payload team)
-  (let ((file-id (plist-get payload :file_id))
-        (room (slack-file-room-obj team)))
-    (with-slots (messages) room
-      (setq messages (cl-remove-if #'(lambda (f)
-                                       (string= file-id (oref f id)))
-                                   messages)))))
+  (let ((file-id (plist-get payload :file_id)))
+    (oset team files
+          (cl-remove-if #'(lambda (f) (string= file-id
+                                               (oref f id)))
+                        (oref team files)))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (slack-if-let* ((channel (plist-get payload :channel))

@@ -182,13 +182,14 @@
           (slack-if-let* ((message (slack-room-find-message room (slack-ts root))))
               (display-thread message)
             (cl-labels
-                ((success (_has-more)
+                ((success (messages _next-cursor)
+                          (slack-room-append-messages room messages)
                           (let ((message (slack-room-find-message room (slack-ts root))))
                             (display-thread message))))
-              (slack-room-history-request room team
+              (slack-conversations-history room team
                                           :oldest (slack-ts root)
                                           :inclusive "true"
-                                          :count 1
+                                          :limit "1"
                                           :after-success #'success)))))))
 
 (defun slack-all-threads ()

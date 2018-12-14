@@ -76,6 +76,7 @@
    (marker-overlay :initform nil)
    (update-mark-timer :initform '(nil . nil)) ;; (timestamp . timer)
    (cursor-event-prev-ts :initform nil :type (or null string))
+   (cursor :initarg :cursor :initform "" :type string)
    ))
 
 (cl-defmethod slack-buffer-last-read ((this slack-message-buffer))
@@ -258,12 +259,12 @@
       (if thread (slack-thread-show-messages thread room team)
         (slack-thread-start)))))
 
-(cl-defmethod slack-create-message-buffer ((room slack-room) team)
+(cl-defmethod slack-create-message-buffer ((room slack-room) cursor team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer
                                              room
                                              team)))
       buffer
-    (slack-message-buffer :room room :team team)))
+    (slack-message-buffer :room room :team team :cursor cursor)))
 
 
 (cl-defmethod slack-buffer-update-oldest ((this slack-message-buffer) message)
@@ -273,28 +274,31 @@
 
 (cl-defmethod slack-buffer-load-missing-messages ((this slack-message-buffer))
   (with-slots (room team) this
-    (cl-labels
-        ((request-messages (latest)
-                           (slack-room-history-request room team
-                                                       :latest latest
-                                                       :count 100
-                                                       :after-success #'after-success))
-         (after-success (has-more)
-                        (let* ((messages (slack-room-sorted-messages room))
-                               (latest-message (car (last messages))))
-                          (if has-more
-                              (request-messages (slack-ts latest-message))
-                            (progn
-                              (with-current-buffer (slack-buffer-buffer this)
-                                (let ((inhibit-read-only t))
-                                  (slack-buffer-delete-overlay this))
-                                (slack-buffer-insert-messages this messages)
-                                (slack-buffer-goto (slack-buffer-last-read this))
-                                (slack-buffer-update-marker-overlay this)))))))
-      (let ((latest-message (car (last (slack-room-sorted-messages room)))))
-        (request-messages (or (and latest-message
-                                   (slack-ts latest-message))
-                              nil))))))
+    (let* ((latest-message (car (last (slack-room-sorted-messages room))))
+           (latest (and latest-message (slack-ts latest-message))))
+
+      (cl-labels
+          ((paginate (cursor)
+                     (slack-conversations-history room team
+                                                  :oldest latest
+                                                  :cursor cursor
+                                                  :after-success #'after-success))
+           (after-success (messages next-cursor)
+                          (slack-room-append-messages room messages)
+                          (if (and next-cursor (< 0 (length next-cursor)))
+                              (paginate next-cursor)
+                            (write-messages)))
+           (write-messages ()
+                           (let* ((messages (slack-room-sorted-messages room)))
+                             (with-current-buffer (slack-buffer-buffer this)
+                               (let ((inhibit-read-only t))
+                                 (slack-buffer-delete-overlay this))
+                               (slack-buffer-insert-messages this messages)
+                               (slack-buffer-goto (slack-buffer-last-read this))
+                               (slack-buffer-update-marker-overlay this)))))
+        (slack-conversations-history room team
+                                     :oldest latest
+                                     :after-success #'after-success)))))
 
 (cl-defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
@@ -318,10 +322,10 @@
                    (message "loading-message-end not found, oldest: %s" oldest))
 
                  (set-marker lui-output-marker (point-min))
-                 (if (and messages (< 0 (length messages)))
+                 (if (< 0 (length (oref this cursor)))
                      (slack-buffer-insert-load-more this)
                    (let ((lui-time-stamp-position nil))
-                     (lui-insert "(no more messages)\n" t)))
+                     (lui-insert "(no more messages)" t)))
 
                  (slack-buffer-insert-messages this messages t)
                  (lui-recover-output-marker)
@@ -330,11 +334,13 @@
               (if current-ts
                   (slack-buffer-goto current-ts)
                 (goto-char cur-point))))
-           (after-success (&rest _ignore)
+           (after-success (messages next-cursor)
+                          (oset this cursor next-cursor)
+                          (slack-room-prepend-messages room messages)
                           (update-buffer (slack-room-sorted-messages room))))
-        (slack-room-history-request room team
-                                    :oldest oldest
-                                    :after-success #'after-success)))))
+        (slack-conversations-history room team
+                                     :cursor (oref this cursor)
+                                     :after-success #'after-success)))))
 
 (cl-defmethod slack-buffer-display-pins-list ((this slack-message-buffer))
   (with-slots (room team) this
@@ -354,19 +360,22 @@
 
 (cl-defmethod slack-buffer-display-user-profile ((this slack-message-buffer))
   (with-slots (room team) this
-    (let* ((members (cl-remove-if
-                     #'(lambda (e)
-                         (or (slack-user-self-p e team)
-                             (slack-user-hidden-p
-                              (slack-user--find e team))))
-                     (slack-room-get-members room)))
-           (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
-                               members))
-           (user-id (if (eq 1 (length members))
-                        (car members)
-                      (slack-select-from-list (user-alist "Select User: ")))))
-      (let ((buf (slack-create-user-profile-buffer team user-id)))
-        (slack-buffer-display buf)))))
+    (slack-conversations-members
+     room team
+     #'(lambda ()
+         (let* ((members (cl-remove-if
+                          #'(lambda (e)
+                              (or (slack-user-self-p e team)
+                                  (slack-user-hidden-p
+                                   (slack-user--find e team))))
+                          (slack-room-get-members room)))
+                (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
+                                    members))
+                (user-id (if (eq 1 (length members))
+                             (car members)
+                           (slack-select-from-list (user-alist "Select User: ")))))
+           (let ((buf (slack-create-user-profile-buffer team user-id)))
+             (slack-buffer-display buf)))))))
 
 (cl-defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
   (when (oref this marker-overlay)
@@ -615,29 +624,28 @@
   (cl-labels
       ((open (buf)
              (slack-buffer-display buf)))
-    (let* ((buffer-class (or (and (slack-file-room-p room)
-                                  'slack-file-list-buffer)
-                             'slack-message-buffer))
-           (buf (slack-buffer-find buffer-class
-                                   room
-                                   team)))
+    (let ((buf (slack-buffer-find 'slack-message-buffer
+                                  room
+                                  team)))
       (if buf (open buf)
         (message "No Message in %s, fetching from server..." (slack-room-name room team))
-        (slack-room-history-request
+        (slack-conversations-history
          room team
-         :after-success #'(lambda (&rest _ignore)
-                            (open (slack-create-message-buffer room team))))))))
+         :after-success #'(lambda (messages cursor)
+                            (slack-room-set-messages room messages)
+                            (open (slack-create-message-buffer room cursor team))))))))
 
 (cl-defmethod slack-room-update-buffer ((this slack-room) team message replace)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
       (slack-buffer-update buffer message :replace replace)
     (and slack-buffer-create-on-notify
-         (slack-room-history-request
+         (slack-conversations-history
           this team
-          :after-success #'(lambda (&rest _ignore)
+          :after-success #'(lambda (messages cursor)
+                             (slack-room-set-messages this messages)
                              (tracking-add-buffer
                               (slack-buffer-buffer
-                               (slack-create-message-buffer this team))))))))
+                               (slack-create-message-buffer this cursor team))))))))
 
 (defun slack-select-unread-rooms ()
   (interactive)

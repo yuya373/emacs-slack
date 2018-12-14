@@ -36,10 +36,7 @@
 (defvar slack-display-team-name)
 (defvar slack-completing-read-function)
 
-(defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
-(defconst slack-im-close-url "https://slack.com/api/im.close")
-(defconst slack-im-open-url "https://slack.com/api/im.open")
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 
 (defclass slack-im (slack-room)
@@ -104,75 +101,44 @@
   (interactive)
   (let ((team (or team (slack-team-select))))
     (cl-labels
-      ((success (_channels _groups ims)
-                (slack-merge-list (oref team ims)
-                                  ims)
-                (when (functionp after-success)
-                  (funcall after-success team))
-                (mapc #'(lambda (room)
-                          (slack-request-worker-push
-                           (slack-conversations-info-request room team)))
-                      (oref team ims))
-                (slack-log "Slack Im List Updated"
-                           team :level 'info)))
-    (slack-conversations-list team #'success (list "im")))))
+        ((success (_channels _groups ims)
+                  (slack-merge-list (oref team ims)
+                                    ims)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (mapc #'(lambda (room)
+                            (slack-request-worker-push
+                             (slack-conversations-info-request room team)))
+                        (oref team ims))
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success (list "im")))))
 
 (cl-defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
 
 (defun slack-im-close ()
+  "Close direct message."
   (interactive)
   (let* ((team (slack-team-select))
-         (alist (cl-remove-if #'(lambda (im-names)
-                                  (not (oref (cdr im-names) is-open)))
-                              (slack-im-names team))))
-    (slack-select-from-list
-        (alist "Select User: ")
-        (cl-labels
-            ((on-success
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-im-close")
-               (if (plist-get data :already_closed)
-                   (let ((im (slack-room-find (oref selected id) team)))
-                     (oset im is-open nil)
-                     (message "Direct Message Channel with %s Already Closed"
-                              (slack-user-name (oref im user) team)))))))
-          (slack-request
-           (slack-request-create
-            slack-im-close-url
-            team
-            :type "POST"
-            :params (list (cons "channel" (oref selected id)))
-            :success #'on-success))))))
+         (im (slack-current-room-or-select
+              #'(lambda ()
+                  (cl-remove-if #'(lambda (im-names)
+                                    (not (oref (cdr im-names) is-open)))
+                                (slack-im-names team))))))
+    (slack-conversations-close im team)))
 
-(defun slack-im-open (&optional user after-success)
+(defun slack-im-open ()
   (interactive)
   (let* ((team (slack-team-select))
-         (user (or user (slack-select-from-list
-                            ((slack-user-name-alist
-                              team
-                              :filter #'(lambda (users) (cl-remove-if #'slack-user-hidden-p users)))
-                             "Select User: ")))))
-    (cl-labels
-        ((on-success
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-im-open")
-           (if (plist-get data :already_open)
-               (let ((im (slack-room-find (plist-get (plist-get data :channel) :id) team)))
-                 (oset im is-open t)
-                 (message "Direct Message Channel with %s Already Open"
-                          (slack-user-name (oref im user) team))))
-           (when (functionp after-success)
-             (funcall after-success)))))
-      (slack-request
-       (slack-request-create
-        slack-im-open-url
-        team
-        :type "POST"
-        :params (list (cons "user" (plist-get user :id)))
-        :success #'on-success)))))
+         (user (slack-select-from-list
+                   ((slack-user-name-alist
+                     team
+                     :filter #'(lambda (users)
+                                 (cl-remove-if #'slack-user-hidden-p users)))
+                    "Select User: "))))
+    (slack-conversations-open team
+                              :user-ids (list (plist-get user :id)))))
 
 (cl-defmethod slack-room-label-prefix ((room slack-im) team)
   (format "%s "
@@ -186,12 +152,6 @@
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
-
-(cl-defmethod slack-room-history-url ((_room slack-im))
-  slack-im-history-url)
-
-(cl-defmethod slack-room-replies-url ((_room slack-im))
-  "https://slack.com/api/im.replies")
 
 (provide 'slack-im)
 ;;; slack-im.el ends here

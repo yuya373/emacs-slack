@@ -47,6 +47,17 @@
                                    (slot-value team class))))
       (with-current-buffer buf slack-current-buffer)))
 
+(cl-defmethod slack-buffer-toggle-email-expand ((this slack-stars-buffer) _file-id)
+  (with-slots (team) this
+    (slack-if-let* ((ts (get-text-property (point) 'ts))
+                    (items (slack-star-items (oref team star)))
+                    (item (cl-find-if #'(lambda (e) (string= ts (slack-ts e)))
+                                      items)))
+        (when (slot-boundp item 'file)
+          (with-slots (file) item
+            (oset file is-expanded (not (oref file is-expanded))))
+          (slack-buffer--replace this ts)))))
+
 (cl-defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
   (let ((lui-time-stamp-time (seconds-to-time
                               (string-to-number

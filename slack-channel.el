@@ -35,16 +35,8 @@
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
 
-(defconst slack-channel-history-url "https://slack.com/api/channels.history")
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
-(defconst slack-create-channel-url "https://slack.com/api/channels.create")
-(defconst slack-channel-rename-url "https://slack.com/api/channels.rename")
-(defconst slack-channel-invite-url "https://slack.com/api/channels.invite")
-(defconst slack-channel-leave-url "https://slack.com/api/channels.leave")
-(defconst slack-channel-join-url "https://slack.com/api/channels.join")
-(defconst slack-channel-archive-url "https://slack.com/api/channels.archive")
-(defconst slack-channel-unarchive-url "https://slack.com/api/channels.unarchive")
 
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member :initform nil)
@@ -91,51 +83,39 @@
 (defun slack-create-channel ()
   (interactive)
   (let ((team (slack-team-select)))
-    (cl-labels
-        ((on-create-channel (&key data &allow-other-keys)
-                            (slack-request-handle-error
-                             (data "slack-channel-create"))))
-      (slack-create-room slack-create-channel-url
-                         team
-                         #'on-create-channel))))
+    (slack-conversations-create team "false")))
 
 (defun slack-channel-rename ()
   (interactive)
-  (slack-room-rename slack-channel-rename-url
-                     #'slack-channel-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-channel-names team #'(lambda (channels)
+                                              (cl-remove-if #'slack-room-member-p
+                                                            channels))))))
+    (slack-conversations-rename room team)))
 
 (defun slack-channel-invite ()
   (interactive)
-  (slack-room-invite slack-channel-invite-url
-                     #'slack-channel-names))
+  (let* ((team (slack-team-select))
+         (room (slack-current-room-or-select
+                (slack-channel-names team
+                                     #'(lambda (rooms)
+                                         (cl-remove-if #'slack-room-archived-p
+                                                       rooms))))))
+    (slack-conversations-invite room team)))
 
-(defun slack-channel-leave (&optional team select)
+(defun slack-channel-leave (&optional team)
   (interactive)
   (let* ((team (or team (slack-team-select)))
          (channel (slack-current-room-or-select
-                   #'(lambda ()
-                       (slack-channel-names
-                        team
-                        #'(lambda (channels)
-                            (cl-remove-if-not #'slack-room-member-p
-                                              channels))))
-                   select)))
-    (slack-channel-request-leave channel team)))
+                   (slack-channel-names
+                    team
+                    #'(lambda (channels)
+                        (cl-remove-if-not #'slack-room-member-p
+                                          channels))))))
+    (slack-conversations-leave channel team)))
 
-(defun slack-channel-request-leave (channel team)
-  (cl-labels
-      ((on-channel-leave (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-channel-leave")
-                          (oset channel is-member nil)
-                          (message "Left Channel: %s"
-                                   (slack-room-name channel team)))))
-    (slack-room-request-with-id slack-channel-leave-url
-                                (oref channel id)
-                                team
-                                #'on-channel-leave)))
-
-(defun slack-channel-join (&optional team select)
+(defun slack-channel-join (&optional team)
   (interactive)
   (cl-labels
       ((filter-channel (channels)
@@ -146,25 +126,12 @@
                         channels)))
     (let* ((team (or team (slack-team-select)))
            (channel (slack-current-room-or-select
-                     #'(lambda ()
-                         (slack-channel-names team
-                                              #'filter-channel))
-                     select)))
-      (slack-channel-request-join channel team))))
-
-(defun slack-channel-request-join (channel team)
-  (cl-labels
-      ((on-channel-join (&key data &allow-other-keys)
-                        (slack-request-handle-error
-                         (data "slack-channel-join"))))
-    (slack-request
-     (slack-request-create
-      slack-channel-join-url
-      team
-      :params (list (cons "name" (slack-room-name channel team)))
-      :success #'on-channel-join))))
+                     (slack-channel-names team
+                                          #'filter-channel))))
+      (slack-conversations-join channel team))))
 
 (defun slack-channel-archive ()
+  "Archive selected channel."
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
@@ -174,16 +141,10 @@
                         #'(lambda (channels)
                             (cl-remove-if #'slack-room-archived-p
                                           channels)))))))
-    (cl-labels
-        ((on-channel-archive (&key data &allow-other-keys)
-                             (slack-request-handle-error
-                              (data "slack-channel-archive"))))
-      (slack-room-request-with-id slack-channel-archive-url
-                                  (oref channel id)
-                                  team
-                                  #'on-channel-archive))))
+    (slack-conversations-archive channel team)))
 
 (defun slack-channel-unarchive ()
+  "Unarchive selected channel."
   (interactive)
   (let* ((team (slack-team-select))
          (channel (slack-current-room-or-select
@@ -193,26 +154,13 @@
                         #'(lambda (channels)
                             (cl-remove-if-not #'slack-room-archived-p
                                               channels)))))))
-    (cl-labels
-        ((on-channel-unarchive (&key data &allow-other-keys)
-                               (slack-request-handle-error
-                                (data "slack-channel-unarchive"))))
-      (slack-room-request-with-id slack-channel-unarchive-url
-                                  (oref channel id)
-                                  team
-                                  #'on-channel-unarchive))))
+    (slack-conversations-unarchive channel team)))
 
 (cl-defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
-
-(cl-defmethod slack-room-history-url ((_room slack-channel))
-  slack-channel-history-url)
-
-(cl-defmethod slack-room-replies-url ((_room slack-channel))
-  "https://slack.com/api/channels.replies")
 
 (cl-defmethod slack-room-hidden-p ((room slack-channel))
   (slack-room-archived-p room))
