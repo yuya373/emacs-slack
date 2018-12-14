@@ -338,5 +338,13 @@
            (oref this pinned-to)
            :test #'string=))
 
+(cl-defmethod slack-message-user-ids ((this slack-message))
+  (let ((result))
+    (push (slack-message-sender-id this) result)
+    (cl-loop for r in (slack-message-reactions this)
+             do (cl-loop for u in (oref r users)
+                         do (push u result)))
+    result))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here

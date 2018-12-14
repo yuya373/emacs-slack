@@ -339,5 +339,11 @@ you can change current-team with `slack-change-current-team'"
 (cl-defmethod slack-team-token ((this slack-team))
   (oref this token))
 
+(cl-defmethod slack-team-missing-user-ids ((this slack-team) user-ids)
+  (let ((exists-user-ids (mapcar #'(lambda (e) (plist-get e :id))
+                                 (oref this users))))
+    (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
+                  (cl-remove-duplicates user-ids :test #'string=))))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here
