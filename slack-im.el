@@ -30,6 +30,7 @@
 (require 'slack-buffer)
 (require 'slack-user)
 (require 'slack-request)
+(require 'slack-conversations)
 
 (defvar slack-buffer-function)
 (defvar slack-display-team-name)
@@ -37,8 +38,6 @@
 
 (defconst slack-im-history-url "https://slack.com/api/im.history")
 (defconst slack-im-buffer-name "*Slack - Direct Messages*")
-(defconst slack-user-list-url "https://slack.com/api/users.list")
-(defconst slack-im-list-url "https://slack.com/api/im.list")
 (defconst slack-im-close-url "https://slack.com/api/im.close")
 (defconst slack-im-open-url "https://slack.com/api/im.open")
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
@@ -101,51 +100,22 @@
           " : "
           (slack-room-display-name room team)))
 
-(defun slack-user-equal-p (a b)
-  (string= (plist-get a :id) (plist-get b :id)))
-
-(defun slack-user-pushnew (user team)
-  (with-slots (users) team
-    (cl-pushnew user users :test #'slack-user-equal-p)))
-
-(defun slack-im-update-room-list (users team &optional after-success)
-  (cl-labels ((on-update-room-list
-               (&key data &allow-other-keys)
-               (slack-request-handle-error
-                (data "slack-im-update-room-list")
-                (mapc #'(lambda (u) (slack-user-pushnew u team))
-                      (append users nil))
-                (slack-merge-list (oref team ims)
-                                  (mapcar #'(lambda (d)
-                                              (slack-room-create d team 'slack-im))
-                                          (plist-get data :ims)))
-                (if after-success
-                    (funcall after-success team))
-                (slack-request-dnd-team-info team)
-                (mapc #'(lambda (room)
-                          (slack-request-worker-push
-                           (slack-room-create-info-request room team)))
-                      (oref team ims))
-                (slack-log "Slack Im List Updated" team :level 'info))))
-    (slack-room-list-update slack-im-list-url
-                            #'on-update-room-list
-                            team)))
-
 (defun slack-im-list-update (&optional team after-success)
   (interactive)
   (let ((team (or team (slack-team-select))))
     (cl-labels
-        ((on-list-update
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-im-list-update")
-           (let* ((members (append (plist-get data :members) nil)))
-             (slack-im-update-room-list members team after-success)))))
-      (slack-request
-       (slack-request-create
-        slack-user-list-url
-        team
-        :success #'on-list-update)))))
+      ((success (_channels _groups ims)
+                (slack-merge-list (oref team ims)
+                                  ims)
+                (when (functionp after-success)
+                  (funcall after-success team))
+                (mapc #'(lambda (room)
+                          (slack-request-worker-push
+                           (slack-conversations-info-request room team)))
+                      (oref team ims))
+                (slack-log "Slack Im List Updated"
+                           team :level 'info)))
+    (slack-conversations-list team #'success (list "im")))))
 
 (cl-defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
@@ -209,20 +179,6 @@
           (or
            (slack-im-user-dnd-status room team)
            (slack-im-user-presence room team))))
-
-(cl-defmethod slack-room-get-info-url ((_room slack-im))
-  slack-im-open-url)
-
-(cl-defmethod slack-room-update-info ((room slack-im) data team)
-  (let ((new-room (slack-room-create (plist-get data :channel)
-                                     team
-                                     'slack-im)))
-
-    (slack-merge room new-room)))
-
-(cl-defmethod slack-room-info-request-params ((room slack-im))
-  (list (cons "user" (oref room user))
-        (cons "return_im" "true")))
 
 (cl-defmethod slack-room-get-members ((room slack-im))
   (list (oref room user)))

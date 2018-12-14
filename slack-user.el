@@ -27,6 +27,7 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-emoji)
+;; (require 'slack-room)
 
 (defvar slack-completing-read-function)
 
@@ -35,9 +36,9 @@
 (defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
+(defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
-(defconst slack-bot-list-url "https://slack.com/api/bots.list")
 (defvar slack-current-user-id nil)
 
 (defun slack-user--find (id team)
@@ -136,21 +137,6 @@
       team
       :params (list (cons "bot" bot_id))
       :success #'on-success))))
-
-(defun slack-bot-list-update (&optional team)
-  (interactive)
-  (let ((team (or team (slack-team-select))))
-    (cl-labels
-        ((on-success
-          (&key data &allow-other-keys)
-          (slack-request-handle-error
-           (data "slack-bot-list-update")
-           (oset team bots (append (plist-get data :bots) nil)))))
-      (slack-request
-       (slack-request-create
-        slack-bot-list-url
-        team
-        :success #'on-success)))))
 
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
@@ -353,6 +339,49 @@
       slack-dnd-team-info-url
       team
       :success #'on-success))))
+
+(defun slack-user-equal-p (a b)
+  (string= (plist-get a :id) (plist-get b :id)))
+
+(defalias 'slack-bot-list-update 'slack-user-list-update)
+(defun slack-user-list-update (&optional team)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((on-list-update
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-im-list-update")
+           (let* ((members (plist-get data :members))
+                  (response_metadata (plist-get data
+                                                :response_metadata))
+                  (next-cursor (and response_metadata
+                                    (plist-get response_metadata
+                                               :next_cursor))))
+             (oset team users
+                   (append
+                    (cl-remove-if #'(lambda (e)
+                                      (cl-find e members
+                                               :test #'slack-user-equal-p))
+                                  (oref team users))
+                    members))
+
+             (if (and next-cursor (< 0 (length next-cursor)))
+                 (request next-cursor)
+               (progn
+                 (slack-request-dnd-team-info team)
+                 (slack-log "Slack User List Updated"
+                            team :level 'info))))))
+         (request (&optional next-cursor)
+                  (slack-request
+                   (slack-request-create
+                    slack-user-list-url
+                    team
+                    :params (list (cons "limit" "1000")
+                                  (and next-cursor
+                                       (cons "cursor" next-cursor)))
+                    :success #'on-list-update))))
+      (request))))
 
 (provide 'slack-user)
 ;;; slack-user.el ends here

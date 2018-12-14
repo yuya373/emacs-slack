@@ -47,6 +47,7 @@
 (require 'slack-authorize)
 (require 'slack-typing)
 (require 'slack-stars-buffer)
+(require 'slack-conversations)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -221,10 +222,8 @@
                                              team)
                                   (slack-ws-reconnect ws team))
               (on-open ()
-                       (slack-channel-list-update team)
-                       (slack-group-list-update team)
-                       (slack-im-list-update team)
-                       (slack-bot-list-update team)
+                       (slack-conversations-list-update team)
+                       (slack-user-list-update team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
@@ -487,7 +486,7 @@ TEAM is one of `slack-teams'"
           (let ((im (slack-room-create
                      (list :id (plist-get payload :channel)
                            :user (plist-get payload :user))
-                     team 'slack-im)))
+                     'slack-im)))
             (setq ims (cons im ims))
             (notify im)))))))
 
@@ -637,9 +636,9 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-channel-created (payload team)
   (let ((channel (slack-room-create (plist-get payload :channel)
-                                    team 'slack-channel)))
+                                    'slack-channel)))
     (push channel (oref team channels))
-    (slack-room-info-request channel team)
+    (slack-conversations-info channel team)
     (slack-log (format "Created channel %s"
                        (slack-room-display-name channel team))
                team :level 'info)))
@@ -681,17 +680,20 @@ TEAM is one of `slack-teams'"
                        old-name
                        new-name)
                team :level 'info)))
+
 (defun slack-ws-handle-group-joined (payload team)
-  (let ((group (slack-room-create (plist-get payload :channel) team 'slack-group)))
+  (let ((group (slack-room-create
+                (plist-get payload :channel)
+                'slack-group)))
     (push group (oref team groups))
-    (slack-room-info-request group team)
+    (slack-conversations-info group team)
     (slack-log (format "Joined group %s"
                        (slack-room-display-name group team))
                team :level 'info)))
 
 (defun slack-ws-handle-channel-joined (payload team)
   (let ((channel (slack-room-find (plist-get (plist-get payload :channel) :id) team)))
-    (slack-room-info-request channel team)
+    (slack-conversations-info channel team)
     (slack-log (format "Joined channel %s"
                        (slack-room-display-name channel team))
                team :level 'info)))
@@ -724,14 +726,19 @@ TEAM is one of `slack-teams'"
       (setq messages (cl-remove-if #'(lambda (f)
                                        (string= file-id (oref f id)))
                                    messages)))))
+
 (defun slack-ws-handle-room-marked (payload team)
   (slack-if-let* ((channel (plist-get payload :channel))
                   (room (slack-room-find channel team))
                   (ts (plist-get payload :ts))
-                  (unread-count-display (plist-get payload :unread_count_display)))
+                  (unread-count-display
+                   (plist-get payload :unread_count_display))
+                  (mention-count-display
+                   (plist-get payload :mention_count_display)))
       (progn
         (oset room unread-count-display unread-count-display)
         (oset room last-read ts)
+        (oset room mention-count-display mention-count-display)
         (slack-update-modeline)
         (slack-if-let*
             ((buffer (slack-buffer-find 'slack-message-buffer room team)))

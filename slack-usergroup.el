@@ -90,5 +90,8 @@
 (cl-defmethod slack-usergroup-deleted-p ((this slack-usergroup))
   (not (eq 0 (oref this date-delete))))
 
+(cl-defmethod slack-usergroup-include-user-p ((this slack-usergroup) user-id)
+  (cl-find user-id (oref this users) :test #'string=))
+
 (provide 'slack-usergroup)
 ;;; slack-usergroup.el ends here

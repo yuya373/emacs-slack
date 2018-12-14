@@ -26,7 +26,6 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
-(require 'slack-channel)
 
 (defvar slack-completing-read-function)
 
@@ -48,6 +47,10 @@
   "https://slack.com/api/conversations.members")
 (defconst slack-conversations-kick-url
   "https://slack.com/api/conversations.kick")
+(defconst slack-conversations-list-url
+  "https://slack.com/api/conversations.list")
+(defconst slack-conversations-info-url
+  "https://slack.com/api/conversations.info")
 (defconst slack-conversations-replies-url
   "https://slack.com/api/conversations.replies")
 
@@ -142,7 +145,8 @@
 (defun slack-conversations-join (room team &optional on-success)
   (cl-labels
       ((success (data)
-                (when (slack-channel-p room)
+                (when (eq 'slack-channel
+                          (eieio-object-class-name room))
                   (oset room is-member t))
                 (when (functionp on-success)
                   (funcall on-success data))))
@@ -287,6 +291,98 @@
         :params (list (cons "channel" channel)
                       (cons "user" user))
         :success (slack-conversations-success-handler team))))))
+
+(defun slack-conversations-list (team success-callback &optional types)
+  (let ((cursor nil)
+        (channels nil)
+        (groups nil)
+        (ims nil)
+        (types (or types (list "public_channel"
+                               "private_channel"
+                               "mpim"
+                               "im"))))
+    (cl-labels
+        ((on-success
+          (&key data &allow-other-keys)
+          (slack-request-handle-error
+           (data "slack-conversations-list")
+           (cl-loop for c in (plist-get data :channels)
+                    do (cond
+                        ((eq t (plist-get c :is_channel))
+                         (push (slack-room-create c 'slack-channel)
+                               channels))
+                        ((eq t (plist-get c :is_im))
+                         (push (slack-room-create c 'slack-im)
+                               ims))
+                        ((eq t (plist-get c :is_group))
+                         (push (slack-room-create c 'slack-group)
+                               groups))))
+           (slack-if-let*
+               ((meta (plist-get data :response_metadata))
+                (next-cursor (plist-get meta :next_cursor))
+                (has-cursor (< 0 (length next-cursor))))
+               (progn
+                 (setq cursor next-cursor)
+                 (request))
+             (funcall success-callback
+                      channels groups ims))))
+         (request ()
+                  (slack-request
+                   (slack-request-create
+                    slack-conversations-list-url
+                    team
+                    :params (list (cons "types" (mapconcat #'identity types ","))
+                                  (and cursor (cons "cursor" cursor)))
+                    :success #'on-success))))
+      (request))))
+
+(defalias 'slack-room-list-update 'slack-conversations-list-update)
+(defun slack-conversations-list-update (&optional team after-success)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((success (channels groups ims)
+                  (slack-merge-list (oref team channels)
+                                    channels)
+                  (slack-merge-list (oref team groups)
+                                    groups)
+                  (slack-merge-list (oref team ims)
+                                    ims)
+                  (cl-loop for room in (append (oref team channels)
+                                               (oref team groups)
+                                               (oref team ims))
+                           do (slack-request-worker-push
+                               (slack-conversations-info-request
+                                room team)))
+                  (slack-users-counts team)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (slack-log "Slack Channel List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Group List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success))))
+
+(defun slack-conversations-info (room team)
+  (slack-request
+   (slack-conversations-info-request room team)))
+
+(defun slack-conversations-info-request (room team)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-conversations-info")
+                 (let ((new-room (slack-room-create
+                                  (plist-get data :channel)
+                                  (eieio-object-class-name room))))
+                   (slack-merge room new-room)))))
+    (slack-request-create
+     slack-conversations-info-url
+     team
+     :params (list (cons "channel" (oref room id)))
+     :success #'success)))
 
 (cl-defun slack-conversations-replies (room ts team &key after-success (cursor nil) (oldest nil))
   (let ((channel (oref room id)))
