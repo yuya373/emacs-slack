@@ -59,9 +59,6 @@
         (cons command
               (mapconcat #'identity (cdr tokens) " "))))))
 
-(defun slack-slash-commands-join (team _args)
-  (slack-channel-join team t))
-
 (defun slack-command-create (command)
   (cl-labels
       ((slack-core-command-create
