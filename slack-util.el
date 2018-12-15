@@ -32,6 +32,7 @@
 
 (defvar slack-completing-read-function)
 (defvar slack-buffer-function)
+(defvar slack-next-page-token "[Next page]")
 
 (defalias 'slack-if-let*
   (if (fboundp 'if-let*)

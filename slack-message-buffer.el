@@ -353,22 +353,33 @@
 
 (cl-defmethod slack-buffer-display-user-profile ((this slack-message-buffer))
   (with-slots (room team) this
-    (slack-conversations-members
-     room team
-     #'(lambda ()
-         (let* ((members (cl-remove-if
-                          #'(lambda (e)
-                              (or (slack-user-self-p e team)
-                                  (slack-user-hidden-p
-                                   (slack-user--find e team))))
-                          (slack-room-get-members room)))
-                (user-alist (mapcar #'(lambda (u) (cons (slack-user-name u team) u))
-                                    members))
-                (user-id (if (eq 1 (length members))
-                             (car members)
-                           (slack-select-from-list (user-alist "Select User: ")))))
-           (let ((buf (slack-create-user-profile-buffer team user-id)))
-             (slack-buffer-display buf)))))))
+    (cl-labels
+        ((success (members next-cursor)
+                  (let ((candidates (cl-remove-if #'null
+                                                  (cl-loop for member in members
+                                                           collect (slack-if-let*
+                                                                       ((user (slack-user--find member team))
+                                                                        (not-hidden (not (slack-user-hidden-p user))))
+                                                                       (list (slack-user--name user team)
+                                                                             user)))))
+                        (selected nil))
+                    (when (< 0 (length next-cursor))
+                      (setq candidates
+                            (append candidates
+                                    (list (cons slack-next-page-token
+                                                slack-next-page-token)))))
+                    (setq selected (completing-read "Select user: " candidates nil t))
+                    (if (equal slack-next-page-token selected)
+                        (request next-cursor)
+                      (let ((user (cdr (cl-assoc selected candidates :test #'string=))))
+                        (slack-buffer-display
+                         (slack-create-user-profile-buffer
+                          team
+                          (plist-get user :id)))))))
+         (request (cursor)
+                  (slack-conversations-members
+                   room team cursor #'success)))
+      (request nil))))
 
 (cl-defmethod slack-buffer-delete-overlay ((this slack-message-buffer))
   (when (oref this marker-overlay)
