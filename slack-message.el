@@ -130,13 +130,31 @@
     (apply #'slack-reply-broadcast-message "reply-broadcast"
            (slack-collect-slots 'slack-reply-broadcast-message payload))))
 
-(cl-defun slack-message-create (payload team &key room)
+(defun slack-room-or-children-p (room)
+  (when (and room
+             (eieio-object-p room))
+    (cl-case (eieio-object-class-name room)
+      (slack-room t)
+      (slack-im t)
+      (slack-group t)
+      (slack-channel t)
+      (t nil))))
+
+(defun slack-message-create (payload team &optional room)
   (when payload
     (plist-put payload :reactions (append (plist-get payload :reactions) nil))
     (plist-put payload :attachments (append (plist-get payload :attachments) nil))
     (plist-put payload :pinned_to (append (plist-get payload :pinned_to) nil))
-    (if room
-        (plist-put payload :channel (oref room id)))
+    (when (and (not (plist-member payload :channel))
+               (not (slack-room-or-children-p room))
+               (not (stringp room)))
+      (slack-log (format "`slack-room' child or channel required. ROOM: %S"
+                         room)
+                 team :level 'error))
+    (when (slack-room-or-children-p room)
+      (plist-put payload :channel (oref room id)))
+    (when (stringp room)
+      (plist-put payload :channel room))
     (cl-labels
         ((create-message
           (payload)

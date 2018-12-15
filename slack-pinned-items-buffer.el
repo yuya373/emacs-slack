@@ -84,7 +84,7 @@
            (cond
             ((string= type "message")
              (slack-message-create (plist-get item :message)
-                                   team :room room))
+                                   team room))
             ((string= type "file")
              (or (slack-file-find (plist-get (plist-get item :file) :id) team)
                  (slack-file-create (plist-get item :file)))))))))

@@ -162,7 +162,7 @@
                               :type "message"
                               :user self-id
                               :text message))
-               (obj (slack-message-create payload team :room room)))
+               (obj (slack-message-create payload team room)))
           (slack-team-send-message team payload)
           (puthash message-id obj sent-message))))))
 

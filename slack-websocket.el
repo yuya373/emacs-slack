@@ -525,7 +525,7 @@ TEAM is one of `slack-teams'"
                   (base (slack-room-find-message room ts))
                   (new-message (slack-message-create message-payload
                                                      team
-                                                     :room room)))
+                                                     room)))
       (progn
         (oset new-message reactions (oref base reactions))
         (slack-message-update new-message team t nil base))
@@ -587,7 +587,7 @@ TEAM is one of `slack-teams'"
       (let ((message-id (plist-get payload :reply_to)))
         (when (integerp message-id)
           (slack-message-handle-reply
-           (slack-message-create payload team)
+           (slack-message-create payload team "")
            team)
           (slack-ws-remove-from-resend-queue ws payload team))))))
 

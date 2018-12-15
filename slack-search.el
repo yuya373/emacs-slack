@@ -149,7 +149,7 @@
       (plist-put payload :subtype "bot_message"))
 
     (make-instance 'slack-search-message
-                   :message (slack-message-create payload team :room room)
+                   :message (slack-message-create payload team room)
                    :channel channel
                    :previous-2 previous-2
                    :previous previous

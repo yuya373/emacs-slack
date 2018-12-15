@@ -129,7 +129,8 @@
                      :date-create date-create
                      :channel (plist-get payload :channel)
                      :message (slack-message-create (plist-get payload :message)
-                                                    team)))
+                                                    team
+                                                    (plist-get payload :channel))))
      ((string= type "file")
       (make-instance 'slack-star-file
                      :date-create date-create

@@ -162,7 +162,7 @@ Any other non-nil value: send to the room."
                              (room-id (plist-get root-msg :channel))
                              (room (slack-room-find room-id team))
                              (ts (plist-get root-msg :ts))
-                             (message (slack-message-create root-msg team))
+                             (message (slack-message-create root-msg team room))
                              (thread (slack-message-thread message room)))
 
                             (progn
@@ -170,7 +170,7 @@ Any other non-nil value: send to the room."
                                     (mapcar #'(lambda (e)
                                                 (slack-message-create e
                                                                       team
-                                                                      :room room))
+                                                                      room))
                                             (or (plist-get payload :latest_replies)
                                                 (plist-get payload :replies))))
                               thread)))

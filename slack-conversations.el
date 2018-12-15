@@ -378,7 +378,7 @@
         ((create-message (payload)
                          (slack-message-create payload
                                                team
-                                               :room room))
+                                               room))
          (on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-conversations-replies")
@@ -444,7 +444,7 @@
                   (let* ((meta (plist-get data :response_metadata))
                          (next-cursor (plist-get meta :next_cursor))
                          (messages (cl-loop for e in (plist-get data :messages)
-                                            collect (slack-message-create e team))))
+                                            collect (slack-message-create e team room))))
                     (when (functionp after-success)
                       (funcall after-success
                                messages

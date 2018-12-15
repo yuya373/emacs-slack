@@ -106,7 +106,7 @@
                         :text (slack-message-prepare-links
                                (slack-escape-message message)
                                team)))
-               (obj (slack-message-create m team)))
+               (obj (slack-message-create m team room)))
           (slack-team-send-message team m)
           (puthash message-id obj sent-message))))))
 
