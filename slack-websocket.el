@@ -789,27 +789,15 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-handle-member-joined-channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))
                   (channel (slack-room-find (plist-get payload :channel) team)))
-      (progn
-        (cl-pushnew user (oref channel members)
-                    :test #'string=)
-        (slack-log (format "%s joined %s"
-                           (slack-user-name user team)
-                           (slack-room-name channel team))
-                   team
-                   :level 'info))))
+      (cl-pushnew user (oref channel members)
+                  :test #'string=)))
 
 (defun slack-ws-handle-member-left_channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))
                   (channel (slack-room-find (plist-get payload :channel) team)))
-      (progn
-        (oset channel members
-              (cl-remove-if #'(lambda (e) (string= e user))
-                            (oref channel members)))
-        (slack-log (format "%s left %s"
-                           (slack-user-name user team)
-                           (slack-room-name channel team))
-                   team
-                   :level 'info))))
+      (oset channel members
+            (cl-remove-if #'(lambda (e) (string= e user))
+                          (oref channel members)))))
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (slack-user--find (plist-get payload :user) team))
