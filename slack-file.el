@@ -558,6 +558,10 @@
 (cl-defmethod slack-thread-message-p ((_this slack-file))
   nil)
 
+(cl-defmethod slack-message-user-ids ((this slack-file))
+  (with-slots (user) this
+    (list user)))
+
 (cl-defun slack-file-list-request (team &key
                                         (page "1")
                                         (count "100")
@@ -574,7 +578,7 @@
                        (paging (plist-get data :paging))
                        (user-ids (slack-team-missing-user-ids
                                   team (cl-loop for file in files
-                                                collect (oref file user)))))
+                                                nconc (slack-message-user-ids file)))))
                   (if (string= page "1")
                       (oset team files files)
                     (oset team files (append (oref team files) files)))

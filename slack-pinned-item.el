@@ -32,6 +32,10 @@
 (defclass slack-pinned-item ()
   ((message :initarg :message)))
 
+(cl-defmethod slack-message-user-ids ((this slack-pinned-item))
+  (with-slots (message) this
+    (slack-message-user-ids message)))
+
 (defun slack-pinned-item-create (payload room team)
   (let* ((type (plist-get payload :type))
          (message (cond
@@ -60,7 +64,9 @@
 
 (defun slack-pins-list (room team after-success)
   (cl-labels
-      ((success
+      ((callback (items)
+                 (funcall after-success items))
+       (success
         (&key data &allow-other-keys)
         (slack-request-handle-error
          (data "slack-pins-list")
@@ -69,9 +75,15 @@
                                    (slack-pinned-item-create item
                                                              room
                                                              team))
-                               (plist-get data :items))))
-           (funcall after-success
-                    items)))))
+                               (plist-get data :items)))
+                (user-ids (slack-team-missing-user-ids
+                           team (cl-loop for item in items
+                                         nconc (slack-message-user-ids item)))))
+           (if (< 0 (length user-ids))
+               (slack-users-info-request
+                user-ids team
+                :after-success #'(lambda () (callback items)))
+             (callback items))))))
     (slack-request
      (slack-request-create
       slack-room-pins-list-url
