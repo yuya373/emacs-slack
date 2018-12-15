@@ -344,19 +344,12 @@
 
 (cl-defmethod slack-buffer-display-pins-list ((this slack-message-buffer))
   (with-slots (room team) this
-    (cl-labels
-        ((on-pins-list (&key data &allow-other-keys)
-                       (slack-request-handle-error
-                        (data "slack-room-pins-list")
-                        (let* ((buf (slack-create-pinned-items-buffer
-                                     room team (plist-get data :items))))
-                          (slack-buffer-display buf)))))
-      (slack-request
-       (slack-request-create
-        slack-room-pins-list-url
-        team
-        :params (list (cons "channel" (oref room id)))
-        :success #'on-pins-list)))))
+    (slack-pins-list
+     room team
+     #'(lambda (items)
+         (let* ((buf (slack-create-pinned-items-buffer
+                      room team items)))
+           (slack-buffer-display buf))))))
 
 (cl-defmethod slack-buffer-display-user-profile ((this slack-message-buffer))
   (with-slots (room team) this

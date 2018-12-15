@@ -27,11 +27,26 @@
 (require 'eieio)
 (require 'slack-file)
 
+(defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
+
 (defclass slack-pinned-item ()
   ((message :initarg :message)))
 
-(defun slack-pinned-item-create (message)
-  (slack-pinned-item :message message))
+(defun slack-pinned-item-create (payload room team)
+  (let* ((type (plist-get payload :type))
+         (message (cond
+                   ((string= type "message")
+                    (slack-message-create (plist-get payload :message)
+                                          team room))
+                   ((string= type "file")
+                    (or (slack-file-find (plist-get (plist-get payload
+                                                               :file)
+                                                    :id)
+                                         team)
+                        (slack-file-create (plist-get payload
+                                                      :file)))))))
+
+    (slack-pinned-item :message message)))
 
 (cl-defmethod slack-ts ((this slack-pinned-item))
   (slack-ts (oref this message)))
@@ -42,6 +57,27 @@
             (slack-file-email-p message))
         (slack-message-to-string message (slack-ts message) team)
       (slack-message-to-string message team))))
+
+(defun slack-pins-list (room team after-success)
+  (cl-labels
+      ((success
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-pins-list")
+         (let* ((items (mapcar #'(lambda (item)
+
+                                   (slack-pinned-item-create item
+                                                             room
+                                                             team))
+                               (plist-get data :items))))
+           (funcall after-success
+                    items)))))
+    (slack-request
+     (slack-request-create
+      slack-room-pins-list-url
+      team
+      :params (list (cons "channel" (oref room id)))
+      :success #'success))))
 
 (provide 'slack-pinned-item)
 ;;; slack-pinned-item.el ends here

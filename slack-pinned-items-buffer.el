@@ -76,25 +76,15 @@
     buf))
 
 (defun slack-create-pinned-items-buffer (room team items)
-  (cl-labels
-      ((create-item
-        (item)
-        (let ((type (plist-get item :type)))
-          (slack-pinned-item-create
-           (cond
-            ((string= type "message")
-             (slack-message-create (plist-get item :message)
-                                   team room))
-            ((string= type "file")
-             (or (slack-file-find (plist-get (plist-get item :file) :id) team)
-                 (slack-file-create (plist-get item :file)))))))))
-    (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer room team)))
-        (progn
-          (oset buf items (mapcar #'create-item items))
-          buf)
-      (slack-pinned-items-buffer :room room
-                                 :team team
-                                 :items (mapcar #'create-item items)))))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer
+                                          room
+                                          team)))
+      (progn
+        (oset buf items items)
+        buf)
+    (slack-pinned-items-buffer :room room
+                               :team team
+                               :items items)))
 
 (cl-defmethod slack-buffer--replace ((this slack-pinned-items-buffer) ts)
   (with-slots (items) this
