@@ -174,19 +174,38 @@ Any other non-nil value: send to the room."
                                             (or (plist-get payload :latest_replies)
                                                 (plist-get payload :replies))))
                               thread)))
+         (callback (total-unread-replies
+                    new-threads-count
+                    threads
+                    has-more)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              total-unread-replies
+                              new-threads-count
+                              threads
+                              has-more)))
          (success (&key data &allow-other-keys)
                   (slack-request-handle-error
                    (data "slack-subscriptions-thread-get-view")
-                   (let ((total-unread-replies (plist-get data :total_unread_replies))
-                         (new-threads-count (plist-get data :new_threads_count))
-                         (threads (plist-get data :threads))
-                         (has-more (eq (plist-get data :has_more) t)))
-                     (when (functionp after-success)
-                       (funcall after-success
-                                total-unread-replies
-                                new-threads-count
-                                (mapcar #'create-thread threads)
-                                has-more))))))
+                   (let* ((total-unread-replies (plist-get data :total_unread_replies))
+                          (new-threads-count (plist-get data :new_threads_count))
+                          (threads (mapcar #'create-thread
+                                           (plist-get data :threads)))
+                          (has-more (eq (plist-get data :has_more) t))
+                          (user-ids (slack-team-missing-user-ids
+                                     team (cl-loop for thread in threads
+                                                   nconc (slack-message-user-ids thread)))))
+                     (if (< 0 (length user-ids))
+                         (slack-users-info-request
+                          user-ids team :after-success
+                          #'(lambda () (callback total-unread-replies
+                                                 new-threads-count
+                                                 threads
+                                                 has-more)))
+                       (callback total-unread-replies
+                                 new-threads-count
+                                 threads
+                                 has-more))))))
       (slack-request
        (slack-request-create
         slack-subscriptions-thread-get-view-url
@@ -261,6 +280,12 @@ Any other non-nil value: send to the room."
       :params (list (cons "thread_ts" ts)
                     (cons "channel" (oref room id)))
       :success #'success))))
+
+(cl-defmethod slack-message-user-ids ((this slack-thread))
+  (with-slots (messages root) this
+    (nconc (mapcan #'slack-message-user-ids
+                   messages)
+           (slack-message-user-ids root))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
