@@ -37,6 +37,7 @@
 (declare-function slack-thread-create "slack-thread")
 
 (defvar slack-current-buffer)
+(defvar slack-message-user-regexp "<@\\([WU].*?\\)\\(|.*?\\)?>")
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
@@ -341,6 +342,17 @@
 (cl-defmethod slack-message-user-ids ((this slack-message))
   (let ((result))
     (push (slack-message-sender-id this) result)
+    (with-slots (text) this
+      (when text
+        (let ((start 0))
+          (while (and (< start (length text))
+                      (string-match slack-message-user-regexp
+                                    text
+                                    start))
+            (let ((user-id (match-string 1 text)))
+              (when user-id
+                (push user-id result)))
+            (setq start (match-end 0))))))
     (cl-loop for r in (slack-message-reactions this)
              do (cl-loop for u in (oref r users)
                          do (push u result)))
