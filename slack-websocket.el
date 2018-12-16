@@ -135,9 +135,16 @@
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
 
+(defun slack-ws-payload-presence-sub-p (payload)
+  (string= "presence_sub" (plist-get payload :type)))
+
+(defun slack-ws-retryable-payload-p (payload)
+  (and (not (slack-ws-payload-ping-p payload))
+       (not (slack-ws-payload-presence-sub-p payload))))
+
 (cl-defmethod slack-ws-send ((ws slack-team-ws) payload team)
   (with-slots (waiting-send conn) ws
-    (unless (slack-ws-payload-ping-p payload)
+    (when (slack-ws-retryable-payload-p payload)
       (push payload waiting-send))
     (cl-labels
         ((reconnect ()
