@@ -88,7 +88,8 @@
                         (slack-request-create
                          slack-rtm-connect-url
                          team
-                         :params (list (cons "mpim_aware" "1"))
+                         :params (list (cons "mpim_aware" "1")
+                                       (cons "presence_sub" "true"))
                          :success #'on-success
                          :error #'on-error))))
           (oset team authorize-request request))))))
