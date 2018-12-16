@@ -103,7 +103,7 @@ One of 'info, 'debug"
 (defun slack-event-log-buffer-name (team)
   (format "*Slack Event Log - %s*" (slack-team-name team)))
 
-(defun slack-log-websocket-payload (payload team)
+(defun slack-log-websocket-payload (payload team &optional out)
   (let* ((bufname (slack-event-log-buffer-name team))
          (buf (get-buffer-create bufname)))
     (when buf
@@ -111,7 +111,8 @@ One of 'info, 'debug"
         (setq buffer-read-only nil)
         (save-excursion
           (goto-char (point-max))
-          (insert (format "[%s] %s\n"
+          (insert (format "[%s] [%s] %S\n"
+                          (if out "Outgoing" "Incoming")
                           (format-time-string "%Y-%m-%d %H:%M:%S")
                           payload)))
         (setq buffer-read-only t)))))
