@@ -41,6 +41,16 @@
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
 
+(defcustom slack-user-active-string "*"
+  "If user is active, use this string with `slack-user-active-face'."
+  :type 'string
+  :group 'slack)
+
+(defface slack-user-active-face
+  '((t (:foreground "#2aa198" :weight bold)))
+  "Used to `slack-user-active-string'"
+  :group 'slack)
+
 (defun slack-user--find (id team)
   "Find user by ID from TEAM."
   (with-slots (users) team
@@ -105,7 +115,8 @@
 
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")
-      "*"
+      (propertize slack-user-active-string
+                  'face 'slack-user-active-face)
     " "))
 
 (defun slack-user-set-status ()
