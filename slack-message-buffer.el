@@ -360,7 +360,7 @@
                                                            collect (slack-if-let*
                                                                        ((user (slack-user--find member team))
                                                                         (not-hidden (not (slack-user-hidden-p user))))
-                                                                       (list (slack-user--name user team)
+                                                                       (list (slack-user-label user team)
                                                                              user)))))
                         (selected nil))
                     (when (< 0 (length next-cursor))

@@ -82,6 +82,12 @@
       (plist-get user :real_name)
     (plist-get user :name)))
 
+(defun slack-user-label (user team)
+  (format "%s %s"
+          (or (slack-user-dnd-status-to-string user)
+              (slack-user-presence-to-string user))
+          (slack-user--name user team)))
+
 (defun slack-user-status (id team)
   "Find user by ID in TEAM, then return user's status in string."
   (let* ((user (slack-user--find id team))
@@ -238,7 +244,7 @@
 
 (defun slack-user-name-alist (team &key filter)
   (let ((users (oref team users)))
-    (mapcar #'(lambda (e) (cons (slack-user-name (plist-get e :id) team) e))
+    (mapcar #'(lambda (e) (cons (slack-user-label e team) e))
             (if filter (funcall filter users)
               users))))
 
