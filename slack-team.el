@@ -32,6 +32,8 @@
 (declare-function slack-ws--close "slack-websocket")
 ;; (require 'slack)
 (declare-function slack-start "slack")
+;; (require 'slack-room)
+(declare-function slack-room-open-p "slack-room")
 
 (declare-function emojify-create-emojify-emojis "emojify")
 
@@ -346,6 +348,18 @@ you can change current-team with `slack-change-current-team'"
                                  (oref this users))))
     (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
                   (cl-remove-duplicates user-ids :test #'string=))))
+
+(cl-defmethod slack-team-send-presence-sub ((this slack-team))
+  (let ((type "presence_sub")
+        (ids (let ((result))
+               (cl-loop for im in (oref this ims)
+                        do (when (slack-room-open-p im)
+                             (push (oref im user) result)))
+               result)))
+    (slack-team-send-message this
+                             (list :id (oref this message-id)
+                                   :type type
+                                   :ids ids))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
