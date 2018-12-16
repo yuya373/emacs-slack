@@ -95,20 +95,18 @@
        #'(lambda (_data) (slack-message-send-internal message
                                                       room
                                                       team)))
-    (progn
-      (slack-team-inc-message-id team)
-      (with-slots (message-id sent-message self-id) team
-        (let* ((channel-id (oref room id))
-               (m (list :id message-id
-                        :channel channel-id
-                        :type "message"
-                        :user self-id
-                        :text (slack-message-prepare-links
-                               (slack-escape-message message)
-                               team)))
-               (obj (slack-message-create m team room)))
-          (slack-team-send-message team m)
-          (puthash message-id obj sent-message))))))
+    (with-slots (message-id sent-message self-id) team
+      (let* ((channel-id (oref room id))
+             (m (list :id message-id
+                      :channel channel-id
+                      :type "message"
+                      :user self-id
+                      :text (slack-message-prepare-links
+                             (slack-escape-message message)
+                             team)))
+             (obj (slack-message-create m team room)))
+        (slack-team-send-message team m)
+        (puthash message-id obj sent-message)))))
 
 (defun slack-message-read-room (team)
   (let* ((list (slack-message-room-list team))

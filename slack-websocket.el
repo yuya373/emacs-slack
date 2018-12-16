@@ -160,7 +160,6 @@
                do (slack-ws-send ws msg team)))))
 
 (cl-defmethod slack-ws-ping ((ws slack-team-ws) team)
-  (slack-team-inc-message-id team)
   (with-slots (message-id) team
     (let* ((time (number-to-string (time-to-seconds (current-time))))
            (m (list :id message-id
@@ -172,7 +171,7 @@
                        (slack-ws--close ws team)
                        (slack-ws-reconnect ws team)))
         (slack-ws-set-ping-check-timer ws time #'on-timeout))
-      (slack-ws-send ws m team)
+      (slack-team-send-message team m)
       (slack-log (format "Send PING: %s" time)
                  team :level 'trace))))
 
