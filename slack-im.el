@@ -111,7 +111,8 @@
                              (slack-conversations-info-request room team)))
                         (oref team ims))
                   (slack-log "Slack Im List Updated"
-                             team :level 'info)))
+                             team :level 'info)
+                  (slack-team-send-presence-sub team)))
       (slack-conversations-list team #'success (list "im")))))
 
 (cl-defmethod slack-room-update-mark-url ((_room slack-im))

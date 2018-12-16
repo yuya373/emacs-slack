@@ -338,6 +338,7 @@
                    (mapcar #'(lambda (im) (oref im user))
                            (oref team ims))
                    team)
+                  (slack-team-send-presence-sub team)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Channel List Updated"
