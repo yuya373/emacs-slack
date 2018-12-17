@@ -234,16 +234,16 @@
                                            (cl-find (plist-get u :id)
                                                     ids
                                                     :test #'string=))
-                                       (oref team users))))
-             (if (< 0 (length queue))
-                 (progn
-                   (slack-log (format "Fetching users... [%s/%s]"
-                                      (* batch-size (- iter-count (length queue)))
-                                      (length user-ids))
-                              team :level 'info)
-                   (request (pop queue)))
-               (when (functionp after-success)
-                 (funcall after-success))))))
+                                       (oref team users))))))
+          (if (< 0 (length queue))
+              (progn
+                (slack-log (format "Fetching users... [%s/%s]"
+                                   (* batch-size (- iter-count (length queue)))
+                                   (length user-ids))
+                           team :level 'info)
+                (request (pop queue)))
+            (when (functionp after-success)
+              (funcall after-success))))
          (request (user-ids)
                   (slack-request
                    (slack-request-create
@@ -268,9 +268,9 @@
                    (cons user
                          (cl-remove-if #'(lambda (user)
                                            (string= (plist-get user :id) user-id))
-                                       (oref team users))))
-             (when (functionp after-success)
-               (funcall after-success))))))
+                                       (oref team users))))))
+          (when (functionp after-success)
+            (funcall after-success))))
       (slack-request
        (slack-request-create
         slack-user-info-url
