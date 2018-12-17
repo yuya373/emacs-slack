@@ -247,9 +247,9 @@
     (if bot-ids
         (slack-bots-info-request bot-ids
                                  team
-                                 #'(lambda () (slack-users-info-request user-ids
-                                                                        team
-                                                                        :after-success after-success)))
+                                 #'(lambda () (slack-user-info-request user-ids
+                                                                       team
+                                                                       :after-success after-success)))
       (let* ((batch-size 400)
              (iter-count (ceiling (/ (length user-ids) (float batch-size))))
              (queue nil))
@@ -295,12 +295,14 @@
           (request (pop queue)))))))
 
 (cl-defun slack-user-info-request (user-id team &key after-success)
-  (if (listp user-id)
-      (slack-users-info-request user-id team
-                                :after-success after-success)
-    (if (string-prefix-p "B" user-id)
-        (slack-bot-info-request user-id team after-success)
-      (cl-labels
+  (cond
+   ((not (< 0 (length user-id)))
+    (when (functionp after-success) (funcall after-success)))
+   ((listp user-id)
+    (slack-users-info-request user-id team :after-success after-success))
+   ((string-prefix-p "B" user-id)
+    (slack-bot-info-request user-id team after-success))
+   (t (cl-labels
           ((on-success
             (&key data &allow-other-keys)
             (slack-request-handle-error
