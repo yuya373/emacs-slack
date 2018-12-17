@@ -569,7 +569,7 @@ TEAM is one of `slack-teams'"
         (slack-message-update message team)
       (slack-bot-info-request bot-id
                               team
-                              #'(lambda (team)
+                              #'(lambda ()
                                   (slack-message-update message team))))))
 
 (defun slack-ws-payload-pong-p (payload)
