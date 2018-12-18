@@ -283,7 +283,7 @@ Any other non-nil value: send to the room."
 
 (cl-defmethod slack-message-user-ids ((this slack-thread))
   (with-slots (messages root) this
-    (nconc (mapcan #'slack-message-user-ids
+    (nconc (cl-mapcan #'slack-message-user-ids
                    messages)
            (slack-message-user-ids root))))
 
