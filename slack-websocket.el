@@ -437,21 +437,31 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-user-typing (payload team)
   (slack-if-let*
-      ((user (slack-user-name (plist-get payload :user) team))
+      ((user-id (plist-get payload :user))
        (room (slack-room-find (plist-get payload :channel) team))
        (buf (slack-buffer-find 'slack-message-buffer room team))
        (show-typing-p (slack-buffer-show-typing-p (get-buffer
                                                    (slack-buffer-name buf)))))
-      (let ((limit (+ 3 (float-time))))
-        (with-slots (typing typing-timer) team
-          (if (and typing
-                   (string= (oref room id) (oref (oref typing room) id)))
-              (progn
-                (slack-typing-set-limit typing limit)
-                (slack-typing-add-user typing user limit))
-            (setq typing (slack-typing-create room limit user))
-            (setq typing-timer
-                  (run-with-timer t 1 #'slack-typing-display team)))))))
+      (cl-labels
+          ((update-typing (user)
+                          (let ((limit (+ 3 (float-time))))
+                            (with-slots (typing typing-timer) team
+                              (if (and typing
+                                       (string= (oref room id) (oref (oref typing room) id)))
+                                  (progn
+                                    (slack-typing-set-limit typing limit)
+                                    (slack-typing-add-user typing user limit))
+                                (setq typing (slack-typing-create room limit user))
+                                (setq typing-timer
+                                      (run-with-timer t 1 #'slack-typing-display team)))))))
+        (slack-if-let*
+            ((user (slack-user-name user-id team)))
+            (update-typing user)
+          (slack-user-info-request
+           user-id team
+           :after-success
+           #'(lambda ()
+               (update-typing (slack-user-name user-id team))))))))
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
