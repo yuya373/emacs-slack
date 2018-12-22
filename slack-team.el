@@ -25,11 +25,15 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+;; (require 'slack-message)
+(declare-function slack-message-create "slack-message")
 (require 'slack-team-ws)
 ;; (require 'slack-websocket)
 (declare-function slack-ws-send "slack-websocket")
 (declare-function slack-ws-open "slack-websocket")
 (declare-function slack-ws--close "slack-websocket")
+(declare-function slack-ws-payload-ping-p "slack-websocket")
+(declare-function slack-ws-payload-presence-sub-p "slack-websocket")
 ;; (require 'slack)
 (declare-function slack-start "slack")
 ;; (require 'slack-room)
@@ -132,6 +136,11 @@ use `slack-change-current-team' to change `slack-current-team'"
     (oset ws url url)))
 
 (cl-defmethod slack-team-send-message ((this slack-team) message)
+  (unless (or (slack-ws-payload-ping-p message)
+              (slack-ws-payload-presence-sub-p message))
+    (puthash (oref this message-id)
+             (slack-message-create message this)
+             (oref this sent-message)))
   (slack-team-inc-message-id this)
   (with-slots (ws) this
     (slack-ws-send ws message this)))
