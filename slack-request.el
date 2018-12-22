@@ -32,7 +32,7 @@
 (declare-function slack-team-token "slack-team")
 (require 'slack-log)
 
-(defcustom slack-request-timeout 10
+(defcustom slack-request-timeout 30
   "Request Timeout in seconds."
   :type 'integer
   :group 'slack)
