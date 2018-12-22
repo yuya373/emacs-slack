@@ -67,6 +67,11 @@
           (plist-get user :real_name)
         (plist-get user :name))))
 
+(defun slack-user--name (user team)
+  (if (oref team full-and-display-names)
+      (plist-get user :real_name)
+    (plist-get user :name)))
+
 (defun slack-user-status (id team)
   "Find user by ID in TEAM, then return user's status in string."
   (let* ((user (slack-user--find id team))
@@ -126,20 +131,48 @@
                                            (cons "status_emoji" emoji)))))
       :success #'on-success))))
 
-(defun slack-bot-info-request (bot_id team &optional after-success)
+(defun slack-bot-info-request (bot-id team &optional after-success)
   (cl-labels
       ((on-success (&key data &allow-other-keys)
                    (slack-request-handle-error
                     (data "slack-bot-info-request")
-                    (push (plist-get data :bot) (oref team bots))
-                    (if after-success
-                        (funcall after-success team)))))
+                    (let ((bot (plist-get data :bot)))
+                      (oset team bots
+                            (cons bot
+                                  (cl-remove-if #'(lambda (bot)
+                                                    (string= (plist-get bot :id) bot-id))
+                                                (oref team bots))))))
+                   (if after-success
+                       (funcall after-success))))
     (slack-request
      (slack-request-create
       slack-bot-info-url
       team
-      :params (list (cons "bot" bot_id))
+      :params (list (cons "bot" bot-id))
       :success #'on-success))))
+
+(defun slack-bots-info-request (bot-ids team &optional after-success)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-bots-info-request")
+                 (let* ((bots (plist-get data :bots))
+                        (ids (mapcar #'(lambda (e) (plist-get e :id)) bots)))
+                   (oset team bots (append bots
+                                           (cl-remove-if
+                                            #'(lambda (u)
+                                                (cl-find (plist-get u :id)
+                                                         ids
+                                                         :test #'string=))
+                                            (oref team bots))))))
+                (if after-success
+                    (funcall after-success))))
+    (slack-request
+     (slack-request-create
+      slack-bot-info-url
+      team
+      :params (list (cons "bots" (mapconcat #'identity bot-ids ",")))
+      :success #'success))))
 
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
@@ -204,23 +237,90 @@
 (defun slack--user-select (team)
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
 
+(cl-defun slack-users-info-request (user--ids team &key after-success)
+  (let ((bot-ids nil)
+        (user-ids nil))
+    (cl-loop for id in user--ids
+             do (if (string-prefix-p "B" id)
+                    (push id bot-ids)
+                  (push id user-ids)))
+    (if bot-ids
+        (slack-bots-info-request bot-ids
+                                 team
+                                 #'(lambda () (slack-user-info-request user-ids
+                                                                       team
+                                                                       :after-success after-success)))
+      (let* ((batch-size 400)
+             (iter-count (ceiling (/ (length user-ids) (float batch-size))))
+             (queue nil))
+        (cl-loop for i from 0 to (1- iter-count)
+                 do (push (cl-subseq user-ids
+                                     (* i batch-size)
+                                     (min (+ (* i batch-size) batch-size)
+                                          (length user-ids)))
+                          queue))
+        (setq queue (reverse queue))
+        (cl-labels
+            ((on-success
+              (&key data &allow-other-keys)
+              (slack-request-handle-error
+               (data "slack-users-info-request")
+               (let* ((users (plist-get data :users))
+                      (ids (mapcar #'(lambda (e) (plist-get e :id))
+                                   users)))
+                 (oset team users (append users
+                                          (cl-remove-if
+                                           #'(lambda (u)
+                                               (cl-find (plist-get u :id)
+                                                        ids
+                                                        :test #'string=))
+                                           (oref team users))))))
+              (if (< 0 (length queue))
+                  (progn
+                    (slack-log (format "Fetching users... [%s/%s]"
+                                       (* batch-size (- iter-count (length queue)))
+                                       (length user-ids))
+                               team :level 'info)
+                    (request (pop queue)))
+                (when (functionp after-success)
+                  (funcall after-success))))
+             (request (user-ids)
+                      (slack-request
+                       (slack-request-create
+                        slack-user-info-url
+                        team
+                        :params (list (cons "users"
+                                            (mapconcat #'identity user-ids ",")))
+                        :success #'on-success))))
+          (request (pop queue)))))))
+
 (cl-defun slack-user-info-request (user-id team &key after-success)
-  (cl-labels
-      ((on-success
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-user-info-request")
-         (oset team users (cons (plist-get data :user)
-                                (cl-remove-if #'(lambda (user)
-                                                  (string= (plist-get user :id) user-id))
-                                              (oref team users))))
-         (when after-success (funcall after-success data)))))
-    (slack-request
-     (slack-request-create
-      slack-user-info-url
-      team
-      :params (list (cons "user" user-id))
-      :success #'on-success))))
+  (cond
+   ((not (< 0 (length user-id)))
+    (when (functionp after-success) (funcall after-success)))
+   ((listp user-id)
+    (slack-users-info-request user-id team :after-success after-success))
+   ((string-prefix-p "B" user-id)
+    (slack-bot-info-request user-id team after-success))
+   (t (cl-labels
+          ((on-success
+            (&key data &allow-other-keys)
+            (slack-request-handle-error
+             (data "slack-user-info-request")
+             (let ((user (plist-get data :user)))
+               (oset team users
+                     (cons user
+                           (cl-remove-if #'(lambda (user)
+                                             (string= (plist-get user :id) user-id))
+                                         (oref team users))))))
+            (when (functionp after-success)
+              (funcall after-success))))
+        (slack-request
+         (slack-request-create
+          slack-user-info-url
+          team
+          :params (list (cons "user" user-id))
+          :success #'on-success))))))
 
 (defun slack-user-image-url-24 (user)
   (plist-get (slack-user-profile user) :image_24))

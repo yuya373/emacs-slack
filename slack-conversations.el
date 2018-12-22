@@ -115,65 +115,61 @@
       :success (slack-conversations-success-handler team)))))
 
 (defun slack-conversations-invite (room team)
-  (slack-conversations-members
-   room team
-   #'(lambda ()
-       (let* ((channel (oref room id))
-              (user-names (slack-user-names
-                           team #'(lambda (users)
-                                    (cl-remove-if #'(lambda (e)
-                                                      (or (string= (oref team self-id)
-                                                                   (plist-get e :id))
-                                                          (string= (plist-get e :id)
-                                                                   "USLACKBOT")
-                                                          (cl-find (plist-get e :id)
-                                                                   (oref room members)
-                                                                   :test #'string=)))
-                                                  users))))
-              (users nil))
-         (cl-labels
-             ((already-selected-p
-               (user-name)
-               (cl-find-if #'(lambda (e)
-                               (string= e
-                                        (plist-get (cdr user-name)
-                                                   :id)))
-                           users))
-              (filter-selected (user-names)
-                               (cl-remove-if #'already-selected-p
-                                             user-names)))
-           (cl-loop for i from 1 upto 30
-                    as candidates = (filter-selected user-names)
-                    as selected = (slack-select-from-list
-                                      (candidates "Select User: "))
-                    while selected
-                    do (push (plist-get selected :id) users)))
-         (setq users (mapconcat #'identity users ","))
-
-         (cl-labels
-             ((errors-handler
-               (errors)
-               (let ((message
-                      (mapconcat #'(lambda (err)
-                                     (let ((msg (plist-get err :error))
-                                           (user (plist-get err :user)))
-                                       (format "%s%s"
-                                               (replace-regexp-in-string "_" " " msg)
-                                               (or (and user (format ": %s" user))
-                                                   ""))))
-                                 errors
-                                 ", ")))
-                 (slack-log message team :level 'error))))
-           (slack-request
-            (slack-request-create
-             slack-conversations-invite-url
-             team
-             :type "POST"
-             :params (list (cons "channel" channel)
-                           (cons "users" users))
-             :success (slack-conversations-success-handler team
-                                                           :on-errors
-                                                           #'errors-handler))))))))
+  (let* ((channel (oref room id))
+         (user-names (slack-user-names
+                      team #'(lambda (users)
+                               (cl-remove-if #'(lambda (e)
+                                                 (or (string= (oref team self-id)
+                                                              (plist-get e :id))
+                                                     (string= (plist-get e :id)
+                                                              "USLACKBOT")
+                                                     (cl-find (plist-get e :id)
+                                                              (oref room members)
+                                                              :test #'string=)))
+                                             users))))
+         (users nil))
+    (cl-labels
+        ((already-selected-p
+          (user-name)
+          (cl-find-if #'(lambda (e)
+                          (string= e
+                                   (plist-get (cdr user-name)
+                                              :id)))
+                      users))
+         (filter-selected (user-names)
+                          (cl-remove-if #'already-selected-p
+                                        user-names)))
+      (cl-loop for i from 1 upto 30
+               as candidates = (filter-selected user-names)
+               as selected = (slack-select-from-list
+                                 (candidates "Select User: "))
+               while selected
+               do (push (plist-get selected :id) users)))
+    (setq users (mapconcat #'identity users ","))
+    (cl-labels
+        ((errors-handler
+          (errors)
+          (let ((message
+                 (mapconcat #'(lambda (err)
+                                (let ((msg (plist-get err :error))
+                                      (user (plist-get err :user)))
+                                  (format "%s%s"
+                                          (replace-regexp-in-string "_" " " msg)
+                                          (or (and user (format ": %s" user))
+                                              ""))))
+                            errors
+                            ", ")))
+            (slack-log message team :level 'error))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-invite-url
+        team
+        :type "POST"
+        :params (list (cons "channel" channel)
+                      (cons "users" users))
+        :success (slack-conversations-success-handler team
+                                                      :on-errors
+                                                      #'errors-handler))))))
 
 (defun slack-conversations-join (room team &optional on-success)
   (cl-labels
@@ -255,28 +251,25 @@
                                                       #'on-success))))))
 
 (defun slack-conversations-kick (room team)
-  (slack-conversations-members
-   room team
-   #'(lambda ()
-       (let* ((candidates (cl-loop for user in (slack-user-names team)
-                                   if (cl-find (plist-get (cdr user) :id)
-                                               (oref room members)
-                                               :test #'string=)
-                                   collect user))
-              (selected (funcall slack-completing-read-function
-                                 "Select User: "
-                                 candidates
-                                 nil t))
-              (user (cdr-safe (cl-assoc selected candidates :test #'string=))))
-         (when user
-           (slack-request
-            (slack-request-create
-             slack-conversations-kick-url
-             team
-             :type "POST"
-             :params (list (cons "channel" (oref room id))
-                           (cons "user" (plist-get user :id)))
-             :success (slack-conversations-success-handler team))))))))
+  (let* ((candidates (cl-loop for user in (slack-user-names team)
+                              if (cl-find (plist-get (cdr user) :id)
+                                          (oref room members)
+                                          :test #'string=)
+                              collect user))
+         (selected (funcall slack-completing-read-function
+                            "Select User: "
+                            candidates
+                            nil t))
+         (user (cdr-safe (cl-assoc selected candidates :test #'string=))))
+    (when user
+      (slack-request
+       (slack-request-create
+        slack-conversations-kick-url
+        team
+        :type "POST"
+        :params (list (cons "channel" (oref room id))
+                      (cons "user" (plist-get user :id)))
+        :success (slack-conversations-success-handler team))))))
 
 (defun slack-conversations-list (team success-callback &optional types)
   (let ((cursor nil)
@@ -341,6 +334,10 @@
                                (slack-conversations-info-request
                                 room team)))
                   (slack-users-counts team)
+                  (slack-user-info-request
+                   (mapcar #'(lambda (im) (oref im user))
+                           (oref team ims))
+                   team)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Channel List Updated"
@@ -379,6 +376,12 @@
                          (slack-message-create payload
                                                team
                                                room))
+         (callback (messages next-cursor has-more)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              messages
+                              next-cursor
+                              has-more)))
          (on-success (&key data &allow-other-keys)
                      (slack-request-handle-error
                       (data "slack-conversations-replies")
@@ -386,12 +389,17 @@
                                                (plist-get data :messages)))
                              (meta (plist-get data :response_metadata))
                              (next-cursor (and meta (plist-get meta :next_cursor)))
-                             (has-more (eq t (plist-get data :has_more))))
-                        (when (functionp after-success)
-                          (funcall after-success
-                                   messages
-                                   next-cursor
-                                   has-more))))))
+                             (has-more (eq t (plist-get data :has_more)))
+                             (user-ids (slack-team-missing-user-ids
+                                        team (cl-loop for m in messages
+                                                      nconc (slack-message-user-ids m)))))
+
+                        (if (< 0 (length user-ids))
+                            (slack-users-info-request
+                             user-ids team
+                             :after-success #'(lambda ()
+                                                (callback messages next-cursor has-more)))
+                          (callback messages next-cursor has-more))))))
       (slack-request
        (slack-request-create
         slack-conversations-replies-url
@@ -440,15 +448,25 @@
                                             (limit "100"))
   (let ((channel (oref room id)))
     (cl-labels
-        ((success (data)
+        ((callback (messages next-cursor)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              messages
+                              next-cursor)))
+         (success (data)
                   (let* ((meta (plist-get data :response_metadata))
-                         (next-cursor (plist-get meta :next_cursor))
+                         (next-cursor (or (plist-get meta :next_cursor) ""))
                          (messages (cl-loop for e in (plist-get data :messages)
-                                            collect (slack-message-create e team room))))
-                    (when (functionp after-success)
-                      (funcall after-success
-                               messages
-                               (or next-cursor ""))))))
+                                            collect (slack-message-create e team room)))
+                         (user-ids (slack-team-missing-user-ids
+                                    team (cl-loop for m in messages
+                                                  nconc (slack-message-user-ids m)))))
+                    (if (< 0 (length user-ids))
+                        (slack-user-info-request
+                         user-ids team
+                         :after-success #'(lambda ()
+                                            (callback messages next-cursor)))
+                      (callback messages next-cursor)))))
       (slack-request
        (slack-request-create
         slack-conversations-history-url
@@ -462,36 +480,42 @@
         :success (slack-conversations-success-handler
                   team :on-success #'success))))))
 
-(defun slack-conversations-members (room team &optional after-success)
+(defun slack-conversations-members (room team &optional cursor after-success)
   (if (oref room members-loaded-p)
       (when (functionp after-success)
-        (funcall after-success))
+        (funcall after-success (oref room members) ""))
     (cl-labels
-        ((success (data)
+        ((callback (members next-cursor)
+                   (when (< (length next-cursor) 1)
+                     (oset room members-loaded-p t))
+                   (when (functionp after-success)
+                     (funcall after-success members next-cursor)))
+         (success (data)
                   (let* ((meta (plist-get data :response_metadata))
-                         (next-cursor (and meta (plist-get meta :next_cursor)))
-                         (members (plist-get data :members)))
+                         (next-cursor (or (and meta (plist-get meta :next_cursor)) ""))
+                         (members (plist-get data :members))
+                         (missing-user-ids (slack-team-missing-user-ids team members)))
                     (oset room members
                           (cl-remove-duplicates (append (oref room members)
                                                         members)
                                                 :test #'string=))
-                    (if (and next-cursor (< 0 (length next-cursor)))
-                        (request next-cursor)
-                      (progn
-                        (oset room members-loaded-p t)
-                        (when (functionp after-success)
-                          (funcall after-success))))))
-         (request (&optional cursor)
-                  (slack-request
-                   (slack-request-create
-                    slack-conversations-members-url
-                    team
-                    :params (list (cons "channel" (oref room id))
-                                  (and cursor (cons "cursor" cursor))
-                                  (cons "limit" "1000"))
-                    :success (slack-conversations-success-handler
-                              team :on-success #'success)))))
-      (request))))
+
+                    (if (< 0 (length missing-user-ids))
+                        (slack-user-info-request
+                         missing-user-ids
+                         team
+                         :after-success #'(lambda ()
+                                            (callback members next-cursor)))
+                      (callback members next-cursor)))))
+      (slack-request
+       (slack-request-create
+        slack-conversations-members-url
+        team
+        :params (list (cons "channel" (oref room id))
+                      (cons "limit" "100")
+                      (and cursor (cons "cursor" cursor)))
+        :success (slack-conversations-success-handler
+                  team :on-success #'success))))))
 
 (cl-defun slack-conversations-open (team &key room user-ids)
   (let ((channel (or (and room (oref room id))

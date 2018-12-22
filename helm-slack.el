@@ -31,6 +31,7 @@
 (require 'slack-user-profile-buffer)
 (require 'slack-message-buffer)
 (require 'slack-unread)
+(require 'slack-util)
 
 (defvar slack-display-team-name)
 
@@ -124,6 +125,15 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
          (team (cadr ,candidate)))
      ,@body))
 
+(defmacro helm-slack-handle-next-page (candidate if-next-page
+                                                 &rest body)
+  (declare (indent 2) (debug t))
+  `(let ((token (car ,candidate)))
+     (if (and (stringp token)
+              (string= token slack-next-page-token))
+         ,if-next-page
+       ,@body)))
+
 (defun helm-slack-persistent-action (candidate)
   (helm-slack-bind-room-and-team candidate
       (let* ((buffer (slack-create-room-info-buffer room team)))
@@ -169,30 +179,38 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
   (helm-slack-bind-room-and-team candidate
       (helm-slack-members-in-room room team)))
 
-(defun helm-slack-members-in-room (room team)
-  (slack-conversations-members
-   room team
-   #'(lambda ()
-       (helm
-        :prompt "Select Member : "
-        :sources (helm-build-sync-source "Members"
-                   :candidates (cl-loop for user in (slack-user-names team)
-                                        if (cl-find (plist-get (cdr user) :id)
-                                                    (oref room members)
-                                                    :test #'string=)
-                                        collect (list (car user)
-                                                      (cdr user)
-                                                      team))
-                   :action helm-slack-members-actions))
-
-       )))
+(defun helm-slack-members-in-room (room team &optional cursor)
+  (cl-labels
+      ((success (members next-cursor)
+                (let ((candidates (cl-remove-if #'null
+                                                (cl-loop for member in members
+                                                         collect (slack-if-let*
+                                                                     ((user (slack-user--find member team))
+                                                                      (not-hidden (not (slack-user-hidden-p user))))
+                                                                     (list (slack-user--name user team)
+                                                                           user
+                                                                           team))))))
+                  (when (< 0 (length next-cursor))
+                    (setq candidates (append candidates
+                                             (list (list slack-next-page-token
+                                                         slack-next-page-token
+                                                         room team next-cursor)))))
+                  (helm
+                   :prompt "Select Member : "
+                   :sources (helm-build-sync-source "Members"
+                              :candidates candidates
+                              :action helm-slack-members-actions)))))
+    (slack-conversations-members room team cursor #'success)))
 
 (defun helm-slack-display-user (candidate)
-  (helm-slack-bind-user-and-team candidate
-      (let* ((user-id (plist-get user :id))
-             (buffer (slack-create-user-profile-buffer team
-                                                       user-id)))
-        (slack-buffer-display buffer))))
+  (helm-slack-handle-next-page candidate
+      (cl-destructuring-bind (_token room team next-cursor) candidate
+        (helm-slack-members-in-room room team next-cursor))
+    (helm-slack-bind-user-and-team candidate
+        (let* ((user-id (plist-get user :id))
+               (buffer (slack-create-user-profile-buffer team
+                                                         user-id)))
+          (slack-buffer-display buffer)))))
 
 (defun helm-slack ()
   "Helm Slack"

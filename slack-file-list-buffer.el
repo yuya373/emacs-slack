@@ -124,7 +124,9 @@
         (ts (slack-ts message))
         (team (oref this team)))
     (lui-insert-with-text-properties
-     (slack-message-to-string message ts team)
+     (format "@%s %s"
+             (slack-user-name (oref message user) team)
+             (slack-message-to-string message ts team))
      'not-tracked-p not-tracked-p
      'ts ts
      'slack-last-ts lui-time-stamp-last)

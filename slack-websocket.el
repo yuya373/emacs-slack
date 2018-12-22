@@ -223,7 +223,7 @@
                                   (slack-ws-reconnect ws team))
               (on-open ()
                        (slack-conversations-list-update team)
-                       (slack-user-list-update team)
+                       ;; (slack-user-list-update team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
@@ -437,26 +437,36 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-user-typing (payload team)
   (slack-if-let*
-      ((user (slack-user-name (plist-get payload :user) team))
+      ((user-id (plist-get payload :user))
        (room (slack-room-find (plist-get payload :channel) team))
        (buf (slack-buffer-find 'slack-message-buffer room team))
        (show-typing-p (slack-buffer-show-typing-p (get-buffer
                                                    (slack-buffer-name buf)))))
-      (let ((limit (+ 3 (float-time))))
-        (with-slots (typing typing-timer) team
-          (if (and typing
-                   (string= (oref room id) (oref (oref typing room) id)))
-              (progn
-                (slack-typing-set-limit typing limit)
-                (slack-typing-add-user typing user limit))
-            (setq typing (slack-typing-create room limit user))
-            (setq typing-timer
-                  (run-with-timer t 1 #'slack-typing-display team)))))))
+      (cl-labels
+          ((update-typing (user)
+                          (let ((limit (+ 3 (float-time))))
+                            (with-slots (typing typing-timer) team
+                              (if (and typing
+                                       (string= (oref room id) (oref (oref typing room) id)))
+                                  (progn
+                                    (slack-typing-set-limit typing limit)
+                                    (slack-typing-add-user typing user limit))
+                                (setq typing (slack-typing-create room limit user))
+                                (setq typing-timer
+                                      (run-with-timer t 1 #'slack-typing-display team)))))))
+        (slack-if-let*
+            ((user (slack-user-name user-id team)))
+            (update-typing user)
+          (slack-user-info-request
+           user-id team
+           :after-success
+           #'(lambda ()
+               (update-typing (slack-user-name user-id team))))))))
 
 (defun slack-ws-handle-team-join (payload team)
   (let ((user (slack-decode (plist-get payload :user))))
     (cl-labels
-        ((after-success (data)
+        ((after-success ()
                         (let ((user-id (plist-get user :id)))
                           (slack-log (format "User %s Joind Team: %s"
                                              (slack-user-name user-id team)
@@ -543,8 +553,19 @@ TEAM is one of `slack-teams'"
   (let ((subtype (plist-get payload :subtype)))
     (if (string= subtype "bot_message")
         (slack-ws-update-bot-message payload team)
-      (slack-message-update (slack-message-create payload team)
-                            team))))
+      (let ((message (slack-message-create payload team)))
+        (slack-if-let* ((user (slack-user-find message team)))
+            (slack-message-update message team)
+          (progn
+            (slack-log (format "User not found: %S"
+                               (slack-message-sender-id message))
+                       team :level 'debug)
+            (slack-user-info-request
+             (slack-message-sender-id message)
+             team
+             :after-success
+             #'(lambda ()
+                 (slack-message-update message team)))))))))
 
 (defun slack-ws-update-bot-message (payload team)
   (let* ((bot-id (plist-get payload :bot_id))
@@ -558,7 +579,7 @@ TEAM is one of `slack-teams'"
         (slack-message-update message team)
       (slack-bot-info-request bot-id
                               team
-                              #'(lambda (team)
+                              #'(lambda ()
                                   (slack-message-update message team))))))
 
 (defun slack-ws-payload-pong-p (payload)
@@ -778,27 +799,15 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-handle-member-joined-channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))
                   (channel (slack-room-find (plist-get payload :channel) team)))
-      (progn
-        (cl-pushnew user (oref channel members)
-                    :test #'string=)
-        (slack-log (format "%s joined %s"
-                           (slack-user-name user team)
-                           (slack-room-name channel team))
-                   team
-                   :level 'info))))
+      (cl-pushnew user (oref channel members)
+                  :test #'string=)))
 
 (defun slack-ws-handle-member-left_channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))
                   (channel (slack-room-find (plist-get payload :channel) team)))
-      (progn
-        (oset channel members
-              (cl-remove-if #'(lambda (e) (string= e user))
-                            (oref channel members)))
-        (slack-log (format "%s left %s"
-                           (slack-user-name user team)
-                           (slack-room-name channel team))
-                   team
-                   :level 'info))))
+      (oset channel members
+            (cl-remove-if #'(lambda (e) (string= e user))
+                          (oref channel members)))))
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (slack-user--find (plist-get payload :user) team))

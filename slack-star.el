@@ -158,17 +158,28 @@
 
 (defun slack-stars-list-request (team &optional page after-success)
   (cl-labels
-      ((on-success (&key data &allow-other-keys)
+      ((callback ()
+                 (when (functionp after-success)
+                   (funcall after-success)))
+       (on-success (&key data &allow-other-keys)
                    (slack-request-handle-error
                     (data "slack-stars-list-request")
-                    (let ((star (slack-create-star data team)))
+                    (let* ((star (slack-create-star data team))
+                           (user-ids (slack-team-missing-user-ids
+                                      team (cl-loop for item in (oref star items)
+                                                    if (slack-star-message-p item)
+                                                    nconc (slack-message-user-ids
+                                                           (oref item message))))))
                       (if (oref team star)
                           (if page
                               (slack-merge (oref team star) star)
                             (oset team star star))
-                        (oset team star star)))
-                    (if after-success
-                        (funcall after-success)))))
+                        (oset team star star))
+                      (if (< 0 (length user-ids))
+                          (slack-users-info-request
+                           user-ids team
+                           :after-success #'(lambda () (callback)))
+                        (callback))))))
     (slack-request
      (slack-request-create
       slack-stars-list-url

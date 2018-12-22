@@ -558,25 +558,37 @@
 (cl-defmethod slack-thread-message-p ((_this slack-file))
   nil)
 
+(cl-defmethod slack-message-user-ids ((this slack-file))
+  (with-slots (user) this
+    (list user)))
+
 (cl-defun slack-file-list-request (team &key
                                         (page "1")
                                         (count "100")
                                         (after-success nil))
   (cl-labels
-      ((success (&key data &allow-other-keys)
-                (let ((files (mapcar #'slack-file-create
-                                     (plist-get data :files)))
-                      (paging (plist-get data :paging)))
+      ((callback (paging)
+                 (when (functionp after-success)
+                   (funcall after-success
+                            (plist-get paging :page)
+                            (plist-get paging :pages))))
+       (success (&key data &allow-other-keys)
+                (let* ((files (mapcar #'slack-file-create
+                                      (plist-get data :files)))
+                       (paging (plist-get data :paging))
+                       (user-ids (slack-team-missing-user-ids
+                                  team (cl-loop for file in files
+                                                nconc (slack-message-user-ids file)))))
                   (if (string= page "1")
                       (oset team files files)
                     (oset team files (append (oref team files) files)))
                   (oset team files (cl-sort (oref team files)
                                             #'<
                                             :key #'(lambda (e) (oref e created))))
-                  (when (functionp after-success)
-                    (funcall after-success
-                             (plist-get paging :page)
-                             (plist-get paging :pages))))))
+                  (if (< 0 (length user-ids))
+                      (slack-users-info-request
+                       user-ids team :after-success #'(lambda () (callback paging)))
+                    (callback paging)))))
     (slack-request
      (slack-request-create
       slack-file-list-url

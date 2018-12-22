@@ -41,7 +41,6 @@
 (defvar slack-display-team-name)
 (defvar slack-current-buffer)
 (defvar slack-buffer-create-on-notify)
-(defconst slack-room-pins-list-url "https://slack.com/api/pins.list")
 (defconst slack-users-counts-url "https://slack.com/api/users.counts")
 
 (defclass slack-room ()
@@ -68,6 +67,8 @@
 
 (cl-defmethod slack-merge ((this slack-room) other)
   "except MESSAGES"
+  (oset this members (oref other members))
+  (oset this members-loaded-p (oref other members-loaded-p))
   (oset this name (oref other name))
   (oset this id (oref other id))
   (oset this created (oref other created))
