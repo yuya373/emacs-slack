@@ -135,9 +135,17 @@
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
 
+(defun slack-ws-payload-presence-sub-p (payload)
+  (string= "presence_sub" (plist-get payload :type)))
+
+(defun slack-ws-retryable-payload-p (payload)
+  (and (not (slack-ws-payload-ping-p payload))
+       (not (slack-ws-payload-presence-sub-p payload))))
+
 (cl-defmethod slack-ws-send ((ws slack-team-ws) payload team)
+  (slack-log-websocket-payload payload team t)
   (with-slots (waiting-send conn) ws
-    (unless (slack-ws-payload-ping-p payload)
+    (when (slack-ws-retryable-payload-p payload)
       (push payload waiting-send))
     (cl-labels
         ((reconnect ()
@@ -160,7 +168,6 @@
                do (slack-ws-send ws msg team)))))
 
 (cl-defmethod slack-ws-ping ((ws slack-team-ws) team)
-  (slack-team-inc-message-id team)
   (with-slots (message-id) team
     (let* ((time (number-to-string (time-to-seconds (current-time))))
            (m (list :id message-id
@@ -172,7 +179,7 @@
                        (slack-ws--close ws team)
                        (slack-ws-reconnect ws team)))
         (slack-ws-set-ping-check-timer ws time #'on-timeout))
-      (slack-ws-send ws m team)
+      (slack-team-send-message team m)
       (slack-log (format "Send PING: %s" time)
                  team :level 'trace))))
 
@@ -728,9 +735,16 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
-         (user (slack-user--find id team))
-         (presence (plist-get payload :presence)))
-    (plist-put user :presence presence)))
+         (user (slack-user--find id team)))
+    (cl-labels
+        ((update ()
+                 (let ((user (slack-user--find id team))
+                       (presence (plist-get payload :presence)))
+                   (plist-put user :presence presence))))
+      (if user (update)
+        (slack-user-info-request id
+                                 team
+                                 :after-success #'update)))))
 
 (defun slack-ws-handle-bot (payload team)
   (let ((bot (plist-get payload :bot)))

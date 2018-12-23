@@ -152,19 +152,15 @@
                        (y-or-n-p (format "Also send to %s ? "
                                          (slack-room-name room team)))
                      slack-thread-also-send-to-room)))
-    (progn
-      (slack-team-inc-message-id team)
-      (with-slots (message-id sent-message self-id) team
-        (let* ((payload (list :id message-id
-                              :channel (oref room id)
-                              :reply_broadcast broadcast
-                              :thread_ts thread-ts
-                              :type "message"
-                              :user self-id
-                              :text message))
-               (obj (slack-message-create payload team room)))
-          (slack-team-send-message team payload)
-          (puthash message-id obj sent-message))))))
+    (with-slots (message-id self-id) team
+      (let* ((payload (list :id message-id
+                            :channel (oref room id)
+                            :reply_broadcast broadcast
+                            :thread_ts thread-ts
+                            :type "message"
+                            :user self-id
+                            :text message)))
+        (slack-team-send-message team payload)))))
 
 (defun slack-thread-message--send (message)
   (slack-if-let* ((buf slack-current-buffer))

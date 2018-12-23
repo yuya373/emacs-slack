@@ -25,13 +25,19 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
+;; (require 'slack-message)
+(declare-function slack-message-create "slack-message")
 (require 'slack-team-ws)
 ;; (require 'slack-websocket)
 (declare-function slack-ws-send "slack-websocket")
 (declare-function slack-ws-open "slack-websocket")
 (declare-function slack-ws--close "slack-websocket")
+(declare-function slack-ws-payload-ping-p "slack-websocket")
+(declare-function slack-ws-payload-presence-sub-p "slack-websocket")
 ;; (require 'slack)
 (declare-function slack-start "slack")
+;; (require 'slack-room)
+(declare-function slack-room-open-p "slack-room")
 
 (declare-function emojify-create-emojify-emojis "emojify")
 
@@ -130,8 +136,15 @@ use `slack-change-current-team' to change `slack-current-team'"
     (oset ws url url)))
 
 (cl-defmethod slack-team-send-message ((this slack-team) message)
+  (unless (or (slack-ws-payload-ping-p message)
+              (slack-ws-payload-presence-sub-p message))
+    (puthash (oref this message-id)
+             (slack-message-create message this)
+             (oref this sent-message)))
+  (slack-team-inc-message-id this)
   (with-slots (ws) this
     (slack-ws-send ws message this)))
+
 
 (cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
   (with-slots (ws) this
@@ -344,6 +357,18 @@ you can change current-team with `slack-change-current-team'"
                                  (oref this users))))
     (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
                   (cl-remove-duplicates user-ids :test #'string=))))
+
+(cl-defmethod slack-team-send-presence-sub ((this slack-team))
+  (let ((type "presence_sub")
+        (ids (let ((result))
+               (cl-loop for im in (oref this ims)
+                        do (when (slack-room-open-p im)
+                             (push (oref im user) result)))
+               result)))
+    (slack-team-send-message this
+                             (list :id (oref this message-id)
+                                   :type type
+                                   :ids ids))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

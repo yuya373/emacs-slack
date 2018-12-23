@@ -41,6 +41,16 @@
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
 
+(defcustom slack-user-active-string "*"
+  "If user is active, use this string with `slack-user-active-face'."
+  :type 'string
+  :group 'slack)
+
+(defface slack-user-active-face
+  '((t (:foreground "#2aa198" :weight bold)))
+  "Used to `slack-user-active-string'"
+  :group 'slack)
+
 (defun slack-user--find (id team)
   "Find user by ID from TEAM."
   (with-slots (users) team
@@ -71,6 +81,12 @@
   (if (oref team full-and-display-names)
       (plist-get user :real_name)
     (plist-get user :name)))
+
+(defun slack-user-label (user team)
+  (format "%s %s"
+          (or (slack-user-dnd-status-to-string user)
+              (slack-user-presence-to-string user))
+          (slack-user--name user team)))
 
 (defun slack-user-status (id team)
   "Find user by ID in TEAM, then return user's status in string."
@@ -105,7 +121,8 @@
 
 (defun slack-user-presence-to-string (user)
   (if (string= (plist-get user :presence) "active")
-      "*"
+      (propertize slack-user-active-string
+                  'face 'slack-user-active-face)
     " "))
 
 (defun slack-user-set-status ()
@@ -227,7 +244,7 @@
 
 (defun slack-user-name-alist (team &key filter)
   (let ((users (oref team users)))
-    (mapcar #'(lambda (e) (cons (slack-user-name (plist-get e :id) team) e))
+    (mapcar #'(lambda (e) (cons (slack-user-label e team) e))
             (if filter (funcall filter users)
               users))))
 
