@@ -620,29 +620,37 @@ TEAM is one of `slack-teams'"
           (slack-ws-remove-from-resend-queue ws payload team))))))
 
 (defun slack-ws-handle-reaction-added (payload team)
-  (let* ((item (plist-get payload :item))
-         (item-type (plist-get item :type))
-         (reaction (make-instance 'slack-reaction
-                                  :name (plist-get payload :reaction)
-                                  :count 1
-                                  :users (list (plist-get payload :user)))))
+  (let ((user-id (plist-get payload :user)))
     (cl-labels
-        ((update-message (message)
+        ((update-message (message reaction item-type)
                          (slack-message-append-reaction message reaction item-type)
-                         (slack-message-update message team t t)))
-      (cond
-       ((string= item-type "message")
-        (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
-                        (message (slack-room-find-message room (plist-get item :ts))))
-            (progn
-              (update-message message)
-              (let* ((user-id (plist-get payload :user))
-                     (reaction (plist-get payload :reaction))
-                     (text (format "added reaction %s" reaction))
-                     (msg (make-instance 'slack-user-message
-                                         :text text
-                                         :user user-id)))
-                (slack-message-notify msg room team)))))))))
+                         (slack-message-update message team t t))
+         (update (payload)
+                 (let* ((item (plist-get payload :item))
+                        (item-type (plist-get item :type))
+                        (reaction (make-instance 'slack-reaction
+                                                 :name (plist-get payload :reaction)
+                                                 :count 1
+                                                 :users (list user-id))))
+                   (cond
+                    ((string= item-type "message")
+                     (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
+                                     (message (slack-room-find-message room (plist-get item :ts))))
+                         (progn
+                           (update-message message reaction item-type)
+                           (let* ((user-id (plist-get payload :user))
+                                  (reaction (plist-get payload :reaction))
+                                  (text (format "added reaction %s" reaction))
+                                  (msg (make-instance 'slack-user-message
+                                                      :text text
+                                                      :user user-id)))
+                             (slack-message-notify msg room team)))))))))
+      (if (slack-user--find user-id team)
+          (update payload)
+        (slack-user-info-request user-id
+                                 team
+                                 :after-success
+                                 #'(lambda () (update payload)))))))
 
 (defun slack-ws-handle-reaction-removed (payload team)
   (let* ((item (plist-get payload :item))
