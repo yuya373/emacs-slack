@@ -353,9 +353,6 @@
               (when user-id
                 (push user-id result)))
             (setq start (match-end 0))))))
-    (cl-loop for r in (slack-message-reactions this)
-             do (cl-loop for u in (oref r users)
-                         do (push u result)))
     result))
 
 (provide 'slack-message)
