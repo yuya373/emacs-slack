@@ -82,8 +82,7 @@
 
 (defun slack-message-reaction-input ()
   (let ((reaction (slack-select-emoji)))
-    (if (and (string-prefix-p(mapcar #'(lambda (user) (slack-user--name user team))
-                                     users) ":" reaction)
+    (if (and (string-prefix-p ":" reaction)
              (string-suffix-p ":" reaction))
         (substring reaction 1 -1)
       reaction)))
