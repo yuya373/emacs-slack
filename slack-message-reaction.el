@@ -66,10 +66,9 @@
         (slack-if-let* ((reaction (ignore-errors
                                     (get-text-property (point)
                                                        'reaction))))
-            (let ((user-names (slack-reaction-user-names reaction
-                                                         team)))
-              (message "reacted users: %s"
-                       (mapconcat #'identity user-names ", ")))
+            (slack-reaction-help-text reaction
+                                      team
+                                      #'(lambda (message) (message message)))
           (message "Can't get reaction:")))))
 
 (defun slack-message-reaction-select (reactions)
@@ -83,7 +82,8 @@
 
 (defun slack-message-reaction-input ()
   (let ((reaction (slack-select-emoji)))
-    (if (and (string-prefix-p ":" reaction)
+    (if (and (string-prefix-p(mapcar #'(lambda (user) (slack-user--name user team))
+                                     users) ":" reaction)
              (string-suffix-p ":" reaction))
         (substring reaction 1 -1)
       reaction)))
