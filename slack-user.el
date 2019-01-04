@@ -267,7 +267,7 @@
                                  #'(lambda () (slack-user-info-request user-ids
                                                                        team
                                                                        :after-success after-success)))
-      (let* ((batch-size 400)
+      (let* ((batch-size 30)
              (iter-count (ceiling (/ (length user-ids) (float batch-size))))
              (queue nil))
         (cl-loop for i from 0 to (1- iter-count)
