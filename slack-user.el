@@ -73,9 +73,7 @@
 (defun slack-user-name (id team)
   "Find user by ID in TEAM, then return user's name."
   (slack-if-let* ((user (slack-user--find id team)))
-      (if (oref team full-and-display-names)
-          (plist-get user :real_name)
-        (plist-get user :name))))
+      (slack-user--name user team)))
 
 (defun slack-user--name (user team)
   (if (oref team full-and-display-names)
