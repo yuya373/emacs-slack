@@ -361,10 +361,10 @@
            (header (or (and token
                             need-token-p
                             (string-prefix-p "https" url)
-                            (format "-H 'Authorization: Bearer %s'" token))
+                            (format "-H \"Authorization: Bearer %s\"" token))
                        ""))
-           (output (format "--output '%s'" name))
-           (command (format "curl --silent --show-error --fail --location %s %s '%s'" output header url))
+           (output (format "--output \"%s\"" name))
+           (command (format "curl --silent --show-error --fail --location %s %s \"%s\"" output header url))
            (proc (start-process-shell-command "slack-curl-downloader"
                                               "slack-curl-downloader"
                                               command)))
