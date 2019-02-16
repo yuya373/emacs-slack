@@ -3,6 +3,7 @@
 (require 'slack-channel)
 (require 'slack-usergroup)
 (require 'slack-message-formatter)
+(require 'slack-block)
 (defvar slack-channel-button-keymap nil)
 
 (defmacro slack-test-setup (&rest body)
@@ -92,6 +93,71 @@
   (should (equal "@everyone" (slack-unescape-variable "<!everyone>")))
   (should (equal "<foo>" (slack-unescape-variable "<!foo>")))
   (should (equal "<label>" (slack-unescape-variable "<!foo|label>"))))
+
+(ert-deftest slack-test-section-layout-block ()
+  (let* ((input '(:type "section"
+                        :block_id "2XEH1"
+                        :text (:type "mrkdwn"
+                                     :text "Hello, Assistant to the Regional Manager Dwight! *Michael Scott* wants to know where you'd like to take the Paper Company investors to dinner tonight.\n\n *Please select a restaurant:*"
+                                     :verbatim
+                                     :json-false)))
+         (out (slack-create-layout-block input))
+         (text (oref out text)))
+    (should (eq 'slack-section-layout-block
+                (eieio-object-class-name out)))
+    (should (equal "2XEH1" (oref out block-id)))
+    (should (eq (eieio-object-class-name text)
+                'slack-text-message-composition-object))))
+
+(ert-deftest slack-test-divider-layout-block ()
+  (let* ((input '(:type "divider" :block_id "y5a"))
+         (out (slack-create-layout-block input)))
+    (should (eq 'slack-divider-layout-block
+                (eieio-object-class-name out)))
+    (should (equal (oref out block-id)
+                   "y5a"))))
+
+(ert-deftest slack-test-image-layout-block ()
+  (let* ((input '(:type "image" :block_id "Tron" :image_url "https://api.slack.com/img/blocks/bkb_template_images/beagle.png" :alt_text "image1" :title (:type "plain_text" :text "image1" :emoji t) :fallback "1080x1080px image" :image_width 1080 :image_height 1080 :image_bytes 1432686))
+         (out (slack-create-layout-block input)))
+    (should (eq 'slack-image-layout-block
+                (eieio-object-class-name out)))
+    (should (eq 1080 (oref out image-width)))
+    (should (eq 1080 (oref out image-height)))
+    (should (equal
+             "https://api.slack.com/img/blocks/bkb_template_images/beagle.png"
+             (oref out image-url)))
+
+    (should (equal "image1" (oref (oref out title) text)))
+    (should (eq t (oref (oref out title) emoji)))
+    ))
+
+(ert-deftest slack-test-actions-layout-block ()
+  (let* ((input '(:type
+                  "actions"
+                  :block_id "lzhj"
+                  :elements ((:type
+                              "conversations_select"
+                              :action_id "r4Y"
+                              :placeholder (:type
+                                            "plain_text"
+                                            :text "Select a conversation"
+                                            :emoji t)))))
+         (out (slack-create-layout-block input)))
+    (should (eq 'slack-actions-layout-block
+                (eieio-object-class-name out)))
+    (should (eq 1 (length (oref out elements))))
+    (should (equal "lzhj" (oref out block-id)))
+    ))
+
+(ert-deftest slack-text-context-layout-block ()
+  (let* ((input '(:type "context" :block_id "mOfwN" :elements ((:type "plain_text" :text "Last updated: Jan 1, 2019" :emoji t) (:fallback "600x800px image" :image_url "https://api.slack.com/img/blocks/bkb_template_images/goldengate.png" :image_width 600 :image_height 800 :image_bytes 828593 :type "image" :alt_text "goldengate"))))
+         (out (slack-create-layout-block input)))
+    (should (eq 'slack-context-layout-block
+                (eieio-object-class-name out)))
+    (should (equal "mOfwN" (oref out block-id)))
+    (should (eq 2 (length (oref out elements))))
+    ))
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
