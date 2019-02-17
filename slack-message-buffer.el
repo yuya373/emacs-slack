@@ -460,9 +460,10 @@
   (with-slots (team) this
     (let ((text (slack-message-to-string message team)))
       (or (and merge-message-p
-               (let ((end (next-single-property-change
-                           0 'slack-message-header text)))
-                 (substring text (1+ end))))
+               (slack-if-let*
+                   ((end (next-single-property-change
+                          0 'slack-message-header text)))
+                   (substring text (1+ end))))
           text))))
 
 (cl-defmethod slack-buffer-insert ((this slack-message-buffer) message
