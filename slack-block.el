@@ -24,10 +24,16 @@
 
 ;;; Code:
 (require 'eieio)
+(require 'lui)
+;; (require 'slack-message-formatter)
+(declare-function slack-format-message "slack-message-formatter")
+(require 'slack-image)
 
 ;; Layout Blocks
 ;; [Reference: Message layout blocks | Slack](https://api.slack.com/reference/messaging/blocks)
 (defclass slack-layout-block () ((type :initarg :type :type string)))
+(cl-defmethod slack-block-to-string ((this slack-layout-block) &optional _option)
+  (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
 
 (defun slack-create-layout-block (payload)
   (let ((type (plist-get payload :type)))
@@ -62,6 +68,15 @@
                                    (plist-get payload :fields))
                    :accessory accessory)))
 
+(cl-defmethod slack-block-to-string ((this slack-section-layout-block) &optional _option)
+  (with-slots (fields accessory text) this
+    (slack-format-message (slack-block-to-string text)
+                          (mapconcat #'identity
+                                     (mapcar #'slack-block-to-string
+                                             fields)
+                                     "\n")
+                          (slack-block-to-string accessory))))
+
 (defclass slack-divider-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "divider")
    (block-id :initarg :block_id :type (or null string) :initform nil)))
@@ -69,6 +84,11 @@
 (defun slack-create-divider-layout-block (payload)
   (make-instance 'slack-divider-layout-block
                  :block_id (plist-get payload :block_id)))
+
+(cl-defmethod slack-block-to-string ((_this slack-divider-layout-block) &optional _option)
+  (let ((columns (or lui-fill-column
+                     0)))
+    (make-string columns ?-)))
 
 (defclass slack-image-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "image")
@@ -91,6 +111,15 @@
                  :image_height (plist-get payload :image_height)
                  :image_bytes (plist-get payload :image_bytes)))
 
+(cl-defmethod slack-block-to-string ((this slack-image-layout-block) &optional _option)
+  (with-slots (image-url alt-text title image-height image-width image-bytes) this
+    (let ((spec (list image-url
+                      image-width
+                      image-height
+                      slack-image-max-height)))
+      (slack-format-message (format "%s (%s kB)" alt-text (round (/ image-bytes 1000.0)))
+                            (slack-image-string spec)))))
+
 (defclass slack-actions-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "actions")
    (elements :initarg :elements :type list) ;; max 5 elements
@@ -102,6 +131,13 @@
                                    (plist-get payload :elements))
                  :block_id (plist-get payload :block_id)))
 
+(cl-defmethod slack-block-to-string ((this slack-actions-layout-block) &optional _option)
+  (with-slots (elements) this
+    (mapconcat #'identity
+               (mapcar #'slack-block-to-string
+                       elements)
+               " ")))
+
 (defclass slack-context-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "context")
    (elements :initarg :elements :type list)
@@ -109,13 +145,26 @@
 
 (defun slack-create-context-layout-block (payload)
   (make-instance 'slack-context-layout-block
-                 :elements (mapcar #'slack-create-block-element
+                 :elements (mapcar #'(lambda (e)
+                                       (or
+                                        (slack-create-block-element e)
+                                        (slack-create-text-message-composition-object  e)))
+
                                    (plist-get payload :elements))
                  :block_id (plist-get payload :block_id)))
+
+(cl-defmethod slack-block-to-string ((this slack-context-layout-block) &optional _option)
+  (with-slots (elements) this
+    (mapconcat #'identity
+               (mapcar #'(lambda (e) (slack-block-to-string e '(:max-image-height 30 :max-image-width 30)))
+                       elements)
+               " ")))
 
 ;; Block Elements
 ;; [Reference: Block elements | Slack](https://api.slack.com/reference/messaging/block-elements)
 (defclass slack-block-element () ((type :initarg :type :type string)))
+(cl-defmethod slack-block-to-string ((this slack-block-element) &optional _option)
+  (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
 
 (defun slack-create-block-element (payload)
   (let ((type (plist-get payload :type)))
@@ -156,6 +205,16 @@
                  :image_width (plist-get payload :image_width)
                  :image_bytes (plist-get payload :image_bytes)))
 
+(cl-defmethod slack-block-to-string ((this slack-image-block-element) &optional option)
+  (with-slots (image-url image-height image-width) this
+    (let ((spec (list image-url
+                      image-width
+                      image-height
+                      (or (plist-get option :max-image-height)
+                          slack-image-max-height)
+                      (plist-get option :max-image-width))))
+      (slack-image-string (cl-remove-if #'null spec)))))
+
 (defclass slack-button-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "button")
    (text :initarg :text :type slack-text-message-composition-object)
@@ -174,10 +233,28 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(defface slack-button-block-element-face
+  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  "Used to button block element"
+  :group 'slack)
+
+(cl-defmethod slack-block-to-string ((this slack-button-block-element) &optional _option)
+  (with-slots (text) this
+    (propertize (slack-block-to-string text)
+                'face 'slack-button-block-element-face)))
+
 (defclass slack-select-block-element (slack-block-element)
   ((placeholder :initarg :placeholder :type slack-text-message-composition-object)
    (action-id :initarg :action_id :type string)
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
+
+(cl-defmethod slack-block-to-string ((this slack-select-block-element) &optional _option)
+  (format "Implement `slack-block-to-string' for %S" (oref this type)))
+
+(defface slack-select-block-element-face
+  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  "Used to select block element"
+  :group 'slack)
 
 (defclass slack-static-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "static_select")
@@ -205,6 +282,11 @@
                    :initial_option (slack-create-option-message-composition-object
                                     initial-option))))
 
+(cl-defmethod slack-block-to-string ((this slack-static-select-block-element) &optional _option)
+  (with-slots (initial-option placeholder) this
+    (propertize (slack-block-to-string (or initial-option placeholder))
+                'face 'slack-select-block-element-face)))
+
 (defclass slack-external-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "external_select")
    (initial-option :initarg :initial_option :initform nil :type (or null
@@ -223,6 +305,11 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(cl-defmethod slack-block-to-string ((this slack-external-select-block-element))
+  (with-slots (placeholder initial-option) this
+    (propertize (slack-block-to-string (or initial-option placeholder))
+                'face 'slack-select-block-element-face)))
+
 (defclass slack-user-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "users_select")
    (initial-user :initarg :initial_user :type (or string null) :initform nil)))
@@ -236,6 +323,16 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(cl-defmethod slack-block-to-string ((this slack-user-select-block-element) &optional _option)
+  (with-slots (initial-user placeholder) this
+    (if initial-user
+        (propertize (format "USER: %s" initial-user)
+                    'face 'slack-select-block-element-face
+                    'slack-user-id initial-user
+                    'slack-lazy-user-name t)
+      (propertize (slack-block-to-string placeholder)
+                  'face 'slack-select-block-element-face))))
+
 (defclass slack-conversation-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "conversations_select")
    (initial-conversation :initarg :initial_conversation :type (or string null) :initform nil)))
@@ -248,6 +345,17 @@
                  :initial_conversation (plist-get payload :initial_conversation)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
+
+(cl-defmethod slack-block-to-string ((this slack-conversation-select-block-element) &optional _option)
+  (with-slots (initial-conversation placeholder) this
+    (if initial-conversation
+        (propertize (format "CONVERSATION: %s"
+                            initial-conversation)
+                    'face 'slack-select-block-element-face
+                    'slack-conversation-id initial-conversation
+                    'slack-lazy-conversation-name t)
+      (propertize (slack-block-to-string placeholder)
+                  'face 'slack-select-block-element-face))))
 
 ;; only public channel
 (defclass slack-channel-select-block-element (slack-select-block-element)
@@ -263,6 +371,16 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(cl-defmethod slack-block-to-string ((this slack-channel-select-block-element) &optional _option)
+  (with-slots (placeholder initial-channel) this
+    (if initial-channel
+        (propertize (format "CHANNEL: %s" initial-channel)
+                    'face 'slack-select-block-element-face
+                    'slack-lazy-conversation-name t
+                    'slack-conversation-id initial-channel)
+      (propertize (slack-block-to-string placeholder)
+                  'face 'slack-select-block-element-face))))
+
 (defclass slack-overflow-menu-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "overflow")
    (action-id :initarg :action_id :type string)
@@ -276,6 +394,14 @@
                                   (plist-get payload :options))
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
+
+(defface slack-overflow-block-element-face
+  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  "Used to overflow block element"
+  :group 'slack)
+
+(cl-defmethod slack-block-to-string ((_this slack-overflow-menu-block-element) &optional _option)
+  (propertize " … " 'face 'slack-overflow-block-element-face))
 
 (defclass slack-date-picker-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "datepicker")
@@ -293,14 +419,32 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(defface slack-date-picker-block-element-face
+  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  "Used to date picker block element"
+  :group 'slack)
+
+(cl-defmethod slack-block-to-string ((this slack-date-picker-block-element) &optional _option)
+  (with-slots (placeholder initial-date) this
+    (let ((text (or initial-date
+                    (slack-block-to-string placeholder))))
+      (propertize text 'face 'slack-date-picker-block-element-face))))
+
 ;; Message Composition Objects
 ;; [Reference: Message composition objects | Slack](https://api.slack.com/reference/messaging/composition-objects)
 (defclass slack-message-composition-object () ())
+(cl-defmethod slack-block-to-string ((this slack-message-composition-object) &optional _option)
+  (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
+
 (defclass slack-text-message-composition-object (slack-message-composition-object)
   ((type :initarg :type :type string) ;; plain_text or mrkdwn
    (text :initarg :text) ;; :type string?
    (emoji :initarg :emoji :type (or null boolean) :initform nil)
    (verbatim :initarg :verbatim :type (or null boolean) :initform nil)))
+
+(cl-defmethod slack-block-to-string ((this slack-text-message-composition-object) &optional _option)
+  (with-slots (text) this
+    text))
 
 (defun slack-create-text-message-composition-object (payload)
   (when payload
@@ -339,6 +483,10 @@
                           (plist-get payload :text))
                    :value (plist-get payload :value))))
 
+(cl-defmethod slack-block-to-string ((this slack-option-message-composition-object))
+  (with-slots (text) this
+    (slack-block-to-string text)))
+
 (defclass slack-option-group-message-composition-object (slack-message-composition-object)
   ((label :initarg :label :type slack-text-message-composition-object)
    (options :initarg :options :type list) ;; list of slack-option-message-composition-object
@@ -350,6 +498,9 @@
                          (plist-get payload :label))
                  :options (mapcar #'slack-create-option-message-composition-object
                                   (plist-get payload :options))))
+
+(cl-defmethod slack-block-to-string ((_this null) &optional _option)
+  nil)
 
 (provide 'slack-block)
 ;;; slack-block.el ends here

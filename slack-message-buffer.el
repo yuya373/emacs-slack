@@ -65,6 +65,8 @@
   (add-hook 'lui-pre-output-hook 'slack-search-code-block nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (add-hook 'lui-pre-output-hook 'slack-display-inline-action t t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-user-name nil t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-conversation-name nil t)
   ;; TODO move to `slack-room-buffer' ?
   (cursor-sensor-mode)
   (setq-local lui-max-buffer-size nil)

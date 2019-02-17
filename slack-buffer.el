@@ -86,6 +86,8 @@
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-user-name nil t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-conversation-name nil t)
   (lui-set-prompt " "))
 
 (defclass slack-buffer ()
@@ -364,6 +366,48 @@
             (slack-put-code-block-overlay beg end)
             (put-text-property beg end 'slack-disable-buttonize t)
             (goto-char end))))))
+
+(defun slack-buffer-get-props-range (cur-point prop-name)
+  (let* ((start (or (and (get-text-property cur-point prop-name) cur-point)
+                    (next-single-property-change cur-point prop-name)))
+         (end (and start (next-single-property-change start prop-name))))
+    (list start end)))
+
+(defun slack-handle-lazy-conversation-name ()
+  (slack-if-let* ((slack-buffer slack-current-buffer)
+                  (team (oref slack-buffer team)))
+      (progn
+        (let ((cur-point (point-min)))
+          (while (and cur-point (< cur-point (point-max)))
+            (cl-destructuring-bind (start end)
+                (slack-buffer-get-props-range cur-point
+                                              'slack-lazy-conversation-name)
+              (when (and start end)
+                (slack-if-let* ((room-id (get-text-property start 'slack-conversation-id))
+                                (room (slack-room-find room-id team))
+                                (name (format "%s%s"
+                                              (if (slack-im-p room) "@" "#")
+                                              (slack-room-name room team))))
+                    (put-text-property start end 'display name)
+                  (put-text-property start end 'display "Unknown Conversation")))
+              (setq cur-point end)))))))
+
+(defun slack-handle-lazy-user-name ()
+  (slack-if-let* ((slack-buffer slack-current-buffer)
+                  (team (oref slack-buffer team)))
+      (progn
+        (let ((cur-point (point-min)))
+          (while (and cur-point (< cur-point (point-max)))
+            (cl-destructuring-bind (start end)
+                (slack-buffer-get-props-range cur-point
+                                              'slack-lazy-user-name)
+              (when (and start end)
+                (slack-if-let* ((user-id (get-text-property start 'slack-user-id))
+                                (user-name (propertize
+                                            (or (slack-user-name user-id team)
+                                                "Unknown User"))))
+                    (put-text-property start end 'display user-name)))
+              (setq cur-point end)))))))
 
 (defun slack-add-face-lazy ()
   (let ((cur-point (point-min)))
