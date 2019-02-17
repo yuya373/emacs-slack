@@ -95,19 +95,21 @@
   (should (equal "<label>" (slack-unescape-variable "<!foo|label>"))))
 
 (ert-deftest slack-test-section-layout-block ()
-  (let* ((input '(:type "section"
-                        :block_id "2XEH1"
-                        :text (:type "mrkdwn"
-                                     :text "Hello, Assistant to the Regional Manager Dwight! *Michael Scott* wants to know where you'd like to take the Paper Company investors to dinner tonight.\n\n *Please select a restaurant:*"
-                                     :verbatim
-                                     :json-false)))
+  (let* ((input '(:type "section" :block_id "Vgv" :text (:type "mrkdwn" :text "Take a look at this image." :verbatim :json-false) :accessory (:fallback "600x800px image" :image_url "https://api.slack.com/img/blocks/bkb_template_images/palmtree.png" :image_width 600 :image_height 800 :image_bytes 482870 :type "image" :alt_text "palm tree") :fields ((:type "mrkdwn" :text "Foo" :verbatim :json-false) (:type "mrkdwn" :text "Bar" :verbatim :json-false))))
          (out (slack-create-layout-block input))
          (text (oref out text)))
     (should (eq 'slack-section-layout-block
                 (eieio-object-class-name out)))
-    (should (equal "2XEH1" (oref out block-id)))
+    (should (equal "Vgv" (oref out block-id)))
     (should (eq (eieio-object-class-name text)
-                'slack-text-message-composition-object))))
+                'slack-text-message-composition-object))
+    (should (eq 2 (length (oref out fields))))
+    (mapc #'(lambda (e) (should (eq 'slack-text-message-composition-object
+                                    (eieio-object-class-name e))))
+          (oref out fields))
+    (should (eq 'slack-image-block-element
+                (eieio-object-class-name (oref out accessory))))
+    ))
 
 (ert-deftest slack-test-divider-layout-block ()
   (let* ((input '(:type "divider" :block_id "y5a"))
@@ -158,6 +160,118 @@
     (should (equal "mOfwN" (oref out block-id)))
     (should (eq 2 (length (oref out elements))))
     ))
+
+(ert-deftest slack-test-button-block-element ()
+  (let* ((input '(:type "section" :block_id "mL2Z" :text (:type "mrkdwn" :text "You can add a button alongside text in your message. " :verbatim :json-false) :accessory (:type "button" :text (:type "plain_text" :text "Button" :emoji t) :value "click_me_123" :action_id "4sDY")))
+         (out (slack-create-layout-block input))
+         (button (oref out accessory)))
+    (should (eq 'slack-button-block-element
+                (eieio-object-class-name button)))
+    (should (equal "click_me_123"
+                   (oref button value)))
+    (should (equal "4sDY"
+                   (oref button action-id)))
+    (should (equal "Button"
+                   (oref (oref button text) text)))
+    ))
+
+(ert-deftest slack-test-static-select-block-element ()
+  (let* ((input '(:type "section" :block_id "1ljQm" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "static_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :options ((:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Choice 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Choice 3" :emoji t) :value "value-2")) :action_id "glxm" :initial_option (:text (:type "plain_text" :text "Choice 2" :emoji t) :value "value-1"))))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-static-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq 3 (length (oref select options))))
+    (should (eq nil (oref select option-groups)))
+    (should (equal "glxm" (oref select action-id)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))
+    (should (eq 'slack-option-message-composition-object
+                (eieio-object-class-name (oref select initial-option)))))
+
+  (let* ((input '(:type "section" :block_id "2aQr" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "static_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :initial_option (:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") :option_groups ((:label (:type "plain_text" :text "Foo" :emoji t) :options ((:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Choice 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Choice 3" :emoji t) :value "value-2"))) (:label (:type "plain_text" :text "Bar" :emoji t) :options ((:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Choice 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Choice 3" :emoji t) :value "value-2")))) :action_id "rUen5")))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-static-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq nil (oref select options)))
+    (should (eq 2 (length (oref select option-groups))))
+    (should (eq 'slack-option-message-composition-object
+                (eieio-object-class-name (oref select initial-option))))
+    (should (equal "rUen5" (oref select action-id)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))))
+
+(ert-deftest slack-test-external-select-block-element ()
+  (let* ((input '(:type "section" :block_id "7y4+" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "external_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :min_query_length 3 :action_id "03T+" :confirm (:title (:type "plain_text" :text "Title") :text (:type "plain_text" :text "Text") :confirm (:type "plain_text" :text "Yes") :deny (:type "plain_text" :text "No")))))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-external-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))
+    (should (eq 'slack-confirmation-dialog-message-composition-object
+                (eieio-object-class-name (oref select confirm))))
+    (should (eq 3 (oref select min-query-length)))
+    (should (equal "03T+" (oref select action-id)))))
+
+(ert-deftest slack-test-user-select-block-element ()
+  (let* ((input '(:type "section" :block_id "DjXiH" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "users_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :confirm (:title (:type "plain_text" :text "Title" :emoji t) :text (:type "plain_text" :text "Text" :emoji t) :confirm (:type "plain_text" :text "Yes" :emoji t) :deny (:type "plain_text" :text "No" :emoji t)) :action_id "VtT" :initial_user "UAAAAA")))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-user-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))
+    (should (eq 'slack-confirmation-dialog-message-composition-object
+                (eieio-object-class-name (oref select confirm))))
+    (should (equal "VtT" (oref select action-id)))
+    (should (equal "UAAAAA" (oref select initial-user)))))
+
+(ert-deftest slack-test-conversation-select-block-element ()
+  (let* ((input '(:type "section" :block_id "SrLD" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "conversations_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :confirm (:title (:type "plain_text" :text "Title" :emoji t) :text (:type "plain_text" :text "Text" :emoji t) :confirm (:type "plain_text" :text "Yes" :emoji t) :deny (:type "plain_text" :text "No" :emoji t)) :action_id "GfRre")))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-conversation-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))
+    (should (eq 'slack-confirmation-dialog-message-composition-object
+                (eieio-object-class-name (oref select confirm))))
+    (should (equal "GfRre" (oref select action-id)))))
+
+(ert-deftest slack-test-channel-select-block-element ()
+  (let* ((input '(:type "section" :block_id "fBa" :text (:type "mrkdwn" :text "Pick an item from the dropdown list" :verbatim :json-false) :accessory (:type "channels_select" :initial_channel "C0G31N06B" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :action_id "zJl")))
+         (out (slack-create-layout-block input))
+         (select (oref out accessory)))
+    (should (eq 'slack-channel-select-block-element
+                (eieio-object-class-name select)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref select placeholder))))
+    (should (equal "C0G31N06B" (oref select initial-channel)))
+    (should (equal "zJl" (oref select action-id)))))
+
+(ert-deftest slack-test-overflow-block-element ()
+  (let* ((input '(:type "section" :block_id "Egl" :text (:type "mrkdwn" :text "This block has an overflow menu." :verbatim :json-false) :accessory (:type "overflow" :options ((:text (:type "plain_text" :text "Option 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Option 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Option 3" :emoji t) :value "value-2") (:text (:type "plain_text" :text "Option 4" :emoji t) :value "value-3")) :confirm (:title (:type "plain_text" :text "Title" :emoji t) :text (:type "plain_text" :text "Text" :emoji t) :confirm (:type "plain_text" :text "Yes" :emoji t) :deny (:type "plain_text" :text "No" :emoji t)) :action_id "ksRP")))
+         (out (slack-create-layout-block input))
+         (overflow (oref out accessory)))
+    (should (eq 'slack-overflow-menu-block-element
+                (eieio-object-class-name overflow)))
+    (should (eq 'slack-confirmation-dialog-message-composition-object
+                (eieio-object-class-name (oref overflow confirm))))
+    (should (eq 4 (length (oref overflow options))))
+    (should (equal "ksRP" (oref overflow action-id)))))
+
+(ert-deftest slack-test-datepicker-block-element ()
+  (let* ((input '(:type "section" :block_id "VvZ" :text (:type "mrkdwn" :text "Pick a date for the deadline." :verbatim :json-false) :accessory (:type "datepicker" :initial_date "1990-04-28" :placeholder (:type "plain_text" :text "Select a date" :emoji t) :action_id "G=RRF")))
+         (out (slack-create-layout-block input))
+         (datepicker (oref out accessory)))
+    (should (eq 'slack-date-picker-block-element
+                (eieio-object-class-name datepicker)))
+    (should (eq 'slack-text-message-composition-object
+                (eieio-object-class-name (oref datepicker placeholder))))
+    (should (equal "1990-04-28" (oref datepicker initial-date)))
+    (should (equal "G=RRF" (oref datepicker action-id)))))
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
