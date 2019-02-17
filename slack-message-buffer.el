@@ -675,6 +675,12 @@
                 team)))
     (slack-room-display room team)))
 
+(defun slack-message-redisplay ()
+  (interactive)
+  (slack-if-let* ((ts (slack-get-ts))
+                  (buf slack-current-buffer))
+      (slack-buffer--replace buf ts)))
+
 (defun slack-message-inspect ()
   (interactive)
   (slack-if-let* ((ts (slack-get-ts))
