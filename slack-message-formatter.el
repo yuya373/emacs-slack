@@ -264,7 +264,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (replace-regexp-in-string "\\(&amp;\\)\\|\\(&lt;\\)\\|\\(&gt;\\)"
                               #'replace text t t)))
 
-(defun slack-unescape-!date (text)
+(defun slack-unescape-!date (text &optional zone)
   (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|\\(.*\\)>")
         (time-format-regexp "{\\(.*?\\)}"))
     (cl-labels
@@ -288,7 +288,8 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
             (if template
                 (slack-linkfy
                  (format-time-string (cdr template)
-                                     (float-time (string-to-number unix-time)))
+                                     (float-time (string-to-number unix-time))
+                                     zone)
                  (and link (substring link 1 (length link))))
               fallback))))
       (replace-regexp-in-string date-regexp

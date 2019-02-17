@@ -70,12 +70,17 @@
 
 
 (ert-deftest slack-test-unescape-!date ()
-  (should (equal (slack-unescape-!date "<!date^1392734382^Posted {date_num} {time_secs}|Posted 2014-02-18 14:39:42>"
-                                       )
+  (should (equal (slack-unescape-!date
+                  "<!date^1392734382^Posted {date_num} {time_secs}|Posted 2014-02-18 14:39:42>"
+                  0)
                  "Posted 2014-02-18 14:39:42") )
-  (should (equal (slack-unescape-!date "<!date^1392734382^{date} at {time}|February 18 2014 at 14:39 PST>")
+  (should (equal (slack-unescape-!date
+                  "<!date^1392734382^{date} at {time}|February 18 2014 at 14:39 PST>"
+                  0)
                  "February 18, 2014 at 14:39"))
-  (should (equal (slack-unescape-!date "<!date^1392734382^{date_short}^https://example.com/|Feb 18, 2014 PST>")
+  (should (equal (slack-unescape-!date
+                  "<!date^1392734382^{date_short}^https://example.com/|Feb 18, 2014 PST>"
+                  0)
                  "<https://example.com/|Feb 18, 2014>"))
   )
 
