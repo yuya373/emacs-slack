@@ -196,7 +196,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                    (slack-message-put-deleted-property str)
                                  str)))
                (oref m blocks)
-               "\n")))
+               "\n\n")))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
