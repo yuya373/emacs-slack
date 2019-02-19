@@ -546,6 +546,27 @@ Execute this function when cursor is on some message."
                                              #'after-success)))))
 
 
+(cl-defmethod slack-buffer-execute-button-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload)))
+      (let ((container (list (cons "type" "message")
+                             (cons "message_ts" ts)
+                             (cons "channel_id" (oref room id))
+                             (cons "is_ephemeral" (or (oref message is-ephemeral)
+                                                      :json-false))))
+            (service-id (if (slack-bot-message-p message)
+                            (slack-message-bot-id message)
+                          "B01")))
+        (slack-block-action-execute
+         service-id
+         (list action)
+         container
+         team))))
 
 
 (provide 'slack-room-buffer)

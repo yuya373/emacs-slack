@@ -315,6 +315,8 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-display-unread-threads ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-button-block-action((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
@@ -528,6 +530,11 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
   (slack-buffer-cant-execute this))
+
+(defun slack-execute-button-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-button-block-action buf)))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

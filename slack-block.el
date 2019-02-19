@@ -25,6 +25,10 @@
 ;;; Code:
 (require 'eieio)
 (require 'lui)
+(require 'slack-util)
+(require 'slack-request)
+;; (require 'slack-buffer)
+(declare-function slack-execute-button-block-action "slack-buffer")
 ;; (require 'slack-message-formatter)
 (declare-function slack-format-message "slack-message-formatter")
 (require 'slack-image)
@@ -59,7 +63,8 @@
 
 (defun slack-create-section-layout-block (payload)
   (let ((accessory (slack-create-block-element
-                    (plist-get payload :accessory))))
+                    (plist-get payload :accessory)
+                    (plist-get payload :block_id))))
     (make-instance 'slack-section-layout-block
                    :text (slack-create-text-message-composition-object
                           (plist-get payload :text))
@@ -127,7 +132,9 @@
 
 (defun slack-create-actions-layout-block (payload)
   (make-instance 'slack-actions-layout-block
-                 :elements (mapcar #'slack-create-block-element
+                 :elements (mapcar #'(lambda (e)
+                                       (slack-create-block-element
+                                        e (plist-get payload :block_id)))
                                    (plist-get payload :elements))
                  :block_id (plist-get payload :block_id)))
 
@@ -147,7 +154,8 @@
   (make-instance 'slack-context-layout-block
                  :elements (mapcar #'(lambda (e)
                                        (or
-                                        (slack-create-block-element e)
+                                        (slack-create-block-element
+                                         e (plist-get payload :block_id))
                                         (slack-create-text-message-composition-object  e)))
 
                                    (plist-get payload :elements))
@@ -166,13 +174,13 @@
 (cl-defmethod slack-block-to-string ((this slack-block-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
 
-(defun slack-create-block-element (payload)
+(defun slack-create-block-element (payload block-id)
   (let ((type (plist-get payload :type)))
     (cond
      ((string= "image" type)
       (slack-create-image-block-element payload))
      ((string= "button" type)
-      (slack-create-button-block-element payload))
+      (slack-create-button-block-element payload block-id))
      ((string= "static_select" type)
       (slack-create-static-select-block-element payload))
      ((string= "external_select" type)
@@ -219,14 +227,16 @@
   ((type :initarg :type :type string :initform "button")
    (text :initarg :text :type slack-text-message-composition-object)
    (action-id :initarg :action_id :type string)
+   (block-id :initarg :block_id :type (or null string) :initform nil)
    (url :initarg :url :type (or string null) :initform nil)
    (value :initarg :value :type (or string null) :initform nil)
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-composition-object))))
 
-(defun slack-create-button-block-element (payload)
+(defun slack-create-button-block-element (payload block-id)
   (make-instance 'slack-button-block-element
                  :text (slack-create-text-message-composition-object
                         (plist-get payload :text))
+                 :block_id block-id
                  :action_id (plist-get payload :action_id)
                  :url (plist-get payload :url)
                  :value (plist-get payload :value)
@@ -241,7 +251,20 @@
 (cl-defmethod slack-block-to-string ((this slack-button-block-element) &optional _option)
   (with-slots (text) this
     (propertize (slack-block-to-string text)
-                'face 'slack-button-block-element-face)))
+                'face 'slack-button-block-element-face
+                'slack-action-payload (slack-block-action-payload this)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET")
+                            #'slack-execute-button-block-action)
+                          map))))
+
+(cl-defmethod slack-block-action-payload ((this slack-button-block-element))
+  (with-slots (block-id action-id value text) this
+    (list (cons "block_id" (or block-id ""))
+          (cons "action_id" action-id)
+          (cons "value" value)
+          (cons "type" "button")
+          (cons "text" (slack-block-action-payload text)))))
 
 (defclass slack-select-block-element (slack-block-element)
   ((placeholder :initarg :placeholder :type slack-text-message-composition-object)
@@ -446,6 +469,12 @@
   (with-slots (text) this
     text))
 
+(cl-defmethod slack-block-action-payload ((this slack-text-message-composition-object))
+  (with-slots (type text emoji verbatim) this
+    (list (cons "type" type)
+          (cons "text" text)
+          (cons "emoji" (or emoji :json-false)))))
+
 (defun slack-create-text-message-composition-object (payload)
   (when payload
     (make-instance 'slack-text-message-composition-object
@@ -501,6 +530,27 @@
 
 (cl-defmethod slack-block-to-string ((_this null) &optional _option)
   nil)
+
+;; POST
+(defconst slack-block-actions-url "https://slack.com/api/blocks.actions")
+(defun slack-block-action-execute (service-id actions container team)
+  (let ((data (json-encode-alist
+               (list (cons "actions" actions)
+                     (cons "service_id" service-id)
+                     (cons "container" container)
+                     (cons "client_token" (slack-team-client-token team))))))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (message "DATA: %S" data)))
+      (slack-request
+       (slack-request-create
+        slack-block-actions-url
+        team
+        :type "POST"
+        :data data
+        :headers (list (cons "Content-Type"
+                             "application/json;charset=utf-8"))
+        :success #'success)))))
 
 (provide 'slack-block)
 ;;; slack-block.el ends here
