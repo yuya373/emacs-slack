@@ -189,7 +189,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (cl-defmethod slack-message-blocks-to-string ((m slack-message) team)
   (when (oref m blocks)
-    (mapconcat #'(lambda (e) (let ((str (slack-block-to-string e)))
+    (mapconcat #'(lambda (e) (let ((str (slack-message-unescape-string
+                                         (slack-block-to-string e)
+                                         team)))
                                (if (oref m deleted-at)
                                    (slack-message-put-deleted-property str)
                                  str)))
