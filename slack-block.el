@@ -52,7 +52,7 @@
 
 (defclass slack-section-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "section")
-   (text :initarg :text :type slack-text-message-composition-object)
+   (text :initarg :text :type (or null slack-text-message-composition-object) :initform nil)
    (block-id :initarg :block_id :type (or string null) :initform nil)
    (fields :initarg :fields :type (or list null) :initform nil) ;; list of slack-text-message-composition-object
    (accessory :initarg :accessory :initform nil :type (or null slack-block-element))))
