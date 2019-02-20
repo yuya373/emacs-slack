@@ -545,6 +545,18 @@ Execute this function when cursor is on some message."
           (slack-subscriptions-thread-remove room ts team
                                              #'after-success)))))
 
+(cl-defmethod slack-buffer-block-action-container ((this slack-room-buffer) message)
+  (let ((room (oref this room)))
+    (list (cons "type" "message")
+          (cons "message_ts" (slack-ts message))
+          (cons "channel_id" (oref room id))
+          (cons "is_ephemeral" (or (oref message is-ephemeral)
+                                   :json-false)))))
+
+(cl-defmethod slack-message-block-action-service-id ((this slack-message))
+  (if (slack-bot-message-p this)
+      (slack-message-bot-id this)
+    "B01"))
 
 (cl-defmethod slack-buffer-execute-button-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
@@ -554,20 +566,31 @@ Execute this function when cursor is on some message."
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload)))
-      (let ((container (list (cons "type" "message")
-                             (cons "message_ts" ts)
-                             (cons "channel_id" (oref room id))
-                             (cons "is_ephemeral" (or (oref message is-ephemeral)
-                                                      :json-false))))
-            (service-id (if (slack-bot-message-p message)
-                            (slack-message-bot-id message)
-                          "B01")))
+      (let ((container (slack-buffer-block-action-container this message))
+            (service-id (slack-message-block-action-service-id message)))
         (slack-block-action-execute
          service-id
          (list action)
          container
          team))))
 
+(cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (selected-conversation (slack-room-select (append (oref team channels)
+                                                                    (oref team groups)
+                                                                    (oref team ims))
+                                                            team)))
+      (slack-block-action-execute
+       (slack-message-block-action-service-id message)
+       (list (append action (list (cons "selected_conversation" (oref selected-conversation id)))))
+       (slack-buffer-block-action-container this message)
+       team)))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here
