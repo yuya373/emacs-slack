@@ -190,7 +190,7 @@
      ((string= "conversations_select" type)
       (slack-create-conversation-select-block-element payload block-id))
      ((string= "channels_select" type)
-      (slack-create-channel-select-block-element payload))
+      (slack-create-channel-select-block-element payload block-id))
      ((string= "overflow" type)
       (slack-create-overflow-block-element payload))
      ((string= "datepicker" type)
@@ -394,26 +394,39 @@
 ;; only public channel
 (defclass slack-channel-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "channels_select")
-   (initial-channel :initarg :initial_channel :type (or string null) :initform nil)))
+   (initial-channel :initarg :initial_channel :type (or string null) :initform nil)
+   (block-id :initarg :block_id :type (or null string) :initform nil)))
 
-(defun slack-create-channel-select-block-element (payload)
+(defun slack-create-channel-select-block-element (payload block-id)
   (make-instance 'slack-channel-select-block-element
                  :placeholder (slack-create-text-message-composition-object
                                (plist-get payload :placeholder))
                  :action_id (plist-get payload :action_id)
+                 :block_id block-id
                  :initial_channel (plist-get payload :initial_channel)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
 (cl-defmethod slack-block-to-string ((this slack-channel-select-block-element) &optional _option)
   (with-slots (placeholder initial-channel) this
-    (if initial-channel
-        (propertize (format "CHANNEL: %s" initial-channel)
-                    'face 'slack-select-block-element-face
-                    'slack-lazy-conversation-name t
-                    'slack-conversation-id initial-channel)
-      (propertize (slack-block-to-string placeholder)
-                  'face 'slack-select-block-element-face))))
+    (let ((props (list
+                  'face 'slack-select-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-channel-select-block-action)
+                            map))))
+      (if initial-channel
+          (apply #'propertize (format "CHANNEL: %s" initial-channel)
+                 (append (list 'slack-lazy-conversation-name t
+                               'slack-conversation-id initial-channel)
+                         props))
+        (apply #'propertize (slack-block-to-string placeholder) props)))))
+
+(cl-defmethod slack-block-action-payload ((this slack-channel-select-block-element))
+  (with-slots (block-id action-id type) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id))))
 
 (defclass slack-overflow-menu-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "overflow")

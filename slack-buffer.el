@@ -319,6 +319,8 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-channel-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
@@ -542,6 +544,11 @@
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-execute-conversation-select-block-action buf)))
+
+(defun slack-execute-channel-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-channel-select-block-action buf)))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
