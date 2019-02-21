@@ -186,7 +186,7 @@
      ((string= "external_select" type)
       (slack-create-external-select-block-element payload))
      ((string= "users_select" type)
-      (slack-create-user-select-block-element payload))
+      (slack-create-user-select-block-element payload block-id))
      ((string= "conversations_select" type)
       (slack-create-conversation-select-block-element payload block-id))
      ((string= "channels_select" type)
@@ -335,26 +335,39 @@
 
 (defclass slack-user-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "users_select")
-   (initial-user :initarg :initial_user :type (or string null) :initform nil)))
+   (initial-user :initarg :initial_user :type (or string null) :initform nil)
+   (block-id :initarg :block_id :type (or null string) :initform nil)))
 
-(defun slack-create-user-select-block-element (payload)
+(defun slack-create-user-select-block-element (payload block-id)
   (make-instance 'slack-user-select-block-element
                  :placeholder (slack-create-text-message-composition-object
                                (plist-get payload :placeholder))
                  :action_id (plist-get payload :action_id)
+                 :block_id block-id
                  :initial_user (plist-get payload :initial_user)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
 (cl-defmethod slack-block-to-string ((this slack-user-select-block-element) &optional _option)
   (with-slots (initial-user placeholder) this
-    (if initial-user
-        (propertize (format "USER: %s" initial-user)
-                    'face 'slack-select-block-element-face
-                    'slack-user-id initial-user
-                    'slack-lazy-user-name t)
-      (propertize (slack-block-to-string placeholder)
-                  'face 'slack-select-block-element-face))))
+    (let ((props (list
+                  'face 'slack-select-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-user-select-block-action)
+                            map))))
+      (if initial-user
+          (apply #'propertize (format "USER: %s" initial-user)
+                 (append (list 'slack-user-id initial-user
+                               'slack-lazy-user-name t)
+                         props))
+        (apply #'propertize (slack-block-to-string placeholder) props)))))
+
+(cl-defmethod slack-block-action-payload ((this slack-user-select-block-element))
+  (with-slots (type action-id block-id) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id))))
 
 (defclass slack-conversation-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "conversations_select")

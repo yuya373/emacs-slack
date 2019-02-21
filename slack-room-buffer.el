@@ -611,5 +611,27 @@ Execute this function when cursor is on some message."
        (slack-buffer-block-action-container this message)
        team)))
 
+(cl-defmethod slack-buffer-execute-user-select-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (selected-user (slack-select-from-list
+                                     ((slack-user-name-alist
+                                       team :filter #'(lambda (users)
+                                                        (cl-remove-if
+                                                         #'slack-user-hidden-p
+                                                         users)))
+                                      "Select User: "))))
+      (slack-block-action-execute
+       (slack-message-block-action-service-id message)
+       (list (append action (list (cons "selected_user"
+                                        (plist-get selected-user :id)))))
+       (slack-buffer-block-action-container this message)
+       team)))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here
