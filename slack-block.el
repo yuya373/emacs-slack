@@ -35,7 +35,13 @@
 
 ;; Layout Blocks
 ;; [Reference: Message layout blocks | Slack](https://api.slack.com/reference/messaging/blocks)
-(defclass slack-layout-block () ((type :initarg :type :type string)))
+(defclass slack-layout-block ()
+  ((type :initarg :type :type string)
+   (block-id :initarg :block_id :type (or string null) :initform nil)))
+
+(cl-defmethod slack-block-find-action ((_this slack-layout-block) _action-id)
+  nil)
+
 (cl-defmethod slack-block-to-string ((this slack-layout-block) &optional _option)
   (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
 
@@ -57,7 +63,6 @@
 (defclass slack-section-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "section")
    (text :initarg :text :type (or null slack-text-message-composition-object) :initform nil)
-   (block-id :initarg :block_id :type (or string null) :initform nil)
    (fields :initarg :fields :type (or list null) :initform nil) ;; list of slack-text-message-composition-object
    (accessory :initarg :accessory :initform nil :type (or null slack-block-element))))
 
@@ -82,9 +87,15 @@
                                      "\n")
                           (slack-block-to-string accessory))))
 
+(cl-defmethod slack-block-find-action ((this slack-section-layout-block) action-id)
+  (with-slots (accessory) this
+    (when (and (slot-boundp accessory 'action-id)
+               (string= action-id
+                        (oref accessory action-id)))
+      accessory)))
+
 (defclass slack-divider-layout-block (slack-layout-block)
-  ((type :initarg :type :type string :initform "divider")
-   (block-id :initarg :block_id :type (or null string) :initform nil)))
+  ((type :initarg :type :type string :initform "divider")))
 
 (defun slack-create-divider-layout-block (payload)
   (make-instance 'slack-divider-layout-block
@@ -100,7 +111,6 @@
    (image-url :initarg :image_url :type string)
    (alt-text :initarg :alt_text :type string)
    (title :initarg :title :initform nil (or null slack-text-message-composition-object))
-   (block-id :initarg :block_id :type (or string null) :initform nil)
    (image-height :initarg :image_height :type number)
    (image-width :initarg :image_width :type number)
    (image-bytes :initarg :image_bytes :type number)))
@@ -128,7 +138,7 @@
 (defclass slack-actions-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "actions")
    (elements :initarg :elements :type list) ;; max 5 elements
-   (block-id :initarg :block_id :type (or string null) :initform nil)))
+   ))
 
 (defun slack-create-actions-layout-block (payload)
   (make-instance 'slack-actions-layout-block
@@ -145,10 +155,15 @@
                        elements)
                " ")))
 
+(cl-defmethod slack-block-find-action ((this slack-actions-layout-block) action-id)
+  (with-slots (elements) this
+    (cl-find-if #'(lambda (e) (and (slot-boundp e 'action-id)
+                                   (string= action-id (oref e action-id))))
+                elements)))
+
 (defclass slack-context-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "context")
-   (elements :initarg :elements :type list)
-   (block-id :initarg :block_id :type (or string null) :initform nil)))
+   (elements :initarg :elements :type list)))
 
 (defun slack-create-context-layout-block (payload)
   (make-instance 'slack-context-layout-block
@@ -168,6 +183,12 @@
                        elements)
                " ")))
 
+(cl-defmethod slack-block-find-action ((this slack-context-layout-block) action-id)
+  (with-slots (elements) this
+    (cl-find-if #'(lambda (e) (and (slot-boundp e 'action-id)
+                                   (string= action-id (oref e action-id))))
+                elements)))
+
 ;; Block Elements
 ;; [Reference: Block elements | Slack](https://api.slack.com/reference/messaging/block-elements)
 (defclass slack-block-element () ((type :initarg :type :type string)))
@@ -182,7 +203,7 @@
      ((string= "button" type)
       (slack-create-button-block-element payload block-id))
      ((string= "static_select" type)
-      (slack-create-static-select-block-element payload))
+      (slack-create-static-select-block-element payload block-id))
      ((string= "external_select" type)
       (slack-create-external-select-block-element payload))
      ((string= "users_select" type)
@@ -284,9 +305,10 @@
    (options :initarg :options :type (or null list) :initform nil) ;; list of slack-option-message-composition-object
    (option-groups :initarg :option_groups :type (or list null) :initform nil) ;; list of slack-option-groups-composition-object
    (initial-option :initarg :initial_option :initform nil (or null
-                                                              slack-option-message-composition-object))))
+                                                              slack-option-message-composition-object))
+   (block-id :initarg :block_id :type (or null string) :initform nil)))
 
-(defun slack-create-static-select-block-element (payload)
+(defun slack-create-static-select-block-element (payload block-id)
   (let* ((options (plist-get payload :options))
          (option-groups (plist-get payload :option_groups))
          (initial-option (plist-get payload :initial_option)))
@@ -294,6 +316,7 @@
                    :placeholder (slack-create-text-message-composition-object
                                  (plist-get payload :placeholder))
                    :action_id (plist-get payload :action_id)
+                   :block_id block-id
                    :confirm (slack-create-confirmation-dialog-message-composition-object
                              (plist-get payload :confirm))
                    :options (when options
@@ -308,7 +331,37 @@
 (cl-defmethod slack-block-to-string ((this slack-static-select-block-element) &optional _option)
   (with-slots (initial-option placeholder) this
     (propertize (slack-block-to-string (or initial-option placeholder))
-                'face 'slack-select-block-element-face)))
+                'face 'slack-select-block-element-face
+                'slack-action-payload (slack-block-action-payload this)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET") #'slack-execute-static-select-block-action)
+                          map))))
+
+(cl-defmethod slack-block-action-payload ((this slack-static-select-block-element))
+  (with-slots (type action-id block-id placeholder) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id)
+          (cons "placeholder" (slack-block-action-payload placeholder)))))
+
+(cl-defmethod slack-block-select-option ((this slack-static-select-block-element))
+  (with-slots (options) this
+    (if options
+        (let ((alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                             options)))
+          (slack-select-from-list (alist "Select Option: ")))
+      (slack-block-select-from-option-groups this))))
+
+(cl-defmethod slack-block-select-from-option-groups ((this slack-static-select-block-element))
+  (with-slots (option-groups) this
+    (slack-if-let*
+        ((group-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                              option-groups))
+         (group (slack-select-from-list (group-alist "Select Group: ")))
+         (options-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                                (oref group options))))
+        (slack-select-from-list (options-alist (format "Select Option (%s): "
+                                                       (slack-block-to-string group)))))))
 
 (defclass slack-external-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "external_select")
@@ -557,6 +610,10 @@
   ((label :initarg :label :type slack-text-message-composition-object)
    (options :initarg :options :type list) ;; list of slack-option-message-composition-object
    ))
+
+(cl-defmethod slack-block-to-string ((this slack-option-group-message-composition-object))
+  (with-slots (label) this
+    (slack-block-to-string label)))
 
 (defun slack-create-option-group-message-composition-object (payload)
   (make-instance 'slack-option-group-message-composition-object

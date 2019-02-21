@@ -633,5 +633,33 @@ Execute this function when cursor is on some message."
        (slack-buffer-block-action-container this message)
        team)))
 
+(cl-defmethod slack-message-find-block ((this slack-message) block-id)
+  (with-slots (blocks) this
+    (cl-find-if #'(lambda (e) (and (slot-boundp e 'block-id)
+                                   (string= block-id (oref e block-id))))
+                blocks)))
+
+(cl-defmethod slack-buffer-execute-static-select-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (block-id (cdr-safe (assoc-string "block_id" action)))
+                  (bl (slack-message-find-block message block-id))
+                  (action-id (cdr-safe (assoc-string "action_id" action)))
+                  (select (slack-block-find-action bl action-id))
+                  (selected-option (slack-block-select-option select)))
+      (slack-block-action-execute
+       (slack-message-block-action-service-id message)
+       (list (append action (list (cons "selected_option"
+                                        (with-slots (text value) selected-option
+                                          (list (cons "text" (slack-block-action-payload text))
+                                                (cons "value" value)))))))
+       (slack-buffer-block-action-container this message)
+       team)))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here
