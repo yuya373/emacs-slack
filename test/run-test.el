@@ -306,44 +306,44 @@
   ;; slack-static-select-block-element
   (let* ((input '(:type "static_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :initial_option (:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") :options ((:text (:type "plain_text" :text "Choice 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Choice 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Choice 3" :emoji t) :value "value-2")) :action_id "tIzc"))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "Choice 1" out)))
   ;; slack-external-select-block-element
   (let* ((input '(:type "external_select" :placeholder (:type "plain_text" :text "Select an item" :emoji t) :action_id "T6JV"))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "Select an item" out)))
   ;; slack-user-select-block-element
   (let* ((input '(:type "users_select" :action_id "4ji5" :initial_user "U0G2XCVQV" :placeholder (:type "plain_text" :text "Select a user" :emoji t)))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "USER: U0G2XCVQV" out))
     (should (eq t (get-text-property 0 'slack-lazy-user-name out)))
     (should (equal "U0G2XCVQV" (get-text-property 0 'slack-user-id out))))
   ;; slack-conversation-select-block-element
   (let* ((input '(:type "conversations_select" :action_id "2/eZ" :initial_conversation "C0G31N06B" :placeholder (:type "plain_text" :text "Select a conversation" :emoji t)))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "CONVERSATION: C0G31N06B" out))
     (should (eq t (get-text-property 0 'slack-lazy-conversation-name out)))
     (should (equal "C0G31N06B" (get-text-property 0 'slack-conversation-id out))))
   ;; slack-channel-select-block-element
   (let* ((input '(:type "channels_select" :action_id "CL5OA" :initial_channel "C0G31N06B" :placeholder (:type "plain_text" :text "Select a channel" :emoji t)))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "CHANNEL: C0G31N06B" out))
     (should (eq t (get-text-property 0 'slack-lazy-conversation-name out)))
     (should (equal "C0G31N06B" (get-text-property 0 'slack-conversation-id out))))
   ;; slack-overflow-block-element
   (let* ((input '(:type "overflow" :options ((:text (:type "plain_text" :text "Option 1" :emoji t) :value "value-0") (:text (:type "plain_text" :text "Option 2" :emoji t) :value "value-1") (:text (:type "plain_text" :text "Option 3" :emoji t) :value "value-2") (:text (:type "plain_text" :text "Option 4" :emoji t) :value "value-3")) :action_id "3O/yl"))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal " … " out))
     )
   ;; slack-date-picker-block-element
   (let* ((input '(:type "datepicker" :initial_date "1990-04-28" :placeholder (:type "plain_text" :text "Select a date" :emoji t) :action_id "5/4"))
          (out (slack-block-to-string
-               (slack-create-block-element input))))
+               (slack-create-block-element input ""))))
     (should (equal "1990-04-28" out)))
   ;; slack-text-message-composition-object
   (let* ((input '(:type "plain_text" :text "hello\nworld" :emoji t :verbatim :json-false))
