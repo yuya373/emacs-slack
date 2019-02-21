@@ -558,6 +558,12 @@ Execute this function when cursor is on some message."
       (slack-message-bot-id this)
     "B01"))
 
+(defun slack-block-find-action-from-payload (action-payload message)
+  (slack-if-let* ((block-id (cdr-safe (assoc-string "block_id" action-payload)))
+                  (bl (slack-message-find-block message block-id))
+                  (action-id (cdr-safe (assoc-string "action_id" action-payload))))
+      (slack-block-find-action bl action-id)))
+
 (cl-defmethod slack-buffer-execute-button-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
@@ -565,14 +571,16 @@ Execute this function when cursor is on some message."
                   (team (oref this team))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
-                                             'slack-action-payload)))
-      (let ((container (slack-buffer-block-action-container this message))
-            (service-id (slack-message-block-action-service-id message)))
-        (slack-block-action-execute
-         service-id
-         (list action)
-         container
-         team))))
+                                             'slack-action-payload))
+                  (button (slack-block-find-action-from-payload action message)))
+
+      (when (slack-block-handle-confirm button)
+        (let ((container (slack-buffer-block-action-container this message))
+              (service-id (slack-message-block-action-service-id message)))
+          (slack-block-action-execute service-id
+                                      (list action)
+                                      container
+                                      team)))))
 
 (cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
@@ -582,15 +590,17 @@ Execute this function when cursor is on some message."
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
+                  (select (slack-block-find-action-from-payload action message))
                   (selected-conversation (slack-room-select (append (oref team channels)
                                                                     (oref team groups)
                                                                     (oref team ims))
                                                             team)))
-      (slack-block-action-execute
-       (slack-message-block-action-service-id message)
-       (list (append action (list (cons "selected_conversation" (oref selected-conversation id)))))
-       (slack-buffer-block-action-container this message)
-       team)))
+      (when (slack-block-handle-confirm select)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_conversation" (oref selected-conversation id)))))
+         (slack-buffer-block-action-container this message)
+         team))))
 
 (cl-defmethod slack-buffer-execute-channel-select-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
@@ -600,16 +610,18 @@ Execute this function when cursor is on some message."
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
+                  (select (slack-block-find-action-from-payload action message))
                   (selected-channel (slack-room-select
                                      (append (oref team channels)
                                              nil)
                                      team)))
-      (slack-block-action-execute
-       (slack-message-block-action-service-id message)
-       (list (append action (list (cons "selected_channel"
-                                        (oref selected-channel id)))))
-       (slack-buffer-block-action-container this message)
-       team)))
+      (when (slack-block-handle-confirm select)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_channel"
+                                          (oref selected-channel id)))))
+         (slack-buffer-block-action-container this message)
+         team))))
 
 (cl-defmethod slack-buffer-execute-user-select-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
@@ -619,6 +631,7 @@ Execute this function when cursor is on some message."
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
+                  (select (slack-block-find-action-from-payload action message))
                   (selected-user (slack-select-from-list
                                      ((slack-user-name-alist
                                        team :filter #'(lambda (users)
@@ -626,12 +639,13 @@ Execute this function when cursor is on some message."
                                                          #'slack-user-hidden-p
                                                          users)))
                                       "Select User: "))))
-      (slack-block-action-execute
-       (slack-message-block-action-service-id message)
-       (list (append action (list (cons "selected_user"
-                                        (plist-get selected-user :id)))))
-       (slack-buffer-block-action-container this message)
-       team)))
+      (when (slack-block-handle-confirm select)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_user"
+                                          (plist-get selected-user :id)))))
+         (slack-buffer-block-action-container this message)
+         team))))
 
 (cl-defmethod slack-message-find-block ((this slack-message) block-id)
   (with-slots (blocks) this
@@ -647,19 +661,17 @@ Execute this function when cursor is on some message."
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
-                  (block-id (cdr-safe (assoc-string "block_id" action)))
-                  (bl (slack-message-find-block message block-id))
-                  (action-id (cdr-safe (assoc-string "action_id" action)))
-                  (select (slack-block-find-action bl action-id))
+                  (select (slack-block-find-action-from-payload action message))
                   (selected-option (slack-block-select-option select)))
-      (slack-block-action-execute
-       (slack-message-block-action-service-id message)
-       (list (append action (list (cons "selected_option"
-                                        (with-slots (text value) selected-option
-                                          (list (cons "text" (slack-block-action-payload text))
-                                                (cons "value" value)))))))
-       (slack-buffer-block-action-container this message)
-       team)))
+      (when (slack-block-handle-confirm select)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_option"
+                                          (with-slots (text value) selected-option
+                                            (list (cons "text" (slack-block-action-payload text))
+                                                  (cons "value" value)))))))
+         (slack-buffer-block-action-container this message)
+         team))))
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

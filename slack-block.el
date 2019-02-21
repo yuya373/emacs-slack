@@ -195,6 +195,16 @@
 (cl-defmethod slack-block-to-string ((this slack-block-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
 
+(cl-defmethod slack-block-handle-confirm ((this slack-block-element))
+  (if (slot-boundp this 'confirm)
+      (with-slots (confirm) this
+        (if (null confirm) t
+          (with-slots (title text) confirm
+            (yes-or-no-p (format "%s\n%s"
+                                 (slack-block-to-string title)
+                                 (slack-block-to-string text))))))
+    t))
+
 (defun slack-create-block-element (payload block-id)
   (let ((type (plist-get payload :type)))
     (cond
@@ -251,7 +261,7 @@
    (block-id :initarg :block_id :type (or null string) :initform nil)
    (url :initarg :url :type (or string null) :initform nil)
    (value :initarg :value :type (or string null) :initform nil)
-   (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-composition-object))))
+   (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
 
 (defun slack-create-button-block-element (payload block-id)
   (make-instance 'slack-button-block-element
