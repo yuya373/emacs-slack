@@ -673,5 +673,35 @@ Execute this function when cursor is on some message."
          (slack-buffer-block-action-container this message)
          team))))
 
+(cl-defmethod slack-buffer-execute-external-select-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (select (slack-block-find-action-from-payload action message)))
+      (cl-labels
+          ((success (options option-groups)
+                    (slack-if-let* ((selected-option (if options
+                                                         (slack-block-select-from-options select options)
+                                                       (slack-block-select-from-option-groups select option-groups))))
+                        (when (slack-block-handle-confirm select)
+                          (slack-block-action-execute
+                           (slack-message-block-action-service-id message)
+                           (list (append action (list (cons "selected_option"
+                                                            (with-slots (text value) selected-option
+                                                              (list (cons "text" (slack-block-action-payload text))
+                                                                    (cons "value" value)))))))
+                           (slack-buffer-block-action-container this message)
+                           team)))))
+        (slack-block-fetch-suggestions
+         select
+         (slack-message-block-action-service-id message)
+         (slack-buffer-block-action-container this message)
+         team
+         #'success))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

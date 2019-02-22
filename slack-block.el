@@ -215,7 +215,7 @@
      ((string= "static_select" type)
       (slack-create-static-select-block-element payload block-id))
      ((string= "external_select" type)
-      (slack-create-external-select-block-element payload))
+      (slack-create-external-select-block-element payload block-id))
      ((string= "users_select" type)
       (slack-create-user-select-block-element payload block-id))
      ((string= "conversations_select" type)
@@ -305,6 +305,21 @@
 (cl-defmethod slack-block-to-string ((this slack-select-block-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S" (oref this type)))
 
+(cl-defmethod slack-block-select-from-options ((_this slack-select-block-element) options)
+  (let ((alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                       options)))
+    (slack-select-from-list (alist "Select Option: "))))
+
+(cl-defmethod slack-block-select-from-option-groups ((_this slack-select-block-element) option-groups)
+  (slack-if-let*
+      ((group-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                            option-groups))
+       (group (slack-select-from-list (group-alist "Select Group: ")))
+       (options-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                              (oref group options))))
+      (slack-select-from-list (options-alist (format "Select Option (%s): "
+                                                     (slack-block-to-string group))))))
+
 (defface slack-select-block-element-face
   '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
   "Used to select block element"
@@ -355,36 +370,25 @@
           (cons "placeholder" (slack-block-action-payload placeholder)))))
 
 (cl-defmethod slack-block-select-option ((this slack-static-select-block-element))
-  (with-slots (options) this
+  (with-slots (options option-groups) this
     (if options
-        (let ((alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
-                             options)))
-          (slack-select-from-list (alist "Select Option: ")))
-      (slack-block-select-from-option-groups this))))
-
-(cl-defmethod slack-block-select-from-option-groups ((this slack-static-select-block-element))
-  (with-slots (option-groups) this
-    (slack-if-let*
-        ((group-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
-                              option-groups))
-         (group (slack-select-from-list (group-alist "Select Group: ")))
-         (options-alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
-                                (oref group options))))
-        (slack-select-from-list (options-alist (format "Select Option (%s): "
-                                                       (slack-block-to-string group)))))))
+        (slack-block-select-from-options this options)
+      (slack-block-select-from-option-groups this option-groups))))
 
 (defclass slack-external-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "external_select")
    (initial-option :initarg :initial_option :initform nil :type (or null
                                                                     slack-option-message-composition-object
                                                                     slack-option-group-message-composition-object))
-   (min-query-length :initarg :min_query_length :type (or integer null) :initform nil)))
+   (min-query-length :initarg :min_query_length :type (or integer null) :initform nil)
+   (block-id :initarg :block_id :type (or null string) :initform nil)))
 
-(defun slack-create-external-select-block-element (payload)
+(defun slack-create-external-select-block-element (payload block-id)
   (make-instance 'slack-external-select-block-element
                  :placeholder (slack-create-text-message-composition-object
                                (plist-get payload :placeholder))
                  :action_id (plist-get payload :action_id)
+                 :block_id block-id
                  :initial_option (slack-create-option-message-composition-object
                                   (plist-get payload :initial_option))
                  :min_query_length (plist-get payload :min_query_length)
@@ -394,7 +398,47 @@
 (cl-defmethod slack-block-to-string ((this slack-external-select-block-element))
   (with-slots (placeholder initial-option) this
     (propertize (slack-block-to-string (or initial-option placeholder))
-                'face 'slack-select-block-element-face)))
+                'face 'slack-select-block-element-face
+                'slack-action-payload (slack-block-action-payload this)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET") #'slack-execute-external-select-block-action)
+                          map))))
+
+(cl-defmethod slack-block-action-payload ((this slack-external-select-block-element))
+  (with-slots (action-id block-id type) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id))))
+
+(defconst slack-block-suggestions-url "https://slack.com/api/blocks.suggestions")
+
+(cl-defmethod slack-block-fetch-suggestions ((this slack-external-select-block-element) service-id container team on-success)
+  (with-slots (action-id block-id min-query-length) this
+    (let* ((query (read-from-minibuffer
+                   (format "Query (minimum length: %s): " min-query-length)))
+           (data (json-encode-alist (list (cons "value" query)
+                                          (cons "action_id" action-id)
+                                          (cons "block_id" block-id)
+                                          (cons "service_id" service-id)
+                                          (cons "container" container)))))
+      (cl-labels
+          ((success (&key data &allow-other-keys)
+                    (slack-request-handle-error
+                     (data "slack-block-fetch-suggestions")
+                     (let ((options (mapcar #'slack-create-option-message-composition-object
+                                            (plist-get data :options)))
+                           (option-groups (mapcar #'slack-create-option-group-message-composition-object
+                                                  (plist-get data :option_groups))))
+                       (run-with-timer 1 nil on-success options option-groups)))))
+        (slack-request
+         (slack-request-create
+          slack-block-suggestions-url
+          team
+          :type "POST"
+          :data data
+          :headers (list (cons "Content-Type"
+                               "application/json;charset=utf-8"))
+          :success #'success))))))
 
 (defclass slack-user-select-block-element (slack-select-block-element)
   ((type :initarg :type :type string :initform "users_select")
