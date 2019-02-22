@@ -703,5 +703,26 @@ Execute this function when cursor is on some message."
          team
          #'success))))
 
+(cl-defmethod slack-buffer-execute-overflow-menu-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (overflow (slack-block-find-action-from-payload action message))
+                  (options (oref overflow options))
+                  (selected-option (slack-block-select-from-options overflow options)))
+      (when (slack-block-handle-confirm overflow)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_option"
+                                          (with-slots (text value) selected-option
+                                            (list (cons "text" (slack-block-action-payload text))
+                                                  (cons "value" value)))))))
+         (slack-buffer-block-action-container this message)
+         team))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

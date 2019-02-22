@@ -205,6 +205,11 @@
                                  (slack-block-to-string text))))))
     t))
 
+(cl-defmethod slack-block-select-from-options ((_this slack-block-element) options)
+  (let ((alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
+                       options)))
+    (slack-select-from-list (alist "Select Option: "))))
+
 (defun slack-create-block-element (payload block-id)
   (let ((type (plist-get payload :type)))
     (cond
@@ -223,7 +228,7 @@
      ((string= "channels_select" type)
       (slack-create-channel-select-block-element payload block-id))
      ((string= "overflow" type)
-      (slack-create-overflow-block-element payload))
+      (slack-create-overflow-block-element payload block-id))
      ((string= "datepicker" type)
       (slack-create-datepicker-block-element payload))
      )))
@@ -304,11 +309,6 @@
 
 (cl-defmethod slack-block-to-string ((this slack-select-block-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S" (oref this type)))
-
-(cl-defmethod slack-block-select-from-options ((_this slack-select-block-element) options)
-  (let ((alist (mapcar #'(lambda (e) (cons (slack-block-to-string e) e))
-                       options)))
-    (slack-select-from-list (alist "Select Option: "))))
 
 (cl-defmethod slack-block-select-from-option-groups ((_this slack-select-block-element) option-groups)
   (slack-if-let*
@@ -551,12 +551,14 @@
 (defclass slack-overflow-menu-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "overflow")
    (action-id :initarg :action_id :type string)
+   (block-id :initarg :block_id :type (or null string) :initform nil)
    (options :initarg :options :type list) ;; list of slack-option-message-composition-object
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
 
-(defun slack-create-overflow-block-element (payload)
+(defun slack-create-overflow-block-element (payload block-id)
   (make-instance 'slack-overflow-menu-block-element
                  :action_id (plist-get payload :action_id)
+                 :block_id block-id
                  :options (mapcar #'slack-create-option-message-composition-object
                                   (plist-get payload :options))
                  :confirm (slack-create-confirmation-dialog-message-composition-object
@@ -567,8 +569,19 @@
   "Used to overflow block element"
   :group 'slack)
 
-(cl-defmethod slack-block-to-string ((_this slack-overflow-menu-block-element) &optional _option)
-  (propertize " … " 'face 'slack-overflow-block-element-face))
+(cl-defmethod slack-block-to-string ((this slack-overflow-menu-block-element) &optional _option)
+  (propertize " … "
+              'face 'slack-overflow-block-element-face
+              'slack-action-payload (slack-block-action-payload this)
+              'keymap (let ((map (make-sparse-keymap)))
+                        (define-key map (kbd "RET") #'slack-execute-overflow-menu-block-action)
+                        map)))
+
+(cl-defmethod slack-block-action-payload ((this slack-overflow-menu-block-element))
+  (with-slots (type action-id block-id) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id))))
 
 (defclass slack-date-picker-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "datepicker")
