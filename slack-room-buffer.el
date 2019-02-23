@@ -724,5 +724,22 @@ Execute this function when cursor is on some message."
          (slack-buffer-block-action-container this message)
          team))))
 
+(cl-defmethod slack-buffer-execute-datepicker-block-action ((this slack-room-buffer))
+  (slack-if-let* ((cur-point (point))
+                  (ts (slack-get-ts))
+                  (room (oref this room))
+                  (team (oref this team))
+                  (message (slack-room-find-message room ts))
+                  (action (get-text-property cur-point
+                                             'slack-action-payload))
+                  (datepicker (slack-block-find-action-from-payload action message))
+                  (selected-date (read-from-minibuffer "Date (YYYY-MM-DD): " (oref datepicker initial-date))))
+      (when (slack-block-handle-confirm datepicker)
+        (slack-block-action-execute
+         (slack-message-block-action-service-id message)
+         (list (append action (list (cons "selected_date" selected-date))))
+         (slack-buffer-block-action-container this message)
+         team))))
+
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

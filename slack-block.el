@@ -230,7 +230,7 @@
      ((string= "overflow" type)
       (slack-create-overflow-block-element payload block-id))
      ((string= "datepicker" type)
-      (slack-create-datepicker-block-element payload))
+      (slack-create-datepicker-block-element payload block-id))
      )))
 
 (defclass slack-image-block-element (slack-block-element)
@@ -586,13 +586,15 @@
 (defclass slack-date-picker-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "datepicker")
    (action-id :initarg :action_id :type string)
+   (block-id :initarg :block_id :type (or null string) :initform nil)
    (placeholder :initarg :placeholder :initform nil :type (or null slack-text-message-composition-object))
    (initial-date :initarg :initial_date :type (or null string) :initform nil) ;; "YYYY-MM-DD"
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
 
-(defun slack-create-datepicker-block-element (payload)
+(defun slack-create-datepicker-block-element (payload block-id)
   (make-instance 'slack-date-picker-block-element
                  :action_id (plist-get payload :action_id)
+                 :block_id block-id
                  :placeholder (slack-create-text-message-composition-object
                                (plist-get payload :placeholder))
                  :initial_date (plist-get payload :initial_date)
@@ -608,7 +610,18 @@
   (with-slots (placeholder initial-date) this
     (let ((text (or initial-date
                     (slack-block-to-string placeholder))))
-      (propertize text 'face 'slack-date-picker-block-element-face))))
+      (propertize text
+                  'face 'slack-date-picker-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-datepicker-block-action)
+                            map)))))
+
+(cl-defmethod slack-block-action-payload ((this slack-date-picker-block-element))
+  (with-slots (type action-id block-id initial-date) this
+    (list (cons "type" type)
+          (cons "action_id" action-id)
+          (cons "block_id" block-id))))
 
 ;; Message Composition Objects
 ;; [Reference: Message composition objects | Slack](https://api.slack.com/reference/messaging/composition-objects)
