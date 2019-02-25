@@ -351,6 +351,31 @@
                (slack-create-text-message-composition-object input))))
     (should (equal "hello\nworld" out))))
 
+(ert-deftest slack-test-mrkdwn-regex-bold ()
+  (let ((bold "aaa *Ace Wasabi Rock-n-Roll Sushi Bar* aaa"))
+    (string-match slack-mrkdwn-regex-bold bold)
+    (should (equal (match-string 3 bold)
+                   "Ace Wasabi Rock-n-Roll Sushi Bar"))
+    (should (eq (match-beginning 2) 4))
+    (should (eq (match-beginning 4) 37))))
+
+(ert-deftest slack-test-mrkdwn-regex-italy ()
+  (let ((italy "aaa _Ace Wasabi Rock-n-Roll Sushi Bar_ aaa"))
+    (string-match slack-mrkdwn-regex-italy italy)
+    (should (equal (match-string 3 italy)
+                   "Ace Wasabi Rock-n-Roll Sushi Bar"))
+    (should (eq (match-beginning 2) 4))
+    (should (eq (match-beginning 4) 37))))
+
+(ert-deftest slack-test-mrkdwn-regex-strike ()
+  (let ((strike "aaa ~Ace Wasabi Rock-n-Roll Sushi Bar~ aaa"))
+    (string-match slack-mrkdwn-regex-strike strike)
+    (should (equal (match-string 3 strike)
+                   "Ace Wasabi Rock-n-Roll Sushi Bar"))
+    (should (eq (match-beginning 2) 4))
+    (should (eq (match-beginning 4) 37))))
+
+
 (if noninteractive
     (ert-run-tests-batch-and-exit)
   (ert t))
