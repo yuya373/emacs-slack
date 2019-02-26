@@ -33,8 +33,13 @@
   "Face used to between `*'"
   :group 'slack)
 
-(defconst slack-mrkdwn-regex-italy
+(defconst slack-mrkdwn-regex-italic
   "\\(?:^\\|[^\\]\\)\\(\\(_\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+
+(defface slack-mrkdwn-italic-face
+  '((t (:slant italic)))
+  "Face used to between `_'"
+  :group 'slack)
 
 (defconst slack-mrkdwn-regex-strike
   "\\(?:^\\|[^\\]\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
@@ -46,6 +51,7 @@
 
 (defun slack-mrkdwn-add-face ()
   (slack-mrkdwn-add-bold-face)
+  (slack-mrkdwn-add-italic-face)
   )
 
 (defun slack-mrkdwn-add-bold-face ()
@@ -55,6 +61,24 @@
                     (end (match-end 3)))
         (progn
           (put-text-property beg end 'face 'slack-mrkdwn-bold-face)
+          (slack-if-let* ((markup-start-beg (match-beginning 2))
+                          (markup-start-end (match-end 2)))
+              (put-text-property markup-start-beg
+                                 markup-start-end
+                                 'invisible t))
+          (slack-if-let* ((markup-end-beg (match-beginning 4))
+                          (markup-end-end (match-end 4)))
+              (put-text-property markup-end-beg
+                                 markup-end-end
+                                 'invisible t))))))
+
+(defun slack-mrkdwn-add-italic-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-italic (point-max) t)
+    (slack-if-let* ((beg (match-beginning 3))
+                    (end (match-end 3)))
+        (progn
+          (put-text-property beg end 'face 'slack-mrkdwn-italic-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
               (put-text-property markup-start-beg
