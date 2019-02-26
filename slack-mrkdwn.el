@@ -64,6 +64,14 @@
   "Face used to between ````'"
   :group 'slack)
 
+(defconst slack-mrkdwn-regex-blockquote
+  "^[ \t]*\\([A-Z]?>\\)\\([ \t]*\\)\\(.*\\)$")
+
+(defface slack-mrkdwn-blockquote-face
+  '((t (:inherit font-lock-doc-face)))
+  "Face used to `>'"
+  :group 'slack)
+
 (defun slack-mrkdwn-plain-text-p (point)
   (eq 'plain (get-text-property point 'slack-text-type)))
 
@@ -73,7 +81,7 @@
   (slack-mrkdwn-add-strike-face)
   (slack-mrkdwn-add-code-face)
   (slack-mrkdwn-add-code-block-face)
-  )
+  (slack-mrkdwn-add-blockquote-face))
 
 (defun slack-mrkdwn-add-bold-face ()
   (goto-char (point-min))
@@ -165,6 +173,25 @@
               (put-text-property markup-end-beg
                                  markup-end-end
                                  'invisible t))))))
+
+(defun slack-mrkdwn-add-blockquote-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-blockquote (point-max) t)
+    (slack-if-let* ((beg (match-beginning 3))
+                    (end (match-end 3)))
+        (unless (slack-mrkdwn-plain-text-p beg)
+          (put-text-property beg end
+                             'face 'slack-mrkdwn-blockquote-face)
+          (slack-if-let* ((markup-start-beg (match-beginning 1))
+                          (markup-start-end (match-end 1)))
+              (progn
+                (put-text-property markup-start-beg
+                                   markup-start-end
+                                   'face
+                                   'slack-mrkdwn-blockquote-face)
+                (put-text-property markup-start-beg
+                                   markup-start-end
+                                   'display "┃")))))))
 
 (provide 'slack-mrkdwn)
 ;;; slack-mrkdwn.el ends here

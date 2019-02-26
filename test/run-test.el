@@ -405,6 +405,14 @@
     (should (eq nil (string-match-p slack-mrkdwn-regex-code-block code))))
   )
 
+(ert-deftest slack-test-mrkdwn-regex-blockquote ()
+  (let ((blockquote " > aaa aaa"))
+    (string-match slack-mrkdwn-regex-blockquote blockquote)
+    (should (equal "aaa aaa"
+                   (match-string 3 blockquote)))
+    (should (eq 1 (match-beginning 1)))
+    ))
+
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
