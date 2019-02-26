@@ -375,6 +375,29 @@
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37))))
 
+(ert-deftest slack-test-mrkdwn-regex-code ()
+  (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
+    (string-match slack-mrkdwn-regex-code code)
+    (should (equal "Ace Wasabi Rock-n-Roll Sushi Bar"
+                   (match-string 3 code)))
+    (should (eq (match-beginning 2) 4))
+    (should (eq (match-beginning 4) 37))
+    )
+  (let ((block "   ```This is a code block\nAnd it's multi-line```   "))
+    (should (eq nil (string-match-p slack-mrkdwn-regex-code block))))
+  )
+
+(ert-deftest slack-test-mrkdwn-regex-code-block ()
+  (let ((block "   ```This is a code block\nAnd it's multi-line```   "))
+    (string-match slack-mrkdwn-regex-code-block block)
+    (should (equal "This is a code block\nAnd it's multi-line"
+                   (match-string 2 block)))
+    (should (eq 3 (match-beginning 1)))
+    (should (eq 46 (match-beginning 4))))
+  (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
+    (should (eq nil (string-match-p slack-mrkdwn-regex-code-block code))))
+  )
+
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
