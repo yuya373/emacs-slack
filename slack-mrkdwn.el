@@ -52,12 +52,24 @@
 (defconst slack-mrkdwn-regex-code
   "\\(?:\\`\\|[^\\]\\)\\(\\(`\\)\\(\\(?:.\\|\n[^\n]\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
 
+(defface slack-mrkdwn-code-face
+  '((t (:inherit slack-preview-face)))
+  "Face used to between ``'"
+  :group 'slack)
+
 (defconst slack-mrkdwn-regex-code-block "\\(```\\)\\(\\(.\\|\n\\)*?\\)\\(```\\)")
+
+(defface slack-mrkdwn-code-block-face
+  '((t (:inherit slack-preview-face)))
+  "Face used to between ````'"
+  :group 'slack)
 
 (defun slack-mrkdwn-add-face ()
   (slack-mrkdwn-add-bold-face)
   (slack-mrkdwn-add-italic-face)
   (slack-mrkdwn-add-strike-face)
+  (slack-mrkdwn-add-code-face)
+  (slack-mrkdwn-add-code-block-face)
   )
 
 (defun slack-mrkdwn-add-bold-face ()
@@ -105,6 +117,43 @@
           (put-text-property beg end 'face 'slack-mrkdwn-strike-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
+              (put-text-property markup-start-beg
+                                 markup-start-end
+                                 'invisible t))
+          (slack-if-let* ((markup-end-beg (match-beginning 4))
+                          (markup-end-end (match-end 4)))
+              (put-text-property markup-end-beg
+                                 markup-end-end
+                                 'invisible t))))))
+
+(defun slack-mrkdwn-add-code-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code (point-max) t)
+    (slack-if-let* ((beg (match-beginning 3))
+                    (end (match-end 3)))
+        (progn
+          (put-text-property beg end 'face 'slack-mrkdwn-code-face)
+          (slack-if-let* ((markup-start-beg (match-beginning 2))
+                          (markup-start-end (match-end 2)))
+              (put-text-property markup-start-beg
+                                 markup-start-end
+                                 'invisible t))
+          (slack-if-let* ((markup-end-beg (match-beginning 4))
+                          (markup-end-end (match-end 4)))
+              (put-text-property markup-end-beg
+                                 markup-end-end
+                                 'invisible t))))))
+
+
+(defun slack-mrkdwn-add-code-block-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code-block (point-max) t)
+    (slack-if-let* ((beg (match-beginning 2))
+                    (end (match-end 2)))
+        (progn
+          (put-text-property beg end 'face 'slack-mrkdwn-code-block-face)
+          (slack-if-let* ((markup-start-beg (match-beginning 1))
+                          (markup-start-end (match-end 1)))
               (put-text-property markup-start-beg
                                  markup-start-end
                                  'invisible t))
