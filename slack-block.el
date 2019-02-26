@@ -728,20 +728,5 @@
                              "application/json;charset=utf-8"))
         :success #'success)))))
 
-;; TODO move
-(defconst slack-mrkdwn-regex-bold
-  "\\(?:^\\|[^\\]\\)\\(\\(*\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
-
-(defconst slack-mrkdwn-regex-italy
-  "\\(?:^\\|[^\\]\\)\\(\\(_\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
-
-(defconst slack-mrkdwn-regex-strike
-  "\\(?:^\\|[^\\]\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
-
-(defconst slack-mrkdwn-regex-code
-  "\\(?:\\`\\|[^\\]\\)\\(\\(`\\)\\(\\(?:.\\|\n[^\n]\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
-
-(defconst slack-mrkdwn-regex-code-block "\\(```\\)\\(\\(.\\|\n\\)*?\\)\\(```\\)")
-
 (provide 'slack-block)
 ;;; slack-block.el ends here

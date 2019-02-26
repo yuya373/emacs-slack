@@ -4,6 +4,8 @@
 (require 'slack-usergroup)
 (require 'slack-message-formatter)
 (require 'slack-block)
+(require 'slack-mrkdwn)
+
 (defvar slack-channel-button-keymap nil)
 
 (defmacro slack-test-setup (&rest body)
@@ -364,6 +366,8 @@
     (string-match slack-mrkdwn-regex-italy italy)
     (should (equal (match-string 3 italy)
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
+    (should (equal "_" (match-string 2 italy)))
+    (should (equal "_" (match-string 4 italy)))
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37))))
 
