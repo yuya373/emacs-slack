@@ -392,6 +392,8 @@
   ;; TODO
   ;; (let ((block "   ```This is a `code` block\nAnd it's multi-line```   "))
   ;;   (should (eq nil (string-match-p slack-mrkdwn-regex-code block))))
+  (let ((code "aaa `Ace Wasabi \nRock-n-Roll Sushi Bar` aaa"))
+    (should (eq nil (string-match-p slack-mrkdwn-regex-code code))))
   )
 
 (ert-deftest slack-test-mrkdwn-regex-code-block ()

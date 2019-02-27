@@ -50,7 +50,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-code
-  "\\(?:\\`\\|[^\\]\\)\\(\\(`\\)\\(\\(?:.\\|\n[^\n]\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
+  "\\(?:\\`\\|[^\\]\\)\\(\\(`\\)\\(\\(?:.\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
 
 (defface slack-mrkdwn-code-face
   '((t (:inherit slack-preview-face)))
@@ -175,7 +175,8 @@
   (while (re-search-forward slack-mrkdwn-regex-code (point-max) t)
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
-        (unless (slack-mrkdwn-plain-text-p beg)
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-block-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-code-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
