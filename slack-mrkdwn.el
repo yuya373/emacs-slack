@@ -76,6 +76,7 @@
   (eq 'plain (get-text-property point 'slack-text-type)))
 
 (defun slack-mrkdwn-add-face ()
+  (slack-mrkdwn-mark-code-block)
   (slack-mrkdwn-add-bold-face)
   (slack-mrkdwn-add-italic-face)
   (slack-mrkdwn-add-strike-face)
@@ -83,12 +84,43 @@
   (slack-mrkdwn-add-code-block-face)
   (slack-mrkdwn-add-blockquote-face))
 
+(defun slack-mrkdwn-inside-code-p (point)
+  (or (slack-mrkdwn-inside-code-block-p point)
+      (slack-mrkdwn-inside-inline-code-p point)))
+
+(defun slack-mrkdwn-inside-code-block-p (point)
+  (let ((block-type (get-text-property point 'slack-code-block-type)))
+    (eq 'block block-type)))
+
+(defun slack-mrkdwn-inside-inline-code-p (point)
+  (let ((block-type (get-text-property point 'slack-code-block-type)))
+    (eq 'inline block-type)))
+
+(defun slack-mrkdwn-mark-code-block ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code-block (point-max) t)
+    (slack-if-let* ((beg (match-beginning 2))
+                    (end (match-end 2)))
+        (unless (slack-mrkdwn-plain-text-p beg)
+          (put-text-property beg end
+                             'slack-code-block-type 'block))))
+
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code (point-max) t)
+    (slack-if-let* ((beg (match-beginning 3))
+                    (end (match-end 3)))
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
+          (put-text-property beg end
+                             'slack-code-block-type 'inline)))))
+
 (defun slack-mrkdwn-add-bold-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-bold (point-max) t)
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
-        (unless (slack-mrkdwn-plain-text-p beg)
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-bold-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
@@ -124,7 +156,8 @@
   (while (re-search-forward slack-mrkdwn-regex-strike (point-max) t)
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
-        (unless (slack-mrkdwn-plain-text-p beg)
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-strike-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
@@ -179,7 +212,8 @@
   (while (re-search-forward slack-mrkdwn-regex-blockquote (point-max) t)
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
-        (unless (slack-mrkdwn-plain-text-p beg)
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end
                              'face 'slack-mrkdwn-blockquote-face)
           (slack-if-let* ((markup-start-beg (match-beginning 1))
