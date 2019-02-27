@@ -73,7 +73,9 @@
   :group 'slack)
 
 (defun slack-mrkdwn-plain-text-p (point)
-  (eq 'plain (get-text-property point 'slack-text-type)))
+  (let ((text-type (get-text-property point 'slack-text-type)))
+    (or (null text-type)
+        (eq 'plain text-type))))
 
 (defun slack-mrkdwn-add-face ()
   (slack-mrkdwn-mark-code-block)
