@@ -57,7 +57,7 @@
   "Face used to between ``'"
   :group 'slack)
 
-(defconst slack-mrkdwn-regex-code-block "\\(```\\)\\(\\(.\\|\n\\)*?\\)\\(```\\)")
+(defconst slack-mrkdwn-regex-code-block "\\(```\\)\\(?:\n\\)?\\(\\(.\\|\n\\)*?\\)\\(```\\)")
 
 (defface slack-mrkdwn-code-block-face
   '((t (:inherit slack-preview-face)))
@@ -198,7 +198,9 @@
     (slack-if-let* ((beg (match-beginning 2))
                     (end (match-end 2)))
         (unless (slack-mrkdwn-plain-text-p beg)
-          (put-text-property beg end 'face 'slack-mrkdwn-code-block-face)
+          (overlay-put (make-overlay beg end)
+                       'face 'slack-mrkdwn-code-block-face)
+          (put-text-property beg end 'face 'slack-mrkdwn-code-face)
           (slack-if-let* ((markup-start-beg (match-beginning 1))
                           (markup-start-end (match-end 1)))
               (put-text-property markup-start-beg

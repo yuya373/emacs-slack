@@ -403,6 +403,12 @@
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
     (should (eq 46 (match-beginning 4))))
+  (let ((block "   ```\nThis is a code block\nAnd it's multi-line\n```   "))
+    (string-match slack-mrkdwn-regex-code-block block)
+    (should (equal "This is a code block\nAnd it's multi-line\n"
+                   (match-string 2 block)))
+    (should (eq 3 (match-beginning 1)))
+    (should (eq 48 (match-beginning 4))))
   (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
     (should (eq nil (string-match-p slack-mrkdwn-regex-code-block code))))
   )
