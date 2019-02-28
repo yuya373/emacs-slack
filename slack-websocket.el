@@ -105,10 +105,7 @@
                                   :on-error #'on-error
                                   :nowait (oref ws nowait))
                 (error
-                 (slack-ws-cancel-connect-timeout-timer ws)
-                 (slack-ws--close ws team)
-                 (slack-log (format (concat "An Error occured while "
-                                            "opening websocket connection: %s")
+                 (slack-log (format "An Error occured while opening websocket connection: %s"
                                     error-var)
                             team
                             :level 'error)
