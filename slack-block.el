@@ -33,6 +33,8 @@
 (declare-function slack-format-message "slack-message-formatter")
 (require 'slack-image)
 
+(defvar slack-completing-read-function)
+
 ;; Layout Blocks
 ;; [Reference: Message layout blocks | Slack](https://api.slack.com/reference/messaging/blocks)
 (defclass slack-layout-block ()

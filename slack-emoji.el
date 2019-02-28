@@ -85,7 +85,8 @@
           :success #'on-success)))))
 
 (defun slack-select-emoji ()
-  (if (fboundp 'emojify-completing-read)
+  (if (and (fboundp 'emojify-completing-read)
+           (fboundp 'emojify-download-emoji-maybe))
       (progn (emojify-download-emoji-maybe)
              (emojify-completing-read "Select Emoji: "))
     (read-from-minibuffer "Emoji: ")))

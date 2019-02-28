@@ -390,8 +390,8 @@
     (list start end)))
 
 (defun slack-handle-lazy-conversation-name ()
-  (slack-if-let* ((slack-buffer slack-current-buffer)
-                  (team (oref slack-buffer team)))
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (oref buffer team)))
       (progn
         (let ((cur-point (point-min)))
           (while (and cur-point (< cur-point (point-max)))
@@ -409,8 +409,8 @@
               (setq cur-point end)))))))
 
 (defun slack-handle-lazy-user-name ()
-  (slack-if-let* ((slack-buffer slack-current-buffer)
-                  (team (oref slack-buffer team)))
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (oref buffer team)))
       (progn
         (let ((cur-point (point-min)))
           (while (and cur-point (< cur-point (point-max)))
