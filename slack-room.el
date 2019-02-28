@@ -36,6 +36,12 @@
 ;; (require 'slack-buffer)
 (declare-function slack-buffer-room "slack-buffer")
 
+(defface slack-room-unread-face
+  '((t (:weight bold)))
+  ;; '((t (:box (:line-width 1 :style released-button))))
+  "Face used to mark a room as unread when selecting channels."
+  :group 'slack)
+
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
 (defvar slack-display-team-name)
@@ -160,7 +166,7 @@
                      (slack-room-display-name room team)
                      (slack-room-mention-count-display room))))
     (if (slack-room-has-unread-p room)
-        (propertize str 'face '(:weight bold))
+        (propertize str 'face 'slack-room-unread-face)
       str)))
 
 (cl-defmethod slack-room-name ((room slack-room) _team)
