@@ -1,8 +1,4 @@
 version: "3"
-volumes:
-  dot_emacs25:
-  dot_emacs26:
-  dot_master:
 services:
   emacs25:
     build:
@@ -11,7 +7,7 @@ services:
     command: ./test/test_all
     volumes:
       - .:/slack
-      - dot_emacs25:/root/.emacs.d
+      - ./test/dot_emacs_25:/root/.emacs.d
   emacs26:
     build:
       context: .
@@ -19,7 +15,7 @@ services:
     command: ./test/test_all
     volumes:
       - .:/slack
-      - dot_emacs26:/root/.emacs.d
+      - ./test/dot_emacs_26:/root/.emacs.d
   master:
     build:
       context: .
@@ -27,5 +23,5 @@ services:
     command: ./test/test_all
     volumes:
       - .:/slack
-      - dot_master:/root/.emacs.d
+      - ./test/dot_emacs_master:/root/.emacs.d
       
