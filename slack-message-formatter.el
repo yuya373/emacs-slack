@@ -34,6 +34,7 @@
 (require 'slack-file)
 (require 'slack-attachment)
 (require 'slack-image)
+(require 'slack-block)
 
 (defvar slack-current-buffer)
 (defvar slack-channel-button-keymap)
@@ -146,7 +147,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defun slack-format-message (&rest args)
   (let ((messages args))
     (mapconcat #'identity
-               (cl-remove-if #'(lambda (e) (< (length e) 1)) messages)
+               (cl-remove-if #'(lambda (e) (or (null e)
+                                               (< (length e) 1)))
+                             messages)
                "\n")))
 
 (cl-defmethod slack-message-profile-image ((m slack-message) team)
@@ -184,10 +187,22 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                  reactions
                  " "))))
 
+(cl-defmethod slack-message-blocks-to-string ((m slack-message) team)
+  (when (oref m blocks)
+    (mapconcat #'(lambda (e) (let ((str (slack-message-unescape-string
+                                         (slack-block-to-string e)
+                                         team)))
+                               (if (oref m deleted-at)
+                                   (slack-message-put-deleted-property str)
+                                 str)))
+               (oref m blocks)
+               "\n\n")))
+
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
          (attachment-body (slack-message-attachment-body m team))
-         (body (slack-message-body-to-string m team))
+         (body (or (slack-message-blocks-to-string m team)
+                   (slack-message-body-to-string m team)))
          (files (mapconcat #'(lambda (file)
                                (format "%s\n"
                                        (slack-message-to-string file

@@ -160,11 +160,12 @@
                url
                :type type
                :sync sync
-               :params (cons (cons "token" (slack-team-token team))
-                             params)
+               :params params
                :data data
                :files files
-               :headers headers
+               :headers (append (list (cons "Authorization"
+                                            (format "Bearer %s" (slack-team-token team))))
+                                headers)
                :parser parser
                :success #'on-success
                :error #'on-error

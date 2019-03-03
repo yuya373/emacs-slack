@@ -42,15 +42,6 @@
           (plist-get bot :name)))
       "Unknown Bot"))
 
-(cl-defmethod slack-message-to-alert ((m slack-bot-message) team)
-  (let ((text (if (slot-boundp m 'text)
-                  (oref m text))))
-    (with-slots (attachments) m
-      (if (and text (< 0 (length text)))
-          (slack-message-unescape-string text team)
-        (let ((attachment-string (mapconcat #'slack-attachment-to-alert attachments " ")))
-          (slack-message-unescape-string attachment-string team))))))
-
 (cl-defmethod slack-message-sender-name ((m slack-bot-message) team)
   (slack-bot-name m team))
 

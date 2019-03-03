@@ -86,6 +86,8 @@
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-user-name nil t)
+  (add-hook 'lui-pre-output-hook 'slack-handle-lazy-conversation-name nil t)
   (lui-set-prompt " "))
 
 (defclass slack-buffer ()
@@ -313,6 +315,22 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-display-unread-threads ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-button-block-action((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-channel-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-user-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-static-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-external-select-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-overflow-menu-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-execute-datepicker-block-action ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
@@ -364,6 +382,48 @@
             (slack-put-code-block-overlay beg end)
             (put-text-property beg end 'slack-disable-buttonize t)
             (goto-char end))))))
+
+(defun slack-buffer-get-props-range (cur-point prop-name)
+  (let* ((start (or (and (get-text-property cur-point prop-name) cur-point)
+                    (next-single-property-change cur-point prop-name)))
+         (end (and start (next-single-property-change start prop-name))))
+    (list start end)))
+
+(defun slack-handle-lazy-conversation-name ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (oref buffer team)))
+      (progn
+        (let ((cur-point (point-min)))
+          (while (and cur-point (< cur-point (point-max)))
+            (cl-destructuring-bind (start end)
+                (slack-buffer-get-props-range cur-point
+                                              'slack-lazy-conversation-name)
+              (when (and start end)
+                (slack-if-let* ((room-id (get-text-property start 'slack-conversation-id))
+                                (room (slack-room-find room-id team))
+                                (name (format "%s%s"
+                                              (if (slack-im-p room) "@" "#")
+                                              (slack-room-name room team))))
+                    (put-text-property start end 'display name)
+                  (put-text-property start end 'display "Unknown Conversation")))
+              (setq cur-point end)))))))
+
+(defun slack-handle-lazy-user-name ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (oref buffer team)))
+      (progn
+        (let ((cur-point (point-min)))
+          (while (and cur-point (< cur-point (point-max)))
+            (cl-destructuring-bind (start end)
+                (slack-buffer-get-props-range cur-point
+                                              'slack-lazy-user-name)
+              (when (and start end)
+                (slack-if-let* ((user-id (get-text-property start 'slack-user-id))
+                                (user-name (propertize
+                                            (or (slack-user-name user-id team)
+                                                "Unknown User"))))
+                    (put-text-property start end 'display user-name)))
+              (setq cur-point end)))))))
 
 (defun slack-add-face-lazy ()
   (let ((cur-point (point-min)))
@@ -484,6 +544,46 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
   (slack-buffer-cant-execute this))
+
+(defun slack-execute-button-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-button-block-action buf)))
+
+(defun slack-execute-conversation-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-conversation-select-block-action buf)))
+
+(defun slack-execute-channel-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-channel-select-block-action buf)))
+
+(defun slack-execute-user-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-user-select-block-action buf)))
+
+(defun slack-execute-static-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-static-select-block-action buf)))
+
+(defun slack-execute-external-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-external-select-block-action buf)))
+
+(defun slack-execute-overflow-menu-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-overflow-menu-block-action buf)))
+
+(defun slack-execute-datepicker-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-datepicker-block-action buf)))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

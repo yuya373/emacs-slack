@@ -35,6 +35,7 @@
 (declare-function slack-file-create "slack-file")
 ;; (require 'slack-thread)
 (declare-function slack-thread-create "slack-thread")
+(require 'slack-block)
 
 (defvar slack-current-buffer)
 (defvar slack-message-user-regexp "<@\\([WU].*?\\)\\(|.*?\\)?>")
@@ -66,7 +67,8 @@
    (hide :initarg :hide :initform nil)
    (files :initarg :files :initform '())
    (edited :initarg :edited :initform nil)
-   (is-ephemeral :initarg :is_ephemeral :initform nil)))
+   (is-ephemeral :initarg :is_ephemeral :initform nil)
+   (blocks :initarg :blocks :type (or null list) :initform nil)))
 
 (defclass slack-message-edited ()
   ((user :initarg :user :type string)
@@ -169,12 +171,14 @@
                   (plist-get payload :reply_broadcast)
                   (plist-get payload :is_thread_broadcast))
               (slack-reply-broadcast-message-create payload))
+             ((or (and subtype (string= "bot_message" subtype))
+                  (and (plist-member payload :bot_id) (plist-get payload :bot_id)))
+              (apply #'slack-bot-message "bot-msg"
+                     (slack-collect-slots 'slack-bot-message payload)))
              ((and (plist-member payload :user) (plist-get payload :user))
               (apply #'slack-user-message "user-msg"
                      (slack-collect-slots 'slack-user-message payload)))
-             ((and subtype (string= "bot_message" subtype))
-              (apply #'slack-bot-message "bot-msg"
-                     (slack-collect-slots 'slack-bot-message payload)))
+
              ((and subtype (string= "file_comment" subtype))
               (apply #'slack-file-comment-message "file_comment"
                      (slack-collect-slots 'slack-file-comment-message payload)))
@@ -192,7 +196,12 @@
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload)
           (slack-message-set-thread message payload)
+          (slack-message-set-blocks message payload)
           message)))))
+
+(defun slack-message-set-blocks (message payload)
+  (oset message blocks (mapcar #'slack-create-layout-block
+                               (plist-get payload :blocks))))
 
 (cl-defmethod slack-message-set-edited ((this slack-message) payload)
   (if (plist-get payload :edited)
