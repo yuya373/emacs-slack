@@ -362,7 +362,7 @@
                                                            collect (slack-if-let*
                                                                        ((user (slack-user--find member team))
                                                                         (not-hidden (not (slack-user-hidden-p user))))
-                                                                       (list (slack-user-label user team)
+                                                                       (cons (slack-user-label user team)
                                                                              user)))))
                         (selected nil))
                     (when (< 0 (length next-cursor))
@@ -373,11 +373,12 @@
                     (setq selected (completing-read "Select user: " candidates nil t))
                     (if (equal slack-next-page-token selected)
                         (request next-cursor)
-                      (let ((user (cdr (cl-assoc selected candidates :test #'string=))))
-                        (slack-buffer-display
-                         (slack-create-user-profile-buffer
-                          team
-                          (plist-get user :id)))))))
+                      (slack-if-let* ((candidate (cl-assoc selected candidates :test #'string=))
+                                      (user (cdr-safe candidate)))
+                          (slack-buffer-display
+                           (slack-create-user-profile-buffer
+                            team
+                            (plist-get user :id)))))))
          (request (cursor)
                   (slack-conversations-members
                    room team cursor #'success)))
