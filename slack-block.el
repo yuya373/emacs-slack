@@ -638,8 +638,10 @@
    (verbatim :initarg :verbatim :type (or null boolean) :initform nil)))
 
 (cl-defmethod slack-block-to-string ((this slack-text-message-composition-object) &optional _option)
-  (with-slots (text) this
-    text))
+  (with-slots (text type) this
+    (propertize text 'slack-text-type (cond ((string= "plain_text" type) 'plain)
+                                            ((string= "mrkdwn" type) 'mrkdwn)
+                                            (t nil)))))
 
 (cl-defmethod slack-block-action-payload ((this slack-text-message-composition-object))
   (with-slots (type text emoji verbatim) this

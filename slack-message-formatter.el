@@ -219,11 +219,15 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (cl-defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
-    (slack-message-unescape-string text team)))
+    (let ((body (slack-message-unescape-string text team)))
+      (when body
+        (propertize body 'slack-text-type 'mrkdwn)))))
 
 (cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "Replied to a thread: \n%s"
-          (slack-message-unescape-string (oref m text) team)))
+          (let ((body (slack-message-unescape-string (oref m text) team)))
+            (when body
+              (propertize body 'slack-text-type 'mrkdwn)))))
 
 (cl-defmethod slack-message-body-to-string ((m slack-file-comment-message) team)
   (with-slots (file comment deleted-at) m

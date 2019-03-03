@@ -365,24 +365,6 @@
 (defalias 'slack-put-email-body-overlay 'slack-put-preview-overlay)
 (defalias 'slack-put-code-block-overlay 'slack-put-preview-overlay)
 
-(defun slack-search-code-block ()
-  (while (re-search-forward "`\\([^`]\\|\n\\)" (point-max) t)
-    (let* ((block-begin (- (point) 4))
-           (block-p (and (<= (point-min) block-begin)
-                         (string= (buffer-substring-no-properties block-begin
-                                                                  (+ block-begin 3))
-                                  "```")))
-           (beg (or (and block-p block-begin) (- (point) 2)))
-           (end-regex (or (and block-p "```") "[^`]`[^`]")))
-
-      (goto-char (+ beg (or (and block-p 3) 1)))
-
-      (if (re-search-forward end-regex (point-max) t)
-          (let* ((end (or (and block-p (1+ (point))) (- (point) 1))))
-            (slack-put-code-block-overlay beg end)
-            (put-text-property beg end 'slack-disable-buttonize t)
-            (goto-char end))))))
-
 (defun slack-buffer-get-props-range (cur-point prop-name)
   (let* ((start (or (and (get-text-property cur-point prop-name) cur-point)
                     (next-single-property-change cur-point prop-name)))

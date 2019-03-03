@@ -38,6 +38,7 @@
 (require 'slack-room-message-compose-buffer)
 (require 'slack-pinned-items-buffer)
 (require 'slack-user-profile-buffer)
+(require 'slack-mrkdwn)
 
 (defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap
@@ -62,7 +63,7 @@
 (define-derived-mode slack-message-buffer-mode slack-mode "Slack Message Buffer"
   (add-hook 'lui-pre-output-hook 'slack-buffer-buttonize-link nil t)
   (add-hook 'lui-pre-output-hook 'slack-add-face-lazy nil t)
-  (add-hook 'lui-pre-output-hook 'slack-search-code-block nil t)
+  (add-hook 'lui-pre-output-hook 'slack-mrkdwn-add-face nil t)
   (add-hook 'lui-post-output-hook 'slack-display-image t t)
   (add-hook 'lui-pre-output-hook 'slack-display-inline-action t t)
   (add-hook 'lui-pre-output-hook 'slack-handle-lazy-user-name nil t)
