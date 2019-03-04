@@ -103,7 +103,7 @@
   "Return all users as alist (\"user-name\" . user) in TEAM."
   (let ((users (cl-remove-if #'slack-user-hidden-p
                              (oref team users))))
-    (mapcar (lambda (u) (cons (plist-get u :name) u))
+    (mapcar (lambda (u) (cons (slack-user--name u team) u))
             (if (functionp filter)
                 (funcall filter users)
               users))))
