@@ -79,7 +79,8 @@
   (slack-if-let* ((profile (slack-user-profile user)))
       (let ((real-name (plist-get profile :real_name_normalized))
             (display-name (plist-get profile :display_name_normalized)))
-        (if (oref team full-and-display-names)
+        (if (or (oref team full-and-display-names)
+                (slack-string-blankp display-name))
             real-name
           display-name))))
 
