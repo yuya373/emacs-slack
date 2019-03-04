@@ -76,9 +76,12 @@
       (slack-user--name user team)))
 
 (defun slack-user--name (user team)
-  (if (oref team full-and-display-names)
-      (plist-get user :real_name)
-    (plist-get user :name)))
+  (slack-if-let* ((profile (slack-user-profile user)))
+      (let ((real-name (plist-get profile :real_name_normalized))
+            (display-name (plist-get profile :display_name_normalized)))
+        (if (oref team full-and-display-names)
+            real-name
+          display-name))))
 
 (defun slack-user-label (user team)
   (format "%s %s"
