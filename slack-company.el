@@ -50,7 +50,7 @@
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
-                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
+                (company-grab-line "\\(\\W\\|^\\)\\(\\(@\\|#\\|/\\)\\([A-Za-z0-9._\\-]+\\)\\)"
                                    2)))
       (candidates (slack-if-let*
                       ((content (content arg))
