@@ -150,9 +150,13 @@
                              (list
                               (funcall prompt-fn loop-count)
                               (if result (cons "" collection) collection)
-                              nil t
+                              nil       ; predicate
+                              t         ; require-match
                               (when (functionp initial-input-fn)
-                                (funcall initial-input-fn loop-count))))))
+                                (funcall initial-input-fn loop-count))
+                              nil       ; history
+                              ""        ; def
+                              ))))
         (if (and selected (< 0 (length selected)))
             (progn
               (push (cdr (cl-assoc selected collection :test #'equal))
