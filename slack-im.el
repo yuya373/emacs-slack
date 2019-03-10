@@ -163,5 +163,11 @@
         (slack-counts-im-mention-count counts this)
       0)))
 
+(cl-defmethod slack-room--update-latest ((this slack-im) counts ts)
+  (slack-counts-im-update-latest counts this ts))
+
+(cl-defmethod slack-room--latest ((this slack-im) counts)
+  (slack-counts-im-latest counts this))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

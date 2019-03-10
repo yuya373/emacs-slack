@@ -212,5 +212,15 @@
           (slack-counts-channel-mention-count counts this))
       0)))
 
+(cl-defmethod slack-room--update-latest ((this slack-group) counts ts)
+  (if (slack-mpim-p this)
+      (slack-counts-mpim-update-latest counts this ts)
+    (slack-counts-channel-update-latest counts this ts)))
+
+(cl-defmethod slack-room--latest ((this slack-group) counts)
+  (if (slack-mpim-p this)
+      (slack-counts-mpim-latest counts this)
+    (slack-counts-channel-latest counts this)))
+
 (provide 'slack-group)
 ;;; slack-group.el ends here

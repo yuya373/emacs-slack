@@ -53,7 +53,6 @@
   ((name :initarg :name :type (or null string) :initform nil)
    (id :initarg :id)
    (created :initarg :created)
-   (latest :initarg :latest :type (or null string))
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (messages :initarg :messages :initform ())
@@ -78,18 +77,12 @@
   (oset this name (oref other name))
   (oset this id (oref other id))
   (oset this created (oref other created))
-  (when (oref other latest)
-    (oset this latest (oref other latest)))
   (oset this unread-count (oref other unread-count))
   (oset this unread-count-display (oref other unread-count-display))
   (unless (string= "0" (oref other last-read))
     (oset this last-read (oref other last-read))))
 
 (defun slack-room-create (payload class)
-  (unless (stringp (plist-get payload :latest))
-    (setq payload (plist-put payload :latest
-                             (plist-get (plist-get payload :latest)
-                                        :ts))))
   (let* ((attributes (slack-collect-slots class payload)))
     (apply #'make-instance class attributes)))
 
@@ -112,8 +105,7 @@
 (defun slack-room-names (rooms team &optional filter collecter)
   (cl-labels
       ((latest-ts (room)
-                  (with-slots (latest) room
-                    (if latest (slack-ts latest) "0")))
+                  (slack-room-latest room team))
        (sort-rooms (rooms)
                    (nreverse (cl-sort (append rooms nil)
                                       #'string< :key #'latest-ts))))
@@ -190,23 +182,33 @@
   (with-slots (messages) room
     (slack-room-sort-messages (copy-sequence messages))))
 
-(cl-defmethod slack-room-set-prev-messages ((room slack-room) prev-messages)
-  (slack-room-set-messages room
-                           (append (oref room messages)
-                                   prev-messages)))
+(cl-defmethod slack-room-set-prev-messages ((room slack-room) prev-messages team)
+  (let ((messages (append (oref room messages) prev-messages)))
+    (slack-room-set-messages room messages team)))
+
 (defalias 'slack-room-prepend-messages 'slack-room-set-prev-messages)
 
-(cl-defmethod slack-room-append-messages ((room slack-room) messages)
-  (slack-room-set-messages room
-                           (append messages (oref room messages))))
+(cl-defmethod slack-room-append-messages ((room slack-room) new-messages team)
+  (let ((messages (append new-messages (oref room messages))))
+    (slack-room-set-messages room messages team)))
 
-(cl-defmethod slack-room-update-latest ((room slack-room) message)
-  (when (and message
-             (not (slack-thread-message-p message)))
-    (with-slots (latest) room
-      (if (or (null latest)
-              (string< (slack-ts latest) (slack-ts message)))
-          (setq latest (slack-ts message))))))
+(cl-defmethod slack-room-latest ((this slack-room) team)
+  (with-slots (counts) team
+    (or (when counts
+          (slack-room--latest this counts))
+        "0")))
+
+(cl-defmethod slack-room--latest ((this slack-room) counts)
+  (slack-counts-channel-latest counts this))
+
+(cl-defmethod slack-room-update-latest ((room slack-room) message team)
+  (when message
+    (with-slots (counts) team
+      (when counts
+        (slack-room--update-latest room counts (slack-ts message))))))
+
+(cl-defmethod slack-room--update-latest ((this slack-room) counts ts)
+  (slack-counts-channel-update-latest counts this ts))
 
 (cl-defmethod slack-room-push-message ((room slack-room) message)
   (with-slots (messages) room
@@ -215,13 +217,13 @@
                         messages))
     (push message messages)))
 
-(cl-defmethod slack-room-set-messages ((room slack-room) messages)
+(cl-defmethod slack-room-set-messages ((room slack-room) messages team)
   (let* ((sorted (slack-room-sort-messages
                   (cl-delete-duplicates messages
                                         :test #'slack-message-equal)))
          (latest (car (last sorted))))
     (oset room messages sorted)
-    (slack-room-update-latest room latest)))
+    (slack-room-update-latest room latest team)))
 
 (cl-defmethod slack-room-prev-messages ((room slack-room) from)
   (with-slots (messages) room

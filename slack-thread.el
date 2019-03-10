@@ -82,7 +82,7 @@ Any other non-nil value: send to the room."
                                (slack-room-sort-messages
                                 (cl-remove-if #'slack-message-thread-parentp
                                               messages)))
-                         (slack-room-append-messages room messages)
+                         (slack-room-append-messages room messages team)
                          (when (functionp after-success)
                            (funcall after-success next-cursor has-more))))
       (slack-conversations-replies room ts team

@@ -132,5 +132,43 @@
           (oref count mention-count))
         0)))
 
+(cl-defmethod slack-counts-should-update-latest-p ((this slack-counts-conversation) ts)
+  (with-slots (latest) this
+    (string< latest ts)))
+
+(cl-defmethod slack-counts-conversation-update-latest ((this slack-counts-conversation) ts)
+  (when (slack-counts-should-update-latest-p this ts)
+        (oset this latest ts)))
+
+(cl-defmethod slack-counts-im-update-latest ((this slack-counts) im ts)
+  (with-slots (ims) this
+    (slack-counts-with ims (oref im id)
+      (slack-counts-conversation-update-latest count ts))))
+
+(cl-defmethod slack-counts-channel-update-latest ((this slack-counts) channel ts)
+  (with-slots (channels) this
+    (slack-counts-with channels (oref channel id)
+      (slack-counts-conversation-update-latest count ts))))
+
+(cl-defmethod slack-counts-mpim-update-latest ((this slack-counts) mpim ts)
+  (with-slots (mpims) this
+    (slack-counts-with mpims (oref mpim id)
+      (slack-counts-conversation-update-latest count ts))))
+
+(cl-defmethod slack-counts-im-latest ((this slack-counts) im)
+  (with-slots (ims) this
+    (slack-counts-with ims (oref im id)
+      (oref count latest))))
+
+(cl-defmethod slack-counts-channel-latest ((this slack-counts) channel)
+  (with-slots (channels) this
+    (slack-counts-with channels (oref channel id)
+      (oref count latest))))
+
+(cl-defmethod slack-counts-mpim-latest ((this slack-counts) mpim)
+  (with-slots (mpims) this
+    (slack-counts-with mpims (oref mpim id)
+      (oref count latest))))
+
 (provide 'slack-counts)
 ;;; slack-counts.el ends here

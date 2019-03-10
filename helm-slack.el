@@ -97,9 +97,8 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
   (cl-labels ((sort (rooms)
                     (nreverse (cl-sort rooms #'string< :key #'latest-ts)))
               (latest-ts (label-room-team)
-                         (cl-destructuring-bind (_label room _team) label-room-team
-                           (with-slots (latest) room
-                             (if latest (slack-ts latest) "0")))))
+                         (cl-destructuring-bind (_label room team) label-room-team
+                           (slack-room-latest room team))))
 
     (sort (cl-loop for team in slack-teams
                    as rooms = (funcall rooms-selector team)

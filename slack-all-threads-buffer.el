@@ -183,7 +183,7 @@
               (display-thread message)
             (cl-labels
                 ((success (messages _next-cursor)
-                          (slack-room-append-messages room messages)
+                          (slack-room-append-messages room messages team)
                           (let ((message (slack-room-find-message room (slack-ts root))))
                             (display-thread message))))
               (slack-conversations-history room team

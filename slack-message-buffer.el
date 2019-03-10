@@ -133,9 +133,8 @@
     (slack-message-send-internal message room team)))
 
 (cl-defmethod slack-buffer-latest-ts ((this slack-message-buffer))
-  (with-slots (room) this
-    (slack-if-let* ((latest (oref room latest)))
-        (slack-ts latest))))
+  (with-slots (room team) this
+    (slack-room-latest room team)))
 
 (cl-defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((buffer-already-exists-p (get-buffer (slack-buffer-name this)))
@@ -287,7 +286,7 @@
                                                   :cursor cursor
                                                   :after-success #'after-success))
            (after-success (messages next-cursor)
-                          (slack-room-append-messages room messages)
+                          (slack-room-append-messages room messages team)
                           (if (and next-cursor (< 0 (length next-cursor)))
                               (paginate next-cursor)
                             (write-messages)))
@@ -339,7 +338,7 @@
                 (goto-char cur-point))))
            (after-success (messages next-cursor)
                           (oset this cursor next-cursor)
-                          (slack-room-prepend-messages room messages)
+                          (slack-room-prepend-messages room messages team)
                           (update-buffer (slack-room-sorted-messages room))))
         (slack-conversations-history room team
                                      :cursor (oref this cursor)
@@ -641,7 +640,7 @@
         (slack-conversations-history
          room team
          :after-success #'(lambda (messages cursor)
-                            (slack-room-set-messages room messages)
+                            (slack-room-set-messages room messages team)
                             (open (slack-create-message-buffer room cursor team))))))))
 
 (cl-defmethod slack-room-update-buffer ((this slack-room) team message replace)
@@ -651,7 +650,7 @@
          (slack-conversations-history
           this team
           :after-success #'(lambda (messages cursor)
-                             (slack-room-set-messages this messages)
+                             (slack-room-set-messages this messages team)
                              (tracking-add-buffer
                               (slack-buffer-buffer
                                (slack-create-message-buffer this cursor team))))))))
@@ -731,7 +730,7 @@
           (cl-incf (oref room mention-count)))
 
         (slack-room-push-message room message)
-        (slack-room-update-latest room message)
+        (slack-room-update-latest room message team)
 
         (if (or (slack-thread-message-p message)
                 (slack-reply-broadcast-message-p message))
