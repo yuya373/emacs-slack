@@ -118,6 +118,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (usergroups :initarg :usergroups :initform '() :type list)
    (ws :type slack-team-ws)
    (files :initform '() :type list)
+   (counts :initform nil)
    ))
 
 (defun slack-create-team (plist)
