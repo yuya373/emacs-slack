@@ -200,5 +200,10 @@
     (slack-counts-with mpims (oref mpim id)
       (oref count latest))))
 
+(cl-defmethod slack-counts-update-threads ((this slack-counts) has-unreads mention-count)
+  (with-slots (threads) this
+    (oset threads has-unreads has-unreads)
+    (oset threads mention-count mention-count)))
+
 (provide 'slack-counts)
 ;;; slack-counts.el ends here
