@@ -110,7 +110,7 @@
   (let ((team (oref req team)))
     (with-slots (url type success error params data parser sync files headers timeout) req
       (cl-labels
-          ((on-success (&key data &allow-other-keys)
+          ((-on-success (&key data &allow-other-keys)
                        (funcall success :data data)
                        (slack-log
                         (format "REQUEST FINISHED. URL: %S, PARAMS: %S, DATA: %S"
@@ -120,7 +120,7 @@
                         team :level 'trace)
                        (when (functionp on-success)
                          (funcall on-success)))
-           (on-error (&key error-thrown symbol-status response data)
+           (-on-error (&key error-thrown symbol-status response data)
                      (slack-if-let* ((retry-after (request-response-header response "retry-after"))
                                      (retry-after-sec (string-to-number retry-after)))
                          (progn
@@ -167,8 +167,8 @@
                                             (format "Bearer %s" (slack-team-token team))))
                                 headers)
                :parser parser
-               :success #'on-success
-               :error #'on-error
+               :success #'-on-success
+               :error #'-on-error
                :timeout timeout))))))
 
 
