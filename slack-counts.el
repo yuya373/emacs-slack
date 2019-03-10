@@ -88,5 +88,31 @@
   (slack-client-counts team
                        #'(lambda (counts) (oset team counts counts))))
 
+(defun slack-counts-find (conversation-counts id)
+  (cl-find-if #'(lambda (count)
+                  (string= id (oref count id)))
+              conversation-counts))
+
+(defmacro slack-counts-with (counts id &rest found)
+  (declare (indent 2) (debug t))
+  `(slack-if-let* ((count (slack-counts-find ,counts ,id)))
+       (progn
+         ,@found)))
+
+(cl-defmethod slack-counts-im-unread-p ((this slack-counts) im)
+  (with-slots (ims) this
+    (slack-counts-with ims (oref im id)
+      (oref count has-unreads))))
+
+(cl-defmethod slack-counts-channel-unread-p ((this slack-counts) channel)
+  (with-slots (channels) this
+    (slack-counts-with channels (oref channel id)
+      (oref count has-unreads))))
+
+(cl-defmethod slack-counts-mpim-unread-p ((this slack-counts) mpim)
+  (with-slots (mpims) this
+    (slack-counts-with mpims (oref mpim id)
+      (oref count has-unreads))))
+
 (provide 'slack-counts)
 ;;; slack-counts.el ends here

@@ -154,5 +154,8 @@
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
 
+(cl-defmethod slack-room--has-unread-p ((this slack-im) counts)
+  (slack-counts-im-unread-p counts this))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

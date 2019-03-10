@@ -199,5 +199,10 @@
 (cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))
 
+(cl-defmethod slack-room--has-unread-p ((this slack-group) counts)
+  (if (slack-mpim-p this)
+      (slack-counts-mpim-unread-p counts this))
+  (slack-counts-channel-unread-p counts this))
+
 (provide 'slack-group)
 ;;; slack-group.el ends here
