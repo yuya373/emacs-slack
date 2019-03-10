@@ -212,6 +212,18 @@
           (slack-counts-channel-mention-count counts this))
       0)))
 
+(cl-defmethod slack-room-set-mention-count ((this slack-group) count team)
+  (slack-if-let* ((counts (oref team counts)))
+      (if (slack-mpim-p this)
+          (slack-counts-mpim-set-mention-count counts this count)
+        (slack-counts-channel-set-mention-count counts this count))))
+
+(cl-defmethod slack-room-set-has-unreads ((this slack-group) value team)
+  (slack-if-let* ((counts (oref team counts)))
+      (if (slack-mpim-p this)
+          (slack-counts-mpim-set-has-unreads counts this value)
+        (slack-counts-channel-set-has-unreads counts this value))))
+
 (cl-defmethod slack-room--update-latest ((this slack-group) counts ts)
   (if (slack-mpim-p this)
       (slack-counts-mpim-update-latest counts this ts)

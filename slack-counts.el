@@ -132,6 +132,36 @@
           (oref count mention-count))
         0)))
 
+(cl-defmethod slack-counts-im-set-mention-count ((this slack-counts) im value)
+  (with-slots (ims) this
+    (slack-counts-with ims (oref im id)
+      (oset count mention-count value))))
+
+(cl-defmethod slack-counts-channel-set-mention-count ((this slack-counts) channel value)
+  (with-slots (channels) this
+    (slack-counts-with channels (oref channel id)
+      (oset count mention-count value))))
+
+(cl-defmethod slack-counts-mpim-set-mention-count ((this slack-counts) mpim value)
+  (with-slots (mpims) this
+    (slack-counts-with mpims (oref mpim id)
+      (oset count mention-count value))))
+
+(cl-defmethod slack-counts-im-set-has-unreads ((this slack-counts) im value)
+  (with-slots (ims) this
+    (slack-counts-with ims (oref im id)
+      (oset count has-unreads value))))
+
+(cl-defmethod slack-counts-channel-set-has-unreads ((this slack-counts) channel value)
+  (with-slots (channels) this
+    (slack-counts-with channels (oref channel id)
+      (oset count has-unreads value))))
+
+(cl-defmethod slack-counts-mpim-set-has-unreads ((this slack-counts) mpim value)
+  (with-slots (mpims) this
+    (slack-counts-with mpims (oref mpim id)
+      (oset count has-unreads value))))
+
 (cl-defmethod slack-counts-should-update-latest-p ((this slack-counts-conversation) ts)
   (with-slots (latest) this
     (string< latest ts)))

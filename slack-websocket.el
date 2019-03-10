@@ -795,7 +795,8 @@ TEAM is one of `slack-teams'"
       (progn
         (oset room unread-count-display unread-count-display)
         (oset room last-read ts)
-        (oset room mention-count-display mention-count-display)
+        (slack-room-set-mention-count room mention-count-display team)
+        (slack-room-set-has-unreads room (< 0 unread-count-display) team)
         (slack-update-modeline)
         (slack-if-let*
             ((buffer (slack-buffer-find 'slack-message-buffer room team)))

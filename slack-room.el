@@ -58,9 +58,7 @@
    (messages :initarg :messages :initform ())
    (last-read :initarg :last_read :type string :initform "0")
    (members :initarg :members :type list :initform '())
-   (members-loaded-p :type boolean :initform nil)
-   (mention-count :initarg :mention_count :type integer :initform 0)
-   (mention-count-display :initarg :mention_count_display :type integer :initform 0)))
+   (members-loaded-p :type boolean :initform nil)))
 
 
 (cl-defgeneric slack-room-name (room team))
@@ -156,6 +154,15 @@
         (slack-counts-channel-mention-count counts this)
       0)))
 
+(cl-defmethod slack-room-set-mention-count ((this slack-room) count team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-channel-set-mention-count counts
+                                              this
+                                              count)))
+
+(cl-defmethod slack-room-set-has-unreads ((this slack-room) value team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-channel-set-has-unreads counts this value)))
 
 (cl-defmethod slack-room-label ((room slack-room) team)
   (let ((str (format "%s%s%s"

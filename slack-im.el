@@ -163,6 +163,14 @@
         (slack-counts-im-mention-count counts this)
       0)))
 
+(cl-defmethod slack-room-set-mention-count ((this slack-im) count team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-im-set-mention-count counts this count)))
+
+(cl-defmethod slack-room-set-has-unreads ((this slack-im) value team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-im-set-has-unreads counts this value)))
+
 (cl-defmethod slack-room--update-latest ((this slack-im) counts ts)
   (slack-counts-im-update-latest counts this ts))
 
