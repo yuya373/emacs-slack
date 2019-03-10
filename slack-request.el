@@ -152,9 +152,9 @@
                                     :error-thrown error-thrown
                                     :symbol-status symbol-status
                                     :response response
-                                    :data data))
-                         (when (functionp on-error)
-                           (funcall on-error))))))
+                                    :data data)))
+                       (when (functionp on-error)
+                         (funcall on-error)))))
         (oset req response
               (request
                url
