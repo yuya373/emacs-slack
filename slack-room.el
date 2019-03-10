@@ -154,11 +154,16 @@
 (cl-defmethod slack-room-label-prefix ((_room slack-room) _team)
   "  ")
 
-(cl-defmethod slack-room-mention-count-display ((room slack-room))
-  (with-slots (mention-count-display) room
-    (if (< 0 mention-count-display)
-        (format "(%s)" mention-count-display)
-      "")))
+(cl-defmethod slack-room-mention-count-display ((room slack-room) team)
+  (let ((count (slack-room-mention-count room team)))
+    (if (< 0 count) (format "(%s)" count) "")))
+
+(cl-defmethod slack-room-mention-count ((this slack-room) team)
+  (with-slots (counts) team
+    (if counts
+        (slack-counts-channel-mention-count counts this)
+      0)))
+
 
 (cl-defmethod slack-room-label ((room slack-room) team)
   (let ((str (format "%s%s%s"

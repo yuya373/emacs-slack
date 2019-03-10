@@ -157,5 +157,11 @@
 (cl-defmethod slack-room--has-unread-p ((this slack-im) counts)
   (slack-counts-im-unread-p counts this))
 
+(cl-defmethod slack-room-mention-count ((this slack-im) team)
+  (with-slots (counts) team
+    (if counts
+        (slack-counts-im-mention-count counts this)
+      0)))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

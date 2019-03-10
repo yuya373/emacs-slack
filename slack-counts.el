@@ -114,5 +114,23 @@
     (slack-counts-with mpims (oref mpim id)
       (oref count has-unreads))))
 
+(cl-defmethod slack-counts-im-mention-count ((this slack-counts) im)
+  (with-slots (ims) this
+    (or (slack-counts-with ims (oref im id)
+          (oref count mention-count))
+        0)))
+
+(cl-defmethod slack-counts-channel-mention-count ((this slack-counts) channel)
+  (with-slots (channels) this
+    (or (slack-counts-with channels (oref channel id)
+          (oref count mention-count))
+        0)))
+
+(cl-defmethod slack-counts-mpim-mention-count ((this slack-counts) mpim)
+  (with-slots (mpims) this
+    (or (slack-counts-with mpims (oref mpim id)
+          (oref count mention-count))
+        0)))
+
 (provide 'slack-counts)
 ;;; slack-counts.el ends here

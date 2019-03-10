@@ -204,5 +204,13 @@
       (slack-counts-mpim-unread-p counts this))
   (slack-counts-channel-unread-p counts this))
 
+(cl-defmethod slack-room-mention-count ((this slack-group) team)
+  (with-slots (counts) team
+    (if counts
+        (if (slack-mpim-p this)
+            (slack-counts-mpim-mention-count counts this)
+          (slack-counts-channel-mention-count counts this))
+      0)))
+
 (provide 'slack-group)
 ;;; slack-group.el ends here
