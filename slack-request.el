@@ -105,56 +105,70 @@
                   (eq 'end-of-file (car error-thrown)))
              (eq symbol-status 'timeout)))))
 
-(cl-defmethod slack-request ((req slack-request-request)
-                             &key (on-success nil) (on-error nil))
+(cl-defmethod slack-request-log-failed-retry ((req slack-request-request) error-thrown symbol-status data)
+  (with-slots (url params team) req
+    (slack-log (format "Retry Requst by Error. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
+                       url
+                       params
+                       error-thrown
+                       symbol-status
+                       data)
+               team :level 'warn)))
+
+(cl-defmethod slack-request-log-retry ((req slack-request-request) retry-after-sec)
+  (with-slots (url params team) req
+    (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
+                       retry-after-sec
+                       url
+                       params)
+               team)))
+
+(cl-defmethod slack-request-log-failed ((req slack-request-request) error-thrown symbol-status data)
+  (with-slots (url params team) req
+    (slack-log (format "REQUEST FAILED. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
+                       url
+                       params
+                       error-thrown
+                       symbol-status
+                       data)
+               team :level 'error)))
+
+(cl-defmethod slack-request-log-success ((req slack-request-request) data)
+  (with-slots (url params team) req
+    (slack-log (format "REQUEST FINISHED. URL: %S, PARAMS: %S, DATA: %S"
+                       url
+                       params
+                       data)
+               team :level 'trace)))
+
+(cl-defmethod slack-request ((req slack-request-request) &key (on-success nil) (on-error nil))
   (let ((team (oref req team)))
-    (with-slots (url type success error params data parser sync files headers timeout) req
-      (cl-labels
-          ((-on-success (&key data &allow-other-keys)
-                       (funcall success :data data)
-                       (slack-log
-                        (format "REQUEST FINISHED. URL: %S, PARAMS: %S, DATA: %S"
-                                url
-                                params
-                                data)
-                        team :level 'trace)
-                       (when (functionp on-success)
-                         (funcall on-success)))
-           (-on-error (&key error-thrown symbol-status response data)
-                     (slack-if-let* ((retry-after (request-response-header response "retry-after"))
-                                     (retry-after-sec (string-to-number retry-after)))
-                         (progn
-                           (slack-request-retry-request req retry-after-sec)
-                           (slack-log (format "Retrying Request After: %s second, URL: %s, PARAMS: %s"
-                                              retry-after-sec
-                                              url
-                                              params)
-                                      team))
-                       (slack-log (format "REQUEST FAILED. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
-                                          url
-                                          params
-                                          error-thrown
-                                          symbol-status
-                                          data)
-                                  team :level 'error)
-                       (if (slack-request-retry-failed-request-p req error-thrown symbol-status)
-                           (progn
-                             (slack-log (format "Retry Requst by Error. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
-                                                url
-                                                params
-                                                error-thrown
-                                                symbol-status
-                                                data)
-                                        team :level 'warn)
-                             (slack-request-retry-request req 1))
-                         (when (functionp error)
-                           (funcall error
-                                    :error-thrown error-thrown
-                                    :symbol-status symbol-status
-                                    :response response
-                                    :data data)))
-                       (when (functionp on-error)
-                         (funcall on-error)))))
+    (cl-labels
+        ((-on-success (&key data &allow-other-keys)
+                      (funcall (oref req success) :data data)
+                      (slack-request-log-success req data)
+                      (when (functionp on-success)
+                        (funcall on-success)))
+         (-on-error (&key error-thrown symbol-status response data)
+                    (slack-if-let* ((retry-after (request-response-header response "retry-after"))
+                                    (retry-after-sec (string-to-number retry-after)))
+                        (progn
+                          (slack-request-retry-request req retry-after-sec)
+                          (slack-request-log-retry req retry-after-sec))
+                      (slack-request-log-failed req error-thrown symbol-status data)
+                      (if (slack-request-retry-failed-request-p req error-thrown symbol-status)
+                          (progn
+                            (slack-request-log-failed-retry req error-thrown symbol-status data)
+                            (slack-request-retry-request req 1))
+                        (when (functionp (oref req error))
+                          (funcall (oref req error)
+                                   :error-thrown error-thrown
+                                   :symbol-status symbol-status
+                                   :response response
+                                   :data data)))
+                      (when (functionp on-error)
+                        (funcall on-error)))))
+      (with-slots (url type params data parser sync files headers timeout) req
         (oset req response
               (request
                url
