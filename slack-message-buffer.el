@@ -724,23 +724,36 @@
                           (not (slack-room-find-message room ts)))))
 
       (progn
-        (when (and (not replace)
-                   (slack-message-mentioned-p message team))
-          (cl-incf (oref room mention-count-display))
-          (cl-incf (oref room mention-count)))
-
         (slack-room-push-message room message)
         (slack-room-update-latest room message team)
 
-        (if (or (slack-thread-message-p message)
-                (slack-reply-broadcast-message-p message))
-            (slack-thread-message-update-buffer message
-                                                room
-                                                team
-                                                replace
-                                                old-message)
-          (slack-room-update-buffer room team message replace)
-          (slack-room-inc-unread-count room))
+        (let ((thread-message-p (slack-thread-message-p message))
+              (reply-broadcast-message-p
+               (slack-reply-broadcast-message-p message)))
+          ;; do not update mention count if replace or thread message
+          ;; update mention count if normal message or thread broad cast message
+          (when (and (not replace)
+                     (not thread-message-p)
+                     (slack-message-mentioned-p message team))
+            (let ((count (slack-room-mention-count room team)))
+              (slack-room-set-mention-count room (+ count 1) team)))
+
+          ;; Update buffer
+          (if (or thread-message-p
+                  reply-broadcast-message-p)
+              (slack-thread-message-update-buffer message
+                                                  room
+                                                  team
+                                                  replace
+                                                  old-message)
+            (slack-room-update-buffer room team message replace))
+          ;; Update has-unreads
+          ;; do not update if replace or thread message
+          ;; update if normal message or thread broad cast message
+          (when (or (and (not replace)
+                         (not thread-message-p))
+                    reply-broadcast-message-p)
+            (slack-room-set-has-unreads room t team)))
 
         (unless no-notify
           (slack-message-notify message room team))
