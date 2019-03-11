@@ -732,9 +732,13 @@
                (slack-reply-broadcast-message-p message)))
           ;; do not update mention count if replace or thread message
           ;; update mention count if normal message or thread broad cast message
+          ;; and
+          ;; message has @ mention or room is im or room is mpim
           (when (and (not replace)
                      (not thread-message-p)
-                     (slack-message-mentioned-p message team))
+                     (or (slack-message-mentioned-p message team)
+                         (slack-im-p room)
+                         (slack-mpim-p room)))
             (let ((count (slack-room-mention-count room team)))
               (slack-room-set-mention-count room (+ count 1) team)))
 

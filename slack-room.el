@@ -313,5 +313,8 @@
 (cl-defmethod slack-room--has-unread-p ((this slack-room) counts)
   (slack-counts-channel-unread-p counts this))
 
+(cl-defmethod slack-mpim-p ((_this slack-room))
+  nil)
+
 (provide 'slack-room)
 ;;; slack-room.el ends here
