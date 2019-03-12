@@ -76,9 +76,13 @@
       (slack-user--name user team)))
 
 (defun slack-user--name (user team)
-  (if (oref team full-and-display-names)
-      (plist-get user :real_name)
-    (plist-get user :name)))
+  (slack-if-let* ((profile (slack-user-profile user)))
+      (let ((real-name (plist-get profile :real_name_normalized))
+            (display-name (plist-get profile :display_name_normalized)))
+        (if (or (oref team full-and-display-names)
+                (slack-string-blankp display-name))
+            real-name
+          display-name))))
 
 (defun slack-user-label (user team)
   (format "%s %s"
@@ -99,7 +103,7 @@
   "Return all users as alist (\"user-name\" . user) in TEAM."
   (let ((users (cl-remove-if #'slack-user-hidden-p
                              (oref team users))))
-    (mapcar (lambda (u) (cons (plist-get u :name) u))
+    (mapcar (lambda (u) (cons (slack-user--name u team) u))
             (if (functionp filter)
                 (funcall filter users)
               users))))

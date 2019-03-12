@@ -50,7 +50,7 @@
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
-                (company-grab-line "\\(\\W\\|^\\)\\(@\\w*\\|#\\w*\\|/\\w*\\)"
+                (company-grab-line "\\(\\W\\|^\\)\\(\\(@\\|#\\|/\\)\\([A-Za-z0-9._\\-]+\\)\\)"
                                    2)))
       (candidates (slack-if-let*
                       ((content (content arg))
@@ -84,6 +84,14 @@
                                   collect (oref command name))))))
       (doc-buffer
        (cl-case (prefix-type arg)
+         (user-or-usergroup
+          (slack-if-let* ((team (and slack-current-buffer
+                             (oref slack-current-buffer team)))
+                          (user-name (substring arg 1))
+                          (user (slack-user-find-by-name user-name team))
+                          (name (slack-user--name user team)))
+              (unless (string= user-name name)
+                (company-doc-buffer name))))
          (slash
           (company-doc-buffer
            (let* ((team (and slack-current-buffer
