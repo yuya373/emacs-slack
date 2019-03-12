@@ -150,7 +150,8 @@
                                                    (slack-buffer-latest-ts this))))
         (unless (string= "0" last-read)
           (unless buffer-already-exists-p
-            (slack-buffer-goto last-read))
+            (unless (slack-buffer-goto last-read)
+              (goto-char (point-max))))
           (slack-buffer-update-marker-overlay this))))
 
     buffer))
