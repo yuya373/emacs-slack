@@ -422,24 +422,23 @@
         (setq cur-point end)))))
 
 (defun slack-buffer-buttonize-link ()
-  (let ((regex "<\\(http://\\|https://\\)\\(.*?\\)|\\([[:ascii:][:nonascii:]]*?\\)>"))
+  (let ((regex "\\(<\\)\\(http://\\|https://\\)\\(.*?\\)\\(?:|\\([[:ascii:][:nonascii:]]*?\\)\\)?\\(\\)>"))
     (ignore-errors
       (goto-char (point-min))
       (while (re-search-forward regex nil t)
-        (let* ((url-begin (match-beginning 1))
+        (let* ((url-begin (match-beginning 2))
                (cur-point (point))
                (disabled (get-text-property cur-point 'slack-disable-buttonize))
-               (replace (match-string 3)))
-          (if disabled
-              (replace-match replace nil)
-            (let ((url (concat (match-string 1) (match-string 2))))
-              (replace-match replace nil)
-              (make-button (1- url-begin)
-                           (+ (1- url-begin) (length replace))
-                           'type 'lui-button
-                           'action 'lui-button-activate
-                           'lui-button-function 'browse-url
-                           'lui-button-arguments (list url)))))))))
+               (url (concat (match-string 2) (match-string 3)))
+               (replace (or (match-string 4) url)))
+          (replace-match replace nil)
+          (unless disabled
+            (make-button (1- url-begin)
+                         (+ (1- url-begin) (length replace))
+                         'type 'lui-button
+                         'action 'lui-button-activate
+                         'lui-button-function 'browse-url
+                         'lui-button-arguments (list url))))))))
 
 (defun slack-buffer-show-typing-p (buffer)
   (cl-case slack-typing-visibility
