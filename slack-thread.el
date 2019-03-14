@@ -42,7 +42,8 @@
 (defconst slack-subscriptions-thread-remove-url "https://slack.com/api/subscriptions.thread.remove")
 (defconst slack-subscriptions-thread-get-url
   "https://slack.com/api/subscriptions.thread.get")
-(defconst thread-mark-url "https://slack.com/api/subscriptions.thread.mark")
+(defconst slack-thread-mark-url
+  "https://slack.com/api/subscriptions.thread.mark")
 
 (defcustom slack-thread-also-send-to-room 'ask
   "Whether a thread message should also be sent to its room.
@@ -285,8 +286,36 @@ Any other non-nil value: send to the room."
 (cl-defmethod slack-message-user-ids ((this slack-thread))
   (with-slots (messages root) this
     (nconc (cl-mapcan #'slack-message-user-ids
-                   messages)
+                      messages)
            (slack-message-user-ids root))))
+
+(cl-defmethod slack-thread-mark ((this slack-thread) room ts team)
+  (let* ((channel (oref room id))
+         (thread-ts (oref this thread-ts))
+         (params (list (cons "channel" channel)
+                       (cons "thread_ts" thread-ts)
+                       (cons "ts" ts))))
+    (slack-subscriptions-thread-get
+     room
+     thread-ts
+     team
+     #'(lambda (subscriptions)
+         (message "SUBSCRIPTIONS: %S" subscriptions)
+         (if (cl-find-if #'(lambda (subscription)
+                             (or (string= subscription ts)
+                                 (string< subscription ts)))
+                         subscriptions)
+             (cl-labels
+                 ((success (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-thread-mark"))))
+               (slack-request
+                (slack-request-create
+                 slack-thread-mark-url
+                 team
+                 :type "POST"
+                 :params params
+                 :success #'success))))))))
 
 (provide 'slack-thread)
 ;;; slack-thread.el ends here
