@@ -745,7 +745,8 @@ TEAM is one of `slack-teams'"
     (slack-conversations-info group team)
     (slack-log (format "Joined group %s"
                        (slack-room-display-name group team))
-               team :level 'info)))
+               team :level 'info)
+    (slack-counts-update team)))
 
 (defun slack-ws-handle-channel-joined (payload team)
   (let ((channel (or (slack-room-find (plist-get (plist-get payload :channel) :id) team)
@@ -757,7 +758,8 @@ TEAM is one of `slack-teams'"
     (slack-conversations-info channel team)
     (slack-log (format "Joined channel %s"
                        (slack-room-display-name channel team))
-               team :level 'info)))
+               team :level 'info)
+    (slack-counts-update team)))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
