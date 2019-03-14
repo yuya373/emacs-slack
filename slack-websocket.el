@@ -818,6 +818,7 @@ TEAM is one of `slack-teams'"
          (channel (plist-get subscription :channel))
          (room (slack-room-find channel team))
          (parent (and room (slack-room-find-message room thread-ts))))
+    (slack-counts-update team)
     (when (and parent (oref parent thread))
       (slack-thread-marked (oref parent thread) subscription))))
 
