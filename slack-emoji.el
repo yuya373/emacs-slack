@@ -40,7 +40,11 @@
                          (let* ((raw-url (plist-get emojis name))
                                 (alias (if (string-prefix-p "alias:" raw-url)
                                            (intern (format ":%s" (cadr (split-string raw-url ":")))))))
-                           (or (and alias (or (plist-get emojis alias)
+                           (or
+                            (and (not raw-url) (handle-alias (intern ":slack") emojis)) ;some aliases are b0rked
+                            (and (string-prefix-p "alias:" raw-url) ;recursive alias
+                                 (handle-alias (intern (replace-regexp-in-string "alias" "" raw-url)) emojis))
+                            (and alias (or (plist-get emojis alias)
                                               (let ((emoji (emojify-get-emoji (format "%s:" alias))))
                                                 (if emoji
                                                     (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
