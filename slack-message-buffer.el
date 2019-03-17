@@ -148,10 +148,14 @@
             (and (slack-buffer-latest-ts this)
                  (slack-buffer-update-mark-request this
                                                    (slack-buffer-latest-ts this))))
+
+
+        (unless buffer-already-exists-p
+          (when (or (string= "0" last-read)
+                    (null (slack-buffer-goto last-read)))
+            (goto-char (point-max))))
+
         (unless (string= "0" last-read)
-          (unless buffer-already-exists-p
-            (unless (slack-buffer-goto last-read)
-              (goto-char (point-max))))
           (slack-buffer-update-marker-overlay this))))
 
     buffer))
