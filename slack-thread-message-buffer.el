@@ -88,8 +88,7 @@
                   (progn
                     (cl-loop for m in messages
                              do (slack-buffer-insert this m))
-                    (slack-buffer-update-last-read this latest-message)
-                    (slack-buffer-update-mark this thread latest-message)))
+                    (slack-buffer-update-last-read this latest-message)))
               (when (slack-buffer-has-next-page-p this)
                 (slack-buffer-insert-load-more this))))))
 
@@ -99,6 +98,11 @@
                                thread-ts
                                team))
 
+    buf))
+
+(cl-defmethod slack-buffer-buffer ((this slack-thread-message-buffer))
+  (let ((buf (cl-call-next-method)))
+    (slack-buffer-update-mark this)
     buf))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-thread-message-buffer))
@@ -131,14 +135,14 @@
                                 :after-success #'success
                                 :oldest last-read)))))
 
-(cl-defmethod slack-buffer-update-mark ((this slack-thread-message-buffer) thread message)
-  (with-slots (team room) this
-    (slack-if-let* ((ts (slack-ts message))
-                    (last-read (or (oref thread last-read) "0")))
-      (slack-thread-mark thread
-                         room
-                         ts
-                         team))))
+(cl-defmethod slack-buffer-update-mark ((this slack-thread-message-buffer))
+  (with-slots (team room last-read thread-ts) this
+    (slack-if-let* ((message (slack-room-find-message room thread-ts))
+                    (thread (slack-message-thread message room)))
+        (slack-thread-mark thread
+                           room
+                           last-read
+                           team))))
 
 (cl-defmethod slack-buffer-insert-history ((this slack-thread-message-buffer))
   (with-slots (team thread-ts last-read room) this
@@ -151,7 +155,7 @@
                    do (when (string< last-read (slack-ts m))
                         (slack-buffer-insert this m)))
           (slack-buffer-update-last-read this latest-message)
-          (slack-buffer-update-mark this thread latest-message)))))
+          (slack-buffer-update-mark this)))))
 
 
 (cl-defmethod slack-buffer-send-message ((this slack-thread-message-buffer) message)
