@@ -39,8 +39,18 @@
   :group 'slack)
 
 (defface slack-modeline-has-unreads-face
-  '((t (:weight bold)))
+  '((t (:weight bold :foreground "#d33682")))
   "Face used to team has unreads message in modeline"
+  :group 'slack)
+
+(defface slack-modeline-thread-has-unreads-face
+  '((t (:weight bold :foreground "#dc322f")))
+  "Face used to thread has unreads message in modeline"
+  :group 'slack)
+
+(defface slack-modeline-channel-has-unreads-face
+  '((t (:weight bold :foreground "#dc322f")))
+  "Face used to channel has unreads message in modeline"
   :group 'slack)
 
 (defun slack-default-modeline-formatter (alist)
@@ -62,9 +72,14 @@
                                (propertize team-name
                                            'face 'slack-modeline-has-unreads-face)
                              team-name)
-                           channel-mention-count
-                           thread-mention-count
-                           )))
+                           (if (or channel-has-unreads (< 0 channel-mention-count))
+                               (propertize (number-to-string channel-mention-count)
+                                           'face 'slack-modeline-channel-has-unreads-face)
+                             channel-mention-count)
+                           (if (or thread-has-unreads (< 0 thread-mention-count))
+                               (propertize (number-to-string thread-mention-count)
+                                           'face 'slack-modeline-thread-has-unreads-face)
+                             thread-mention-count))))
              alist " "))
 
 (defun slack-enable-modeline ()
