@@ -44,17 +44,27 @@
   :group 'slack)
 
 (defun slack-default-modeline-formatter (alist)
-  "Arg is alist of '((team-name . (has-unreads . mention-count)))"
+  "Element in ALIST is  '((team-name . ((thread . (has-unreads . mention-count))
+                                        (channel . (has-unreads . mention-count)))))"
   (mapconcat #'(lambda (e)
-                 (let ((team-name (car e))
-                       (has-unreads (cadr e))
-                       (mention-count (cddr e)))
-                   (format "[ %s: %s ]"
+                 (let* ((team-name (car e))
+                        (summary (cdr e))
+                        (thread (cdr (cl-assoc 'thread summary)))
+                        (channel (cdr (cl-assoc 'channel summary)))
+                        (thread-has-unreads (car thread))
+                        (channel-has-unreads (car channel))
+                        (has-unreads (or thread-has-unreads
+                                         channel-has-unreads))
+                        (thread-mention-count (cdr thread))
+                        (channel-mention-count (cdr channel)))
+                   (format "[ %s: %s, %s ]"
                            (if has-unreads
                                (propertize team-name
                                            'face 'slack-modeline-has-unreads-face)
                              team-name)
-                           mention-count)))
+                           channel-mention-count
+                           thread-mention-count
+                           )))
              alist " "))
 
 (defun slack-enable-modeline ()
@@ -78,17 +88,22 @@
 (defun slack-team-counts-summary (team)
   (with-slots (counts) team
     (if counts
-        (let ((summary (slack-counts-summary counts))
-              (unreads nil)
-              (count 0))
+        (let* ((summary (slack-counts-summary counts))
+               (unreads nil)
+               (count 0)
+               (thread (cdr (cl-assoc 'thread summary))))
           (cl-loop for e in summary
-                   do (let ((has-unreads (cadr e))
+                   do (let ((type (car e))
+                            (has-unreads (cadr e))
                             (mention-count (cddr e)))
-                        (cl-incf count mention-count)
-                        (if (and has-unreads (null unreads))
-                            (setq unreads t))))
-          (cons unreads count))
-      (cons nil 0))))
+                        (unless (eq type 'thread)
+                          (cl-incf count mention-count)
+                          (if (and has-unreads (null unreads))
+                              (setq unreads t)))))
+          (list (cons 'thread thread)
+                (cons 'channel (cons unreads count))))
+      (list (cons 'thread (cons nil 0))
+            (cons 'channel (cons nil 0))))))
 
 (provide 'slack-modeline)
 ;;; slack-modeline.el ends here
