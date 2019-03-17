@@ -560,19 +560,16 @@ TEAM is one of `slack-teams'"
   (let ((subtype (plist-get payload :subtype)))
     (if (string= subtype "bot_message")
         (slack-ws-update-bot-message payload team)
-      (let ((message (slack-message-create payload team)))
-        (slack-if-let* ((user (slack-user-find message team)))
-            (slack-message-update message team)
-          (progn
-            (slack-log (format "User not found: %S"
-                               (slack-message-sender-id message))
-                       team :level 'debug)
-            (slack-user-info-request
-             (slack-message-sender-id message)
-             team
-             :after-success
-             #'(lambda ()
-                 (slack-message-update message team)))))))))
+      (let* ((message (slack-message-create payload team))
+             (user-ids (slack-message-user-ids message))
+             (missing-user-ids (slack-team-missing-user-ids team user-ids)))
+        (if (< 0 (length missing-user-ids))
+            (slack-user-info-request missing-user-ids
+                                     team
+                                     :after-success
+                                     #'(lambda ()
+                                         (slack-message-update message team)))
+          (slack-message-update message team))))))
 
 (defun slack-ws-update-bot-message (payload team)
   (let* ((bot-id (plist-get payload :bot_id))
