@@ -28,6 +28,11 @@
 
 (defvar slack-modeline nil)
 
+(defcustom slack-enable-global-mode-string nil
+  "If true, add `slack-modeline' to `global-mode-string'"
+  :type 'boolean
+  :group 'slack)
+
 (defcustom slack-modeline-formatter #'slack-default-modeline-formatter
   "Format modeline with Arg '((team-name . (has-unreads . mention-count)))."
   :type 'function
@@ -53,7 +58,8 @@
              alist " "))
 
 (defun slack-enable-modeline ()
-  (add-to-list 'global-mode-string '(:eval slack-modeline) t))
+  (when slack-enable-global-mode-string
+    (add-to-list 'global-mode-string '(:eval slack-modeline) t)))
 
 (defun slack-update-modeline ()
   (interactive)
