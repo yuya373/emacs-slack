@@ -300,7 +300,6 @@ Any other non-nil value: send to the room."
      thread-ts
      team
      #'(lambda (subscriptions)
-         (message "SUBSCRIPTIONS: %S" subscriptions)
          (if (cl-find-if #'(lambda (subscription)
                              (or (string= subscription ts)
                                  (string< subscription ts)))
