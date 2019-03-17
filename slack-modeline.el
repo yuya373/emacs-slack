@@ -44,12 +44,12 @@
   :group 'slack)
 
 (defface slack-modeline-thread-has-unreads-face
-  '((t (:weight bold :foreground "#dc322f")))
+  '((t (:weight bold :foreground "#d33682")))
   "Face used to thread has unreads message in modeline"
   :group 'slack)
 
 (defface slack-modeline-channel-has-unreads-face
-  '((t (:weight bold :foreground "#dc322f")))
+  '((t (:weight bold :foreground "#d33682")))
   "Face used to channel has unreads message in modeline"
   :group 'slack)
 
