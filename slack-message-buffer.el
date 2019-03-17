@@ -740,8 +740,9 @@
                      (or (slack-message-mentioned-p message team)
                          (slack-im-p room)
                          (slack-mpim-p room)))
-            (let ((count (slack-room-mention-count room team)))
-              (slack-room-set-mention-count room (+ count 1) team)))
+            (let* ((count (slack-room-mention-count room team))
+                   (next-count (+ count 1)))
+              (slack-room-set-mention-count room next-count team)))
 
           ;; Update buffer
           (if (or thread-message-p
@@ -755,9 +756,8 @@
           ;; Update has-unreads
           ;; do not update if replace or thread message
           ;; update if normal message or thread broad cast message
-          (when (or (and (not replace)
-                         (not thread-message-p))
-                    reply-broadcast-message-p)
+          (when (and (not replace)
+                     (not thread-message-p))
             (slack-room-set-has-unreads room t team)))
 
         (unless no-notify
