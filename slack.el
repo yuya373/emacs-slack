@@ -67,6 +67,7 @@
 (require 'slack-request)
 (require 'slack-usergroup)
 (require 'slack-unread)
+(require 'slack-modeline)
 
 (require 'slack-oauth2)
 (require 'slack-authorize)
