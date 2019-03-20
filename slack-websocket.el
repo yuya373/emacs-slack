@@ -740,7 +740,12 @@ TEAM is one of `slack-teams'"
                team :level 'info)))
 
 (defun slack-ws-handle-channel-joined (payload team)
-  (let ((channel (slack-room-find (plist-get (plist-get payload :channel) :id) team)))
+  (let ((channel (or (slack-room-find (plist-get (plist-get payload :channel) :id) team)
+                     (let ((channel (slack-room-create (plist-get payload :channel)
+                                                       'slack-channel)))
+
+                       (push channel (oref team channels))
+                       channel))))
     (slack-conversations-info channel team)
     (slack-log (format "Joined channel %s"
                        (slack-room-display-name channel team))
