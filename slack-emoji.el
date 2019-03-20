@@ -33,6 +33,11 @@
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
+;; [How can I get the FULL list of slack emoji through API? - Stack Overflow](https://stackoverflow.com/a/39654939)
+(defconst slack-emoji-master-data-url
+  "https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json")
+(defvar slack-emoji-master (make-hash-table :test 'equal :size 1600))
+
 (defun slack-download-emoji (team after-success)
   (if (require 'emojify nil t)
       (cl-labels
@@ -94,6 +99,28 @@
       (progn (emojify-download-emoji-maybe)
              (emojify-completing-read "Select Emoji: "))
     (read-from-minibuffer "Emoji: ")))
+
+(defun slack-emoji-fetch-master-data (team)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-emoji-fetch-master-data")
+                 (cl-loop for emoji in data
+                          do (let ((short-names (plist-get emoji :short_names)))
+                               (when short-names
+                                 (cl-loop for name in short-names
+                                          do (puthash (format ":%s:" name)
+                                                      t
+                                                      slack-emoji-master))))))))
+    (slack-request
+     (slack-request-create
+      slack-emoji-master-data-url
+      team
+      :type "GET"
+      :success #'success
+      :without-auth t
+      :sync t
+      ))))
 
 (provide 'slack-emoji)
 ;;; slack-emoji.el ends here
