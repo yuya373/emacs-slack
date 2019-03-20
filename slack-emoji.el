@@ -97,7 +97,17 @@
   (if (and (fboundp 'emojify-completing-read)
            (fboundp 'emojify-download-emoji-maybe))
       (progn (emojify-download-emoji-maybe)
-             (emojify-completing-read "Select Emoji: "))
+             (cl-labels
+                 ((select ()
+                          (emojify-completing-read "Select Emoji: "
+                                                   #'(lambda (emoji data)
+                                                       (gethash (gethash "emoji" data)
+                                                                slack-emoji-master
+                                                                nil)))))
+               (if (< 0 (hash-table-count slack-emoji-master))
+                   (select)
+                 (slack-emoji-fetch-master-data (car slack-teams))
+                 (select))))
     (read-from-minibuffer "Emoji: ")))
 
 (defun slack-emoji-fetch-master-data (team)
