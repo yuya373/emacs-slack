@@ -26,6 +26,7 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)
+(require 'slack-counts)
 
 (defvar slack-completing-read-function)
 
@@ -333,7 +334,7 @@
                            do (slack-request-worker-push
                                (slack-conversations-info-request
                                 room team)))
-                  (slack-users-counts team)
+                  (slack-counts-update team)
                   (slack-user-info-request
                    (mapcar #'(lambda (im) (oref im user))
                            (oref team ims))

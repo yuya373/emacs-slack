@@ -83,11 +83,12 @@
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))
               (slack-if-let* ((thread (slack-message-thread message room))
-                              (messages (oref thread messages)))
+                              (messages (oref thread messages))
+                              (latest-message (car (last messages))))
                   (progn
                     (cl-loop for m in messages
                              do (slack-buffer-insert this m))
-                    (slack-buffer-update-last-read this (car (last messages)))))
+                    (slack-buffer-update-last-read this latest-message)))
               (when (slack-buffer-has-next-page-p this)
                 (slack-buffer-insert-load-more this))))))
 
@@ -97,6 +98,11 @@
                                thread-ts
                                team))
 
+    buf))
+
+(cl-defmethod slack-buffer-buffer ((this slack-thread-message-buffer))
+  (let ((buf (cl-call-next-method)))
+    (slack-buffer-update-mark this)
     buf))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-thread-message-buffer))
@@ -129,16 +135,28 @@
                                 :after-success #'success
                                 :oldest last-read)))))
 
+(cl-defmethod slack-buffer-update-mark ((this slack-thread-message-buffer))
+  (with-slots (team room last-read thread-ts) this
+    (slack-if-let* ((message (slack-room-find-message room thread-ts))
+                    (thread (slack-message-thread message room)))
+        (slack-thread-mark thread
+                           room
+                           last-read
+                           team))))
+
 (cl-defmethod slack-buffer-insert-history ((this slack-thread-message-buffer))
   (with-slots (team thread-ts last-read room) this
     (slack-if-let* ((message (slack-room-find-message room thread-ts))
                     (thread (slack-message-thread message room))
-                    (messages (oref thread messages)))
+                    (messages (oref thread messages))
+                    (latest-message (car (last messages))))
         (progn
           (cl-loop for m in messages
                    do (when (string< last-read (slack-ts m))
                         (slack-buffer-insert this m)))
-          (slack-buffer-update-last-read this (car (last messages)))))))
+          (slack-buffer-update-last-read this latest-message)
+          (slack-buffer-update-mark this)))))
+
 
 (cl-defmethod slack-buffer-send-message ((this slack-thread-message-buffer) message)
   (with-slots (room team thread-ts) this

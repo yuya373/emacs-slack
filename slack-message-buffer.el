@@ -133,9 +133,8 @@
     (slack-message-send-internal message room team)))
 
 (cl-defmethod slack-buffer-latest-ts ((this slack-message-buffer))
-  (with-slots (room) this
-    (slack-if-let* ((latest (oref room latest)))
-        (slack-ts latest))))
+  (with-slots (room team) this
+    (slack-room-latest room team)))
 
 (cl-defmethod slack-buffer-buffer ((this slack-message-buffer))
   (let ((buffer-already-exists-p (get-buffer (slack-buffer-name this)))
@@ -149,9 +148,14 @@
             (and (slack-buffer-latest-ts this)
                  (slack-buffer-update-mark-request this
                                                    (slack-buffer-latest-ts this))))
+
+
+        (unless buffer-already-exists-p
+          (when (or (string= "0" last-read)
+                    (null (slack-buffer-goto last-read)))
+            (goto-char (point-max))))
+
         (unless (string= "0" last-read)
-          (unless buffer-already-exists-p
-            (slack-buffer-goto last-read))
           (slack-buffer-update-marker-overlay this))))
 
     buffer))
@@ -287,7 +291,7 @@
                                                   :cursor cursor
                                                   :after-success #'after-success))
            (after-success (messages next-cursor)
-                          (slack-room-append-messages room messages)
+                          (slack-room-append-messages room messages team)
                           (if (and next-cursor (< 0 (length next-cursor)))
                               (paginate next-cursor)
                             (write-messages)))
@@ -339,7 +343,7 @@
                 (goto-char cur-point))))
            (after-success (messages next-cursor)
                           (oset this cursor next-cursor)
-                          (slack-room-prepend-messages room messages)
+                          (slack-room-prepend-messages room messages team)
                           (update-buffer (slack-room-sorted-messages room))))
         (slack-conversations-history room team
                                      :cursor (oref this cursor)
@@ -641,7 +645,7 @@
         (slack-conversations-history
          room team
          :after-success #'(lambda (messages cursor)
-                            (slack-room-set-messages room messages)
+                            (slack-room-set-messages room messages team)
                             (open (slack-create-message-buffer room cursor team))))))))
 
 (cl-defmethod slack-room-update-buffer ((this slack-room) team message replace)
@@ -651,7 +655,7 @@
          (slack-conversations-history
           this team
           :after-success #'(lambda (messages cursor)
-                             (slack-room-set-messages this messages)
+                             (slack-room-set-messages this messages team)
                              (tracking-add-buffer
                               (slack-buffer-buffer
                                (slack-create-message-buffer this cursor team))))))))
@@ -725,23 +729,40 @@
                           (not (slack-room-find-message room ts)))))
 
       (progn
-        (when (and (not replace)
-                   (slack-message-mentioned-p message team))
-          (cl-incf (oref room mention-count-display))
-          (cl-incf (oref room mention-count)))
-
         (slack-room-push-message room message)
-        (slack-room-update-latest room message)
+        (slack-room-update-latest room message team)
 
-        (if (or (slack-thread-message-p message)
-                (slack-reply-broadcast-message-p message))
-            (slack-thread-message-update-buffer message
-                                                room
-                                                team
-                                                replace
-                                                old-message)
-          (slack-room-update-buffer room team message replace)
-          (slack-room-inc-unread-count room))
+        (let ((thread-message-p (slack-thread-message-p message))
+              (reply-broadcast-message-p
+               (slack-reply-broadcast-message-p message)))
+          ;; do not update mention count if replace or thread message
+          ;; update mention count if normal message or thread broad cast message
+          ;; and
+          ;; message has @ mention or room is im or room is mpim
+          (when (and (not replace)
+                     (not thread-message-p)
+                     (or (slack-message-mentioned-p message team)
+                         (slack-im-p room)
+                         (slack-mpim-p room)))
+            (let* ((count (slack-room-mention-count room team))
+                   (next-count (+ count 1)))
+              (slack-room-set-mention-count room next-count team)))
+
+          ;; Update buffer
+          (if (or thread-message-p
+                  reply-broadcast-message-p)
+              (slack-thread-message-update-buffer message
+                                                  room
+                                                  team
+                                                  replace
+                                                  old-message)
+            (slack-room-update-buffer room team message replace))
+          ;; Update has-unreads
+          ;; do not update if replace or thread message
+          ;; update if normal message or thread broad cast message
+          (when (and (not replace)
+                     (not thread-message-p))
+            (slack-room-set-has-unreads room t team)))
 
         (unless no-notify
           (slack-message-notify message room team))

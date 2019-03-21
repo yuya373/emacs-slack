@@ -154,5 +154,28 @@
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
               (oref team ims)))
 
+(cl-defmethod slack-room--has-unread-p ((this slack-im) counts)
+  (slack-counts-im-unread-p counts this))
+
+(cl-defmethod slack-room-mention-count ((this slack-im) team)
+  (with-slots (counts) team
+    (if counts
+        (slack-counts-im-mention-count counts this)
+      0)))
+
+(cl-defmethod slack-room-set-mention-count ((this slack-im) count team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-im-set-mention-count counts this count)))
+
+(cl-defmethod slack-room-set-has-unreads ((this slack-im) value team)
+  (slack-if-let* ((counts (oref team counts)))
+      (slack-counts-im-set-has-unreads counts this value)))
+
+(cl-defmethod slack-room--update-latest ((this slack-im) counts ts)
+  (slack-counts-im-update-latest counts this ts))
+
+(cl-defmethod slack-room--latest ((this slack-im) counts)
+  (slack-counts-im-latest counts this))
+
 (provide 'slack-im)
 ;;; slack-im.el ends here

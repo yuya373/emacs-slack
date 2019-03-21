@@ -415,7 +415,15 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-pin-removed decoded-payload team))
          ((string= type "pin_added")
           (slack-ws-handle-pin-added decoded-payload team))
+         ((string= type "update_thread_state")
+          (slack-ws-handle-update-thread-state payload team))
          )))))
+
+(defun slack-ws-handle-update-thread-state (payload team)
+  (let* ((has-unreads (eq t (plist-get payload :has_unreads)))
+         (mention-count (plist-get payload :mention_count)))
+    (slack-if-let* ((counts (oref team counts)))
+        (slack-counts-update-threads counts has-unreads mention-count))))
 
 (defun slack-ws-handle-pin-added (payload team)
   (let* ((item (plist-get payload :item))
@@ -737,7 +745,8 @@ TEAM is one of `slack-teams'"
     (slack-conversations-info group team)
     (slack-log (format "Joined group %s"
                        (slack-room-display-name group team))
-               team :level 'info)))
+               team :level 'info)
+    (slack-counts-update team)))
 
 (defun slack-ws-handle-channel-joined (payload team)
   (let ((channel (or (slack-room-find (plist-get (plist-get payload :channel) :id) team)
@@ -749,7 +758,8 @@ TEAM is one of `slack-teams'"
     (slack-conversations-info channel team)
     (slack-log (format "Joined channel %s"
                        (slack-room-display-name channel team))
-               team :level 'info)))
+               team :level 'info)
+    (slack-counts-update team)))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let* ((id (plist-get payload :user))
@@ -795,7 +805,8 @@ TEAM is one of `slack-teams'"
       (progn
         (oset room unread-count-display unread-count-display)
         (oset room last-read ts)
-        (oset room mention-count-display mention-count-display)
+        (slack-room-set-mention-count room mention-count-display team)
+        (slack-room-set-has-unreads room (< 0 unread-count-display) team)
         (slack-update-modeline)
         (slack-if-let*
             ((buffer (slack-buffer-find 'slack-message-buffer room team)))
@@ -807,6 +818,7 @@ TEAM is one of `slack-teams'"
          (channel (plist-get subscription :channel))
          (room (slack-room-find channel team))
          (parent (and room (slack-room-find-message room thread-ts))))
+    (slack-counts-update team)
     (when (and parent (oref parent thread))
       (slack-thread-marked (oref parent thread) subscription))))
 
