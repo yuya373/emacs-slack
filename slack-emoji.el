@@ -50,10 +50,10 @@
                             (and (string-prefix-p "alias:" raw-url) ;recursive alias
                                  (handle-alias (intern (replace-regexp-in-string "alias" "" raw-url)) emojis))
                             (and alias (or (plist-get emojis alias)
-                                              (let ((emoji (emojify-get-emoji (format "%s:" alias))))
-                                                (if emoji
-                                                    (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
-                               raw-url)))
+                                           (let ((emoji (emojify-get-emoji (format "%s:" alias))))
+                                             (if emoji
+                                                 (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
+                            raw-url)))
            (push-new-emoji (emoji)
                            (puthash (car emoji) t (oref team emoji-master))
                            (cl-pushnew emoji emojify-user-emojis
