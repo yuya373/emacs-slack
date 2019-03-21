@@ -55,6 +55,7 @@
                                                     (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
                                raw-url)))
            (push-new-emoji (emoji)
+                           (puthash (car emoji) t (oref team emoji-master))
                            (cl-pushnew emoji emojify-user-emojis
                                        :test #'string=
                                        :key #'car))
