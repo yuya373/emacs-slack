@@ -129,9 +129,9 @@
 
 (defun slack-user-set-status ()
   (interactive)
-  (let ((team (slack-team-select))
-        (emoji (slack-select-emoji))
-        (text (read-from-minibuffer "Text: ")))
+  (let* ((team (slack-team-select))
+         (emoji (slack-select-emoji team))
+         (text (read-from-minibuffer "Text: ")))
     (slack-user-set-status-request  team emoji text)))
 
 (defun slack-user-set-status-request (team emoji text)

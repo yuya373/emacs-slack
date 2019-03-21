@@ -80,8 +80,8 @@
         (list "Select Reaction: ")
         selected)))
 
-(defun slack-message-reaction-input ()
-  (let ((reaction (slack-select-emoji)))
+(defun slack-message-reaction-input (team)
+  (let ((reaction (slack-select-emoji team)))
     (if (and (string-prefix-p ":" reaction)
              (string-suffix-p ":" reaction))
         (substring reaction 1 -1)
