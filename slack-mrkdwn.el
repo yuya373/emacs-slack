@@ -26,7 +26,7 @@
 (require 'slack-util)
 
 (defconst slack-mrkdwn-regex-bold
-  "\\(?:^\\|[^\\]\\)\\(\\(*\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|[^\\]\\)\\(\\(*\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
 
 (defface slack-mrkdwn-bold-face
   '((t (:weight bold)))
@@ -34,7 +34,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-italic
-  "\\(?:^\\|[^\\]\\)\\(\\(_\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|[^\\]\\)\\(\\(_\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
 
 (defface slack-mrkdwn-italic-face
   '((t (:slant italic)))
@@ -42,7 +42,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-strike
-  "\\(?:^\\|[^\\]\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\|\n[^\n]\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|[^\\]\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
 
 (defface slack-mrkdwn-strike-face
   '((t (:strike-through t)))
