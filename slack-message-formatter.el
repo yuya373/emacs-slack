@@ -93,6 +93,11 @@
   "Face used to channel button."
   :group 'slack)
 
+(defface slack-message-mention-face
+  '((t (:background "#073642" :foreground "#2aa198")))
+  "Face used to mention."
+  :group 'slack)
+
 
 (defcustom slack-date-formats
   '((date_num . "%Y-%m-%d")

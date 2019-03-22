@@ -144,7 +144,11 @@
                (alist (append pre-defined (slack-user-names team) usergroups)))
           (slack-select-from-list
               (alist "Select User: ")
-              (insert (concat "@" (plist-get selected :name))))))))
+              (insert (concat
+                       (propertize (concat "@" (plist-get selected :name))
+                                   'display (concat "@" (slack-user--name selected team))
+                                   'face 'slack-message-mention-face)
+                       " ")))))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here

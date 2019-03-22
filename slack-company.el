@@ -70,8 +70,9 @@
                           (cl-loop for user in (oref team users)
                                    if (and (not (eq (plist-get user :deleted) t))
                                            (string-prefix-p content
-                                                            (plist-get user :name)))
-                                   collect (concat "@" (plist-get user :name)))))
+                                                            (slack-user--name user team)))
+                                   collect (propertize (concat "@" (plist-get user :name))
+                                                       'display (concat "@" (slack-user--name user team))))))
                         (channel
                          (cl-loop for team in (oref team channels)
                                   if (string-prefix-p content
@@ -82,6 +83,18 @@
                                   if (string-prefix-p (concat "/" content)
                                                       (oref command name))
                                   collect (oref command name))))))
+      (post-completion
+       (insert " ")
+       (let* ((inserted arg)
+              (display (get-text-property 0 'display inserted))
+              (end (1- (point))))
+         (when (re-search-backward (substring-no-properties inserted)
+                                   (point-min)
+                                   t)
+           (let ((beg (point)))
+             (put-text-property beg end 'face 'slack-message-mention-face)
+             (put-text-property beg end 'display display)
+             (goto-char (+ 1 (length display) end))))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (user-or-usergroup
