@@ -380,11 +380,17 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (text)
                (let ((user-id (match-string 1 text))
                      (label (match-string 2 text)))
-                 (concat "@" (or (and label (substring label 1))
-                                 (slack-if-let* ((user (slack-user--find user-id team)))
-                                     (plist-get user :name)
-                                   (slack-log (format "User not found. ID: %S" user-id) team)
-                                   "<Unknown USER>"))))))
+                 (propertize
+                  (concat "@" (or (slack-if-let* ((user (slack-user--find user-id
+                                                                          team)))
+                                      (slack-user--name user team)
+                                    (progn
+                                      (slack-log (format "User not found. ID: %S" user-id) team)
+                                      nil))
+                                  (and label (substring label 1))
+                                  "<Unknown USER>"))
+                  'slack-defer-face
+                  'slack-message-mention-face))))
     (replace-regexp-in-string slack-message-user-regexp
                               #'replace
                               text t t)))
