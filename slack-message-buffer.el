@@ -286,10 +286,10 @@
 
       (cl-labels
           ((paginate (cursor)
-                     (slack-conversations-history room team
-                                                  :oldest latest
-                                                  :cursor cursor
-                                                  :after-success #'after-success))
+                     (slack-conversations-view room team
+                                               :oldest latest
+                                               :cursor cursor
+                                               :after-success #'after-success))
            (after-success (messages next-cursor)
                           (slack-room-append-messages room messages team)
                           (if (and next-cursor (< 0 (length next-cursor)))
@@ -303,9 +303,9 @@
                                (slack-buffer-insert-messages this messages)
                                (slack-buffer-goto (slack-buffer-last-read this))
                                (slack-buffer-update-marker-overlay this)))))
-        (slack-conversations-history room team
-                                     :oldest latest
-                                     :after-success #'after-success)))))
+        (slack-conversations-view room team
+                                  :oldest latest
+                                  :after-success #'after-success)))))
 
 (cl-defmethod slack-buffer-load-more ((this slack-message-buffer))
   (with-slots (room team oldest) this
@@ -345,9 +345,9 @@
                           (oset this cursor next-cursor)
                           (slack-room-prepend-messages room messages team)
                           (update-buffer (slack-room-sorted-messages room))))
-        (slack-conversations-history room team
-                                     :cursor (oref this cursor)
-                                     :after-success #'after-success)))))
+        (slack-conversations-view room team
+                                  :cursor (oref this cursor)
+                                  :after-success #'after-success)))))
 
 (cl-defmethod slack-buffer-display-pins-list ((this slack-message-buffer))
   (with-slots (room team) this
@@ -642,7 +642,7 @@
                                   team)))
       (if buf (open buf)
         (message "No Message in %s, fetching from server..." (slack-room-name room team))
-        (slack-conversations-history
+        (slack-conversations-view
          room team
          :after-success #'(lambda (messages cursor)
                             (slack-room-set-messages room messages team)
@@ -652,7 +652,7 @@
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer this team)))
       (slack-buffer-update buffer message :replace replace)
     (and slack-buffer-create-on-notify
-         (slack-conversations-history
+         (slack-conversations-view
           this team
           :after-success #'(lambda (messages cursor)
                              (slack-room-set-messages this messages team)
