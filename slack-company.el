@@ -70,8 +70,10 @@
                                    collect (concat "@" (oref usergroup handle)))
                           (cl-loop for user in (oref team users)
                                    if (and (not (eq (plist-get user :deleted) t))
-                                           (string-prefix-p content
-                                                            (slack-user--name user team)))
+                                           (or (string-prefix-p content
+                                                                (slack-user-real-name user))
+                                               (string-prefix-p content
+                                                                (slack-user-display-name user))))
                                    collect (concat "@" (slack-user--name user team)))))
                         (channel
                          (cl-loop for team in (oref team channels)
