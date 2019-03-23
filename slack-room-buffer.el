@@ -231,7 +231,8 @@
            (handle-delete-message () (slack-buffer-delete-message this ts))
            (handle-star-message () (slack-buffer-add-star this ts))
            (handle-unstar-message () (slack-buffer-remove-star this ts))
-           (handle-add-reaction () (let ((reaction (slack-message-reaction-input)))
+           (handle-add-reaction () (let ((reaction
+                                          (slack-message-reaction-input team)))
                                      (slack-buffer-add-reaction-to-message
                                       this reaction ts)))
            (handle-remove-reaction () (slack-buffer-remove-reaction-from-message

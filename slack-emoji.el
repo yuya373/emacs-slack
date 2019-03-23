@@ -33,6 +33,11 @@
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
+;; [How can I get the FULL list of slack emoji through API? - Stack Overflow](https://stackoverflow.com/a/39654939)
+(defconst slack-emoji-master-data-url
+  "https://raw.githubusercontent.com/iamcal/emoji-data/master/emoji.json")
+(defvar slack-emoji-master (make-hash-table :test 'equal :size 1600))
+
 (defun slack-download-emoji (team after-success)
   (if (require 'emojify nil t)
       (cl-labels
@@ -45,11 +50,12 @@
                             (and (string-prefix-p "alias:" raw-url) ;recursive alias
                                  (handle-alias (intern (replace-regexp-in-string "alias" "" raw-url)) emojis))
                             (and alias (or (plist-get emojis alias)
-                                              (let ((emoji (emojify-get-emoji (format "%s:" alias))))
-                                                (if emoji
-                                                    (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
-                               raw-url)))
+                                           (let ((emoji (emojify-get-emoji (format "%s:" alias))))
+                                             (if emoji
+                                                 (concat (emojify-image-dir) "/" (gethash "image" emoji))))))
+                            raw-url)))
            (push-new-emoji (emoji)
+                           (puthash (car emoji) t (oref team emoji-master))
                            (cl-pushnew emoji emojify-user-emojis
                                        :test #'string=
                                        :key #'car))
@@ -88,12 +94,47 @@
           team
           :success #'on-success)))))
 
-(defun slack-select-emoji ()
+(defun slack-select-emoji (team)
   (if (and (fboundp 'emojify-completing-read)
            (fboundp 'emojify-download-emoji-maybe))
       (progn (emojify-download-emoji-maybe)
-             (emojify-completing-read "Select Emoji: "))
+             (cl-labels
+                 ((select ()
+                          (emojify-completing-read "Select Emoji: "
+                                                   #'(lambda (emoji data)
+                                                       (or (gethash (gethash "emoji" data)
+                                                                    slack-emoji-master
+                                                                    nil)
+                                                           (gethash (gethash "emoji" data)
+                                                                    (oref team emoji-master)
+                                                                    nil))))))
+               (if (< 0 (hash-table-count slack-emoji-master))
+                   (select)
+                 (slack-emoji-fetch-master-data (car slack-teams))
+                 (select))))
     (read-from-minibuffer "Emoji: ")))
+
+(defun slack-emoji-fetch-master-data (team)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-emoji-fetch-master-data")
+                 (cl-loop for emoji in data
+                          do (let ((short-names (plist-get emoji :short_names)))
+                               (when short-names
+                                 (cl-loop for name in short-names
+                                          do (puthash (format ":%s:" name)
+                                                      t
+                                                      slack-emoji-master))))))))
+    (slack-request
+     (slack-request-create
+      slack-emoji-master-data-url
+      team
+      :type "GET"
+      :success #'success
+      :without-auth t
+      :sync t
+      ))))
 
 (provide 'slack-emoji)
 ;;; slack-emoji.el ends here

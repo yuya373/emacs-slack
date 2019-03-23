@@ -791,7 +791,7 @@
 (defun slack-message-add-reaction ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
-                  (reaction (slack-message-reaction-input)))
+                  (reaction (slack-message-reaction-input (oref buf team))))
       (slack-buffer-add-reaction-to-message buf
                                             reaction
                                             (slack-get-ts))))

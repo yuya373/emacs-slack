@@ -66,16 +66,18 @@
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
    (timeout :initarg :timeout :initform `,slack-request-timeout)
-   (execute-at :initform 0.0 :type float)))
+   (execute-at :initform 0.0 :type float)
+   (without-auth :initarg :without-auth :initform nil :type boolean)))
 
 (cl-defun slack-request-create
-    (url team &key type success error params data parser sync files headers timeout)
+    (url team &key type success error params data parser sync files headers timeout without-auth)
   (let ((args (list
                :url url :team team :type type
                :success success :error error
                :params params :data data :parser parser
                :sync sync :files files :headers headers
-               :timeout timeout))
+               :timeout timeout
+               :without-auth without-auth))
         (ret nil))
     (mapc #'(lambda (maybe-key)
               (let ((value (plist-get args maybe-key)))
@@ -168,7 +170,7 @@
                                    :data data)))
                       (when (functionp on-error)
                         (funcall on-error)))))
-      (with-slots (url type params data parser sync files headers timeout) req
+      (with-slots (url type params data parser sync files headers timeout without-auth) req
         (oset req response
               (request
                url
@@ -177,9 +179,11 @@
                :params params
                :data data
                :files files
-               :headers (append (list (cons "Authorization"
-                                            (format "Bearer %s" (slack-team-token team))))
-                                headers)
+               :headers (append
+                         (if without-auth nil
+                             (list (cons "Authorization"
+                                         (format "Bearer %s" (slack-team-token team)))))
+                         headers)
                :parser parser
                :success #'-on-success
                :error #'-on-error
