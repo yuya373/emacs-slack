@@ -26,23 +26,34 @@
 
 (require 'slack-team)
 
+(defun slack-bot-append (bots team)
+  (oset team
+        bots
+        (append (cl-remove-if #'(lambda (bot)
+                                  (cl-find-if #'(lambda (e)
+                                                  (string= (plist-get e :id)
+                                                           (plist-get bot :id)))
+                                              bots))
+                              (oref team bots))
+                bots)))
+
 (defun slack-find-bot (id team)
   (with-slots (users bots) team
-    (or (cl-find-if #'(lambda (user)
-                        (string= id (plist-get user :bot_id)))
-                    users)
-        (cl-find-if #'(lambda (bot)
+    (or (cl-find-if #'(lambda (bot)
                         (string= id (plist-get bot :id)))
-                    bots))))
+                    bots)
+        (cl-find-if #'(lambda (user)
+                        (string= id (plist-get user :bot_id)))
+                    users))))
 
 (defun slack-find-bot-by-name (name team)
   (with-slots (bots users) team
-    (or (cl-find-if #'(lambda (user)
-                        (string= name (plist-get user :name)))
-                    users)
-        (cl-find-if #'(lambda (bot)
+    (or (cl-find-if #'(lambda (bot)
                         (string= name (plist-get bot :name)))
-                    bots))))
+                    bots)
+        (cl-find-if #'(lambda (user)
+                        (string= name (plist-get user :name)))
+                    users))))
 
 
 

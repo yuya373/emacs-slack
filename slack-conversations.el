@@ -64,6 +64,8 @@
   "https://slack.com/api/conversations.history")
 (defconst slack-conversations-open-url
   "https://slack.com/api/conversations.open")
+(defconst slack-conversations-view-url
+  "https://slack.com/api/conversations.view")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -526,6 +528,50 @@
                         (cons "users" users)
                       (cons "channel" channel)))
       :success (slack-conversations-success-handler team)))))
+
+(cl-defun slack-conversations-view (room team &key
+                                         (after-success nil)
+                                         (cursor nil)
+                                         (latest nil)
+                                         (oldest nil)
+                                         (inclusive nil)
+                                         (count "100"))
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-conversations-view")
+                 (let* ((new-room (slack-room-create
+                                   (plist-get data :channel)
+                                   (eieio-object-class-name room)))
+                        (bots (plist-get data :bots))
+                        (users (plist-get data :users))
+                        (history (plist-get data :history))
+                        (messages (cl-loop for e in (plist-get history :messages)
+                                           collect (slack-message-create e
+                                                                         team
+                                                                         room)))
+                        (meta (plist-get data :response_metadata))
+                        (next-cursor (or (and meta (plist-get meta :next_cursor))
+                                         "")))
+                   (slack-merge room new-room)
+                   (slack-user-append users team)
+                   (slack-bot-append bots team)
+                   (when (functionp after-success)
+                     (funcall after-success messages next-cursor))))))
+    (slack-request
+     (slack-request-create
+      slack-conversations-view-url
+      team
+      :type "POST"
+      :params (list (cons "name" (oref room id))
+                    (cons "include_pin_count" "true")
+                    (cons "include_full_users" "true")
+                    (cons "count" count)
+                    (and cursor (cons "cursor" cursor))
+                    (and latest (cons "latest" latest))
+                    (and oldest (cons "oldest" oldest))
+                    (and inclusive (cons "inclusive" inclusive)))
+      :success #'success))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here
