@@ -85,6 +85,7 @@
 (defclass slack-bot-message (slack-message)
   ((bot-id :initarg :bot_id :type string)
    (username :initarg :username :type string :initform "")
+   (user :initarg :user :type string :initform "")
    (icons :initarg :icons)))
 
 (defclass slack-file-comment-message (slack-message)
