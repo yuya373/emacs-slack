@@ -328,12 +328,6 @@
                                     groups)
                   (slack-merge-list (oref team ims)
                                     ims)
-                  (cl-loop for room in (append (oref team channels)
-                                               (oref team groups)
-                                               (oref team ims))
-                           do (slack-request-worker-push
-                               (slack-conversations-info-request
-                                room team)))
                   (slack-counts-update team)
                   (slack-user-info-request
                    (mapcar #'(lambda (im) (oref im user))

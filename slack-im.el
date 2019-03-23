@@ -106,10 +106,6 @@
                                     ims)
                   (when (functionp after-success)
                     (funcall after-success team))
-                  (mapc #'(lambda (room)
-                            (slack-request-worker-push
-                             (slack-conversations-info-request room team)))
-                        (oref team ims))
                   (slack-log "Slack Im List Updated"
                              team :level 'info)
                   (slack-team-send-presence-sub team)))
