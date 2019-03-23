@@ -98,6 +98,11 @@
   "Face used to mention."
   :group 'slack)
 
+(defface slack-message-mention-me-face
+  '((t (:background "#073642" :foreground "#859900")))
+  "Face used to mention."
+  :group 'slack)
+
 
 (defcustom slack-date-formats
   '((date_num . "%Y-%m-%d")
@@ -378,8 +383,11 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defun slack-unescape-@ (text team)
   (cl-labels ((replace
                (text)
-               (let ((user-id (match-string 1 text))
-                     (label (match-string 2 text)))
+               (let* ((user-id (match-string 1 text))
+                      (label (match-string 2 text))
+                      (face (if (string= user-id (oref team self-id))
+                                'slack-message-mention-me-face
+                              'slack-message-mention-face)))
                  (propertize
                   (concat "@" (or (slack-if-let* ((user (slack-user--find user-id
                                                                           team)))
@@ -389,8 +397,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                       nil))
                                   (and label (substring label 1))
                                   "<Unknown USER>"))
-                  'slack-defer-face
-                  'slack-message-mention-face))))
+                  'slack-defer-face face))))
     (replace-regexp-in-string slack-message-user-regexp
                               #'replace
                               text t t)))
