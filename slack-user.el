@@ -81,13 +81,20 @@
               (oref team users)))
 
 (defun slack-user--name (user team)
+  (let ((real-name (slack-user-real-name user))
+        (display-name (slack-user-display-name user)))
+    (if (or (oref team full-and-display-names)
+            (slack-string-blankp display-name))
+        real-name
+      display-name)))
+
+(defun slack-user-real-name (user)
   (slack-if-let* ((profile (slack-user-profile user)))
-      (let ((real-name (plist-get profile :real_name_normalized))
-            (display-name (plist-get profile :display_name_normalized)))
-        (if (or (oref team full-and-display-names)
-                (slack-string-blankp display-name))
-            real-name
-          display-name))))
+      (plist-get profile :real_name_normalized)))
+
+(defun slack-user-display-name (user)
+  (slack-if-let* ((profile (slack-user-profile user)))
+      (plist-get profile :display_name_normalized)))
 
 (defun slack-user-label (user team)
   (format "%s %s"
@@ -95,14 +102,17 @@
               (slack-user-presence-to-string user))
           (slack-user--name user team)))
 
-(defun slack-user-status (id team)
-  "Find user by ID in TEAM, then return user's status in string."
-  (let* ((user (slack-user--find id team))
-         (profile (and user (plist-get user :profile)))
+(defun slack-user--status (user)
+  (let* ((profile (and user (plist-get user :profile)))
          (emoji (and profile (plist-get profile :status_emoji)))
          (text (and profile (plist-get profile :status_text))))
     (mapconcat #'identity (cl-remove-if #'null (list emoji text))
                " ")))
+
+(defun slack-user-status (id team)
+  "Find user by ID in TEAM, then return user's status in string."
+  (let* ((user (slack-user--find id team)))
+    (slack-user--status user)))
 
 (defun slack-user-names (team &optional filter)
   "Return all users as alist (\"user-name\" . user) in TEAM."
@@ -219,16 +229,19 @@
 (defun slack-user-lname (user)
   (plist-get (slack-user-profile user) :last_name))
 
-(defun slack-user-header (user)
-  (let* ((fname (slack-user-fname user))
-         (lname (slack-user-lname user))
-         (name (plist-get user :name)))
-    (or (and fname lname
-             (format "%s %s - @%s"
-                     (slack-user-fname user)
-                     (slack-user-lname user)
-                     (plist-get user :name)))
-        name)))
+(defun slack-user-header (user team)
+  (let* ((real-name (slack-user-real-name user))
+         (display-name (slack-user-display-name user))
+         )
+    (format "%s%s"
+            (if (oref team full-and-display-names)
+                (format "%s - " real-name)
+              (if (slack-string-blankp display-name)
+                  ""
+                (format "%s - " display-name)))
+            (if (oref team full-and-display-names)
+                display-name
+              real-name))))
 
 (defun slack-user-timezone (user)
   (let ((offset (/ (plist-get user :tz_offset) (* 60 60))))
