@@ -32,7 +32,8 @@
 (require 'slack-image)
 
 (cl-defmethod slack-message-bot-id ((this slack-bot-message))
-  (oref this bot-id))
+  (when (slot-boundp this 'bot-id)
+    (oref this bot-id)))
 
 (cl-defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))
@@ -46,7 +47,8 @@
   (slack-bot-name m team))
 
 (cl-defmethod slack-message-sender-id ((m slack-bot-message))
-  (oref m bot-id))
+  (or (slack-message-bot-id m)
+      (oref m user)))
 
 (defun slack-bot-image-url (bot size)
   (let ((icons (plist-get bot :icons)))
