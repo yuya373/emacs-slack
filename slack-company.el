@@ -77,7 +77,8 @@
                                                                 (slack-user-real-name user))
                                                (content-match-p content
                                                                 (slack-user-display-name user))))
-                                   collect (concat "@" (slack-user--name user team)))))
+                                   collect (propertize (concat "@" (slack-user--name user team))
+                                                       'slack-company-prefix 'user))))
                         (channel
                          (cl-loop for team in (oref team channels)
                                   if (content-match-p content
@@ -89,22 +90,24 @@
                                                       (oref command name))
                                   collect (oref command name))))))
       (post-completion
-       (let* ((inserted arg)
-              (end (point))
-              (team (oref slack-current-buffer team))
-              (user (slack-user--find-by-name (substring-no-properties
-                                               inserted 1)
-                                              team)))
-         (when (re-search-backward (substring-no-properties inserted)
-                                   (point-min)
-                                   t)
-           (let ((beg (point)))
-             (delete-region beg end)
-             (insert (concat "@" (plist-get user :name)))
-             (put-text-property beg (point) 'face 'slack-message-mention-face)
-             (put-text-property beg (point) 'display inserted)
-             (insert " ")
-             (goto-char (+ 1 (length inserted) end))))))
+       (when (eq (get-text-property 0 'slack-company-prefix arg)
+                 'user)
+         (let* ((inserted arg)
+                (end (point))
+                (team (oref slack-current-buffer team))
+                (user (slack-user--find-by-name (substring-no-properties
+                                                 inserted 1)
+                                                team)))
+           (when (re-search-backward (substring-no-properties inserted)
+                                     (point-min)
+                                     t)
+             (let ((beg (point)))
+               (delete-region beg end)
+               (insert (concat "@" (plist-get user :name)))
+               (put-text-property beg (point) 'face 'slack-message-mention-face)
+               (put-text-property beg (point) 'display inserted)
+               (insert " ")
+               (goto-char (+ 1 (length inserted) end)))))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (user-or-usergroup
