@@ -103,12 +103,10 @@
        (cl-case (prefix-type arg)
          (user-or-usergroup
           (slack-if-let* ((team (and slack-current-buffer
-                             (oref slack-current-buffer team)))
+                                     (oref slack-current-buffer team)))
                           (user-name (substring arg 1))
-                          (user (slack-user-find-by-name user-name team))
-                          (name (slack-user--name user team)))
-              (unless (string= user-name name)
-                (company-doc-buffer name))))
+                          (user (slack-user--find-by-name user-name team)))
+              (company-doc-buffer (slack-user--profile-to-string user team))))
          (slash
           (company-doc-buffer
            (let* ((team (and slack-current-buffer
