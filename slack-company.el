@@ -46,12 +46,15 @@
                            ((and (string-prefix-p "/" str)
                                  (start-from-line-beginning str))
                             'slash)))
-       (content (str) (substring str 1 nil)))
+       (content (str) (substring str 1 nil))
+       (content-match-p (content text)
+                        (or (eq 0 (length content))
+                            (string-prefix-p content text))))
     (cl-case command
       (interactive (company-begin-backend 'company-slack-backend))
       (prefix (when (string= "slack" (car (split-string (format "%s" major-mode) "-")))
                 (company-grab-line
-                 "\\(\\W\\|^\\)\\(\\(@\\|#\\|/\\)\\(\\w\\|.\\|-\\|_\\)+\\)"
+                 "\\(\\W\\|^\\)\\(\\(@\\|#\\|/\\)\\(\\w\\|.\\|-\\|_\\)*\\)"
                  2)))
       (candidates (slack-if-let*
                       ((content (content arg))
@@ -61,28 +64,28 @@
                         (user-or-usergroup
                          (nconc
                           (cl-loop for special in '("here" "channel" "everyone")
-                                   if (string-prefix-p content special)
+                                   if (content-match-p content special)
                                    collect (concat "@" special))
                           (cl-loop for usergroup in (oref team usergroups)
                                    if (and (not (slack-usergroup-deleted-p usergroup))
-                                           (string-prefix-p content
+                                           (content-match-p content
                                                             (oref usergroup handle)))
                                    collect (concat "@" (oref usergroup handle)))
                           (cl-loop for user in (oref team users)
                                    if (and (not (eq (plist-get user :deleted) t))
-                                           (or (string-prefix-p content
+                                           (or (content-match-p content
                                                                 (slack-user-real-name user))
-                                               (string-prefix-p content
+                                               (content-match-p content
                                                                 (slack-user-display-name user))))
                                    collect (concat "@" (slack-user--name user team)))))
                         (channel
                          (cl-loop for team in (oref team channels)
-                                  if (string-prefix-p content
+                                  if (content-match-p content
                                                       (oref team name))
                                   collect (concat "#" (oref team name))))
                         (slash
                          (cl-loop for command in (oref team commands)
-                                  if (string-prefix-p (concat "/" content)
+                                  if (content-match-p (concat "/" content)
                                                       (oref command name))
                                   collect (oref command name))))))
       (post-completion
