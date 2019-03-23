@@ -359,7 +359,9 @@
     (should (equal (match-string 3 bold)
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
     (should (eq (match-beginning 2) 4))
-    (should (eq (match-beginning 4) 37))))
+    (should (eq (match-beginning 4) 37)))
+  (let ((multiline "aaa *Ace Wasabi Rock-n-Roll\n Sushi Bar* aaa"))
+    (should (not (string-match-p slack-mrkdwn-regex-bold multiline)))))
 
 (ert-deftest slack-test-mrkdwn-regex-italic ()
   (let ((italic "aaa _Ace Wasabi Rock-n-Roll Sushi Bar_ aaa"))
@@ -369,7 +371,9 @@
     (should (equal "_" (match-string 2 italic)))
     (should (equal "_" (match-string 4 italic)))
     (should (eq (match-beginning 2) 4))
-    (should (eq (match-beginning 4) 37))))
+    (should (eq (match-beginning 4) 37)))
+  (let ((multiline "aaa _Ace Wasabi Rock-n-Roll \nSushi Bar_ aaa"))
+    (should (not (string-match-p slack-mrkdwn-regex-italic multiline)))))
 
 (ert-deftest slack-test-mrkdwn-regex-strike ()
   (let ((strike "aaa ~Ace Wasabi Rock-n-Roll Sushi Bar~ aaa"))
@@ -377,7 +381,9 @@
     (should (equal (match-string 3 strike)
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
     (should (eq (match-beginning 2) 4))
-    (should (eq (match-beginning 4) 37))))
+    (should (eq (match-beginning 4) 37)))
+  (let ((multiline "aaa ~Ace Wasabi Rock-n-Roll\n Sushi Bar~ aaa"))
+    (should (not (string-match-p slack-mrkdwn-regex-strike multiline)))))
 
 (ert-deftest slack-test-mrkdwn-regex-code ()
   (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
