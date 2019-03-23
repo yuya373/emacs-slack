@@ -135,20 +135,32 @@
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
       (with-slots (team) buf
-        (let* ((pre-defined (list (list "here" :name "here")
-                                  (list "channel" :name "channel")))
+        (let* ((keyworkds (list (list "here" :name "here" :type 'keyword)
+                                (list "channel" :name "channel" :type 'keyword)
+                                (list "everyone" :name "everyone" :type 'keyword)))
                (usergroups (mapcar #'(lambda (e) (list (oref e handle)
-                                                       :name (oref e handle)))
+                                                       :name (oref e handle)
+                                                       :type 'usergroup))
                                    (cl-remove-if #'slack-usergroup-deleted-p
                                                  (oref team usergroups))))
-               (alist (append pre-defined (slack-user-names team) usergroups)))
+               (alist (append keyworkds (slack-user-names team) usergroups)))
           (slack-select-from-list
               (alist "Select User: ")
-              (insert (concat
-                       (propertize (concat "@" (plist-get selected :name))
-                                   'display (concat "@" (slack-user--name selected team))
-                                   'face 'slack-message-mention-face)
-                       " ")))))))
+              (cl-case (plist-get selected :type)
+                (keyword
+                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                                             'face 'slack-message-mention-keyword-face)
+                                 " ")))
+                (usergroup
+                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                                             'face 'slack-message-mention-keyword-face)
+                                 " ")))
+                (t
+                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                                             'display (concat "@" (slack-user--name
+                                                                   selected team))
+                                             'face 'slack-message-mention-face)
+                                 " ")))))))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here

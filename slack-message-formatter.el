@@ -99,10 +99,14 @@
   :group 'slack)
 
 (defface slack-message-mention-me-face
-  '((t (:background "#073642" :foreground "#859900")))
+  '((t (:background "#073642" :foreground "#b58900")))
   "Face used to mention."
   :group 'slack)
 
+(defface slack-message-mention-keyword-face
+  '((t (:background "#073642" :foreground "#859900")))
+  "Face used to @here, @channel, @everyone mention."
+  :group 'slack)
 
 (defcustom slack-date-formats
   '((date_num . "%Y-%m-%d")
@@ -329,7 +333,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (let ((regexp "<!subteam^\\(.*?\\)|\\(.*?\\)>"))
     (cl-labels
         ((replace (text)
-                  (match-string 2 text)))
+                  (propertize (match-string 2 text)
+                              'slack-defer-face
+                              'slack-message-mention-keyword-face)))
       (replace-regexp-in-string regexp #'replace text t t))))
 
 (defun slack-unescape-variable (text)
@@ -348,22 +354,23 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
          (replace
           (text)
           (let ((match (match-string 1 text)))
-            (if (string= "here|here" match)
-                "@here"
-              (slack-if-let*
-                  ((command (cl-find match commands :test #'string=)))
-                  (format "@%s" command)
-                (destructuring-bind (variable label)
-                    (split-by-| match)
-                  (or (and label (format "<%s>"
-                                         (mapconcat #'char-to-string
-                                                    (reverse label)
-                                                    "")))
-                      (format "<%s>"
-                              (mapconcat #'char-to-string
-                                         (reverse variable)
-                                         ""))))))
-            )))
+            (propertize (if (string= "here|here" match)
+                            "@here"
+                          (slack-if-let*
+                              ((command (cl-find match commands :test #'string=)))
+                              (format "@%s" command)
+                            (destructuring-bind (variable label)
+                                (split-by-| match)
+                              (or (and label (format "<%s>"
+                                                     (mapconcat #'char-to-string
+                                                                (reverse label)
+                                                                "")))
+                                  (format "<%s>"
+                                          (mapconcat #'char-to-string
+                                                     (reverse variable)
+                                                     ""))))))
+                        'slack-defer-face
+                        'slack-message-mention-keyword-face))))
       (replace-regexp-in-string regexp #'replace text t t))))
 
 (defun slack-unescape-! (text)
