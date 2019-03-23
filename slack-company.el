@@ -71,8 +71,7 @@
                                    if (and (not (eq (plist-get user :deleted) t))
                                            (string-prefix-p content
                                                             (slack-user--name user team)))
-                                   collect (propertize (concat "@" (plist-get user :name))
-                                                       'display (concat "@" (slack-user--name user team))))))
+                                   collect (concat "@" (slack-user--name user team)))))
                         (channel
                          (cl-loop for team in (oref team channels)
                                   if (string-prefix-p content
@@ -84,17 +83,22 @@
                                                       (oref command name))
                                   collect (oref command name))))))
       (post-completion
-       (insert " ")
        (let* ((inserted arg)
-              (display (get-text-property 0 'display inserted))
-              (end (1- (point))))
+              (end (point))
+              (team (oref slack-current-buffer team))
+              (user (slack-user--find-by-name (substring-no-properties
+                                               inserted 1)
+                                              team)))
          (when (re-search-backward (substring-no-properties inserted)
                                    (point-min)
                                    t)
            (let ((beg (point)))
-             (put-text-property beg end 'face 'slack-message-mention-face)
-             (put-text-property beg end 'display display)
-             (goto-char (+ 1 (length display) end))))))
+             (delete-region beg end)
+             (insert (concat "@" (plist-get user :name)))
+             (put-text-property beg (point) 'face 'slack-message-mention-face)
+             (put-text-property beg (point) 'display inserted)
+             (insert " ")
+             (goto-char (+ 1 (length inserted) end))))))
       (doc-buffer
        (cl-case (prefix-type arg)
          (user-or-usergroup

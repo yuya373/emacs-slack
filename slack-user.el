@@ -75,6 +75,11 @@
   (slack-if-let* ((user (slack-user--find id team)))
       (slack-user--name user team)))
 
+(defun slack-user--find-by-name (name team)
+  (cl-find-if #'(lambda (user)
+                  (string= name (slack-user--name user team)))
+              (oref team users)))
+
 (defun slack-user--name (user team)
   (slack-if-let* ((profile (slack-user-profile user)))
       (let ((real-name (plist-get profile :real_name_normalized))
