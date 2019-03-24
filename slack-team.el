@@ -120,6 +120,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (files :initform '() :type list)
    (counts :initform nil)
    (emoji-master :initform (make-hash-table :test 'equal))
+   (visible-threads :initarg :visible-threads :initform nil :type boolean)
    ))
 
 (defun slack-create-team (plist)
@@ -371,6 +372,9 @@ you can change current-team with `slack-change-current-team'"
                              (list :id (oref this message-id)
                                    :type type
                                    :ids ids))))
+
+(cl-defmethod slack-team-visible-threads-p ((this slack-team))
+  (oref this visible-threads))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

@@ -195,9 +195,9 @@
 (cl-defmethod slack-buffer-major-mode ((_this slack-message-buffer))
   'slack-message-buffer-mode)
 
-(cl-defmethod slack-buffer-visible-message-p ((_this slack-message-buffer) message)
-  (or (not (slack-thread-message-p message))
-      (slack-reply-broadcast-message-p message)))
+(cl-defmethod slack-buffer-visible-message-p ((this slack-message-buffer) message)
+  (with-slots (team) this
+    (slack-message-visible-p message team)))
 
 (cl-defmethod slack-buffer-insert-messages ((this slack-message-buffer) messages
                                             &optional filter-by-oldest)
@@ -740,7 +740,7 @@
           ;; and
           ;; message has @ mention or room is im or room is mpim
           (when (and (not replace)
-                     (not thread-message-p)
+                     (slack-message-visible-p message team)
                      (or (slack-message-mentioned-p message team)
                          (slack-im-p room)
                          (slack-mpim-p room)))
@@ -748,20 +748,22 @@
                    (next-count (+ count 1)))
               (slack-room-set-mention-count room next-count team)))
 
-          ;; Update buffer
+          ;; Update thread buffer
           (if (or thread-message-p
                   reply-broadcast-message-p)
               (slack-thread-message-update-buffer message
                                                   room
                                                   team
                                                   replace
-                                                  old-message)
-            (slack-room-update-buffer room team message replace))
+                                                  old-message))
+          (if (slack-message-visible-p message team)
+              (slack-room-update-buffer room team message replace))
+
           ;; Update has-unreads
           ;; do not update if replace or thread message
           ;; update if normal message or thread broad cast message
           (when (and (not replace)
-                     (not thread-message-p))
+                     (slack-message-visible-p message team))
             (slack-room-set-has-unreads room t team)))
 
         (unless no-notify

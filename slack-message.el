@@ -365,5 +365,11 @@
             (setq start (match-end 0))))))
     result))
 
+(cl-defmethod slack-message-visible-p ((this slack-message) team)
+  (if (slack-team-visible-threads-p team)
+      t
+    (or (not (slack-thread-message-p this))
+        (slack-reply-broadcast-message-p this))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
