@@ -79,11 +79,24 @@ Any other non-nil value: send to the room."
                          (when cursor
                            (setq messages
                                  (append (oref thread messages) messages)))
-                         (oset thread messages
-                               (slack-room-sort-messages
-                                (cl-remove-if #'slack-message-thread-parentp
-                                              messages)))
-                         (slack-room-append-messages room messages team)
+                         (let ((parent nil)
+                               (replies nil))
+                           (cl-loop for m in messages
+                                    do (if (slack-message-thread-parentp m)
+                                           (setq parent m)
+                                         (push m replies)))
+                           (let ((message (slack-room-find-message room ts)))
+                             (if message
+                                 (oset (oref message thread)
+                                       messages
+                                       (slack-room-sort-messages replies))
+                               (oset (oref parent thread)
+                                     messages
+                                     (slack-room-sort-messages replies))
+                               (slack-room-append-messages room
+                                                           (list parent)
+                                                           team)))
+                           (slack-room-append-messages room replies team))
                          (when (functionp after-success)
                            (funcall after-success next-cursor has-more))))
       (slack-conversations-replies room ts team

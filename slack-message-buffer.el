@@ -184,14 +184,6 @@
            (selected (slack-select-from-list (alist "Select Thread: "))))
       (slack-thread-show-messages selected room team))))
 
-(cl-defmethod slack-buffer-start-thread ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (let* ((message (slack-room-find-message room ts))
-           (buf (slack-create-thread-message-buffer room team ts)))
-      (when (slack-reply-broadcast-message-p message)
-        (error "Can't start thread from broadcasted message"))
-      (slack-buffer-display buf))))
-
 (cl-defmethod slack-buffer-major-mode ((_this slack-message-buffer))
   'slack-message-buffer-mode)
 
@@ -259,12 +251,6 @@
     (if (or (null prev-latest)
             (string< prev-latest latest))
         (setq prev-latest latest))))
-
-(cl-defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
-  (with-slots (room team) this
-    (let ((thread (slack-room-find-thread room ts)))
-      (if thread (slack-thread-show-messages thread room team)
-        (slack-thread-start)))))
 
 (cl-defmethod slack-create-message-buffer ((room slack-room) cursor team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-buffer
@@ -591,31 +577,10 @@
                  #'slack-message-buffer-detect-ts-changed
                  t))))
 
-(defun slack-thread-start ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-start-thread buf (slack-get-ts))))
-
 (defun slack-room-unread-threads ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-unread-threads buf)))
-
-(cl-defmethod slack-thread-show-messages ((thread slack-thread) room team)
-  (cl-labels
-      ((after-success (_next-cursor has-more)
-                      (let ((buf (slack-create-thread-message-buffer
-                                  room team (oref thread thread-ts) has-more)))
-                        (slack-buffer-display buf))))
-    (slack-thread-replies thread room team
-                          :after-success #'after-success)))
-
-(defun slack-thread-show-or-create ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (if (slack-thread-message-buffer-p buf)
-          (error "Already in thread")
-        (slack-buffer-display-thread buf (slack-get-ts)))))
 
 (defvar slack-message-thread-status-keymap
   (let ((map (make-sparse-keymap)))
@@ -869,6 +834,41 @@
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-display-edit-message-buffer buf (slack-get-ts))))
+
+(defun slack-thread-show-or-create ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (if (slack-thread-message-buffer-p buf)
+          (error "Already in thread")
+        (slack-buffer-display-thread buf (slack-get-ts)))))
+
+(cl-defmethod slack-buffer-display-thread ((this slack-message-buffer) ts)
+  (with-slots (room team) this
+    (let ((message (slack-room-find-message room ts)))
+      (when message
+        (slack-if-let* ((thread-ts (oref message thread-ts)))
+            (slack-if-let* ((thread (slack-message-thread message room)))
+                (slack-thread-show-messages thread room team)
+              (let ((thread (make-instance 'slack-thread
+                                           :thread_ts thread-ts)))
+                (slack-thread-show-messages thread room team)))
+          (slack-buffer-start-thread this ts))))))
+
+(cl-defmethod slack-buffer-start-thread ((this slack-message-buffer) message ts)
+  (when (slack-reply-broadcast-message-p message)
+    (error "Can't start thread from broadcasted message"))
+  (with-slots (room team) this
+    (let ((buf (slack-create-thread-message-buffer room team ts)))
+      (slack-buffer-display buf))))
+
+(cl-defmethod slack-thread-show-messages ((thread slack-thread) room team)
+  (cl-labels
+      ((after-success (_next-cursor has-more)
+                      (let ((buf (slack-create-thread-message-buffer
+                                  room team (oref thread thread-ts) has-more)))
+                        (slack-buffer-display buf))))
+    (slack-thread-replies thread room team
+                          :after-success #'after-success)))
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
