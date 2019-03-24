@@ -236,20 +236,25 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           files
                           attachment-body reactions thread)))
 
+(cl-defmethod slack-message-display-thread-sign-p ((this slack-message) team)
+  (and (slack-team-visible-threads-p team)
+       (not (null (oref this thread-ts)))
+       (not (string= (oref this thread-ts) (slack-ts this)))
+       (not (eq major-mode 'slack-thread-message-buffer-mode))))
+
 (cl-defmethod slack-message-body ((m slack-message) team)
   (with-slots (text) m
     (let ((body (slack-message-unescape-string text team)))
       (when body
         (format "%s%s"
-                (if (and (slack-team-visible-threads-p team)
-                         (oref m thread-ts))
+                (if (slack-message-display-thread-sign-p m team)
                     slack-visible-thread-sign
                   "")
                 (propertize body 'slack-text-type 'mrkdwn))))))
 
 (cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "%s%s"
-          (if (slack-team-visible-threads-p team)
+          (if (slack-message-display-thread-sign-p m team)
               slack-visible-thread-sign
             "Replied to a thread: \n")
           (let ((body (slack-message-unescape-string (oref m text) team)))
