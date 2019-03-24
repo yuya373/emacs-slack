@@ -557,7 +557,43 @@
                   (current-ts (slack-get-ts)))
       (when (not (string= prev-ts current-ts))
         (oset buffer cursor-event-prev-ts current-ts)
-        (slack-buffer-update-mark buffer))))
+
+        (slack-buffer-animate-emoji current-ts)
+        (slack-buffer-cancel-animate-emoji prev-ts)
+
+        (with-slots (team) buffer
+          (unless (slack-team-mark-as-read-immediatelyp team)
+            (slack-buffer-update-mark buffer)))
+        )))
+
+(defun slack-buffer-get-emoji-images (ts)
+  (with-slots (room) slack-current-buffer
+    (slack-if-let* ((message (slack-room-find-message room ts))
+                    (beg (slack-buffer-prev-point (point) (point-min) ts))
+                    (end (slack-buffer-next-point (point) (point-max) ts)))
+
+        (let ((images nil)
+              (current beg))
+          (while (<= current end)
+            (let ((prop (get-text-property current 'emojify-display)))
+              (when prop
+                (push prop images)))
+            (setq current (1+ current)))
+          images))))
+
+(defun slack-buffer-animate-emoji (ts)
+  (slack-if-let* ((images (slack-buffer-get-emoji-images ts)))
+      (cl-loop for image in images
+               do (when (and image (image-multi-frame-p image))
+                    (image-animate image nil t)))))
+
+(defun slack-buffer-cancel-animate-emoji (ts)
+  (slack-if-let* ((images (slack-buffer-get-emoji-images ts)))
+      (cl-loop for image in images
+               do (when (and image (image-multi-frame-p image))
+                    (let ((timer (image-animate-timer image)))
+                      (when (and timer (timerp timer))
+                        (cancel-timer timer)))))))
 
 (cl-defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
                                                     _window
@@ -565,13 +601,10 @@
                                                     type)
   (cond
    ((eq type'entered)
-    (with-slots (team) this
-      (unless (slack-team-mark-as-read-immediatelyp team)
-        (oset this cursor-event-prev-ts (slack-get-ts))
-        (add-hook 'post-command-hook
-                  #'slack-message-buffer-detect-ts-changed
-                  t t)
-        (slack-buffer-update-mark this))))
+    (oset this cursor-event-prev-ts (slack-get-ts))
+    (add-hook 'post-command-hook
+              #'slack-message-buffer-detect-ts-changed
+              t t))
    ((eq type 'left)
     (remove-hook 'post-command-hook
                  #'slack-message-buffer-detect-ts-changed
