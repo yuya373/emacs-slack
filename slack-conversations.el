@@ -540,8 +540,12 @@
       ((success (&key data &allow-other-keys)
                 (slack-request-handle-error
                  (data "slack-conversations-view")
-                 (let* ((new-room (slack-room-create
-                                   (plist-get data :channel)
+                 (let* ((key (cl-case (eieio-object-class-name room)
+                               (slack-channel :channel)
+                               (slack-im :im)
+                               (slack-group :group)))
+                        (new-room (slack-room-create
+                                   (plist-get data key)
                                    (eieio-object-class-name room)))
                         (bots (plist-get data :bots))
                         (users (plist-get data :users))
