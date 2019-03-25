@@ -572,14 +572,16 @@
                     (beg (slack-buffer-prev-point (point) (point-min) ts))
                     (end (slack-buffer-next-point (point) (point-max) ts)))
 
-        (let ((images nil)
+        (let ((images (make-hash-table :test 'equal))
               (current beg))
           (while (<= current end)
             (let ((prop (get-text-property current 'emojify-display)))
               (when prop
-                (push prop images)))
+                (puthash (plist-get (cdr prop) :file)
+                         prop
+                         images)))
             (setq current (1+ current)))
-          images))))
+          (hash-table-values images)))))
 
 (defun slack-buffer-animate-emoji (ts)
   (slack-if-let* ((images (slack-buffer-get-emoji-images ts)))
