@@ -568,9 +568,9 @@
 
 (defun slack-buffer-get-emoji-images (ts)
   (with-slots (room) slack-current-buffer
-    (slack-if-let* ((cur-point (slack-buffer-ts-eq (point-min) (point-max) ts))
-                    (beg (slack-buffer-prev-point cur-point (point-min) ts))
-                    (end (slack-buffer-next-point cur-point (point-max) ts)))
+    (slack-if-let* ((beg (slack-buffer-ts-eq (point-min) (point-max) ts))
+                    (end (or (slack-buffer-next-point beg (point-max) ts)
+                             (point-max))))
 
         (let ((images (make-hash-table :test 'equal))
               (current beg))
