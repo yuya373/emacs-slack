@@ -89,9 +89,13 @@
                                  value)))))))
 
 (defun slack-get-ts ()
-  (let ((line (thing-at-point 'line)))
-    (when line
-      (get-text-property 0 'ts line))))
+  (let ((bol (point-at-bol))
+        (eol (point-at-eol)))
+    (when (and bol eol)
+      (cl-loop for i from bol to eol
+               for ts = (get-text-property i 'ts)
+               if ts
+               return ts))))
 
 (defun slack-linkfy (text link)
   (if (not (slack-string-blankp link))
