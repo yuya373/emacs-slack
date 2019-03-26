@@ -852,7 +852,7 @@
               (let ((thread (make-instance 'slack-thread
                                            :thread_ts thread-ts)))
                 (slack-thread-show-messages thread room team)))
-          (slack-buffer-start-thread this ts))))))
+          (slack-buffer-start-thread this message ts))))))
 
 (cl-defmethod slack-buffer-start-thread ((this slack-message-buffer) message ts)
   (when (slack-reply-broadcast-message-p message)
