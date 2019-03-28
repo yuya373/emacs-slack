@@ -91,20 +91,12 @@
       (delete-region (point-min) (point-max))
       (slack-buffer--insert this))))
 
-(defun slack-user-profile-to-string (id team)
-  "Print user's profile according to ID in TEAM."
-  (let* ((user (slack-user--find id team))
-         (image (slack-image-string (list (slack-user-image-url user 512)
-                                          nil nil nil (window-width
-                                                       (get-buffer-window
-                                                        (current-buffer))
-                                                       t))
-                                    nil t))
-         (profile (slack-user-profile user))
-         (header (propertize (slack-user-header user)
+(defun slack-user--profile-to-string (user team)
+  (let* ((profile (slack-user-profile user))
+         (header (propertize (slack-user-header user team)
                              'face 'slack-user-profile-header-face))
          (presence (slack-user-property-to-str (plist-get user :presence) "Presence"))
-         (status (slack-user-property-to-str (slack-user-status id team) "Status"))
+         (status (slack-user-property-to-str (slack-user--status user) "Status"))
          (timezone (slack-user-property-to-str (slack-user-timezone user) "Timezone"))
          (email (slack-user-property-to-str (plist-get profile :email) "Email"))
          (phone (slack-user-property-to-str (plist-get profile :phone) "Phone"))
@@ -112,11 +104,26 @@
          (body (mapconcat #'identity
                           (cl-remove-if #'null
                                         (list presence status timezone email phone skype))
-                          "\n"))
-         (dm-button (propertize "[Open Direct Message]"
-                                'face '(:underline t)
-                                'keymap slack-open-direct-message-keymap)))
-    (format "\n%s\n\n%s%s\n%s\n\n%s" image header (format "  (%s)" id) body dm-button)))
+                          "\n")))
+    (format "%s%s\n%s"
+            header
+            (format "  (%s)" (plist-get user :id))
+            body)))
+
+(defun slack-user-profile-to-string (id team)
+  "Print user's profile according to ID in TEAM."
+  (let ((user (slack-user--find id team)))
+    (format "\n%s\n\n%s\n\n%s"
+            (slack-image-string (list (slack-user-image-url user 512)
+                                      nil nil nil (window-width
+                                                   (get-buffer-window
+                                                    (current-buffer))
+                                                   t))
+                                nil t)
+            (slack-user--profile-to-string user team)
+            (propertize "[Open Direct Message]"
+                        'face '(:underline t)
+                        'keymap slack-open-direct-message-keymap))))
 
 (defun slack-user-select ()
   "Select user from team, then display the user's profile."

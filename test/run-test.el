@@ -17,13 +17,18 @@
                                   :name channel-name))
           (user-id "U11111")
           (user-name "TestUser")
-          (user (list :name user-name :id user-id))
+          (real-name "RealName")
+          (display-name "Display name")
+          (user (list :name user-name :id user-id
+                      :profile (list :display_name_normalized display-name
+                                     :real_name_normalized real-name)))
           (usergroup-id "S88888")
           (usergroup-handle "TestUsergroup")
           (usergroup (make-instance 'slack-usergroup
                                     :id usergroup-id
                                     :handle usergroup-handle))
           (team (make-instance 'slack-team
+                               :self-id "U38383838"
                                :channels (list channel)
                                :users (list user)
                                :usergroups (list usergroup))))
@@ -51,17 +56,31 @@
 
 (ert-deftest slack-test-unescape-@ ()
   (slack-test-setup
-    (should (equal (format "@%s" user-name)
+    (oset team full-and-display-names t)
+    (should (equal (format "@%s" real-name)
                    (slack-unescape-@
                     (format "<@%s>" user-id)
                     team)))
-    (should (equal "@Foo"
+    (should (equal (format "@%s" real-name)
                    (slack-unescape-@
                     (format "<@%s|Foo>" user-id)
                     team)))
     (should (equal "@<Unknown USER>"
                    (slack-unescape-@
-                    "<@U424242>" team)))))
+                    "<@U424242>" team)))
+    (oset team full-and-display-names nil)
+    (should (equal (format "@%s" display-name)
+                   (slack-unescape-@
+                    (format "<@%s>" user-id)
+                    team)))
+    (should (equal (format "@%s" display-name)
+                   (slack-unescape-@
+                    (format "<@%s|Foo>" user-id)
+                    team)))
+    (should (equal "@<Unknown USER>"
+                   (slack-unescape-@
+                    "<@U424242>" team)))
+    ))
 
 (ert-deftest slack-test-unescape-!subteam ()
   (slack-test-setup
