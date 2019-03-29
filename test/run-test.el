@@ -42,53 +42,53 @@
 
 (ert-deftest slack-test-unescape-channel ()
   (slack-test-setup
-    (should (equal (format "#%s" channel-name)
-                   (slack-unescape-channel
-                    (format "<#%s>" channel-id)
-                    team)))
-    (should (equal "#Foo"
-                   (slack-unescape-channel
-                    (format "<#%s|Foo>" channel-id)
-                    team)))
-    (should (equal "#<Unknown CHANNEL>"
-                   (slack-unescape-channel
-                    "<#C9999999>" team)))))
+   (should (equal (format "#%s" channel-name)
+                  (slack-unescape-channel
+                   (format "<#%s>" channel-id)
+                   team)))
+   (should (equal "#Foo"
+                  (slack-unescape-channel
+                   (format "<#%s|Foo>" channel-id)
+                   team)))
+   (should (equal "#<Unknown CHANNEL>"
+                  (slack-unescape-channel
+                   "<#C9999999>" team)))))
 
 (ert-deftest slack-test-unescape-@ ()
   (slack-test-setup
-    (oset team full-and-display-names t)
-    (should (equal (format "@%s" real-name)
-                   (slack-unescape-@
-                    (format "<@%s>" user-id)
-                    team)))
-    (should (equal (format "@%s" real-name)
-                   (slack-unescape-@
-                    (format "<@%s|Foo>" user-id)
-                    team)))
-    (should (equal "@<Unknown USER>"
-                   (slack-unescape-@
-                    "<@U424242>" team)))
-    (oset team full-and-display-names nil)
-    (should (equal (format "@%s" display-name)
-                   (slack-unescape-@
-                    (format "<@%s>" user-id)
-                    team)))
-    (should (equal (format "@%s" display-name)
-                   (slack-unescape-@
-                    (format "<@%s|Foo>" user-id)
-                    team)))
-    (should (equal "@<Unknown USER>"
-                   (slack-unescape-@
-                    "<@U424242>" team)))
-    ))
+   (oset team full-and-display-names t)
+   (should (equal (format "@%s" real-name)
+                  (slack-unescape-@
+                   (format "<@%s>" user-id)
+                   team)))
+   (should (equal (format "@%s" real-name)
+                  (slack-unescape-@
+                   (format "<@%s|Foo>" user-id)
+                   team)))
+   (should (equal "@<Unknown USER>"
+                  (slack-unescape-@
+                   "<@U424242>" team)))
+   (oset team full-and-display-names nil)
+   (should (equal (format "@%s" display-name)
+                  (slack-unescape-@
+                   (format "<@%s>" user-id)
+                   team)))
+   (should (equal (format "@%s" display-name)
+                  (slack-unescape-@
+                   (format "<@%s|Foo>" user-id)
+                   team)))
+   (should (equal "@<Unknown USER>"
+                  (slack-unescape-@
+                   "<@U424242>" team)))
+   ))
 
 (ert-deftest slack-test-unescape-!subteam ()
   (slack-test-setup
-    (should (equal (slack-unescape-!subteam
-                    (format "<!subteam^%s|@%s>"
-                            usergroup-id
-                            usergroup-handle))
-                   (format "@%s" usergroup-handle)))))
+   (should (equal (slack-unescape-!subteam
+                   (format "<!subteam^%s|@%s>"
+                           usergroup-id
+                           usergroup-handle))
+                  (format "@%s" usergroup-handle)))))
 
 
 (ert-deftest slack-test-unescape-!date ()
@@ -379,8 +379,13 @@
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37)))
-  (let ((multiline "aaa *Ace Wasabi Rock-n-Roll\n Sushi Bar* aaa"))
-    (should (not (string-match-p slack-mrkdwn-regex-bold multiline)))))
+
+  (should (not (string-match-p slack-mrkdwn-regex-bold "* bbb *")))
+  (should (not (string-match-p slack-mrkdwn-regex-bold "*bbb*aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-bold "aaa*bbb*")))
+  (should (not (string-match-p slack-mrkdwn-regex-bold "aaa*bbb*bbb")))
+  (should (not (string-match-p slack-mrkdwn-regex-bold "aaa *Ace Wasabi Rock-n-Roll\n Sushi Bar* aaa")))
+  (should (string-match-p slack-mrkdwn-regex-bold "*Ace Wasabi Rock-n-Roll Sushi Bar*")))
 
 (ert-deftest slack-test-mrkdwn-regex-italic ()
   (let ((italic "aaa _Ace Wasabi Rock-n-Roll Sushi Bar_ aaa"))
@@ -391,8 +396,15 @@
     (should (equal "_" (match-string 4 italic)))
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37)))
-  (let ((multiline "aaa _Ace Wasabi Rock-n-Roll \nSushi Bar_ aaa"))
-    (should (not (string-match-p slack-mrkdwn-regex-italic multiline)))))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "_bbb_aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "aaa_bbb_")))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "aaa_bbb_aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "SOME_ENV_BAR")))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "https://example.com/foo_bar_baz.html")))
+  (should (not (string-match-p slack-mrkdwn-regex-italic "aaa _Ace Wasabi Rock-n-Roll \nSushi Bar_ aaa")))
+  (should (string-match-p slack-mrkdwn-regex-italic "_a a a_"))
+  (should (string-match-p slack-mrkdwn-regex-italic "_ aaa _"))
+  (should (string-match-p slack-mrkdwn-regex-italic "_Ace Wasabi Rock-n-Roll Sushi Bar_")))
 
 (ert-deftest slack-test-mrkdwn-regex-strike ()
   (let ((strike "aaa ~Ace Wasabi Rock-n-Roll Sushi Bar~ aaa"))
@@ -401,8 +413,12 @@
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37)))
-  (let ((multiline "aaa ~Ace Wasabi Rock-n-Roll\n Sushi Bar~ aaa"))
-    (should (not (string-match-p slack-mrkdwn-regex-strike multiline)))))
+  (should (not (string-match-p slack-mrkdwn-regex-strike "~ bbb ~")))
+  (should (not (string-match-p slack-mrkdwn-regex-strike "~bbb~aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-strike "aaa~bbb~")))
+  (should (not (string-match-p slack-mrkdwn-regex-strike "aaa~bbb~aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-strike "aaa ~Ace Wasabi Rock-n-Roll\n Sushi Bar~ aaa")))
+  (should (string-match-p slack-mrkdwn-regex-strike "~Ace Wasabi Rock-n-Roll Sushi Bar~")))
 
 (ert-deftest slack-test-mrkdwn-regex-code ()
   (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
@@ -412,14 +428,15 @@
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37))
     )
-  (let ((block "   ```This is a code block\nAnd it's multi-line```   "))
-    (should (eq nil (string-match-p slack-mrkdwn-regex-code block))))
   ;; TODO
   ;; (let ((block "   ```This is a `code` block\nAnd it's multi-line```   "))
   ;;   (should (eq nil (string-match-p slack-mrkdwn-regex-code block))))
-  (let ((code "aaa `Ace Wasabi \nRock-n-Roll Sushi Bar` aaa"))
-    (should (eq nil (string-match-p slack-mrkdwn-regex-code code))))
-  )
+  (should (not (string-match-p slack-mrkdwn-regex-code "aaa`bbb`aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-code "aaa`bbb`")))
+  (should (not (string-match-p slack-mrkdwn-regex-code "   ```This is a code block\nAnd it's multi-line```   ")))
+  (should (not (string-match-p slack-mrkdwn-regex-code "aaa `Ace Wasabi \nRock-n-Roll Sushi Bar` aaa")))
+  (should (string-match-p slack-mrkdwn-regex-code "`bbb`aaa"))
+  (should (string-match-p slack-mrkdwn-regex-code "` bbb `")))
 
 (ert-deftest slack-test-mrkdwn-regex-code-block ()
   (let ((block "   ```This is a code block\nAnd it's multi-line```   "))
@@ -434,17 +451,24 @@
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
     (should (eq 48 (match-beginning 4))))
-  (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
-    (should (eq nil (string-match-p slack-mrkdwn-regex-code-block code))))
-  )
+  (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
+  (should (not (string-match-p slack-mrkdwn-regex-code-block "```bbb```aaa")))
+  (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))))
+
 
 (ert-deftest slack-test-mrkdwn-regex-blockquote ()
   (let ((blockquote " > aaa aaa"))
     (string-match slack-mrkdwn-regex-blockquote blockquote)
     (should (equal "aaa aaa"
                    (match-string 3 blockquote)))
-    (should (eq 1 (match-beginning 1)))
-    ))
+    (should (eq 1 (match-beginning 1))))
+  (should (string-match-p slack-mrkdwn-regex-blockquote ">aaa"))
+  (should (string-match-p slack-mrkdwn-regex-blockquote " > aaa"))
+  (should (string-match-p slack-mrkdwn-regex-blockquote " >aaa"))
+  (should (not (string-match-p slack-mrkdwn-regex-blockquote ">")))
+  (should (not (string-match-p slack-mrkdwn-regex-blockquote "a > a")))
+  (should (not (string-match-p slack-mrkdwn-regex-blockquote "a >"))))
 
 
 (if noninteractive
