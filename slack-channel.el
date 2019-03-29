@@ -69,10 +69,6 @@
                                     channels)
                   (when (functionp after-success)
                     (funcall after-success team))
-                  (mapc #'(lambda (room)
-                            (slack-request-worker-push
-                             (slack-conversations-info-request room team)))
-                        (oref team channels))
                   (slack-log "Slack Channel List Updated"
                              team :level 'info)))
       (slack-conversations-list team #'success (list "public_channel")))))

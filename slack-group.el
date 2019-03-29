@@ -80,10 +80,6 @@
                                     groups)
                   (when (functionp after-success)
                     (funcall after-success team))
-                  (mapc #'(lambda (room)
-                            (slack-request-worker-push
-                             (slack-conversations-info-request room team)))
-                        (oref team groups))
                   (slack-log "Slack Group List Updated"
                              team :level 'info)))
       (slack-conversations-list team #'success (list "private_channel" "mpim")))))
