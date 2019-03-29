@@ -364,13 +364,6 @@
     (mapcar #'(lambda (channel) (oref channel id))
             target-channels)))
 
-(defun slack-file-select-upload-file-as-buffer ()
-  (find-file-noselect
-   (car (find-file-read-args
-         "Select File: "
-         (confirm-nonexistent-file-or-buffer)))
-   t t))
-
 (defun slack-file-select-filetype (&optional initial-input)
   (let* ((candidate (mapcar #'(lambda (e)
                                 (cons (format "%s: %s" (car e) (cdr e))
@@ -415,12 +408,10 @@
   (slack-if-let*
       ((buffer slack-current-buffer)
        (team (oref buffer team))
-       (buf (slack-file-select-upload-file-as-buffer))
+       (file (car (find-file-read-args "Select File: " t)))
        (filename (read-from-minibuffer "Filename: "
-                                       (file-name-nondirectory
-                                        (buffer-file-name buf))))
-       (filetype (slack-file-select-filetype (file-name-extension
-                                              (buffer-file-name buf))))
+                                       (file-name-nondirectory file)))
+       (filetype (slack-file-select-filetype (file-name-extension file)))
        (initial-comment (read-from-minibuffer "Message: ")))
       (cl-labels
           ((on-file-upload (&key data &allow-other-keys)
@@ -438,7 +429,7 @@
                            (cons "filetype" filetype)
                            (if initial-comment
                                (cons "initial_comment" initial-comment))))
-          :files (list (cons "file" buf))
+          :files (list (cons "file" file))
           :headers (list (cons "Content-Type" "multipart/form-data"))
           :success #'on-file-upload)))
     (error "Call from message buffer or thread buffer")))
