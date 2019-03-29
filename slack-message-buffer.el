@@ -668,7 +668,7 @@
                          append (with-slots (groups ims channels) team
                                   (cl-remove-if
                                    #'(lambda (room)
-                                       (not (slack-room-has-unread-p room)))
+                                       (not (slack-room-has-unread-p room team)))
                                    (append ims groups channels))))
                 team)))
     (slack-room-display room team)))
