@@ -120,6 +120,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (files :initform '() :type list)
    (counts :initform nil)
    (emoji-master :initform (make-hash-table :test 'equal))
+   (visible-threads :initarg :visible-threads :initform nil :type boolean)
    ))
 
 (defun slack-create-team (plist)
@@ -188,11 +189,29 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 ;;;###autoload
 (defun slack-register-team (&rest plist)
-  "PLIST must contain :name :client-id :client-secret with value.
-setting :token will reduce your configuration step.
-you will notified when receive message with channel included in subscribed-channels.
-if :default is t and `slack-prefer-current-team' is t, skip selecting team when channels listed.
-you can change current-team with `slack-change-current-team'"
+  "PLIST must contain :name and either :client-id and :client-secret or :token.
+Available options (property name, type, default value)
+:subscribed-channels [ list symbol ] '()
+  notified when new message arrived in these channels.
+:default [boolean] nil
+  if `slack-prefer-current-team' is t,
+  some functions use this team without asking.
+:display-profile-image [boolean] nil
+:full-and-display-names [boolean] nil
+  if t, use full name to display user name.
+:mark-as-read-immediately [boolean] these
+  if t, mark messages as read when open channel.
+  if nil, mark messages as read when cursor hovered.
+:modeline-enabled [boolean] nil
+  if t, display mention count and has unread in modeline.
+:modeline-name [or nil string] nil
+  use this value in modeline.
+  if nil, use team name.
+:visible-threads [boolean] nil
+  if t, thread replies are also displayed in channel buffer.
+:websocket-event-log-enabled [boolean] nil
+  if t, websocket event is logged.
+  use `slack-log-open-event-buffer' to open the buffer."
   (interactive
    (let ((name (read-from-minibuffer "Team Name: "))
          (client-id (read-from-minibuffer "Client Id: "))
@@ -371,6 +390,9 @@ you can change current-team with `slack-change-current-team'"
                              (list :id (oref this message-id)
                                    :type type
                                    :ids ids))))
+
+(cl-defmethod slack-team-visible-threads-p ((this slack-team))
+  (oref this visible-threads))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

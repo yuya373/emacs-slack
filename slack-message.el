@@ -65,6 +65,12 @@
    (thread :initarg :thread :initform nil)
    (thread-ts :initarg :thread_ts :initform nil)
    (hide :initarg :hide :initform nil)
+   ;; TODO remove slack-thread
+   ;; (reply-count :initarg :reply_count :initform 0 :type number)
+   ;; (reply-users-count :initarg :reply_users_count :initform 0 :type number)
+   ;; (reply-users :initarg :reply_users :initform '())
+   ;; (replies :initarg :replies :initform '())
+   ;; (subscribed :initarg :subscribed :initform nil :type boolean)
    (files :initarg :files :initform '())
    (edited :initarg :edited :initform nil)
    (is-ephemeral :initarg :is_ephemeral :initform nil)
@@ -364,6 +370,12 @@
                 (push user-id result)))
             (setq start (match-end 0))))))
     result))
+
+(cl-defmethod slack-message-visible-p ((this slack-message) team)
+  (if (slack-team-visible-threads-p team)
+      t
+    (or (not (slack-thread-message-p this))
+        (slack-reply-broadcast-message-p this))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
