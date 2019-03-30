@@ -559,8 +559,10 @@
                   (not (string= prev-ts current-ts)))
           (oset buffer cursor-event-prev-ts current-ts)
 
-          (slack-buffer-animate-gif current-ts)
-          (slack-buffer-cancel-animate-gif prev-ts)
+          (with-slots (team) buffer
+            (when (slack-team-animate-image-p team)
+              (slack-buffer-animate-gif current-ts)
+              (slack-buffer-cancel-animate-gif prev-ts)))
 
           (with-slots (team) buffer
             (unless (slack-team-mark-as-read-immediatelyp team)
