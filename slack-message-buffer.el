@@ -919,5 +919,34 @@
     (slack-thread-replies thread room team
                           :after-success #'after-success)))
 
+(defun slack-advice-delete-window (&optional window)
+  (let ((buf (window-buffer window)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'left)))))
+
+(defun slack-advice-select-window (org-func window &optional norecord)
+  (let ((buf (window-buffer)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'left))))
+  (funcall org-func window norecord)
+  (let ((buf (window-buffer)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'entered)))))
+
+(advice-add 'select-window :around 'slack-advice-select-window)
+(advice-add 'delete-window :before 'slack-advice-delete-window)
+
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here
