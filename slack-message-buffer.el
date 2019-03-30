@@ -561,8 +561,8 @@
 
           (with-slots (team) buffer
             (when (slack-team-animate-image-p team)
-              (slack-buffer-animate-gif current-ts)
-              (slack-buffer-cancel-animate-gif prev-ts)))
+              (slack-buffer-animate-image current-ts)
+              (slack-buffer-cancel-animate-image prev-ts)))
 
           (with-slots (team) buffer
             (unless (slack-team-mark-as-read-immediatelyp team)
@@ -595,13 +595,13 @@
               (setq current (1+ current)))
             (hash-table-values images))))))
 
-(defun slack-buffer-animate-gif (ts)
+(defun slack-buffer-animate-image (ts)
   (slack-if-let* ((images (slack-buffer-get-images ts)))
       (cl-loop for image in images
                do (when (and image (image-multi-frame-p image))
                     (image-animate image nil t)))))
 
-(defun slack-buffer-cancel-animate-gif (ts)
+(defun slack-buffer-cancel-animate-image (ts)
   (when ts
     (slack-if-let* ((images (slack-buffer-get-images ts)))
         (cl-loop for image in images
@@ -622,7 +622,7 @@
     (slack-message-buffer-detect-ts-changed))
    ((eq type 'left)
     (let ((prev-ts (oref this cursor-event-prev-ts)))
-      (slack-buffer-cancel-animate-gif prev-ts))
+      (slack-buffer-cancel-animate-image prev-ts))
     (oset this cursor-event-prev-ts nil)
     (remove-hook 'post-command-hook
                  #'slack-message-buffer-detect-ts-changed
