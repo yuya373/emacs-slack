@@ -275,15 +275,27 @@
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
 
 (defun slack-user-append (users team)
-  (oset team
-        users
-        (append (cl-remove-if #'(lambda (user)
-                                  (cl-find-if #'(lambda (e)
-                                                  (string= (plist-get e :id)
-                                                           (plist-get user :id)))
-                                              users))
-                              (oref team users))
-                users)))
+  (let ((nochanges nil)
+        (updated nil))
+    (cl-loop for e in (oref team users)
+             do (let ((user (cl-find-if #'(lambda (user)
+                                            (string= (plist-get user :id)
+                                                     (plist-get e :id)))
+                                        users)))
+                  (if user
+                      (push (slack-merge-plist e user) updated)
+                    (push e nochanges))))
+
+    (oset team users
+          (append nochanges
+                  updated
+                  (cl-remove-if #'(lambda (e)
+                                    (cl-find-if
+                                     #'(lambda (user)
+                                         (string= (plist-get user :id)
+                                                  (plist-get e :id)))
+                                     updated))
+                                users)))))
 
 (cl-defun slack-users-info-request (user--ids team &key after-success)
   (let ((bot-ids nil)
