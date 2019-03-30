@@ -325,16 +325,8 @@
               (&key data &allow-other-keys)
               (slack-request-handle-error
                (data "slack-users-info-request")
-               (let* ((users (plist-get data :users))
-                      (ids (mapcar #'(lambda (e) (plist-get e :id))
-                                   users)))
-                 (oset team users (append users
-                                          (cl-remove-if
-                                           #'(lambda (u)
-                                               (cl-find (plist-get u :id)
-                                                        ids
-                                                        :test #'string=))
-                                           (oref team users))))))
+               (let* ((users (plist-get data :users)))
+                 (slack-user-append users team)))
               (if (< 0 (length queue))
                   (progn
                     (slack-log (format "Fetching users... [%s/%s]"
@@ -368,11 +360,7 @@
             (slack-request-handle-error
              (data "slack-user-info-request")
              (let ((user (plist-get data :user)))
-               (oset team users
-                     (cons user
-                           (cl-remove-if #'(lambda (user)
-                                             (string= (plist-get user :id) user-id))
-                                         (oref team users))))))
+               (slack-user-append (list user) team)))
             (when (functionp after-success)
               (funcall after-success))))
         (slack-request
@@ -521,13 +509,7 @@
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
                                                :next_cursor))))
-             (oset team users
-                   (append
-                    (cl-remove-if #'(lambda (e)
-                                      (cl-find e members
-                                               :test #'slack-user-equal-p))
-                                  (oref team users))
-                    members))
+             (slack-user-append members team)
 
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)
