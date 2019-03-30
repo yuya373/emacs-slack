@@ -26,7 +26,7 @@
 (require 'slack-util)
 
 (defconst slack-mrkdwn-regex-bold
-  "\\(?:^\\|[^\\]\\)\\(\\(*\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|\\W\\)\\(\\(*\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\(\\W\\|$\\)\\)")
 
 (defface slack-mrkdwn-bold-face
   '((t (:weight bold)))
@@ -34,7 +34,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-italic
-  "\\(?:^\\|[^\\]\\)\\(\\(_\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|\\W\\)\\(\\(_\\)\\([^\n\t]\\|[^\n\t*]\\(?:.\\)*?\\)\\(\\2\\)\\(\\W\\|$\\)\\)")
 
 (defface slack-mrkdwn-italic-face
   '((t (:slant italic)))
@@ -42,7 +42,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-strike
-  "\\(?:^\\|[^\\]\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\)")
+  "\\(?:^\\|\\W\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\(\\W\\|$\\)\\)")
 
 (defface slack-mrkdwn-strike-face
   '((t (:strike-through t)))
@@ -50,14 +50,14 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-code
-  "\\(?:\\`\\|[^\\]\\)\\(\\(`\\)\\(\\(?:.\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
+  "\\(?:\\`\\|\\W\\)\\(\\(`\\)\\(\\(?:.\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
 
 (defface slack-mrkdwn-code-face
   '((t (:inherit slack-preview-face)))
   "Face used to between ``'"
   :group 'slack)
 
-(defconst slack-mrkdwn-regex-code-block "\\(```\\)\\(?:\n\\)?\\(\\(.\\|\n\\)*?\\)\\(```\\)")
+(defconst slack-mrkdwn-regex-code-block "\\W\\(```\\)\\(?:\n\\)?\\(\\(.\\|\n\\)*?\\)\\(```\\)\\W")
 
 (defface slack-mrkdwn-code-block-face
   '((t (:inherit slack-preview-face)))
@@ -65,7 +65,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-blockquote
-  "^[ \t]*\\([A-Z]?>\\)\\([ \t]*\\)\\(.*\\)$")
+  "^[ \t]*\\([A-Z]?>\\)\\([ \t]*\\)\\(.+\\)$")
 
 (defface slack-mrkdwn-blockquote-face
   '((t (:inherit font-lock-doc-face)))
