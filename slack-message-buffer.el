@@ -559,14 +559,14 @@
                   (not (string= prev-ts current-ts)))
           (oset buffer cursor-event-prev-ts current-ts)
 
-          (slack-buffer-animate-emoji current-ts)
-          (slack-buffer-cancel-animate-emoji prev-ts)
+          (slack-buffer-animate-gif current-ts)
+          (slack-buffer-cancel-animate-gif prev-ts)
 
           (with-slots (team) buffer
             (unless (slack-team-mark-as-read-immediatelyp team)
               (slack-buffer-update-mark buffer)))))))
 
-(defun slack-buffer-get-emoji-images (ts)
+(defun slack-buffer-get-images (ts)
   (when ts
     (with-slots (room) slack-current-buffer
       (slack-if-let* ((beg (slack-buffer-ts-eq (point-min) (point-max) ts))
@@ -576,23 +576,32 @@
           (let ((images (make-hash-table :test 'equal))
                 (current beg))
             (while (<= current end)
-              (let ((prop (get-text-property current 'emojify-display)))
+              (let ((prop (or (get-text-property current
+                                                 'emojify-display)
+                              (get-text-property current
+                                                 'slack-image-display))))
                 (when prop
-                  (puthash (plist-get (cdr prop) :file)
-                           prop
-                           images)))
+                  (let ((image (if (eq 'image (car prop))
+                                   prop
+                                 (cl-find-if #'(lambda (e)
+                                                 (and (listp e)
+                                                      (eq 'image (car e))))
+                                             prop))))
+                    (puthash (plist-get (cdr image) :file)
+                             image
+                             images))))
               (setq current (1+ current)))
             (hash-table-values images))))))
 
-(defun slack-buffer-animate-emoji (ts)
-  (slack-if-let* ((images (slack-buffer-get-emoji-images ts)))
+(defun slack-buffer-animate-gif (ts)
+  (slack-if-let* ((images (slack-buffer-get-images ts)))
       (cl-loop for image in images
                do (when (and image (image-multi-frame-p image))
                     (image-animate image nil t)))))
 
-(defun slack-buffer-cancel-animate-emoji (ts)
+(defun slack-buffer-cancel-animate-gif (ts)
   (when ts
-    (slack-if-let* ((images (slack-buffer-get-emoji-images ts)))
+    (slack-if-let* ((images (slack-buffer-get-images ts)))
         (cl-loop for image in images
                  do (when (and image (image-multi-frame-p image))
                       (let ((timer (image-animate-timer image)))
@@ -611,7 +620,7 @@
     (slack-message-buffer-detect-ts-changed))
    ((eq type 'left)
     (let ((prev-ts (oref this cursor-event-prev-ts)))
-      (slack-buffer-cancel-animate-emoji prev-ts))
+      (slack-buffer-cancel-animate-gif prev-ts))
     (oset this cursor-event-prev-ts nil)
     (remove-hook 'post-command-hook
                  #'slack-message-buffer-detect-ts-changed
