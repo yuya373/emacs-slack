@@ -55,7 +55,9 @@
   (not (oref room is-user-deleted)))
 
 (cl-defmethod slack-im-user-presence ((room slack-im) team)
-  (slack-user-presence-to-string (slack-user-find room team)))
+  (or (slack-user-presence-to-string (slack-user-find room team)
+                                     team)
+      " "))
 
 (cl-defmethod slack-im-user-dnd-status ((room slack-im) team)
   (or (slack-user-dnd-status-to-string (slack-user-find room

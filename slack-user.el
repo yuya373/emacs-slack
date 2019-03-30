@@ -147,11 +147,13 @@
                   'face 'slack-user-dnd-face)
     nil))
 
-(defun slack-user-presence-to-string (user)
-  (if (string= (plist-get user :presence) "active")
-      (propertize slack-user-active-string
-                  'face 'slack-user-active-face)
-    " "))
+(defun slack-user-presence-to-string (user team)
+  (slack-if-let* ((statuses (oref team presence))
+                  (presence (gethash (plist-get user :id)
+                                     statuses)))
+      (if (string= presence "active")
+          (propertize slack-user-active-string
+                      'face 'slack-user-active-face))))
 
 (defun slack-user-set-status ()
   (interactive)
@@ -423,13 +425,15 @@
       (when image
         (create-image image nil nil :ascent 80)))))
 
-(defun slack-user-presence (user)
-  (plist-get user :presence))
+(defun slack-user-presence (user team)
+  (gethash (plist-get user :id)
+           (oref team presence)))
 
 (defun slack-request-set-presence (team &optional presence)
   (unless presence
-    (let ((current-presence (slack-user-presence (slack-user--find (oref team self-id)
-                                                                   team))))
+    (let ((current-presence (gethash (oref team self-id)
+                                     (oref team presence)
+                                     "")))
 
       (setq presence (or (and (string= current-presence "away") "auto")
                          "away"))

@@ -764,17 +764,9 @@ TEAM is one of `slack-teams'"
     (slack-counts-update team)))
 
 (defun slack-ws-handle-presence-change (payload team)
-  (let* ((id (plist-get payload :user))
-         (user (slack-user--find id team)))
-    (cl-labels
-        ((update ()
-                 (let ((user (slack-user--find id team))
-                       (presence (plist-get payload :presence)))
-                   (plist-put user :presence presence))))
-      (if user (update)
-        (slack-user-info-request id
-                                 team
-                                 :after-success #'update)))))
+  (let ((id (plist-get payload :user))
+        (presence (plist-get payload :presence)))
+    (puthash id presence (oref team presence))))
 
 (defun slack-ws-handle-bot (payload team)
   (let ((bot (plist-get payload :bot)))
