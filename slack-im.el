@@ -58,8 +58,10 @@
   (slack-user-presence-to-string (slack-user-find room team)))
 
 (cl-defmethod slack-im-user-dnd-status ((room slack-im) team)
-  (slack-user-dnd-status-to-string (slack-user-find room
-                                                    team)))
+  (or (slack-user-dnd-status-to-string (slack-user-find room
+                                                    team)
+                                       team)
+      " "))
 
 (cl-defmethod slack-room-name ((room slack-im) team)
   (with-slots (user) room
@@ -138,10 +140,9 @@
                               :user-ids (list (plist-get user :id)))))
 
 (cl-defmethod slack-room-label-prefix ((room slack-im) team)
-  (format "%s "
-          (or
-           (slack-im-user-dnd-status room team)
-           (slack-im-user-presence room team))))
+  (format "%s%s"
+          (slack-im-user-dnd-status room team)
+          (slack-im-user-presence room team)))
 
 (cl-defmethod slack-room-get-members ((room slack-im))
   (list (oref room user)))

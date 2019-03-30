@@ -231,6 +231,8 @@
               (on-open ()
                        (slack-conversations-list-update team)
                        ;; (slack-user-list-update team)
+
+                       (slack-request-dnd-team-info team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
@@ -392,8 +394,8 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-member-joined-channel decoded-payload team))
          ((string= type "member_left_channel")
           (slack-ws-handle-member-left_channel decoded-payload team))
-         ((or (string= type "dnd_updated")
-              (string= type "dnd_updated_user"))
+         ((or ;; (string= type "dnd_updated")
+           (string= type "dnd_updated_user"))
           (slack-ws-handle-dnd-updated decoded-payload team))
          ((string= type "star_added")
           (slack-ws-handle-star-added decoded-payload team))
@@ -854,12 +856,9 @@ TEAM is one of `slack-teams'"
                           (oref channel members)))))
 
 (defun slack-ws-handle-dnd-updated (payload team)
-  (let* ((user (slack-user--find (plist-get payload :user) team))
-         (updated (slack-user-update-dnd-status user (plist-get payload :dnd_status))))
-    (oset team users
-          (cons updated (cl-remove-if #'(lambda (user) (string= (plist-get user :id)
-                                                                (plist-get updated :id)))
-                                      (oref team users))))))
+  (let* ((user (plist-get payload :user))
+         (status (plist-get payload :dnd_status)))
+    (puthash user status (oref team dnd-status))))
 
 ;; [star_added event | Slack](https://api.slack.com/events/star_added)
 (defun slack-ws-handle-star-added-to-file (file-id team)

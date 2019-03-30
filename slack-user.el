@@ -41,6 +41,16 @@
 (defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
 
+(defcustom slack-dnd-sign "Z"
+  "Used to indicate user is dnd status."
+  :group 'slack
+  :type 'string)
+
+(defface slack-user-dnd-face
+  '((t (:foreground "#2aa198" :weight bold)))
+  "Used to `slack-user-dnd-sign'"
+  :group 'slack)
+
 (defcustom slack-user-active-string "*"
   "If user is active, use this string with `slack-user-active-face'."
   :type 'string
@@ -97,9 +107,9 @@
       (plist-get profile :display_name_normalized)))
 
 (defun slack-user-label (user team)
-  (format "%s %s"
-          (or (slack-user-dnd-status-to-string user)
-              (slack-user-presence-to-string user))
+  (format "%s%s %s"
+          (or (slack-user-dnd-status-to-string user team) " ")
+          (or (slack-user-presence-to-string user team) " ")
           (slack-user--name user team)))
 
 (defun slack-user--status (user)
@@ -123,17 +133,18 @@
                 (funcall filter users)
               users))))
 
-(defun slack-user-dnd-in-range-p (user)
-  (let ((current (time-to-seconds))
-        (dnd-start (plist-get (plist-get user :dnd_status) :next_dnd_start_ts))
-        (dnd-end (plist-get (plist-get user :dnd_status) :next_dnd_end_ts)))
-    (and dnd-start dnd-end
-         (<= dnd-start current)
-         (<= current dnd-end))))
+(defun slack-user-dnd-in-range-p (user team)
+  (slack-if-let* ((current (time-to-seconds))
+                  (statuses (oref team dnd-status))
+                  (dnd-status (gethash (plist-get user :id)
+                                       statuses)))
+      (and (<= (gethash "next_dnd_start_ts" dnd-status) current)
+           (<= current (gethash "next_dnd_end_ts" dnd-status)))))
 
-(defun slack-user-dnd-status-to-string (user)
-  (if (slack-user-dnd-in-range-p user)
-      "Z"
+(defun slack-user-dnd-status-to-string (user team)
+  (if (slack-user-dnd-in-range-p user team)
+      (propertize slack-dnd-sign
+                  'face 'slack-user-dnd-face)
     nil))
 
 (defun slack-user-presence-to-string (user)
@@ -465,30 +476,29 @@
       :success #'on-success
       ))))
 
-(defun slack-user-update-dnd-status (user dnd-status)
-  (plist-put user :dnd_status dnd-status))
-
 (defun slack-request-dnd-team-info (team &optional after-success)
   (cl-labels
       ((on-success
         (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-request-dnd-team-info")
-         (let ((users (plist-get data :users)))
-           (oset team users
-                 (cl-loop for user in (oref team users)
-                          collect (plist-put
-                                   user
-                                   :dnd_status
-                                   (plist-get users
-                                              (intern (format ":%s"
-                                                              (plist-get user :id)))))))))
-        (when (functionp after-success)
-          (funcall after-success team))))
+        (if (eq t (gethash "ok" data))
+            (progn
+              (let ((status (gethash "users" data)))
+                (when status
+                  (oset team dnd-status status)))
+              (when (functionp after-success)
+                (funcall after-success team)))
+          (slack-log (format "Failed to request slack-request-dnd-team-info: %s"
+                             data)
+                     team
+                     :level 'error)))
+       (parser () (let ((json-object-type 'hash-table)
+                        (json-array-type 'list))
+                    (json-read))))
     (slack-request
      (slack-request-create
       slack-dnd-team-info-url
       team
+      :parser #'parser
       :success #'on-success))))
 
 (defun slack-user-equal-p (a b)
@@ -514,7 +524,6 @@
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)
                (progn
-                 (slack-request-dnd-team-info team)
                  (slack-log "Slack User List Updated"
                             team :level 'info))))))
          (request (&optional next-cursor)

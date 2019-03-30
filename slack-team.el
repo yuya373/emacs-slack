@@ -122,6 +122,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (emoji-master :initform (make-hash-table :test 'equal))
    (visible-threads :initarg :visible-threads :initform nil :type boolean)
    (animate-image :initarg :animate-image :initform nil :type boolean)
+   (dnd-status :initform (make-hash-table :test 'equal))
    ))
 
 (defun slack-create-team (plist)

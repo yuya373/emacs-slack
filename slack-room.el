@@ -165,7 +165,7 @@
       (slack-counts-channel-set-has-unreads counts this value)))
 
 (cl-defmethod slack-room-label ((room slack-room) team)
-  (let ((str (format "%s%s%s"
+  (let ((str (format "%s %s%s"
                      (slack-room-label-prefix room team)
                      (slack-room-display-name room team)
                      (slack-room-mention-count-display room team))))
