@@ -173,5 +173,21 @@
           (setq do-loop nil))))
     (cl-delete-if #'null result)))
 
+;; org-combine-plists
+(defun slack-merge-plist (&rest plists)
+  "Create a single property list from all plists in PLISTS.
+The process starts by copying the first list, and then setting properties
+from the other lists.  Settings in the last list are the most significant
+ones and overrule settings in the other lists."
+  (let ((rtn (copy-sequence (pop plists)))
+        p v ls)
+    (while plists
+      (setq ls (pop plists))
+      (while ls
+        (setq p (pop ls)
+              v (pop ls))
+        (setq rtn (plist-put rtn p v))))
+    rtn))
+
 (provide 'slack-util)
 ;;; slack-util.el ends here
