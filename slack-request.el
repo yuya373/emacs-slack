@@ -147,27 +147,31 @@
   (let ((team (oref req team)))
     (cl-labels
         ((-on-success (&key data &allow-other-keys)
-                      (funcall (oref req success) :data data)
-                      (slack-request-log-success req data)
-                      (when (functionp on-success)
-                        (funcall on-success)))
-         (-on-error (&key error-thrown symbol-status response data)
-                    (slack-if-let* ((retry-after (request-response-header response "retry-after"))
-                                    (retry-after-sec (string-to-number retry-after)))
-                        (progn
-                          (slack-request-retry-request req retry-after-sec)
-                          (slack-request-log-retry req retry-after-sec))
-                      (slack-request-log-failed req error-thrown symbol-status data)
-                      (if (slack-request-retry-failed-request-p req error-thrown symbol-status)
+                      (unwind-protect
                           (progn
-                            (slack-request-log-failed-retry req error-thrown symbol-status data)
-                            (slack-request-retry-request req 1))
-                        (when (functionp (oref req error))
-                          (funcall (oref req error)
-                                   :error-thrown error-thrown
-                                   :symbol-status symbol-status
-                                   :response response
-                                   :data data)))
+                            (funcall (oref req success) :data data)
+                            (slack-request-log-success req data))
+                        (when (functionp on-success)
+                          (funcall on-success))))
+         (-on-error (&key error-thrown symbol-status response data)
+                    (unwind-protect
+                        (progn
+                          (slack-if-let* ((retry-after (request-response-header response "retry-after"))
+                                          (retry-after-sec (string-to-number retry-after)))
+                              (progn
+                                (slack-request-retry-request req retry-after-sec)
+                                (slack-request-log-retry req retry-after-sec))
+                            (slack-request-log-failed req error-thrown symbol-status data)
+                            (if (slack-request-retry-failed-request-p req error-thrown symbol-status)
+                                (progn
+                                  (slack-request-log-failed-retry req error-thrown symbol-status data)
+                                  (slack-request-retry-request req 1))
+                              (when (functionp (oref req error))
+                                (funcall (oref req error)
+                                         :error-thrown error-thrown
+                                         :symbol-status symbol-status
+                                         :response response
+                                         :data data)))))
                       (when (functionp on-error)
                         (funcall on-error)))))
       (with-slots (url type params data parser sync files headers timeout without-auth) req
@@ -181,8 +185,8 @@
                :files files
                :headers (append
                          (if without-auth nil
-                             (list (cons "Authorization"
-                                         (format "Bearer %s" (slack-team-token team)))))
+                           (list (cons "Authorization"
+                                       (format "Bearer %s" (slack-team-token team)))))
                          headers)
                :parser parser
                :success #'-on-success
@@ -228,7 +232,8 @@
       ((on-timeout ()
                    (slack-request-worker-execute)
                    (when (timerp slack-request-worker-instance)
-                     (cancel-timer slack-request-worker-instance))
+                     (cancel-timer slack-request-worker-instance)
+                     (oset slack-request-worker-instance timer nil))
                    (slack-request-worker-set-timer)))
     (oset slack-request-worker-instance timer
           (run-at-time 1 nil #'on-timeout))))
@@ -249,12 +254,15 @@
                       (push req do)
                     (push req skip)))
 
-      ;; (message "[WORKER] QUEUE: %s, LIMIT: %s, CURRENT: %s, DO: %s, SKIP: %s"
-      ;;          (length (oref slack-request-worker-instance queue))
-      ;;          slack-request-worker-max-request-limit
-      ;;          (oref slack-request-worker-instance current-request-count)
-      ;;          (length do)
-      ;;          (length skip))
+      ;; (let ((current (oref slack-request-worker-instance current-request-count))
+      ;;       (queue (length (oref slack-request-worker-instance queue)))
+      ;;       (max slack-request-worker-max-request-limit))
+      ;;   (message "[WORKER] QUEUE: %s, LIMIT: %s, CURRENT: %s, DO: %s, SKIP: %s"
+      ;;            queue
+      ;;            max
+      ;;            current
+      ;;            (length do)
+      ;;            (length skip)))
 
       (oset slack-request-worker-instance queue skip)
 
