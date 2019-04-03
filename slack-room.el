@@ -128,11 +128,6 @@
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
 
-(defun slack-room-find-thread (room ts)
-  (let ((message (slack-room-find-message room ts)))
-    (when message
-      (slack-message-thread message room))))
-
 (cl-defmethod slack-room-display-name ((room slack-room) team)
   (let ((room-name (slack-room-name room team)))
     (if slack-display-team-name
@@ -179,10 +174,17 @@
 (defun slack-room-sort-messages (messages)
   (cl-sort messages #'string< :key #'slack-ts))
 
-(cl-defmethod slack-room-sorted-messages ((room slack-room))
-  (with-slots (messages message-ids) room
-    (let ((ret))
-      (cl-loop for id in (reverse message-ids)
+(cl-defmethod slack-room-replies ((room slack-room) message)
+  (slack-if-let* ((replies (oref message replies))
+                  (ids (mapcar #'(lambda (e) (plist-get e :ts))
+                               replies)))
+      (slack-room-sorted-messages room ids)))
+
+(cl-defmethod slack-room-sorted-messages ((room slack-room) &optional message-ids)
+  (with-slots (messages) room
+    (let ((ids (or message-ids (oref room message-ids)))
+          (ret))
+      (cl-loop for id in (reverse ids)
                do (slack-if-let* ((message (gethash id messages)))
                       (push message ret)))
       ret)))
@@ -265,12 +267,6 @@
 
 (cl-defmethod slack-room-member-p ((_this slack-room))
   t)
-
-(cl-defmethod slack-message-thread ((this slack-reply-broadcast-message) room)
-  (let ((message (slack-room-find-message room
-                                          (or (oref this broadcast-thread-ts)
-                                              (oref this thread-ts)))))
-    (slack-message-thread message room)))
 
 (defun slack-room-find (id team)
   (if (and id team)

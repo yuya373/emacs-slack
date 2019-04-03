@@ -82,8 +82,7 @@
               (slack-buffer-insert this message t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))
-              (slack-if-let* ((thread (slack-message-thread message room))
-                              (messages (oref thread messages))
+              (slack-if-let* ((messages (slack-room-replies room message))
                               (latest-message (car (last messages))))
                   (progn
                     (cl-loop for m in messages
@@ -125,21 +124,19 @@
 
 (cl-defmethod slack-buffer-request-history ((this slack-thread-message-buffer) after-success)
   (with-slots (team thread-ts room last-read) this
-    (slack-if-let* ((message (slack-room-find-message room thread-ts))
-                    (thread (slack-message-thread message room)))
+    (slack-if-let* ((message (slack-room-find-message room thread-ts)))
         (cl-labels
             ((success (_next-cursor has-more)
                       (oset this has-more has-more)
                       (funcall after-success)))
-          (slack-thread-replies thread room team
+          (slack-thread-replies message room team
                                 :after-success #'success
                                 :oldest last-read)))))
 
 (cl-defmethod slack-buffer-update-mark ((this slack-thread-message-buffer))
   (with-slots (team room last-read thread-ts) this
-    (slack-if-let* ((message (slack-room-find-message room thread-ts))
-                    (thread (slack-message-thread message room)))
-        (slack-thread-mark thread
+    (slack-if-let* ((message (slack-room-find-message room thread-ts)))
+        (slack-thread-mark message
                            room
                            last-read
                            team))))
@@ -147,8 +144,7 @@
 (cl-defmethod slack-buffer-insert-history ((this slack-thread-message-buffer))
   (with-slots (team thread-ts last-read room) this
     (slack-if-let* ((message (slack-room-find-message room thread-ts))
-                    (thread (slack-message-thread message room))
-                    (messages (oref thread messages))
+                    (messages (slack-room-replies room message))
                     (latest-message (car (last messages))))
         (progn
           (cl-loop for m in messages

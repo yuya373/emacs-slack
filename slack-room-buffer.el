@@ -341,13 +341,12 @@
 
 (cl-defmethod slack-message-deleted ((message slack-message) room team)
   (if (slack-thread-message-p message)
-      (slack-if-let* ((parent (slack-room-find-thread-parent room message))
-                      (thread (slack-message-get-thread parent)))
+      (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
           (progn
-            (slack-thread-delete-message thread message)
+            ;; (slack-thread-delete-message thread message)
             (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
                                                        room
-                                                       (oref thread thread-ts)
+                                                       (slack-thread-ts parent)
                                                        team)))
                 (slack-buffer-message-delete buffer (slack-ts message)))
             (slack-message-update parent team t)))

@@ -313,8 +313,6 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-room ((this slack-buffer))
   (slack-buffer-cant-execute this))
-(cl-defmethod slack-buffer-display-unread-threads ((this slack-buffer))
-  (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-execute-button-block-action((this slack-buffer))
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-buffer))

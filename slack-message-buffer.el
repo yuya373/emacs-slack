@@ -160,30 +160,6 @@
 
     buffer))
 
-(cl-defmethod slack-thread-title ((thread slack-thread) team)
-  (with-slots (root) thread
-    (let ((room (slack-room-find (oref root channel) team))
-          (body (slack-message-body root team)))
-      (when room
-        (format "%s - %s" (slack-room-name room team)
-                (concat (substring body 0 (min 50 (length body))) "..."))))))
-
-(cl-defmethod slack-buffer-display-unread-threads ((this slack-message-buffer))
-  (with-slots (room team) this
-    (let* ((threads (mapcar #'(lambda (m) (oref m thread))
-                            (cl-remove-if
-                             #'(lambda (m)
-                                 (or (not (slack-message-thread-parentp m))
-                                     (not (< 0 (oref (oref m thread) unread-count)))))
-                             (slack-room-sorted-messages room))))
-           (alist (mapcar #'(lambda (thread)
-                              (cons (slack-thread-title thread team) thread))
-                          (cl-sort threads
-                                   #'string>
-                                   :key #'(lambda (thread) (oref thread thread-ts)))))
-           (selected (slack-select-from-list (alist "Select Thread: "))))
-      (slack-thread-show-messages selected room team))))
-
 (cl-defmethod slack-buffer-major-mode ((_this slack-message-buffer))
   'slack-message-buffer-mode)
 
@@ -437,8 +413,8 @@
          (and (not (slack-message-starred-p message))
               (not (slack-message-starred-p prev))
               (not (slack-reply-broadcast-message-p message))
-              (null (oref message thread))
-              (null (oref prev thread))
+              (null (oref message thread-ts))
+              (null (oref prev thread-ts))
               (let ((prev-user (slack-user-find prev team))
                     (current-user (slack-user-find message team)))
                 (equal prev-user current-user))
@@ -630,8 +606,7 @@
 
 (defun slack-room-unread-threads ()
   (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-display-unread-threads buf)))
+  (error "Deprecated.  use `slack-all-threads instead'"))
 
 (defvar slack-message-thread-status-keymap
   (let ((map (make-sparse-keymap)))
@@ -730,10 +705,9 @@
                               (slack-reply-broadcast-message-p old-message)
                             replace)))
             (slack-room-update-buffer room team message replace)))
-        (slack-if-let* ((thread (slack-message-get-thread parent))
-                        (buf (slack-buffer-find 'slack-thread-message-buffer
+        (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                                 room
-                                                (oref thread thread-ts)
+                                                (slack-thread-ts message)
                                                 team)))
             (slack-buffer-update buf message :replace replace)))))
 
@@ -896,12 +870,8 @@
   (with-slots (room team) this
     (let ((message (slack-room-find-message room ts)))
       (when message
-        (slack-if-let* ((thread-ts (oref message thread-ts)))
-            (slack-if-let* ((thread (slack-message-thread message room)))
-                (slack-thread-show-messages thread room team)
-              (let ((thread (make-instance 'slack-thread
-                                           :thread_ts thread-ts)))
-                (slack-thread-show-messages thread room team)))
+        (slack-if-let* ((thread-ts (slack-thread-ts message)))
+            (slack-thread-show-messages message room team)
           (slack-buffer-start-thread this message ts))))))
 
 (cl-defmethod slack-buffer-start-thread ((this slack-message-buffer) message ts)
@@ -911,13 +881,13 @@
     (let ((buf (slack-create-thread-message-buffer room team ts)))
       (slack-buffer-display buf))))
 
-(cl-defmethod slack-thread-show-messages ((thread slack-thread) room team)
+(cl-defmethod slack-thread-show-messages ((this slack-message) room team)
   (cl-labels
       ((after-success (_next-cursor has-more)
                       (let ((buf (slack-create-thread-message-buffer
-                                  room team (oref thread thread-ts) has-more)))
+                                  room team (slack-thread-ts this) has-more)))
                         (slack-buffer-display buf))))
-    (slack-thread-replies thread room team
+    (slack-thread-replies this room team
                           :after-success #'after-success)))
 
 (defun slack-advice-delete-window (&optional window)

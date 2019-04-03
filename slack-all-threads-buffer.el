@@ -176,7 +176,7 @@
          (room (slack-room-find room-id team)))
         (cl-labels
             ((display-thread (message)
-                             (slack-thread-show-messages (oref message thread)
+                             (slack-thread-show-messages message
                                                          room
                                                          team)))
           (slack-if-let* ((message (slack-room-find-message room (slack-ts root))))

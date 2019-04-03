@@ -556,8 +556,7 @@ TEAM is one of `slack-teams'"
                                                      room)))
       (progn
         (oset new-message reactions (oref base reactions))
-        (slack-message-update new-message team t nil base))
-    ))
+        (slack-message-update new-message team t nil base))))
 
 
 (defun slack-ws-delete-message (payload team)
@@ -808,22 +807,23 @@ TEAM is one of `slack-teams'"
             (slack-buffer-update-marker-overlay buffer)))))
 
 (defun slack-ws-handle-thread-marked (payload team)
-  (let* ((subscription (plist-get payload :subscription))
-         (thread-ts (plist-get subscription :thread_ts))
-         (channel (plist-get subscription :channel))
-         (room (slack-room-find channel team))
-         (parent (and room (slack-room-find-message room thread-ts))))
+  (let* ((type (plist-get payload :type)))
     (slack-counts-update team)
-    (when (and parent (oref parent thread))
-      (slack-thread-marked (oref parent thread) subscription))))
+    (when (string= type "thread")
+      (slack-if-let* ((subscription (plist-get payload :subscription))
+                      (channel (plist-get subscription :channel))
+                      (room (slack-room-find channel team))
+                      (thread-ts (plist-get subscription :thread_ts))
+                      (message (slack-room-find-message room thread-ts)))
+          (slack-message-handle-thread-marked message subscription)))))
 
 (defun slack-ws-handle-thread-subscribed (payload team)
-  (let* ((thread-data (plist-get payload :subscription))
-         (room (slack-room-find (plist-get thread-data :channel) team))
-         (message (and (slack-room-find-message room (plist-get thread-data :thread_ts))))
-         (thread (and message (oref message thread))))
-    (when thread
-      (slack-thread-marked thread thread-data))))
+  (slack-if-let* ((subscription (plist-get payload :subscription))
+                  (channel (plist-get subscription :channel))
+                  (thread-ts (plist-get subscription :thread_ts))
+                  (room (slack-room-find channel team))
+                  (message (slack-room-find-message room thread-ts)))
+      (slack-message-handle-thread-subscribed message subscription)))
 
 (defun slack-ws-handle-user-change (payload team)
   (let* ((user (plist-get payload :user))
@@ -1052,19 +1052,8 @@ TEAM is one of `slack-teams'"
                   (thread-ts (plist-get message-payload :thread_ts))
                   (room (slack-room-find (plist-get payload :channel)
                                          team))
-                  (message (slack-room-find-message room thread-ts))
-                  (thread (slack-message-get-thread message))
-                  (new-thread (slack-thread-create message
-                                                   message-payload)))
-      (progn
-        (slack-merge thread new-thread)
-        (slack-message-update message team t t))
-    (message "THREAD_TS: %s, ROOM: %s, MESSAGE: %s THREAD: %s, NEW_THREAD:%s"
-             thread-ts
-             (not (null room))
-             (not (null message))
-             (not (null thread))
-             (not (null new-thread)))))
+                  (message (slack-room-find-message room thread-ts)))
+      (slack-message-handle-replied message message-payload)))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
