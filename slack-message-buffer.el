@@ -175,7 +175,7 @@
                              #'(lambda (m)
                                  (or (not (slack-message-thread-parentp m))
                                      (not (< 0 (oref (oref m thread) unread-count)))))
-                             (oref room messages))))
+                             (slack-room-sorted-messages room))))
            (alist (mapcar #'(lambda (thread)
                               (cons (slack-thread-title thread team) thread))
                           (cl-sort threads
@@ -277,7 +277,7 @@
                                                :cursor cursor
                                                :after-success #'after-success))
            (after-success (messages next-cursor)
-                          (slack-room-append-messages room messages team)
+                          (slack-room-set-messages room messages team)
                           (if (and next-cursor (< 0 (length next-cursor)))
                               (paginate next-cursor)
                             (write-messages)))
@@ -329,7 +329,7 @@
                 (goto-char cur-point))))
            (after-success (messages next-cursor)
                           (oset this cursor next-cursor)
-                          (slack-room-prepend-messages room messages team)
+                          (slack-room-set-messages room messages team)
                           (update-buffer (slack-room-sorted-messages room))))
         (slack-conversations-view room team
                                   :cursor (oref this cursor)
@@ -746,7 +746,6 @@
 
       (progn
         (slack-room-push-message room message)
-        (slack-room-update-latest room message team)
 
         (let ((thread-message-p (slack-thread-message-p message))
               (reply-broadcast-message-p

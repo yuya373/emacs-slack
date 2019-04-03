@@ -93,10 +93,10 @@ Any other non-nil value: send to the room."
                                (oset (oref parent thread)
                                      messages
                                      (slack-room-sort-messages replies))
-                               (slack-room-append-messages room
-                                                           (list parent)
-                                                           team)))
-                           (slack-room-append-messages room replies team))
+                               (slack-room-set-messages room
+                                                        (list parent)
+                                                        team)))
+                           (slack-room-set-messages room replies team))
                          (when (functionp after-success)
                            (funcall after-success next-cursor has-more))))
       (slack-conversations-replies room ts team

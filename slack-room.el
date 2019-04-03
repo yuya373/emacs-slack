@@ -55,7 +55,8 @@
    (created :initarg :created)
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
-   (messages :initarg :messages :initform ())
+   (message-ids :initform '() :type list)
+   (messages :initform (make-hash-table :test 'equal :size 300))
    (last-read :initarg :last_read :type string :initform "0")
    (members :initarg :members :type list :initform '())
    (members-loaded-p :type boolean :initform nil)))
@@ -121,9 +122,8 @@
     (slack-select-from-list (alist "Select Channel: "))))
 
 (defun slack-room-find-message (room ts)
-  (cl-find-if #'(lambda (m) (string= ts (slack-ts m)))
-              (oref room messages)
-              :from-end t))
+  (with-slots (messages) room
+    (gethash ts messages)))
 
 (defun slack-room-find-thread-parent (room thread-message)
   (slack-room-find-message room (oref thread-message thread-ts)))
@@ -186,18 +186,12 @@
                 messages))
 
 (cl-defmethod slack-room-sorted-messages ((room slack-room))
-  (with-slots (messages) room
-    (slack-room-sort-messages (copy-sequence messages))))
-
-(cl-defmethod slack-room-set-prev-messages ((room slack-room) prev-messages team)
-  (let ((messages (append (oref room messages) prev-messages)))
-    (slack-room-set-messages room messages team)))
-
-(defalias 'slack-room-prepend-messages 'slack-room-set-prev-messages)
-
-(cl-defmethod slack-room-append-messages ((room slack-room) new-messages team)
-  (let ((messages (append new-messages (oref room messages))))
-    (slack-room-set-messages room messages team)))
+  (with-slots (messages message-ids) room
+    (let ((ret))
+      (cl-loop for id in (reverse message-ids)
+               do (slack-if-let* ((message (gethash id messages)))
+                      (push message ret)))
+      ret)))
 
 (cl-defmethod slack-room-latest ((this slack-room) team)
   (with-slots (counts) team
@@ -208,36 +202,29 @@
 (cl-defmethod slack-room--latest ((this slack-room) counts)
   (slack-counts-channel-latest counts this))
 
-(cl-defmethod slack-room-update-latest ((room slack-room) message team)
-  (when message
-    (with-slots (counts) team
-      (when counts
-        (slack-room--update-latest room counts (slack-ts message))))))
-
 (cl-defmethod slack-room--update-latest ((this slack-room) counts ts)
   (slack-counts-channel-update-latest counts this ts))
 
-(cl-defmethod slack-room-push-message ((room slack-room) message)
-  (with-slots (messages) room
-    (setq messages
-          (cl-remove-if #'(lambda (n) (slack-message-equal message n))
-                        messages))
-    (push message messages)))
+(cl-defmethod slack-room-push-message ((this slack-room) message)
+  (let ((ts (slack-ts message)))
+    (puthash ts message (oref this messages))
+    (oset this message-ids
+          (append (oref this message-ids)
+                  (list ts)))))
 
 (cl-defmethod slack-room-set-messages ((room slack-room) messages team)
-  (let* ((sorted (slack-room-sort-messages
-                  (cl-delete-duplicates messages
-                                        :test #'slack-message-equal)))
-         (latest (car (last sorted))))
-    (oset room messages sorted)
-    (slack-room-update-latest room latest team)))
+  (cl-loop for m in messages
+           do (let ((ts (slack-ts m)))
+                (puthash ts m (oref room messages))
+                (cl-pushnew ts (oref room message-ids)
+                            :test #'string=)))
+  (oset room
+        message-ids
+        (cl-sort (oref room message-ids) #'string<))
 
-(cl-defmethod slack-room-prev-messages ((room slack-room) from)
-  (with-slots (messages) room
-    (cl-remove-if #'(lambda (m)
-                      (or (string< from (slack-ts m))
-                          (string= from (slack-ts m))))
-                  (slack-room-sort-messages (copy-sequence messages)))))
+  (slack-if-let* ((counts (oref team counts))
+                  (latest (car (last (oref room message-ids)))))
+      (slack-room--update-latest room counts latest)))
 
 (cl-defmethod slack-room-update-mark ((room slack-room) team ts)
   (cl-labels ((on-update-mark (&key data &allow-other-keys)
