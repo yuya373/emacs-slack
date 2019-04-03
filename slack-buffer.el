@@ -189,9 +189,9 @@
                             (slack-ts message)))))))
 
 (cl-defmethod slack-buffer--subscribe-cursor-event ((_this slack-buffer)
-                                                 _window
-                                                 _prev-point
-                                                 _type))
+                                                    _window
+                                                    _prev-point
+                                                    _type))
 
 (defun slack-reaction-echo-description ()
   (slack-if-let* ((buffer slack-current-buffer)
