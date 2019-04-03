@@ -136,5 +136,11 @@
       :sync t
       ))))
 
+(defun slack-insert-emoji ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (with-slots (team) buffer
+        (insert (slack-select-emoji team)))))
+
 (provide 'slack-emoji)
 ;;; slack-emoji.el ends here
