@@ -57,6 +57,14 @@
                  (if o (slack-merge o n)
                    (push n ,old-list)))))
 
+(defmacro slack-plist-each (plist &rest body)
+  (declare (indent 2) (debug t))
+  (let ((dup (gensym)))
+    `(let* ((,dup (copy-sequence ,plist))
+            (key  (pop ,dup))
+            (value (pop ,dup)))
+       ,@body)))
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 

@@ -27,11 +27,10 @@
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-emoji)
-;; (require 'slack-room)
+(require 'slack-dnd-status)
 
 (defvar slack-completing-read-function)
 
-(defconst slack-dnd-team-info-url "https://slack.com/api/dnd.teamInfo")
 (defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
 (defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
@@ -134,12 +133,10 @@
               users))))
 
 (defun slack-user-dnd-in-range-p (user team)
-  (slack-if-let* ((current (time-to-seconds))
-                  (statuses (oref team dnd-status))
-                  (dnd-status (gethash (plist-get user :id)
-                                       statuses)))
-      (and (<= (gethash "next_dnd_start_ts" dnd-status) current)
-           (<= current (gethash "next_dnd_end_ts" dnd-status)))))
+  (slack-if-let* ((statuses (oref team dnd-status))
+                  (status (gethash (plist-get user :id)
+                                   statuses)))
+      (slack-dnd-in-range-p status)))
 
 (defun slack-user-dnd-status-to-string (user team)
   (if (slack-user-dnd-in-range-p user team)
@@ -479,31 +476,6 @@
       team
       :success #'on-success
       ))))
-
-(defun slack-request-dnd-team-info (team &optional after-success)
-  (cl-labels
-      ((on-success
-        (&key data &allow-other-keys)
-        (if (eq t (gethash "ok" data))
-            (progn
-              (let ((status (gethash "users" data)))
-                (when status
-                  (oset team dnd-status status)))
-              (when (functionp after-success)
-                (funcall after-success team)))
-          (slack-log (format "Failed to request slack-request-dnd-team-info: %s"
-                             data)
-                     team
-                     :level 'error)))
-       (parser () (let ((json-object-type 'hash-table)
-                        (json-array-type 'list))
-                    (json-read))))
-    (slack-request
-     (slack-request-create
-      slack-dnd-team-info-url
-      team
-      :parser #'parser
-      :success #'on-success))))
 
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))

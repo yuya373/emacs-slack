@@ -48,6 +48,7 @@
 (require 'slack-typing)
 (require 'slack-stars-buffer)
 (require 'slack-conversations)
+(require 'slack-dnd-status)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -232,7 +233,7 @@
                        (slack-conversations-list-update team)
                        ;; (slack-user-list-update team)
 
-                       (slack-request-dnd-team-info team)
+                       (slack-dnd-status-team-info team)
                        (cl-loop for buffer in (oref team slack-message-buffer)
                                 do (slack-if-let*
                                        ((live-p (buffer-live-p buffer))
