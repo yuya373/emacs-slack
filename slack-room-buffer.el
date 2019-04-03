@@ -343,13 +343,11 @@
   (if (slack-thread-message-p message)
       (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
           (progn
-            ;; (slack-thread-delete-message thread message)
             (slack-if-let* ((buffer (slack-buffer-find 'slack-thread-message-buffer
                                                        room
                                                        (slack-thread-ts parent)
                                                        team)))
-                (slack-buffer-message-delete buffer (slack-ts message)))
-            (slack-message-update parent team t)))
+                (slack-buffer-message-delete buffer (slack-ts message)))))
     (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
                                             room
                                             team)))

@@ -695,66 +695,48 @@
   (slack-if-let* ((buffer slack-current-buffer))
       (slack-buffer-update-mark buffer :force t)))
 
-(cl-defmethod slack-thread-message-update-buffer ((message slack-message)
-                                                  room team replace old-message)
-  (slack-if-let* ((parent (slack-room-find-thread-parent room message)))
-      (progn
-        (slack-room-update-buffer room team parent t)
-        (when (slack-reply-broadcast-message-p message)
-          (let* ((replace (if old-message
-                              (slack-reply-broadcast-message-p old-message)
-                            replace)))
-            (slack-room-update-buffer room team message replace)))
-        (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                                room
-                                                (slack-thread-ts message)
-                                                team)))
-            (slack-buffer-update buf message :replace replace)))))
+(cl-defmethod slack-thread-message-update-buffer ((message slack-message) room team replace)
+  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
+                                          room
+                                          (slack-thread-ts message)
+                                          team)))
+      (slack-buffer-update buf message :replace replace)))
 
-(cl-defmethod slack-message-update ((message slack-message) team &optional replace no-notify old-message)
-  (slack-if-let*
-      ((room (slack-room-find (oref message channel) team))
-       (ts (slack-ts message))
-       (no-same-message (if replace t
-                          (not (slack-room-find-message room ts)))))
+(cl-defmethod slack-message-update-count ((message slack-message) team room)
+  (when (and (slack-message-visible-p message team)
+             (or (slack-message-mentioned-p message team)
+                 (slack-im-p room)
+                 (slack-mpim-p room)))
+    (let* ((count (slack-room-mention-count room team))
+           (next-count (+ count 1)))
+      (slack-room-set-mention-count room next-count team))))
 
+(cl-defmethod slack-message-update-unread ((message slack-message) team room)
+  (when (slack-message-visible-p message team)
+    (slack-room-set-has-unreads room t team)))
+
+(cl-defmethod slack-message-update ((message slack-message) team &optional replace no-notify)
+  (slack-if-let* ((room (slack-room-find (oref message channel) team))
+                  (ts (slack-ts message)))
       (progn
         (slack-room-push-message room message)
-
-        (let ((thread-message-p (slack-thread-message-p message))
-              (reply-broadcast-message-p
-               (slack-reply-broadcast-message-p message)))
+        ;; Update thread buffer
+        (if (or (slack-thread-message-p message)
+                (slack-reply-broadcast-message-p message))
+            (slack-thread-message-update-buffer message room team replace))
+        ;; Update room buffer
+        (if (slack-message-visible-p message team)
+            (slack-room-update-buffer room team message replace))
+        (unless replace
           ;; do not update mention count if replace or thread message
           ;; update mention count if normal message or thread broad cast message
           ;; and
           ;; message has @ mention or room is im or room is mpim
-          (when (and (not replace)
-                     (slack-message-visible-p message team)
-                     (or (slack-message-mentioned-p message team)
-                         (slack-im-p room)
-                         (slack-mpim-p room)))
-            (let* ((count (slack-room-mention-count room team))
-                   (next-count (+ count 1)))
-              (slack-room-set-mention-count room next-count team)))
-
-          ;; Update thread buffer
-          (if (or thread-message-p
-                  reply-broadcast-message-p)
-              (slack-thread-message-update-buffer message
-                                                  room
-                                                  team
-                                                  replace
-                                                  old-message))
-          (if (slack-message-visible-p message team)
-              (slack-room-update-buffer room team message replace))
-
+          (slack-message-update-count message team room)
           ;; Update has-unreads
           ;; do not update if replace or thread message
           ;; update if normal message or thread broad cast message
-          (when (and (not replace)
-                     (slack-message-visible-p message team))
-            (slack-room-set-has-unreads room t team)))
-
+          (slack-message-update-unread message team room))
         (unless no-notify
           (slack-message-notify message room team))
         (slack-update-modeline))))

@@ -556,7 +556,7 @@ TEAM is one of `slack-teams'"
                                                      room)))
       (progn
         (oset new-message reactions (oref base reactions))
-        (slack-message-update new-message team t nil base))))
+        (slack-message-update new-message team t nil))))
 
 
 (defun slack-ws-delete-message (payload team)
@@ -1053,7 +1053,9 @@ TEAM is one of `slack-teams'"
                   (room (slack-room-find (plist-get payload :channel)
                                          team))
                   (message (slack-room-find-message room thread-ts)))
-      (slack-message-handle-replied message message-payload)))
+      (progn
+        (slack-message-handle-replied message message-payload)
+        (slack-message-update message team t t))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here
