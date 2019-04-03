@@ -553,11 +553,62 @@
   (slack-if-let* ((buffer slack-current-buffer)
                   (message-buffer-p (eq 'slack-message-buffer
                                         (eieio-object-class buffer)))
-                  (prev-ts (oref buffer cursor-event-prev-ts))
                   (current-ts (slack-get-ts)))
-      (when (not (string= prev-ts current-ts))
-        (oset buffer cursor-event-prev-ts current-ts)
-        (slack-buffer-update-mark buffer))))
+      (let ((prev-ts (oref buffer cursor-event-prev-ts)))
+        (when (or (null prev-ts)
+                  (not (string= prev-ts current-ts)))
+          (oset buffer cursor-event-prev-ts current-ts)
+
+          (with-slots (team) buffer
+            (when (slack-team-animate-image-p team)
+              (slack-buffer-animate-image current-ts)
+              (slack-buffer-cancel-animate-image prev-ts)))
+
+          (with-slots (team) buffer
+            (unless (slack-team-mark-as-read-immediatelyp team)
+              (slack-buffer-update-mark buffer)))))))
+
+(defun slack-buffer-get-images (ts)
+  (when ts
+    (with-slots (room) slack-current-buffer
+      (slack-if-let* ((beg (slack-buffer-ts-eq (point-min) (point-max) ts))
+                      (end (or (slack-buffer-next-point beg (point-max) ts)
+                               (point-max))))
+
+          (let ((images (make-hash-table :test 'equal))
+                (current beg))
+            (while (<= current end)
+              (let ((prop (or (get-text-property current
+                                                 'emojify-display)
+                              (get-text-property current
+                                                 'slack-image-display))))
+                (when prop
+                  (let ((image (if (eq 'image (car prop))
+                                   prop
+                                 (cl-find-if #'(lambda (e)
+                                                 (and (listp e)
+                                                      (eq 'image (car e))))
+                                             prop))))
+                    (puthash (plist-get (cdr image) :file)
+                             image
+                             images))))
+              (setq current (1+ current)))
+            (hash-table-values images))))))
+
+(defun slack-buffer-animate-image (ts)
+  (slack-if-let* ((images (slack-buffer-get-images ts)))
+      (cl-loop for image in images
+               do (when (and image (image-multi-frame-p image))
+                    (image-animate image nil t)))))
+
+(defun slack-buffer-cancel-animate-image (ts)
+  (when ts
+    (slack-if-let* ((images (slack-buffer-get-images ts)))
+        (cl-loop for image in images
+                 do (when (and image (image-multi-frame-p image))
+                      (let ((timer (image-animate-timer image)))
+                        (when (and timer (timerp timer))
+                          (cancel-timer timer))))))))
 
 (cl-defmethod slack-buffer--subscribe-cursor-event ((this slack-message-buffer)
                                                     _window
@@ -565,14 +616,14 @@
                                                     type)
   (cond
    ((eq type'entered)
-    (with-slots (team) this
-      (unless (slack-team-mark-as-read-immediatelyp team)
-        (oset this cursor-event-prev-ts (slack-get-ts))
-        (add-hook 'post-command-hook
-                  #'slack-message-buffer-detect-ts-changed
-                  t t)
-        (slack-buffer-update-mark this))))
+    (add-hook 'post-command-hook
+              #'slack-message-buffer-detect-ts-changed
+              t t)
+    (slack-message-buffer-detect-ts-changed))
    ((eq type 'left)
+    (let ((prev-ts (oref this cursor-event-prev-ts)))
+      (slack-buffer-cancel-animate-image prev-ts))
+    (oset this cursor-event-prev-ts nil)
     (remove-hook 'post-command-hook
                  #'slack-message-buffer-detect-ts-changed
                  t))))
@@ -869,6 +920,35 @@
                         (slack-buffer-display buf))))
     (slack-thread-replies thread room team
                           :after-success #'after-success)))
+
+(defun slack-advice-delete-window (&optional window)
+  (let ((buf (window-buffer window)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'left)))))
+
+(defun slack-advice-select-window (org-func window &optional norecord)
+  (let ((buf (window-buffer)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'left))))
+  (funcall org-func window norecord)
+  (let ((buf (window-buffer)))
+    (with-current-buffer buf
+      (slack-if-let* ((buffer slack-current-buffer))
+          (slack-buffer--subscribe-cursor-event buffer
+                                                nil
+                                                nil
+                                                'entered)))))
+
+(advice-add 'select-window :around 'slack-advice-select-window)
+(advice-add 'delete-window :before 'slack-advice-delete-window)
 
 (provide 'slack-message-buffer)
 ;;; slack-message-buffer.el ends here

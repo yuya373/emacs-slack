@@ -93,6 +93,7 @@
                                  #'(lambda (image) (caddr (car image))))))
          (propertize-image (image)
                            (propertize "image"
+                                       'slack-image-display image
                                        'display image
                                        'face 'slack-profile-image-face)))
       (mapconcat #'propertize-image

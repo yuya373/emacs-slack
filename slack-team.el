@@ -121,6 +121,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (counts :initform nil)
    (emoji-master :initform (make-hash-table :test 'equal))
    (visible-threads :initarg :visible-threads :initform nil :type boolean)
+   (animate-image :initarg :animate-image :initform nil :type boolean)
    ))
 
 (defun slack-create-team (plist)
@@ -211,7 +212,9 @@ Available options (property name, type, default value)
   if t, thread replies are also displayed in channel buffer.
 :websocket-event-log-enabled [boolean] nil
   if t, websocket event is logged.
-  use `slack-log-open-event-buffer' to open the buffer."
+  use `slack-log-open-event-buffer' to open the buffer.
+:animate-image [boolean] nil
+  if t, animate gif images."
   (interactive
    (let ((name (read-from-minibuffer "Team Name: "))
          (client-id (read-from-minibuffer "Client Id: "))
@@ -393,6 +396,9 @@ Available options (property name, type, default value)
 
 (cl-defmethod slack-team-visible-threads-p ((this slack-team))
   (oref this visible-threads))
+
+(cl-defmethod slack-team-animate-image-p ((this slack-team))
+  (oref this animate-image))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here
