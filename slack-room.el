@@ -179,12 +179,6 @@
 (defun slack-room-sort-messages (messages)
   (cl-sort messages #'string< :key #'slack-ts))
 
-(defun slack-room-reject-thread-message (messages)
-  (cl-remove-if #'(lambda (m) (and (not (eq (eieio-object-class-name m)
-                                            'slack-reply-broadcast-message))
-                                   (slack-thread-message-p m)))
-                messages))
-
 (cl-defmethod slack-room-sorted-messages ((room slack-room))
   (with-slots (messages message-ids) room
     (let ((ret))
