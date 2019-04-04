@@ -39,6 +39,7 @@
 (require 'slack-pinned-items-buffer)
 (require 'slack-user-profile-buffer)
 (require 'slack-mrkdwn)
+(require 'slack-modeline)
 
 (defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap

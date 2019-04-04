@@ -35,6 +35,7 @@
 (require 'slack-usergroup)
 (require 'slack-message-notification)
 (require 'slack-dnd-status)
+(require 'slack-modeline)
 
 (defconst slack-authorize-url "https://slack.com/api/rtm.start")
 (defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
