@@ -201,12 +201,16 @@
 (cl-defmethod slack-room--update-latest ((this slack-room) counts ts)
   (slack-counts-channel-update-latest counts this ts))
 
-(cl-defmethod slack-room-push-message ((this slack-room) message)
+(cl-defmethod slack-room-push-message ((this slack-room) message team)
   (let ((ts (slack-ts message)))
     (puthash ts message (oref this messages))
+    (cl-pushnew ts (oref this message-ids)
+                :test #'string=)
     (oset this message-ids
-          (append (oref this message-ids)
-                  (list ts)))))
+          (cl-sort (oref this message-ids) #'string<))
+
+    (slack-if-let* ((counts (oref team counts)))
+        (slack-room--update-latest this counts ts))))
 
 (cl-defmethod slack-room-set-messages ((room slack-room) messages team)
   (cl-loop for m in messages

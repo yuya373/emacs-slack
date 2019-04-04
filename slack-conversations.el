@@ -324,9 +324,9 @@
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (channels groups ims)
-                  (slack-team-set-channels channels)
-                  (slack-team-set-groups groups)
-                  (slack-team-set-ims ims)
+                  (slack-team-set-channels team channels)
+                  (slack-team-set-groups team groups)
+                  (slack-team-set-ims team ims)
                   (slack-counts-update team)
                   (slack-user-info-request
                    (mapcar #'(lambda (im) (oref im user))

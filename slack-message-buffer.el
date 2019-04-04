@@ -721,7 +721,7 @@
   (slack-if-let* ((room (slack-room-find (oref message channel) team))
                   (ts (slack-ts message)))
       (progn
-        (slack-room-push-message room message)
+        (slack-room-push-message room message team)
         ;; Update thread buffer
         (if (or (slack-thread-message-p message)
                 (slack-reply-broadcast-message-p message))
