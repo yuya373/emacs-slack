@@ -46,9 +46,9 @@
 
 (cl-defmethod slack-merge ((this slack-im) other)
   (cl-call-next-method)
-  (with-slots (user is-open) this
-    (setq user (oref other user))
-    (setq is-open (oref other is-open))))
+  (oset this user (oref other user))
+  (oset this is-open (oref other is-open))
+  (oset this is-user-deleted (oref other is-user-deleted)))
 
 (cl-defmethod slack-room-open-p ((room slack-im))
   (oref room is-open)

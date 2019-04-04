@@ -432,6 +432,11 @@ Available options (property name, type, default value)
                     (slack-merge old im)
                   (puthash (oref im id) im table)))))
 
+(cl-defmethod slack-team-set-room ((this slack-team) room)
+  (cl-case (eieio-object-class-name room)
+    (slack-channel (slack-team-set-channels this (list room)))
+    (slack-group (slack-team-set-groups this (list room)))
+    (slack-im (slack-team-set-ims this (list room)))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

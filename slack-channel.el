@@ -38,15 +38,7 @@
 (defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
-(defclass slack-channel (slack-group)
-  ((is-member :initarg :is_member :initform nil)
-   (num-members :initarg :num_members :initform 0)))
-
-(cl-defmethod slack-merge ((this slack-channel) other)
-  (cl-call-next-method)
-  (with-slots (is-member num-members) this
-    (setq is-member (oref other is-member))
-    (setq num-members (oref other num-members))))
+(defclass slack-channel (slack-group) ())
 
 (cl-defmethod slack-room-buffer-name ((room slack-channel) team)
   (concat slack-channel-buffer-name

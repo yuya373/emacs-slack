@@ -529,7 +529,7 @@ TEAM is one of `slack-teams'"
                             team))
                    team :level 'info))
        ((slack-group-p room)
-        (oset room is-open nil)))))
+        (oset room is-member nil)))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
@@ -1021,8 +1021,7 @@ TEAM is one of `slack-teams'"
   (slack-if-let* ((room (slack-room-find (plist-get payload :channel)
                                          team)))
       (progn
-        (when (slot-exists-p room 'is-member)
-          (oset room is-member nil))
+        (oset room is-member nil)
         (slack-log (format "You left %s" (slack-room-name room team))
                    team :level 'info))))
 

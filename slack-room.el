@@ -50,17 +50,13 @@
 (defvar slack-buffer-create-on-notify)
 
 (defclass slack-room ()
-  ((name :initarg :name :type (or null string) :initform nil)
-   (id :initarg :id)
+  ((id :initarg :id)
    (created :initarg :created)
    (unread-count :initarg :unread_count :initform 0 :type integer)
    (unread-count-display :initarg :unread_count_display :initform 0 :type integer)
    (message-ids :initform '() :type list)
    (messages :initform (make-hash-table :test 'equal :size 300))
-   (last-read :initarg :last_read :type string :initform "0")
-   (members :initarg :members :type list :initform '())
-   (members-loaded-p :type boolean :initform nil)))
-
+   (last-read :initarg :last_read :type string :initform "0")))
 
 (cl-defgeneric slack-room-name (room team))
 (cl-defgeneric slack-room-update-mark-url (room))
@@ -71,9 +67,6 @@
 
 (cl-defmethod slack-merge ((this slack-room) other)
   "except MESSAGES"
-  (oset this members (oref other members))
-  (oset this members-loaded-p (oref other members-loaded-p))
-  (oset this name (oref other name))
   (oset this id (oref other id))
   (oset this created (oref other created))
   (oset this unread-count (oref other unread-count))
@@ -263,9 +256,6 @@
 (cl-defmethod slack-room-inc-unread-count ((room slack-room))
   (cl-incf (oref room unread-count-display)))
 
-(cl-defmethod slack-room-get-members ((room slack-room))
-  (oref room members))
-
 (cl-defmethod slack-user-find ((room slack-room) team)
   (slack-user--find (oref room user) team))
 
@@ -293,6 +283,16 @@
 
 (cl-defmethod slack-mpim-p ((_this slack-room))
   nil)
+
+(cl-defmethod slack-room-members ((_this slack-room))
+  nil)
+
+(cl-defmethod slack-room-set-members ((_this slack-room) _members))
+
+(cl-defmethod slack-room-members-loaded-p ((_this slack-room))
+  nil)
+
+(cl-defmethod slack-room-members-loaded ((_this slack-room)))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here
