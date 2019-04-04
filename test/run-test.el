@@ -29,7 +29,11 @@
                                     :handle usergroup-handle))
           (team (make-instance 'slack-team
                                :self-id "U38383838"
-                               :channels (list channel)
+                               :channels (let ((h (make-hash-table :test 'equal)))
+                                           (puthash (oref channel id)
+                                                    channel
+                                                    h)
+                                           h)
                                :users (list user)
                                :usergroups (list usergroup))))
      ,@body))
