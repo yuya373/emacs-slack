@@ -78,7 +78,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (search-results :initform nil)
    (users :initarg :users :initform nil)
    (bots :initarg :bots :initform nil)
-   (sent-message :initform (make-hash-table))
+   (sent-message :initform (make-hash-table :test 'equal))
    (message-id :initform 0)
    (subscribed-channels :initarg :subscribed-channels
                         :type list :initform nil)
