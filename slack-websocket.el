@@ -850,18 +850,9 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (plist-get payload :user))
-         (status (plist-get payload :dnd_status))
-         (new-status (make-hash-table :test 'equal)))
-    (puthash "dnd_enabled"
-             (plist-get status :dnd_enabled)
-             new-status)
-    (puthash "next_dnd_start_ts"
-             (plist-get status :next_dnd_start_ts)
-             new-status)
-    (puthash "next_dnd_end_ts"
-             (plist-get status :next_dnd_end_ts)
-             new-status)
-    (puthash user new-status (oref team dnd-status))))
+         (payload (plist-get payload :dnd_status))
+         (status (slack-create-dnd-status payload)))
+    (puthash user status (oref team dnd-status))))
 
 ;; [star_added event | Slack](https://api.slack.com/events/star_added)
 (defun slack-ws-handle-star-added-to-file (file-id team)
