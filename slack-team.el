@@ -76,7 +76,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (ims :initarg :ims :initform (make-hash-table :test 'equal))
    (file-room :initform nil)
    (search-results :initform nil)
-   (users :initarg :users :initform nil)
+   (users :initarg :users :initform (make-hash-table :test 'equal))
    (bots :initarg :bots :initform nil)
    (sent-message :initform (make-hash-table :test 'equal))
    (message-id :initform 0)
@@ -379,8 +379,7 @@ Available options (property name, type, default value)
   (oref this token))
 
 (cl-defmethod slack-team-missing-user-ids ((this slack-team) user-ids)
-  (let ((exists-user-ids (mapcar #'(lambda (e) (plist-get e :id))
-                                 (oref this users))))
+  (let ((exists-user-ids (hash-table-keys (oref this users))))
     (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
                   (cl-remove-duplicates user-ids :test #'string=))))
 
@@ -437,6 +436,15 @@ Available options (property name, type, default value)
     (slack-channel (slack-team-set-channels this (list room)))
     (slack-group (slack-team-set-groups this (list room)))
     (slack-im (slack-team-set-ims this (list room)))))
+
+(cl-defmethod slack-team-users ((this slack-team))
+  (hash-table-values (oref this users)))
+
+(cl-defmethod slack-team-set-users ((this slack-team) users)
+  (cl-loop for user in users
+           do (puthash (plist-get user :id)
+                       user
+                       (oref this users))))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

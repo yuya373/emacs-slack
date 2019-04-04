@@ -822,14 +822,8 @@ TEAM is one of `slack-teams'"
       (slack-message-handle-thread-subscribed message subscription)))
 
 (defun slack-ws-handle-user-change (payload team)
-  (let* ((user (plist-get payload :user))
-         (id (plist-get user :id)))
-    (with-slots (users) team
-      (setq users
-            (cons user
-                  (cl-remove-if #'(lambda (u)
-                                    (string= id (plist-get u :id)))
-                                users))))))
+  (let ((user (plist-get payload :user)))
+    (slack-team-set-users team (list user))))
 
 (defun slack-ws-handle-member-joined-channel (payload team)
   (slack-if-let* ((user (plist-get payload :user))

@@ -73,9 +73,8 @@
         (create-image image nil nil :ascent 80)))))
 
 (cl-defmethod slack-bot-find ((m slack-bot-message) team)
-  (or (and (slot-boundp m 'bot-id)
-           (slack-find-bot (slack-message-sender-id m) team))
-      (slack-user-find-by-name (oref m username) team)))
+  ;; TODO: ensure bot-id exists
+  (slack-find-bot (oref m bot-id) team))
 
 (cl-defmethod slack-message-profile-image ((m slack-bot-message) team)
   (let ((bot (slack-bot-find m team)))

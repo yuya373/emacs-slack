@@ -62,17 +62,7 @@
 
 (defun slack-user--find (id team)
   "Find user by ID from TEAM."
-  (with-slots (users) team
-    (cl-find-if (lambda (user)
-                  (string= id (plist-get user :id)))
-                users)))
-
-(defun slack-user-find-by-name (name team)
-  "Find user by NAME from TEAM."
-  (with-slots (users) team
-    (cl-find-if (lambda (user)
-                  (string= name (plist-get user :name)))
-                users)))
+  (gethash id (oref team users)))
 
 (defun slack-user-id (user)
   "Get id of USER."
@@ -83,11 +73,6 @@
   "Find user by ID in TEAM, then return user's name."
   (slack-if-let* ((user (slack-user--find id team)))
       (slack-user--name user team)))
-
-(defun slack-user--find-by-name (name team)
-  (cl-find-if #'(lambda (user)
-                  (string= name (slack-user--name user team)))
-              (oref team users)))
 
 (defun slack-user--name (user team)
   (let ((real-name (slack-user-real-name user))
@@ -126,7 +111,7 @@
 (defun slack-user-names (team &optional filter)
   "Return all users as alist (\"user-name\" . user) in TEAM."
   (let ((users (cl-remove-if #'slack-user-hidden-p
-                             (oref team users))))
+                             (slack-team-users team))))
     (mapcar (lambda (u) (cons (slack-user--name u team) u))
             (if (functionp filter)
                 (funcall filter users)
@@ -273,7 +258,7 @@
   (string= user-id (oref team self-id)))
 
 (defun slack-user-name-alist (team &key filter)
-  (let ((users (oref team users)))
+  (let ((users (slack-team-users team)))
     (mapcar #'(lambda (e) (cons (slack-user-label e team) e))
             (if filter (funcall filter users)
               users))))
@@ -283,29 +268,6 @@
 
 (defun slack--user-select (team)
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
-
-(defun slack-user-append (users team)
-  (let ((nochanges nil)
-        (updated nil))
-    (cl-loop for e in (oref team users)
-             do (let ((user (cl-find-if #'(lambda (user)
-                                            (string= (plist-get user :id)
-                                                     (plist-get e :id)))
-                                        users)))
-                  (if user
-                      (push (slack-merge-plist e user) updated)
-                    (push e nochanges))))
-
-    (oset team users
-          (append nochanges
-                  updated
-                  (cl-remove-if #'(lambda (e)
-                                    (cl-find-if
-                                     #'(lambda (user)
-                                         (string= (plist-get user :id)
-                                                  (plist-get e :id)))
-                                     updated))
-                                users)))))
 
 (cl-defun slack-users-info-request (user--ids team &key after-success)
   (let ((bot-ids nil)
@@ -336,7 +298,7 @@
               (slack-request-handle-error
                (data "slack-users-info-request")
                (let* ((users (plist-get data :users)))
-                 (slack-user-append users team)))
+                 (slack-team-set-users team users)))
               (if (< 0 (length queue))
                   (progn
                     (slack-log (format "Fetching users... [%s/%s]"
@@ -370,7 +332,7 @@
             (slack-request-handle-error
              (data "slack-user-info-request")
              (let ((user (plist-get data :user)))
-               (slack-user-append (list user) team)))
+               (slack-team-set-users team (list user))))
             (when (functionp after-success)
               (funcall after-success))))
         (slack-request
@@ -495,7 +457,7 @@
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
                                                :next_cursor))))
-             (slack-user-append members team)
+             (slack-team-set-users team members)
 
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)

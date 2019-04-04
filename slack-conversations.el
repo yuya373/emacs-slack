@@ -553,7 +553,7 @@
                         (next-cursor (or (and meta (plist-get meta :next_cursor))
                                          "")))
                    (slack-team-set-room team new-room)
-                   (slack-user-append users team)
+                   (slack-team-set-users team users)
                    (slack-bot-append bots team)
                    (when (functionp after-success)
                      (funcall after-success messages next-cursor))))))

@@ -38,22 +38,16 @@
                 bots)))
 
 (defun slack-find-bot (id team)
-  (with-slots (users bots) team
-    (or (cl-find-if #'(lambda (bot)
-                        (string= id (plist-get bot :id)))
-                    bots)
-        (cl-find-if #'(lambda (user)
-                        (string= id (plist-get user :bot_id)))
-                    users))))
+  (with-slots (bots) team
+    (cl-find-if #'(lambda (bot)
+                    (string= id (plist-get bot :id)))
+                bots)))
 
 (defun slack-find-bot-by-name (name team)
-  (with-slots (bots users) team
-    (or (cl-find-if #'(lambda (bot)
-                        (string= name (plist-get bot :name)))
-                    bots)
-        (cl-find-if #'(lambda (user)
-                        (string= name (plist-get user :name)))
-                    users))))
+  (with-slots (bots) team
+    (cl-find-if #'(lambda (bot)
+                    (string= name (plist-get bot :name)))
+                bots)))
 
 
 
