@@ -113,7 +113,7 @@
 
 (defun slack-user-profile-to-string (id team)
   "Print user's profile according to ID in TEAM."
-  (let ((user (slack-user--find id team)))
+  (let ((user (slack-user-find id team)))
     (format "\n%s\n\n%s\n\n%s"
             (slack-image-string (list (slack-user-image-url user 512)
                                       nil nil nil (window-width

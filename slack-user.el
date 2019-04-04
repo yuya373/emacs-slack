@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-emoji)
@@ -60,6 +61,9 @@
   "Used to `slack-user-active-string'"
   :group 'slack)
 
+(cl-defmethod slack-user-find ((id string) team)
+  (gethash id (oref team users)))
+;; TODO remove this. use `slack-user-find'
 (defun slack-user--find (id team)
   "Find user by ID from TEAM."
   (gethash id (oref team users)))
