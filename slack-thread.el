@@ -106,24 +106,6 @@ Any other non-nil value: send to the room."
                    :thread_ts (slack-ts m)
                    :root m)))
 
-;; TODO: handled by message_changed event?
-;; (cl-defmethod slack-thread-delete-message ((this slack-message) message)
-;;   (let ((ts (slack-ts message)))
-
-;;     (cl-loop for e in (oref this replies)
-;;              do (if (string= ts (plist-get e :ts))
-;;                     (setq reply e)
-;;                   (push e new-replies)))
-;;     (oset this replies (reverse new-replies))
-;;     )
-;;   (with-slots (replies reply-count) this
-
-;;     (setq messages (cl-remove-if #'(lambda (e)
-;;                                      (string= (slack-ts e)
-;;                                               (slack-ts message)))
-;;                                  messages))
-;;     (setq reply-count (length messages))))
-
 (defun slack-subscriptions-thread-add (room ts team &optional after-success)
   (cl-labels
       ((success (&key data &allow-other-keys)
