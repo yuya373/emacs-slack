@@ -43,7 +43,8 @@
    (is-archived :initarg :is_archived :initform nil)
    (is-mpim :initarg :is_mpim :initform nil)
    (topic :initarg :topic :initform nil)
-   (purpose :initarg :purpose :initform nil)))
+   (purpose :initarg :purpose :initform nil)
+   (is-open :initarg :is_open :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-group) other)
   (cl-call-next-method)
@@ -57,8 +58,7 @@
     (setq purpose (oref other purpose))))
 
 (defun slack-group-names (team &optional filter)
-  (with-slots (groups) team
-    (slack-room-names groups team filter)))
+  (slack-room-names (slack-team-groups team) team filter))
 
 (cl-defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
@@ -76,8 +76,7 @@
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (_channels groups _ims)
-                  (slack-merge-list (oref team groups)
-                                    groups)
+                  (slack-team-set-groups team groups)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Group List Updated"
@@ -182,10 +181,8 @@
                                            groups)))))))
     (cl-labels
         ((success (_data)
-                  (oset team groups
-                        (cl-remove-if #'(lambda (e)
-                                          (slack-equalp e mpim))
-                                      (oref team groups)))
+                  (let ((room (slack-room-find (oref mpim id) team)))
+                    (oset room is-open nil))
                   (slack-log (format "%s closed"
                                      (slack-room-name mpim team))
                              team :level 'info)))

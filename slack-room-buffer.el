@@ -589,9 +589,9 @@ Execute this function when cursor is on some message."
                   (action (get-text-property cur-point
                                              'slack-action-payload))
                   (select (slack-block-find-action-from-payload action message))
-                  (selected-conversation (slack-room-select (append (oref team channels)
-                                                                    (oref team groups)
-                                                                    (oref team ims))
+                  (selected-conversation (slack-room-select (append (slack-team-channels team)
+                                                                    (slack-team-groups team)
+                                                                    (slack-team-ims team))
                                                             team)))
       (when (slack-block-handle-confirm select)
         (slack-block-action-execute
@@ -610,7 +610,7 @@ Execute this function when cursor is on some message."
                                              'slack-action-payload))
                   (select (slack-block-find-action-from-payload action message))
                   (selected-channel (slack-room-select
-                                     (append (oref team channels)
+                                     (append (slack-team-channels team)
                                              nil)
                                      team)))
       (when (slack-block-handle-confirm select)

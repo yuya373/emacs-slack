@@ -513,7 +513,7 @@ TEAM is one of `slack-teams'"
                   (list :id (plist-get payload :channel)
                         :user (plist-get payload :user))
                   'slack-im))
-        (push im (oref team ims)))
+        (slack-team-set-ims team (list im)))
       (oset im is-open t)
       (update im))))
 
@@ -529,9 +529,7 @@ TEAM is one of `slack-teams'"
                             team))
                    team :level 'info))
        ((slack-group-p room)
-        (oset team groups (cl-remove-if #'(lambda (e)
-                                            (slack-equalp e room))
-                                        (oref team groups)))))))
+        (oset room is-open nil)))))
 
 (defun slack-ws-handle-message (payload team)
   (let ((subtype (plist-get payload :subtype)))
@@ -695,7 +693,7 @@ TEAM is one of `slack-teams'"
 (defun slack-ws-handle-channel-created (payload team)
   (let ((channel (slack-room-create (plist-get payload :channel)
                                     'slack-channel)))
-    (push channel (oref team channels))
+    (slack-team-set-channels team (list channel))
     (slack-conversations-info channel team)
     (slack-log (format "Created channel %s"
                        (slack-room-display-name channel team))
@@ -722,9 +720,7 @@ TEAM is one of `slack-teams'"
          (room (slack-room-find id team)))
     (cond
      ((object-of-class-p room 'slack-channel)
-      (with-slots (channels) team
-        (setq channels (cl-delete-if #'(lambda (c) (slack-room-equal-p room c))
-                                     channels)))
+      (remhash id (oref team channels))
       (message "Channel: %s deleted"
                (slack-room-display-name room team))))))
 
@@ -743,7 +739,7 @@ TEAM is one of `slack-teams'"
   (let ((group (slack-room-create
                 (plist-get payload :channel)
                 'slack-group)))
-    (push group (oref team groups))
+    (slack-team-set-groups team (list group))
     (slack-conversations-info group team)
     (slack-log (format "Joined group %s"
                        (slack-room-display-name group team))
@@ -755,7 +751,7 @@ TEAM is one of `slack-teams'"
                      (let ((channel (slack-room-create (plist-get payload :channel)
                                                        'slack-channel)))
 
-                       (push channel (oref team channels))
+                       (slack-team-set-channels team (list channel))
                        channel))))
     (slack-conversations-info channel team)
     (slack-log (format "Joined channel %s"
@@ -1027,11 +1023,6 @@ TEAM is one of `slack-teams'"
       (progn
         (when (slot-exists-p room 'is-member)
           (oset room is-member nil))
-        (when (and (not (slack-channel-p room)) (slack-group-p room))
-          (oset team groups
-                (cl-remove-if #'(lambda (e)
-                                  (slack-room-equal-p e room))
-                              (oref team groups))))
         (slack-log (format "You left %s" (slack-room-name room team))
                    team :level 'info))))
 

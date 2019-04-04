@@ -273,14 +273,11 @@
       (cl-labels ((find-room (room)
                              (string= id (oref room id))))
         (cond
-         ((string-prefix-p "C" id) (cl-find-if #'find-room
-                                               (oref team channels)))
-         ((string-prefix-p "G" id) (cl-find-if #'find-room
-                                               (oref team groups)))
-         ((string-prefix-p "D" id) (cl-find-if #'find-room
-                                               (oref team ims)))
-         ((string-prefix-p "Q" id) (cl-find-if #'find-room
-                                               (oref team search-results)))))))
+         ((string-prefix-p "Q" id) (cl-find-if #'find-room (oref team search-results)))
+         (t
+          (or (gethash id (oref team channels))
+              (gethash id (oref team groups))
+              (gethash id (oref team ims))))))))
 
 (cl-defmethod slack-room-has-unread-p ((this slack-room) team)
   (with-slots (counts) team

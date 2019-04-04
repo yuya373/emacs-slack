@@ -348,9 +348,9 @@
 
 (defun slack-file-select-sharing-channels (current-room-name team)
   (let* ((channels (slack-room-names
-                    (append (oref team ims)
-                            (oref team channels)
-                            (oref team groups))
+                    (append (slack-team-ims team)
+                            (slack-team-channels team)
+                            (slack-team-groups team))
                     team))
          (target-channels
           (slack-select-multiple #'(lambda (loop-count)

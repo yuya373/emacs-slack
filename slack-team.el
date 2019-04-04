@@ -71,9 +71,9 @@ use `slack-change-current-team' to change `slack-current-team'"
    (self :initarg :self)
    (self-id :initarg :self-id)
    (self-name :initarg :self-name)
-   (channels :initarg :channels :initform nil)
-   (groups :initarg :groups :initform nil)
-   (ims :initarg :ims :initform nil)
+   (channels :initarg :channels :initform (make-hash-table :test 'equal))
+   (groups :initarg :groups :initform (make-hash-table :test 'equal))
+   (ims :initarg :ims :initform (make-hash-table :test 'equal))
    (file-room :initform nil)
    (search-results :initform nil)
    (users :initarg :users :initform nil)
@@ -387,7 +387,7 @@ Available options (property name, type, default value)
 (cl-defmethod slack-team-send-presence-sub ((this slack-team))
   (let ((type "presence_sub")
         (ids (let ((result))
-               (cl-loop for im in (oref this ims)
+               (cl-loop for im in (slack-team-ims team)
                         do (when (slack-room-open-p im)
                              (push (oref im user) result)))
                result)))
@@ -401,6 +401,37 @@ Available options (property name, type, default value)
 
 (cl-defmethod slack-team-animate-image-p ((this slack-team))
   (oref this animate-image))
+
+(cl-defmethod slack-team-channels ((this slack-team))
+  (hash-table-values (oref this channels)))
+
+(cl-defmethod slack-team-groups ((this slack-team))
+  (hash-table-values (oref this groups)))
+
+(cl-defmethod slack-team-ims ((this slack-team))
+  (hash-table-values (oref this ims)))
+
+(cl-defmethod slack-team-set-channels ((this slack-team) channels)
+  (let ((table (oref this channels)))
+    (cl-loop for channel in channels
+             do (slack-if-let* ((old (gethash (oref channel id) table)))
+                    (slack-merge old channel)
+                  (puthash (oref channel id) channel table)))))
+
+(cl-defmethod slack-team-set-groups ((this slack-team) groups)
+  (let ((table (oref this groups)))
+    (cl-loop for group in groups
+             do (slack-if-let* ((old (gethash (oref group id) table)))
+                    (slack-merge old group)
+                  (puthash (oref group id) group table)))))
+
+(cl-defmethod slack-team-set-ims ((this slack-team) ims)
+  (let ((table (oref this ims)))
+    (cl-loop for im in ims
+             do (slack-if-let* ((old (gethash (oref im id) table)))
+                    (slack-merge old im)
+                  (puthash (oref im id) im table)))))
+
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

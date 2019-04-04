@@ -41,7 +41,7 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user :initform "")
-   (is-open :initarg :is_open :initform t)
+   (is-open :initarg :is_open :initform nil)
    (is-user-deleted :initarg :is_user_deleted :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-im) other)
@@ -92,7 +92,7 @@
       ((filter (ims)
                (cl-remove-if #'(lambda (im) (not (oref im is-open)))
                              ims)))
-    (slack-room-names (oref team ims)
+    (slack-room-names (slack-team-ims team)
                       team
                       #'filter)))
 
@@ -106,8 +106,7 @@
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (_channels _groups ims)
-                  (slack-merge-list (oref team ims)
-                                    ims)
+                  (slack-team-set-ims team ims)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Im List Updated"
@@ -151,7 +150,7 @@
 
 (defun slack-im-find-by-user-id (user-id team)
   (cl-find-if #'(lambda (im) (string= user-id (oref im user)))
-              (oref team ims)))
+              (slack-team-ims team)))
 
 (cl-defmethod slack-room--has-unread-p ((this slack-im) counts)
   (slack-counts-im-unread-p counts this))

@@ -82,7 +82,7 @@
                                    collect (propertize (concat "@" (slack-user--name user team))
                                                        'slack-company-prefix 'user))))
                         (channel
-                         (cl-loop for team in (oref team channels)
+                         (cl-loop for team in (slack-team-channels team)
                                   if (content-match-p content
                                                       (oref team name))
                                   collect (concat "#" (oref team name))))

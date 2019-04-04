@@ -81,17 +81,18 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
   :group 'slack)
 
 (defun helm-slack-build-channels-candidates ()
-  (helm-slack-build--candidates #'(lambda (team) (oref team channels))))
+  (helm-slack-build--candidates #'slack-team-channels))
 
 (defun helm-slack-build-groups-candidates ()
-  (helm-slack-build--candidates #'(lambda (team) (oref team groups))))
+  (helm-slack-build--candidates #'slack-team-groups))
 
 (defun helm-slack-build-ims-candidates ()
-  (helm-slack-build--candidates #'(lambda (team) (oref team ims))))
+  (helm-slack-build--candidates #'slack-team-ims))
 
 (defun helm-slack-build-candidates ()
-  (helm-slack-build--candidates #'(lambda (team) (with-slots (channels groups ims) team
-                                                   (append channels groups ims)))))
+  (helm-slack-build--candidates #'(lambda (team) (append (slack-team-channels team)
+                                                         (slack-team-groups team)
+                                                         (slack-team-ims team)))))
 
 (defun helm-slack-build--candidates (rooms-selector)
   (cl-labels ((sort (rooms)

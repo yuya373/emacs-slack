@@ -656,11 +656,12 @@
   (let* ((team (slack-team-select))
          (room (slack-room-select
                 (cl-loop for team in (list team)
-                         append (with-slots (groups ims channels) team
-                                  (cl-remove-if
-                                   #'(lambda (room)
-                                       (not (slack-room-has-unread-p room team)))
-                                   (append ims groups channels))))
+                         append (cl-remove-if
+                                 #'(lambda (room)
+                                     (not (slack-room-has-unread-p room team)))
+                                 (append (slack-team-ims team)
+                                         (slack-team-groups team)
+                                         (slack-team-channels team))))
                 team)))
     (slack-room-display room team)))
 
@@ -669,8 +670,9 @@
   (let* ((team (slack-team-select))
          (room (slack-room-select
                 (cl-loop for team in (list team)
-                         append (with-slots (groups ims channels) team
-                                  (append ims groups channels)))
+                         append (append (slack-team-ims team)
+                                        (slack-team-groups team)
+                                        (slack-team-channels team)))
                 team)))
     (slack-room-display room team)))
 
@@ -790,7 +792,7 @@
          (candidates (cl-loop for team in (list team)
                               for ims = (cl-remove-if #'(lambda (im)
                                                           (not (oref im is-open)))
-                                                      (oref team ims))
+                                                      (slack-team-ims team))
                               nconc ims))
          (room (slack-room-select candidates team)))
     (slack-room-display room team)))
@@ -800,7 +802,7 @@
   (let* ((team (slack-team-select))
          (room (slack-room-select
                 (cl-loop for team in (list team)
-                         for groups = (oref team groups)
+                         for groups = (slack-team-groups team)
                          nconc groups)
                 team)))
     (slack-room-display room team)))
@@ -810,7 +812,7 @@
   (let* ((team (slack-team-select))
          (room (slack-room-select
                 (cl-loop for team in (list team)
-                         for channels = (oref team channels)
+                         for channels = (slack-team-channels team)
                          nconc channels)
                 team)))
     (slack-room-display room team)))
