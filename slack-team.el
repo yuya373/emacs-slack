@@ -77,7 +77,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (file-room :initform nil)
    (search-results :initform nil)
    (users :initarg :users :initform (make-hash-table :test 'equal))
-   (bots :initarg :bots :initform nil)
+   (bots :initarg :bots :initform (make-hash-table :test 'equal))
    (sent-message :initform (make-hash-table :test 'equal))
    (message-id :initform 0)
    (subscribed-channels :initarg :subscribed-channels
@@ -445,6 +445,15 @@ Available options (property name, type, default value)
            do (puthash (plist-get user :id)
                        user
                        (oref this users))))
+
+(cl-defmethod slack-team-set-bots ((this slack-team) bots)
+  (cl-loop for bot in bots
+           do (puthash (plist-get bot :id)
+                       bot
+                       (oref this bots))))
+
+(cl-defmethod slack-team-bots ((this slack-team))
+  (hash-table-values (oref this bots)))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

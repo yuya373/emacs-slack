@@ -554,7 +554,7 @@
                                          "")))
                    (slack-team-set-room team new-room)
                    (slack-team-set-users team users)
-                   (slack-bot-append bots team)
+                   (slack-team-set-bots team bots)
                    (when (functionp after-success)
                      (funcall after-success messages next-cursor))))))
     (slack-request

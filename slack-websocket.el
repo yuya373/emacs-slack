@@ -581,11 +581,7 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-update-bot-message (payload team)
   (let* ((bot-id (plist-get payload :bot_id))
-         (username (plist-get payload :username))
-         (user (plist-get payload :user))
-         (bot (or (slack-find-bot bot-id team)
-                  (slack-find-bot-by-name username team)
-                  (slack-user--find user team)))
+         (bot (slack-find-bot bot-id team))
          (message (slack-message-create payload team)))
     (if bot
         (slack-message-update message team)
@@ -766,8 +762,7 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-bot (payload team)
   (let ((bot (plist-get payload :bot)))
-    (with-slots (bots) team
-      (push bot bots))))
+    (slack-team-set-bots team (list bot))))
 
 (defun slack-ws-handle-file-created (payload team)
   (slack-if-let* ((file-id (plist-get (plist-get payload :file) :id))

@@ -29,6 +29,7 @@
 (require 'slack-request)
 (require 'slack-emoji)
 (require 'slack-dnd-status)
+(require 'slack-bot)
 
 (defvar slack-completing-read-function)
 
@@ -38,7 +39,6 @@
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
-(defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
 
 (defcustom slack-dnd-sign "Z"
@@ -163,49 +163,6 @@
                         (json-encode (list (cons "status_text" text)
                                            (cons "status_emoji" emoji)))))
       :success #'on-success))))
-
-(defun slack-bot-info-request (bot-id team &optional after-success)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data "slack-bot-info-request")
-                    (let ((bot (plist-get data :bot)))
-                      (oset team bots
-                            (cons bot
-                                  (cl-remove-if #'(lambda (bot)
-                                                    (string= (plist-get bot :id) bot-id))
-                                                (oref team bots))))))
-                   (if after-success
-                       (funcall after-success))))
-    (slack-request
-     (slack-request-create
-      slack-bot-info-url
-      team
-      :params (list (cons "bot" bot-id))
-      :success #'on-success))))
-
-(defun slack-bots-info-request (bot-ids team &optional after-success)
-  (cl-labels
-      ((success (&key data &allow-other-keys)
-                (slack-request-handle-error
-                 (data "slack-bots-info-request")
-                 (let* ((bots (plist-get data :bots))
-                        (ids (mapcar #'(lambda (e) (plist-get e :id)) bots)))
-                   (oset team bots (append bots
-                                           (cl-remove-if
-                                            #'(lambda (u)
-                                                (cl-find (plist-get u :id)
-                                                         ids
-                                                         :test #'string=))
-                                            (oref team bots))))))
-                (if after-success
-                    (funcall after-success))))
-    (slack-request
-     (slack-request-create
-      slack-bot-info-url
-      team
-      :params (list (cons "bots" (mapconcat #'identity bot-ids ",")))
-      :success #'success))))
 
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
