@@ -635,6 +635,7 @@
                                   team)))
       (if buf (open buf)
         (message "No Message in %s, fetching from server..." (slack-room-name room team))
+        (slack-room-clear-messages room)
         (slack-conversations-view
          room team
          :after-success #'(lambda (messages cursor)

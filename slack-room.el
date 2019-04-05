@@ -205,6 +205,10 @@
     (slack-if-let* ((counts (oref team counts)))
         (slack-room--update-latest this counts ts))))
 
+(cl-defmethod slack-room-clear-messages ((room slack-room))
+  (oset room messages (make-hash-table :test 'equal :size 300))
+  (oset room message-ids '()))
+
 (cl-defmethod slack-room-set-messages ((room slack-room) messages team)
   (cl-loop for m in messages
            do (let ((ts (slack-ts m)))
