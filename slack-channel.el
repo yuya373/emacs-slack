@@ -35,15 +35,9 @@
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
 
-(defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
 (defclass slack-channel (slack-group) ())
-
-(cl-defmethod slack-room-buffer-name ((room slack-channel) team)
-  (concat slack-channel-buffer-name
-          " : "
-          (slack-room-display-name room team)))
 
 (defun slack-channel-names (team &optional filter)
   (slack-room-names (slack-team-channels team) team filter))

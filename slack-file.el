@@ -467,9 +467,6 @@
 (cl-defmethod slack-file-id ((file slack-file))
   (oref file id))
 
-(cl-defmethod slack-file-channel ((_file slack-file))
-  nil)
-
 (cl-defmethod slack-file-thumb-image-spec ((file slack-file))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
     (or (and thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
@@ -487,11 +484,6 @@
           nil
           (floor (* 0.9 (frame-pixel-width))))))
 
-(cl-defmethod slack-file-channel-ids ((file slack-file))
-  (append (oref file channels)
-          (oref file ims)
-          (oref file groups)))
-
 (defun slack-file-link-info (file-id text)
   (propertize text
               'file file-id
@@ -504,15 +496,6 @@
             do (when (string= (oref file id) ,id)
                  ,@body)))
 
-(cl-defmethod slack-room-buffer-name ((this slack-file) _team)
-  (with-slots (name) this
-    (format "*Slack File - %s*" name)))
-
-(define-derived-mode slack-file-info-mode lui-mode "Slack File Info"
-  ""
-  (setq-local default-directory slack-default-directory)
-  )
-
 (cl-defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
 
@@ -522,15 +505,7 @@
 (cl-defmethod slack-message-star-api-params ((this slack-file))
   (cons "file" (oref this id)))
 
-(defun slack-file-process-star-api (url team file-id)
-  (slack-with-file file-id team
-    (slack-message-star-api-request url
-                                    (list (slack-message-star-api-params file))
-                                    team)))
-
 (defun slack-redisplay (file team)
-  ;; (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer file team)))
-  ;;     (slack-buffer--replace buffer nil))
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
                                              team)))
       (slack-buffer-replace buffer file)))

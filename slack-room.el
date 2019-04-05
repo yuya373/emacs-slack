@@ -81,11 +81,6 @@
 (cl-defmethod slack-room-subscribedp ((_room slack-room) _team)
   nil)
 
-(cl-defmethod slack-room-buffer-name ((room slack-room) team)
-  (concat "*Slack*"
-          " : "
-          (slack-room-display-name room team)))
-
 (cl-defmethod slack-room-hidden-p ((room slack-room))
   (slack-room-hiddenp room))
 

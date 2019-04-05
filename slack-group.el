@@ -30,7 +30,6 @@
 (require 'slack-buffer)
 (require 'slack-conversations)
 
-(defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 (defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
 
@@ -98,11 +97,6 @@
     (let ((name (slack-room-name room team)))
       (and name
            (memq (intern name) subscribed-channels)))))
-
-(cl-defmethod slack-room-buffer-name ((room slack-group) team)
-  (concat slack-group-buffer-name
-          " : "
-          (slack-room-display-name room team)))
 
 (defun slack-group-list-update (&optional team after-success)
   (interactive)

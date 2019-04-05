@@ -36,7 +36,6 @@
 (defvar slack-display-team-name)
 (defvar slack-completing-read-function)
 
-(defconst slack-im-buffer-name "*Slack - Direct Messages*")
 (defconst slack-im-update-mark-url "https://slack.com/api/im.mark")
 
 (defclass slack-im (slack-room)
@@ -95,11 +94,6 @@
     (slack-room-names (slack-team-ims team)
                       team
                       #'filter)))
-
-(cl-defmethod slack-room-buffer-name ((room slack-im) team)
-  (concat slack-im-buffer-name
-          " : "
-          (slack-room-display-name room team)))
 
 (defun slack-im-list-update (&optional team after-success)
   (interactive)

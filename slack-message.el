@@ -113,8 +113,6 @@
 (cl-defgeneric slack-message-to-alert (slack-message))
 (cl-defmethod slack-message-bot-id ((_this slack-message)) nil)
 
-(cl-defgeneric slack-room-buffer-name (room team))
-
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
