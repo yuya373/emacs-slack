@@ -81,8 +81,7 @@
 
       (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
                                                  (point-max)
-                                                 (number-to-string
-                                                  before-oldest))))
+                                                 before-oldest-id)))
           (goto-char point)))))
 
 (cl-defmethod slack-buffer-request-history ((this slack-file-list-buffer) after-success)
@@ -121,7 +120,7 @@
 
 (cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
-        (ts (slack-ts message))
+        (ts (slack-file-id message))
         (team (oref this team)))
     (lui-insert-with-text-properties
      (format "@%s %s"
@@ -135,15 +134,10 @@
 
 (cl-defmethod slack-buffer--replace ((this slack-file-list-buffer) ts)
   (with-slots (team) this
-    (slack-if-let*
-        ((file (cl-find-if #'(lambda (e)
-                               (string= ts
-                                        (number-to-string (oref e created))))
-                           (oref team files))))
+    (slack-if-let* ((file (slack-file-find ts team)))
         (slack-buffer-replace this file))))
 
-(cl-defmethod slack-buffer-replace ((this slack-file-list-buffer)
-                                    message)
+(cl-defmethod slack-buffer-replace ((this slack-file-list-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)
       (lui-replace (slack-message-to-string message
@@ -151,7 +145,7 @@
                                             team)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
-                            (slack-ts message)))))))
+                            (slack-file-id message)))))))
 
 (cl-defmethod slack-buffer-toggle-email-expand ((this slack-file-list-buffer) file-id)
   (with-slots (team) this
@@ -179,6 +173,20 @@
                            (slack-create-file-list-buffer page
                                                           pages
                                                           team)))))))
+
+(cl-defmethod slack-buffer-add-star ((this slack-file-list-buffer) ts)
+  (with-slots (team) this
+    (slack-if-let* ((file (slack-file-find ts team)))
+        (slack-message-star-api-request slack-message-stars-add-url
+                                        (list (slack-message-star-api-params file))
+                                        team))))
+
+(cl-defmethod slack-buffer-remove-star ((this slack-file-list-buffer) ts)
+  (with-slots (team) this
+    (slack-if-let* ((file (slack-file-find ts team)))
+        (slack-message-star-api-request slack-message-stars-remove-url
+                                        (list (slack-message-star-api-params file))
+                                        team))))
 
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here

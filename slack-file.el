@@ -510,13 +510,15 @@
                                              team)))
       (slack-buffer-replace buffer file)))
 
-(cl-defmethod slack-message-update ((this slack-file) team &rest _args)
+(cl-defmethod slack-message-update ((this slack-file) team &optional replace _no-notify)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
                                              this
                                              team)))
       (progn
         (oset buffer file this)
-        (slack-buffer-update buffer))))
+        (slack-buffer-update buffer)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer team)))
+      (slack-buffer-update buffer this :replace replace)))
 
 (cl-defmethod slack-ts ((this slack-file))
   (number-to-string (oref this created)))

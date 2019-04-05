@@ -847,7 +847,7 @@ TEAM is one of `slack-teams'"
         ((update (&rest _args)
                  (slack-with-file file-id team
                    (slack-message-star-added file)
-                   (slack-message-update file team))))
+                   (slack-message-update file team t t))))
       (if file (update)
         (slack-file-request-info file-id 1 team #'update)))))
 
@@ -878,7 +878,7 @@ TEAM is one of `slack-teams'"
         ((update (&rest _args)
                  (slack-with-file file-id team
                    (slack-message-star-removed file)
-                   (slack-message-update file team))))
+                   (slack-message-update file team t t))))
       (if file (update)
         (slack-file-request-info file-id 1 team #'update)))))
 
