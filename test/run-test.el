@@ -34,7 +34,11 @@
                                                     channel
                                                     h)
                                            h)
-                               :users (list user)
+                               :users (let ((h (make-hash-table :test 'equal)))
+                                        (puthash (plist-get user :id)
+                                                 user
+                                                 h)
+                                       h)
                                :usergroups (list usergroup))))
      ,@body))
 
