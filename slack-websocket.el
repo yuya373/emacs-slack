@@ -464,8 +464,9 @@ TEAM is one of `slack-teams'"
           ((update-typing (user)
                           (let ((limit (+ 3 (float-time))))
                             (with-slots (typing typing-timer) team
-                              (if (and typing
-                                       (string= (oref room id) (oref (oref typing room) id)))
+                              (slack-if-let* ((typing (oref team typing))
+                                              (typing-room (slack-room-find (oref typing room-id) team))
+                                              (same-room-p (string= (oref room id) (oref typing-room id))))
                                   (progn
                                     (slack-typing-set-limit typing limit)
                                     (slack-typing-add-user typing user limit))

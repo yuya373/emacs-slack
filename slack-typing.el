@@ -30,7 +30,7 @@
 (require 'slack-team)
 
 (defclass slack-typing ()
-  ((room :initarg :room :initform nil)
+  ((room-id :initarg :room-id :initform nil)
    (limit :initarg :limit :initform nil)
    (users :initarg :users :initform nil)))
 
@@ -51,7 +51,7 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
                            (slack-typing-user-create user-name limit))
                        user-names)))
     (make-instance 'slack-typing
-                   :room room
+                   :room-id (oref room id)
                    :limit limit
                    :users users)))
 
@@ -83,8 +83,9 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
             (setq typing-timer nil)
             (setq typing nil)
             (message ""))
-        (with-slots (users room) typing
-          (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer room team))
+        (with-slots (users room-id) typing
+          (slack-if-let* ((room (slack-room-find room-id team))
+                          (buf (slack-buffer-find 'slack-message-buffer room team))
                           (show-typing-p (slack-buffer-show-typing-p
                                           (get-buffer (slack-buffer-name buf)))))
               (let ((visible-users (cl-remove-if

@@ -32,7 +32,12 @@
   slack-edit-message-mode
   "Slack Compose Message")
 
-(defclass slack-message-compose-buffer (slack-buffer) ())
+(defclass slack-message-compose-buffer (slack-buffer)
+  ((room-id :initarg :room-id type string)))
+
+(cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
+  (with-slots (room-id team) this
+    (slack-room-find room-id team)))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
   (let ((buffer (slack-buffer-buffer this)))
