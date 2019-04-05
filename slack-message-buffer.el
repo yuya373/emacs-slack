@@ -400,13 +400,14 @@
 
 (cl-defmethod slack-buffer-prev-message ((this slack-message-buffer) message)
   (with-slots (room team) this
-    (let ((ts (slack-ts message)))
-      (cl-loop for m in (reverse (slack-room-sorted-messages room))
-               with prev = nil
+    (let* ((ts (slack-ts message))
+           (prev-tss (cl-remove-if #'(lambda (e) (or (string< ts e)
+                                                     (string= ts e)))
+                                   (oref room message-ids))))
+      (cl-loop for id in (reverse prev-tss)
+               for m = (slack-room-find-message room id)
                do (when (slack-buffer-visible-message-p this m)
-                    (if prev (return m)
-                      (when (string= (slack-ts m) ts)
-                        (setq prev t))))))))
+                    (return m))))))
 
 (cl-defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (with-slots (team) this
