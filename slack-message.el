@@ -90,12 +90,6 @@
 (defclass slack-reply-broadcast-message (slack-user-message)
   ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
 
-(defclass slack-bot-message (slack-message)
-  ((bot-id :initarg :bot_id :type string)
-   (username :initarg :username :type string :initform "")
-   (user :initarg :user :type string :initform "")
-   (icons :initarg :icons)))
-
 (defclass slack-file-comment-message (slack-message)
   ((file :initarg :file :initform nil)
    (comment :initarg :comment :initform nil)))

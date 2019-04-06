@@ -31,9 +31,21 @@
 (require 'slack-bot)
 (require 'slack-image)
 
+(defclass slack-bot-message (slack-message)
+  ((bot-id :initarg :bot_id :type string :initform "")
+   (username :initarg :username :type string :initform "")
+   (user :initarg :user :type string :initform "")
+   (icons :initarg :icons)))
+
 (cl-defmethod slack-message-bot-id ((this slack-bot-message))
   (when (slot-boundp this 'bot-id)
     (oref this bot-id)))
+
+(cl-defmethod slack-user-find ((this slack-bot-message) team)
+  (with-slots (bot-id user) this
+    (if (slack-string-blankp bot-id)
+        (slack-find-bot bot-id team)
+      (slack-user--find user team))))
 
 (cl-defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))
