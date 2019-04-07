@@ -39,6 +39,7 @@
 (require 'slack-action)
 (require 'slack-message-share-buffer)
 (require 'slack-reminder)
+(require 'slack-bot-message)
 
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)

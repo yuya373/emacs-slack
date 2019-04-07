@@ -26,8 +26,6 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room)
-(require 'slack-message-buffer)
-(require 'slack-message)
 
 (defun slack-event-thread-message-p (payload)
   (let ((v (plist-get payload :thread_ts)))
@@ -45,29 +43,6 @@
 (cl-defgeneric slack-event-update-ui (event message team))
 (cl-defgeneric slack-event-save-message (event message team))
 (cl-defgeneric slack-event-update (event team))
-
-(cl-defmethod slack-message-update-buffer ((this slack-message) team)
-  (when (slack-message-visible-p this team)
-    (let ((room (slack-room-find this team)))
-      (slack-room-update-buffer room team this nil)
-      (when (slack-thread-message-p this)
-        (slack-thread-message-update-buffer this room team nil)))))
-
-(cl-defmethod slack-message-replace-buffer ((this slack-message) team)
-  (let ((room (slack-room-find this team)))
-    (slack-room-update-buffer room team this t)
-    (when (slack-thread-message-p this)
-      (slack-thread-message-update-buffer this room team t))))
-
-(cl-defmethod slack-message-replace-buffer ((this slack-file) team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
-                                             this
-                                             team)))
-      (progn
-        (oset buffer file this)
-        (slack-buffer-update buffer)))
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer team)))
-      (slack-buffer-update buffer this :replace t)))
 
 (cl-defmethod slack-event-find-message ((_this slack-event) _team))
 

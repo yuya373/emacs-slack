@@ -25,6 +25,7 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-event)
+(require 'slack-message-buffer)
 
 (defclass slack-star-event (slack-event) ())
 (defclass slack-message-star-event (slack-star-event) ())

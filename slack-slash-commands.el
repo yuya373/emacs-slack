@@ -29,7 +29,8 @@
 (require 'slack-channel)
 (require 'slack-user)
 (require 'slack-message-formatter)
-(require 'slack-message-event)
+(require 'slack-event)
+(declare-function slack-create-message-event "slack-message-event")
 
 (defclass slack-command ()
   ((name :initarg :name :type string)

@@ -26,6 +26,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-event)
+(require 'slack-message-buffer)
 
 (defclass slack-reaction-event (slack-event) ())
 (defclass slack-message-reaction-event (slack-reaction-event) ())

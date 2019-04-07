@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-event)
+(require 'slack-message-buffer)
 
 (defvar slack-alert-icon)
 

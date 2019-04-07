@@ -717,6 +717,29 @@
                                           team)))
       (slack-buffer-update buf message :replace replace)))
 
+(cl-defmethod slack-message-update-buffer ((this slack-message) team)
+  (when (slack-message-visible-p this team)
+    (let ((room (slack-room-find this team)))
+      (slack-room-update-buffer room team this nil)
+      (when (slack-thread-message-p this)
+        (slack-thread-message-update-buffer this room team nil)))))
+
+(cl-defmethod slack-message-replace-buffer ((this slack-message) team)
+  (let ((room (slack-room-find this team)))
+    (slack-room-update-buffer room team this t)
+    (when (slack-thread-message-p this)
+      (slack-thread-message-update-buffer this room team t))))
+
+(cl-defmethod slack-message-replace-buffer ((this slack-file) team)
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-info-buffer
+                                             this
+                                             team)))
+      (progn
+        (oset buffer file this)
+        (slack-buffer-update buffer)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer team)))
+      (slack-buffer-update buffer this :replace t)))
+
 (defun slack-message-remove-star ()
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer))

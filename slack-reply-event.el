@@ -25,7 +25,7 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-event)
-(require 'slack-team)
+(require 'slack-message-buffer)
 
 (defclass slack-reply-event (slack-event) ())
 
