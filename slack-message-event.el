@@ -151,8 +151,15 @@
 
 (cl-defmethod slack-message-event-update-modeline ((_this slack-message-event) message team)
   (let ((room (slack-room-find message team)))
-    (slack-message-update-count message team room)
-    (slack-message-update-unread message team room)
+    (when (slack-message-visible-p message team)
+      (slack-room-set-has-unreads room t team)
+
+      (when (or (slack-message-mentioned-p message team)
+                (slack-im-p room)
+                (slack-mpim-p room))
+        (let* ((count (slack-room-mention-count room team))
+               (next-count (+ count 1)))
+          (slack-room-set-mention-count room next-count team))))
     (slack-update-modeline)))
 
 (cl-defmethod slack-message-event-update-modeline ((_this slack-message-changed-event) _message _team)
