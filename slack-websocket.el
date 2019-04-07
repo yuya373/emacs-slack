@@ -28,7 +28,6 @@
 (require 'slack-request)
 (require 'slack-team)
 (require 'slack-team-ws)
-(require 'slack-reply)
 (require 'slack-file)
 (require 'slack-dialog-buffer)
 (require 'slack-user)
