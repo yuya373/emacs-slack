@@ -284,14 +284,6 @@
 (cl-defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (slack-ts m)))
 
-(cl-defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
-  (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
-      (slack-reaction-join old-reaction reaction)
-    (slack-reaction-push m reaction)))
-
-(cl-defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type _file-id)
-  (slack-message--pop-reaction m reaction))
-
 (defun slack-message--pop-reaction (message reaction)
   (let* ((old-reaction (slack-reaction-find message reaction))
          (decl-p (< 1 (oref old-reaction count))))
