@@ -358,29 +358,6 @@
              #'(lambda (builtin) (run-at-time nil nil #'handler builtin nil)))))
         (slack-actions-list team #'on-success #'on-error)))))
 
-(cl-defmethod slack-message-deleted ((message slack-message) room team)
-  (when (or (slack-thread-message-p message)
-            (slack-reply-broadcast-message-p message))
-    (slack-if-let* ((parent (slack-room-find-thread-parent room message))
-                    (buffer (slack-buffer-find 'slack-thread-message-buffer
-                                               room
-                                               (slack-thread-ts parent)
-                                               team)))
-        (slack-buffer-message-delete buffer (slack-ts message))))
-  (when (slack-message-visible-p message team)
-    (slack-if-let* ((buf (slack-buffer-find 'slack-message-buffer
-                                            room
-                                            team)))
-        (slack-buffer-message-delete buf (slack-ts message))))
-  (if slack-message-custom-delete-notifier
-      (funcall slack-message-custom-delete-notifier message room team)
-    (alert "message deleted"
-           :icon slack-alert-icon
-           :title (format "\\[%s] from %s"
-                          (slack-room-display-name room team)
-                          (slack-message-sender-name message team))
-           :category 'slack)))
-
 (defun slack-message-delete ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))

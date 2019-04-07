@@ -49,6 +49,8 @@
 (require 'slack-stars-buffer)
 (require 'slack-conversations)
 (require 'slack-dnd-status)
+(require 'slack-message-event)
+(require 'slack-reply-event)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -538,63 +540,8 @@ TEAM is one of `slack-teams'"
         (oset room is-member nil)))))
 
 (defun slack-ws-handle-message (payload team)
-  (let ((subtype (plist-get payload :subtype)))
-    (cond
-     ((and subtype (string= subtype "message_changed"))
-      (slack-ws-change-message payload team))
-     ((and subtype (string= subtype "message_deleted"))
-      (slack-ws-delete-message payload team))
-     ((and subtype (string= subtype "message_replied"))
-      (slack-ws-handle-message-replied payload team))
-     (t
-      (slack-ws-update-message payload team)))))
-
-(defun slack-ws-change-message (payload team)
-  (slack-if-let* ((room-id (plist-get payload :channel))
-                  (room (slack-room-find room-id team))
-                  (message-payload (plist-get payload :message))
-                  (ts (plist-get message-payload :ts))
-                  (base (slack-room-find-message room ts))
-                  (new-message (slack-message-create message-payload
-                                                     team
-                                                     room)))
-      (progn
-        (oset new-message reactions (oref base reactions))
-        (slack-message-update new-message team t nil))))
-
-
-(defun slack-ws-delete-message (payload team)
-  (slack-if-let* ((room-id (plist-get payload :channel))
-                  (room (slack-room-find room-id team))
-                  (ts (plist-get payload :deleted_ts))
-                  (message (slack-room-find-message room ts)))
-      (slack-message-deleted message room team)))
-
-(defun slack-ws-update-message (payload team)
-  (let ((subtype (plist-get payload :subtype)))
-    (if (string= subtype "bot_message")
-        (slack-ws-update-bot-message payload team)
-      (let* ((message (slack-message-create payload team))
-             (user-ids (slack-message-user-ids message))
-             (missing-user-ids (slack-team-missing-user-ids team user-ids)))
-        (if (< 0 (length missing-user-ids))
-            (slack-user-info-request missing-user-ids
-                                     team
-                                     :after-success
-                                     #'(lambda ()
-                                         (slack-message-update message team)))
-          (slack-message-update message team))))))
-
-(defun slack-ws-update-bot-message (payload team)
-  (let* ((bot-id (plist-get payload :bot_id))
-         (bot (slack-find-bot bot-id team))
-         (message (slack-message-create payload team)))
-    (if bot
-        (slack-message-update message team)
-      (slack-bot-info-request bot-id
-                              team
-                              #'(lambda ()
-                                  (slack-message-update message team))))))
+  (slack-event-update (slack-create-message-event payload)
+                      team))
 
 (defun slack-ws-payload-pong-p (payload)
   (string= "pong" (plist-get payload :type)))
@@ -619,12 +566,8 @@ TEAM is one of `slack-teams'"
                (msg (plist-get err :msg))
                (template "Failed to send message. Error code: %s msg: %s"))
           (slack-log (format template code msg) team :level 'error))
-      (let ((message-id (plist-get payload :reply_to)))
-        (when (integerp message-id)
-          (slack-message-handle-reply
-           (slack-message-create payload team "")
-           team)
-          (slack-ws-remove-from-resend-queue ws payload team))))))
+      (slack-event-update (slack-create-reply-event payload) team)
+      (slack-ws-remove-from-resend-queue ws payload team))))
 
 (defun slack-ws-handle-reaction-added (payload team)
   (let ((user-id (plist-get payload :user)))
@@ -1031,16 +974,6 @@ TEAM is one of `slack-teams'"
                                                   (string= (oref e id)
                                                            (oref usergroup id)))
                                               (oref team usergroups))))))
-
-(defun slack-ws-handle-message-replied (payload team)
-  (slack-if-let* ((message-payload (plist-get payload :message))
-                  (thread-ts (plist-get message-payload :thread_ts))
-                  (room (slack-room-find (plist-get payload :channel)
-                                         team))
-                  (message (slack-room-find-message room thread-ts)))
-      (progn
-        (slack-message-handle-replied message message-payload)
-        (slack-message-update message team t t))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

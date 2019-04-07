@@ -314,7 +314,7 @@
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
-  nil)
+  t)
 
 (cl-defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread-ts (slack-thread-ts m)))
@@ -357,14 +357,6 @@
 
 (cl-defmethod slack-thread-ts ((this slack-message))
   (oref this thread-ts))
-
-(cl-defmethod slack-message-handle-replied ((this slack-message) payload)
-  (oset this thread-ts (plist-get payload :thread_ts))
-  (oset this reply-count (plist-get payload :reply_count))
-  (oset this reply-users-count (plist-get payload :reply_users_count))
-  (oset this latest-reply (plist-get payload :latest_reply))
-  (oset this reply-users (plist-get payload :reply_users))
-  (oset this replies (plist-get payload :replies)))
 
 (cl-defmethod slack-message-handle-thread-marked ((this slack-message) payload)
   (oset this last-read (plist-get payload :last_read)))

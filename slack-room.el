@@ -189,6 +189,13 @@
 (cl-defmethod slack-room--update-latest ((this slack-room) counts ts)
   (slack-counts-channel-update-latest counts this ts))
 
+(cl-defmethod slack-room-delete-message ((this slack-room) ts)
+  (remhash ts (oref this messages))
+  (oset this
+        message-ids
+        (cl-remove-if #'(lambda (e) (string= ts e))
+                      (oref this message-ids))))
+
 (cl-defmethod slack-room-push-message ((this slack-room) message team)
   (let ((ts (slack-ts message)))
     (puthash ts message (oref this messages))
@@ -261,7 +268,10 @@
 (cl-defmethod slack-room-member-p ((_this slack-room))
   t)
 
-(defun slack-room-find (id team)
+(defmethod slack-room-find ((this slack-message) team)
+  (slack-room-find (oref this channel) team))
+
+(defmethod slack-room-find ((id string) team)
   (if (and id team)
       (cl-labels ((find-room (room)
                              (string= id (oref room id))))
