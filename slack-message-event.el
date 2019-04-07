@@ -152,7 +152,8 @@
 
 (cl-defmethod slack-message-event-update-modeline ((_this slack-message-event) message team)
   (let ((room (slack-room-find message team)))
-    (when (slack-message-visible-p message team)
+    (when (and (not (slack-message-ephemeral-p message))
+               (slack-message-visible-p message team))
       (slack-room-set-has-unreads room t team)
 
       (when (or (slack-message-mentioned-p message team)

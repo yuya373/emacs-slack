@@ -357,5 +357,8 @@
   (oset this subscribed t)
   (oset this last-read (plist-get payload :last_read)))
 
+(cl-defmethod slack-message-ephemeral-p ((this slack-message))
+  (oref this is-ephemeral))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
