@@ -51,6 +51,7 @@
 (require 'slack-message-event)
 (require 'slack-reply-event)
 (require 'slack-reaction-event)
+(require 'slack-star-event)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -730,67 +731,13 @@ TEAM is one of `slack-teams'"
          (status (slack-create-dnd-status payload)))
     (puthash user status (oref team dnd-status))))
 
-;; [star_added event | Slack](https://api.slack.com/events/star_added)
-(defun slack-ws-handle-star-added-to-file (file-id team)
-  (let ((file (slack-file-find file-id team)))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-star-added file)
-                   (slack-message-update file team t t))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
-
 (defun slack-ws-handle-star-added (payload team)
-  (let* ((item (plist-get payload :item))
-         (item-type (plist-get item :type)))
-    (cl-labels
-        ((update-message (message)
-                         (slack-message-star-added message)
-                         (slack-message-update message team t t)))
-      (cond
-       ((string= item-type "file")
-        (slack-ws-handle-star-added-to-file (plist-get (plist-get item :file) :id)
-                                            team))
-       ((string= item-type "message")
-        (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
-                        (ts (plist-get (plist-get item :message) :ts))
-                        (message (slack-room-find-message room ts)))
-            (update-message message)))))
-    (slack-if-let* ((star (oref team star)))
-        (slack-star-add star item team))))
-
-
-;; [2018-07-25 16:30:03] (:type star_added :user U1013370U :item (:type file :file (:id FBWDT9VH8) :date_create 1532503802 :file_id FBWDT9VH8 :user_id USLACKBOT) :event_ts 1532503802.000378)
-(defun slack-ws-handle-star-removed-from-file (file-id team)
-  (let ((file (slack-file-find file-id team)))
-    (cl-labels
-        ((update (&rest _args)
-                 (slack-with-file file-id team
-                   (slack-message-star-removed file)
-                   (slack-message-update file team t t))))
-      (if file (update)
-        (slack-file-request-info file-id 1 team #'update)))))
+  (slack-if-let* ((event (slack-create-star-event payload)))
+      (slack-event-update event team)))
 
 (defun slack-ws-handle-star-removed (payload team)
-  (let* ((item (plist-get payload :item))
-         (item-type (plist-get item :type)))
-    (cl-labels
-        ((update-message (message)
-                         (slack-message-star-removed message)
-                         (slack-message-update message team t t)))
-      (cond
-       ((string= item-type "file")
-        (slack-ws-handle-star-removed-from-file (plist-get (plist-get item :file) :id)
-                                                team))
-       ((string= item-type "message")
-        (slack-if-let* ((room (slack-room-find (plist-get item :channel) team))
-                        (ts (plist-get (plist-get item :message) :ts))
-                        (message (slack-room-find-message room ts)))
-            (update-message message)))))
-
-    (slack-if-let* ((star (oref team star)))
-        (slack-star-remove star item team))))
+  (slack-if-let* ((event (slack-create-star-event payload)))
+      (slack-event-update event team)))
 
 (defun slack-ws-handle-app-conversation-invite-request (payload team)
   (let* ((app-user (plist-get payload :app_user))
