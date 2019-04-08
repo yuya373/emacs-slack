@@ -931,21 +931,26 @@
                                                 'left)))))
 
 (defun slack-advice-select-window (org-func window &optional norecord)
-  (let ((buf (window-buffer)))
-    (with-current-buffer buf
-      (slack-if-let* ((buffer slack-current-buffer))
-          (slack-buffer--subscribe-cursor-event buffer
-                                                nil
-                                                nil
-                                                'left))))
-  (funcall org-func window norecord)
-  (let ((buf (window-buffer)))
-    (with-current-buffer buf
-      (slack-if-let* ((buffer slack-current-buffer))
-          (slack-buffer--subscribe-cursor-event buffer
-                                                nil
-                                                nil
-                                                'entered)))))
+  (slack-if-let* ((win (selected-window))
+                  (live-p (window-live-p win))
+                  (buf (window-buffer win)))
+      (with-current-buffer buf
+        (slack-if-let* ((buffer slack-current-buffer))
+            (slack-buffer--subscribe-cursor-event buffer
+                                                  nil
+                                                  nil
+                                                  'left))))
+  (prog1
+      (funcall org-func window norecord)
+    (slack-if-let* ((win (selected-window))
+                    (live-p (window-live-p win))
+                    (buf (window-buffer win)))
+        (with-current-buffer buf
+          (slack-if-let* ((buffer slack-current-buffer))
+              (slack-buffer--subscribe-cursor-event buffer
+                                                    nil
+                                                    nil
+                                                    'entered))))))
 
 (advice-add 'select-window :around 'slack-advice-select-window)
 (advice-add 'delete-window :before 'slack-advice-delete-window)
