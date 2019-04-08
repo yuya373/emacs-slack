@@ -59,8 +59,9 @@
 
 (cl-defmethod slack-event-update ((this slack-event) team)
   (let ((message (slack-event-find-message this team)))
-    (slack-event-save-message this message team)
-    (slack-event-update-ui this message team)))
+    (when message
+      (slack-event-save-message this message team)
+      (slack-event-update-ui this message team))))
 
 (provide 'slack-event)
 ;;; slack-event.el ends here

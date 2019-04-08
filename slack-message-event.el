@@ -191,10 +191,11 @@
 
 (cl-defmethod slack-event-update ((this slack-message-event) team)
   (let* ((message (slack-event-find-message this team)))
-    (slack-event-save-message this message team)
-    (cl-labels
-        ((update () (slack-event-update-ui this message team)))
-      (slack-message-event-retrieve-users this message team #'update))))
+    (when message
+      (slack-event-save-message this message team)
+      (cl-labels
+          ((update () (slack-event-update-ui this message team)))
+        (slack-message-event-retrieve-users this message team #'update)))))
 
 (provide 'slack-message-event)
 ;;; slack-message-event.el ends here
