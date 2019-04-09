@@ -67,13 +67,9 @@
 
 (cl-defmethod slack-event-find-message ((this slack-message-changed-event) team)
   (with-slots (payload) this
-    (let* ((message (slack-message-create (plist-get payload :message)
-                                          team
-                                          (plist-get payload :channel)))
-           (room (slack-room-find message team))
-           (old (slack-room-find-message room (slack-ts message))))
-      (oset message reactions (oref old reactions))
-      message)))
+    (slack-message-create (plist-get payload :message)
+                          team
+                          (plist-get payload :channel))))
 
 (cl-defmethod slack-event-find-message ((this slack-message-deleted-event) team)
   (let* ((payload (oref this payload))
@@ -89,6 +85,14 @@
          (channel (plist-get payload :channel))
          (room (slack-room-find channel team)))
     (slack-room-find-message room thread-ts)))
+
+(cl-defmethod slack-event-save-message ((this slack-message-changed-event) message team)
+  (with-slots (payload) this
+    (slack-if-let* ((room (slack-room-find message team))
+                    (old (slack-room-find-message room (slack-ts message))))
+        (progn
+          (oset message reactions (oref old reactions))
+          (slack-room-push-message room message team)))))
 
 (cl-defmethod slack-event-save-message ((_this slack-message-deleted-event) message team)
   (let ((room (slack-room-find message team)))
