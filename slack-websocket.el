@@ -52,6 +52,7 @@
 (require 'slack-reply-event)
 (require 'slack-reaction-event)
 (require 'slack-star-event)
+(require 'slack-room-event)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -579,13 +580,8 @@ TEAM is one of `slack-teams'"
       (slack-event-update event team)))
 
 (defun slack-ws-handle-channel-created (payload team)
-  (let ((channel (slack-room-create (plist-get payload :channel)
-                                    'slack-channel)))
-    (slack-team-set-channels team (list channel))
-    (slack-conversations-info channel team)
-    (slack-log (format "Created channel %s"
-                       (slack-room-display-name channel team))
-               team :level 'info)))
+  (slack-event-update (slack-create-channel-created-event payload)
+                      team))
 
 (defun slack-ws-handle-room-archive (payload team)
   (let* ((id (plist-get payload :channel))
