@@ -33,14 +33,14 @@
   (slack-reply-event :type "" :payload payload))
 
 (cl-defmethod slack-event-find-message ((this slack-reply-event) team)
-  (let* ((payload (oref this payload))
-         (reply-to (plist-get payload :reply_to))
-         (sent-message (let* ((table (oref team sent-message))
-                              (found (gethash reply-to table)))
-                         (remhash reply-to table)
-                         found)))
-    (oset sent-message ts (plist-get payload :ts))
-    sent-message))
+  (slack-if-let* ((payload (oref this payload))
+                  (reply-to (plist-get payload :reply_to))
+                  (table (oref team sent-message))
+                  (sent-message (gethash reply-to table)))
+      (progn
+        (remhash reply-to table)
+        (oset sent-message ts (plist-get payload :ts))
+        sent-message)))
 
 (cl-defmethod slack-event-update-buffer ((_this slack-reply-event) message team)
   (slack-message-update-buffer message team)
