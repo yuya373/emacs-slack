@@ -459,6 +459,7 @@
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
     (should (eq 48 (match-beginning 4))))
+  (should (string-match-p slack-mrkdwn-regex-code-block "```\nbbb\naaa\n```\n"))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "```bbb```aaa")))
