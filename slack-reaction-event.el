@@ -28,7 +28,7 @@
 (require 'slack-event)
 (require 'slack-message-buffer)
 
-(defclass slack-reaction-event (slack-event) ())
+(defclass slack-reaction-event (slack-event slack-message-event-processable) ())
 (defclass slack-message-reaction-event (slack-reaction-event) ())
 (defclass slack-message-reaction-added-event (slack-message-reaction-event) ())
 (defclass slack-message-reaction-removed-event (slack-message-reaction-event) ())

@@ -37,31 +37,32 @@
   ((type :initarg :type :type string)
    (payload :initarg :payload)))
 
-(cl-defgeneric slack-event-find-message (event team))
-(cl-defgeneric slack-event-update-buffer (event message team))
-(cl-defgeneric slack-event-notify (event message team))
-(cl-defgeneric slack-event-update-ui (event message team))
-(cl-defgeneric slack-event-save-message (event message team))
-(cl-defgeneric slack-event-update (event team))
-
-(cl-defmethod slack-event-find-message ((_this slack-event) _team))
-
-(cl-defmethod slack-event-save-message ((_this slack-event) message team)
-  (let ((room (slack-room-find message team)))
-    (slack-room-push-message room message team)))
-
 (cl-defmethod slack-event-update-buffer ((_this slack-event) _message _team))
 (cl-defmethod slack-event-notify ((_this slack-event) _message _team))
-
 (cl-defmethod slack-event-update-ui ((this slack-event) message team)
   (slack-event-update-buffer this message team)
   (slack-event-notify this message team))
 
-(cl-defmethod slack-event-update ((this slack-event) team)
+(defclass slack-message-event-processable () () :abstract t)
+(cl-defmethod slack-event-find-message ((_this slack-message-event-processable) _team))
+(cl-defmethod slack-event-save-message ((_this slack-message-event-processable) message team)
+  (let ((room (slack-room-find message team)))
+    (slack-room-push-message room message team)))
+
+(cl-defmethod slack-event-update ((this slack-message-event-processable) team)
   (let ((message (slack-event-find-message this team)))
     (when message
       (slack-event-save-message this message team)
       (slack-event-update-ui this message team))))
+
+(defclass slack-room-event-processable () () :abstract t)
+(cl-defmethod slack-event-find-room ((_this slack-room-event-processable) _team))
+(cl-defmethod slack-event-save-room ((_this slack-room-event-processable) _room _team))
+(cl-defmethod slack-event-update ((this slack-room-event-processable) team)
+  (let ((room (slack-event-find-room this team)))
+    (when room
+      (slack-event-save-room this room team)
+      (slack-event-update-ui this room team))))
 
 (provide 'slack-event)
 ;;; slack-event.el ends here

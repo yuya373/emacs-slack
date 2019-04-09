@@ -27,7 +27,7 @@
 (require 'slack-event)
 (require 'slack-message-buffer)
 
-(defclass slack-star-event (slack-event) ())
+(defclass slack-star-event (slack-event slack-message-event-processable) ())
 (defclass slack-message-star-event (slack-star-event) ())
 (defclass slack-message-star-added-event (slack-message-star-event) ())
 (defclass slack-message-star-removed-event (slack-message-star-event) ())

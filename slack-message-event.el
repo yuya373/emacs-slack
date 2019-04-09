@@ -31,7 +31,7 @@
 
 (defvar slack-alert-icon)
 
-(defclass slack-message-event (slack-event)
+(defclass slack-message-event (slack-event slack-message-event-processable)
   ((subtype :initarg :subtype :type string)))
 
 (defun slack-create-message-event (payload)

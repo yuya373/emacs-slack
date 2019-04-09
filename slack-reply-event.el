@@ -27,7 +27,7 @@
 (require 'slack-event)
 (require 'slack-message-buffer)
 
-(defclass slack-reply-event (slack-event) ())
+(defclass slack-reply-event (slack-event slack-message-event-processable) ())
 
 (defun slack-create-reply-event (payload)
   (slack-reply-event :type "" :payload payload))
