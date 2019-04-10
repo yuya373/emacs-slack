@@ -28,6 +28,9 @@
 (require 'slack-conversations)
 (require 'slack-group)
 
+;; TODO: handle im_marked, channel_marked, group_marked,
+;; im_open, im_close, group_close,
+;; member_joined_channel, member_left_channel
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
 (cl-defmethod slack-event-find-room ((this slack-room-event) team)
