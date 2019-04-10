@@ -28,6 +28,12 @@
 (require 'slack-conversations)
 
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
+
+(cl-defmethod slack-event-find-room ((this slack-room-event) team)
+  (let* ((payload (oref this payload))
+         (id (plist-get payload :channel)))
+    (slack-room-find id team)))
+
 (defclass slack-channel-created-event (slack-room-event) ())
 
 (defun slack-create-channel-created-event (payload)
@@ -62,11 +68,6 @@
            (make-instance 'slack-group-archive-event
                           :payload payload)))))
 
-(cl-defmethod slack-event-find-room ((this slack-room-archive-event) team)
-  (let* ((payload (oref this payload))
-         (id (plist-get payload :channel)))
-    (slack-room-find id team)))
-
 (cl-defmethod slack-event-save-room ((_this slack-channel-archive-event) room team)
   (oset room is-archived t)
   (slack-team-set-channels team (list room)))
@@ -77,6 +78,32 @@
 
 (cl-defmethod slack-event-notify ((_this slack-room-archive-event) room team)
   (slack-log (format "Channel: %s is archived"
+                     (slack-room-name room team))
+             team :level 'info))
+
+(defclass slack-room-unarchive-event (slack-room-event) ())
+(defclass slack-channel-unarchive-event (slack-room-unarchive-event) ())
+(defclass slack-group-unarchive-event (slack-room-unarchive-event) ())
+
+(defun slack-create-room-unarchive-event (payload)
+  (let ((type (plist-get payload :type)))
+    (cond ((string= "channel_unarchive" type)
+           (make-instance 'slack-channel-unarchive-event
+                          :payload payload))
+          ((string= "group_unarchive" type)
+           (make-instance 'slack-group-unarchive-event
+                          :payload payload)))))
+
+(cl-defmethod slack-event-save-room ((_this slack-channel-unarchive-event) room team)
+  (oset room is-archived nil)
+  (slack-team-set-channels team (list room)))
+
+(cl-defmethod slack-event-save-room ((_this slack-group-unarchive-event) room team)
+  (oset room is-archived nil)
+  (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-notify ((_this slack-room-unarchive-event) room team)
+  (slack-log (format "Channel: %s is unarchived"
                      (slack-room-name room team))
              team :level 'info))
 
