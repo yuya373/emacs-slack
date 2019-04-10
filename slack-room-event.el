@@ -107,5 +107,20 @@
                      (slack-room-name room team))
              team :level 'info))
 
+(defclass slack-channel-deleted-event (slack-room-event) ())
+
+(defun slack-create-channel-deleted-event (payload)
+  (make-instance 'slack-channel-deleted-event
+                 :payload payload))
+
+(cl-defmethod slack-event-save-room ((_this slack-channel-deleted-event) room team)
+  (remhash (oref room id)
+           (oref team channels)))
+
+(cl-defmethod slack-event-notify ((_this slack-channel-deleted-event) room team)
+  (slack-log (format "Channel: %s is deleted"
+                     (slack-room-name room team))
+             team :level 'info))
+
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here

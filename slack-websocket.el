@@ -592,13 +592,8 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-channel-deleted (payload team)
-  (let* ((id (plist-get payload :channel))
-         (room (slack-room-find id team)))
-    (cond
-     ((object-of-class-p room 'slack-channel)
-      (remhash id (oref team channels))
-      (message "Channel: %s deleted"
-               (slack-room-display-name room team))))))
+  (slack-event-update (slack-create-channel-deleted-event payload)
+                      team))
 
 (defun slack-ws-handle-room-rename (payload team)
   (let* ((c (plist-get payload :channel))
