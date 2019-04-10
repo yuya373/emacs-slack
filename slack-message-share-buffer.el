@@ -35,14 +35,13 @@
   "Slack Share Message")
 
 (defclass slack-message-share-buffer (slack-message-compose-buffer)
-  ((ts :initarg :ts :type string)
-   (room :initarg :room :type slack-room)))
+  ((ts :initarg :ts :type string)))
 
 (defun slack-create-message-share-buffer (room team ts)
   (slack-if-let* ((buf (slack-buffer-find 'slack-message-share-buffer
                                           room ts team)))
       buf
-    (slack-message-share-buffer :room room :team team :ts ts)))
+    (slack-message-share-buffer :room-id (oref room id) :team team :ts ts)))
 
 (cl-defmethod slack-buffer-find ((class (subclass slack-message-share-buffer)) room ts team)
   (slack-buffer-find-4 class room ts team))
@@ -54,23 +53,30 @@
           ts))
 
 (cl-defmethod slack-buffer-name ((this slack-message-share-buffer))
-  (with-slots (room ts team) this
+  (with-slots (ts team) this
     (slack-buffer-name 'slack-message-share-buffer
-                       room ts team)))
+                       (slack-buffer-room this)
+                       ts
+                       team)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-message-share-buffer-mode)
       (slack-buffer-set-current-buffer this))
-    (with-slots (room ts team) this
+    (with-slots (ts team) this
       (slack-buffer-push-new-4 'slack-message-share-buffer
-                               room ts team))
+                               (slack-buffer-room this)
+                               ts
+                               team))
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)
-  (with-slots (room team ts) this
-    (slack-message-share--send team room ts message)
+  (with-slots (team ts) this
+    (slack-message-share--send team
+                               (slack-buffer-room this)
+                               ts
+                               message)
     (cl-call-next-method)))
 
 (provide 'slack-message-share-buffer)

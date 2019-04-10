@@ -38,9 +38,10 @@
   (format "%s %s" (cl-call-next-method) "Pinned Items"))
 
 (cl-defmethod slack-buffer-name ((this slack-pinned-items-buffer))
-  (with-slots (room team) this
+  (with-slots (team) this
     (slack-buffer-name 'slack-pinned-items-buffer
-                       room team)))
+                       (slack-buffer-room this)
+                       team)))
 
 (cl-defmethod slack-buffer-buffer ((this slack-pinned-items-buffer))
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
@@ -71,8 +72,10 @@
       (slack-pinned-items-buffer-mode)
       (slack-buffer-set-current-buffer this))
     (slack-pinned-items-buffer-insert-items this)
-    (with-slots (room team) this
-      (slack-buffer-push-new-3 'slack-pinned-items-buffer room team))
+    (with-slots (team) this
+      (slack-buffer-push-new-3 'slack-pinned-items-buffer
+                               (slack-buffer-room this)
+                               team))
     buf))
 
 (defun slack-create-pinned-items-buffer (room team items)
@@ -82,7 +85,7 @@
       (progn
         (oset buf items items)
         buf)
-    (slack-pinned-items-buffer :room room
+    (slack-pinned-items-buffer :room-id (oref room id)
                                :team team
                                :items items)))
 

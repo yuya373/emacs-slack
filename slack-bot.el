@@ -24,38 +24,46 @@
 
 ;;; Code:
 
+(require 'slack-util)
+(require 'slack-request)
 (require 'slack-team)
 
-(defun slack-bot-append (bots team)
-  (oset team
-        bots
-        (append (cl-remove-if #'(lambda (bot)
-                                  (cl-find-if #'(lambda (e)
-                                                  (string= (plist-get e :id)
-                                                           (plist-get bot :id)))
-                                              bots))
-                              (oref team bots))
-                bots)))
+(defconst slack-bot-info-url "https://slack.com/api/bots.info")
 
 (defun slack-find-bot (id team)
-  (with-slots (users bots) team
-    (or (cl-find-if #'(lambda (bot)
-                        (string= id (plist-get bot :id)))
-                    bots)
-        (cl-find-if #'(lambda (user)
-                        (string= id (plist-get user :bot_id)))
-                    users))))
+  (gethash id (oref team bots)))
 
-(defun slack-find-bot-by-name (name team)
-  (with-slots (bots users) team
-    (or (cl-find-if #'(lambda (bot)
-                        (string= name (plist-get bot :name)))
-                    bots)
-        (cl-find-if #'(lambda (user)
-                        (string= name (plist-get user :name)))
-                    users))))
+(defun slack-bot-info-request (bot-id team &optional after-success)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data "slack-bot-info-request")
+                    (let ((bot (plist-get data :bot)))
+                      (slack-team-set-bots team (list bot))))
+                   (if after-success
+                       (funcall after-success))))
+    (slack-request
+     (slack-request-create
+      slack-bot-info-url
+      team
+      :params (list (cons "bot" bot-id))
+      :success #'on-success))))
 
-
+(defun slack-bots-info-request (bot-ids team &optional after-success)
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (slack-request-handle-error
+                 (data "slack-bots-info-request")
+                 (let ((bots (plist-get data :bots)))
+                   (slack-team-set-bots team bots)))
+                (if after-success
+                    (funcall after-success))))
+    (slack-request
+     (slack-request-create
+      slack-bot-info-url
+      team
+      :params (list (cons "bots" (mapconcat #'identity bot-ids ",")))
+      :success #'success))))
 
 (provide 'slack-bot)
 ;;; slack-bot.el ends here

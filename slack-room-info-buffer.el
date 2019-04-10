@@ -45,8 +45,10 @@
               room-name)))
 
 (cl-defmethod slack-buffer-name ((this slack-room-info-buffer))
-  (with-slots (room team) this
-    (slack-buffer-name (eieio-object-class-name this) room team)))
+  (with-slots (team) this
+    (slack-buffer-name (eieio-object-class-name this)
+                       (slack-buffer-room this)
+                       team)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-room-info-buffer))
   (let* ((bufname (slack-buffer-name this))
@@ -56,9 +58,11 @@
       (slack-buffer-set-current-buffer this)
       (slack-buffer-insert this)
       (goto-char (point-min)))
-    (with-slots (room team) this
+    (with-slots (team) this
       (let ((class (eieio-object-class-name this)))
-        (slack-buffer-push-new-3 class room team)))
+        (slack-buffer-push-new-3 class
+                                 (slack-buffer-room this)
+                                 team)))
     buf))
 
 (defface slack-room-info-title-face
@@ -82,8 +86,9 @@
   :group 'slack)
 
 (cl-defmethod slack-buffer-insert ((this slack-room-info-buffer))
-  (with-slots (room team) this
-    (let ((inhibit-read-only t))
+  (with-slots (team) this
+    (let ((room (slack-buffer-room this))
+          (inhibit-read-only t))
       (insert (propertize "About "
                           'face 'slack-room-info-title-face))
       (insert (propertize (slack-room-name room team)
@@ -160,7 +165,7 @@
   (slack-if-let* ((buffer (slack-buffer-find 'slack-room-info-buffer
                                              room team)))
       buffer
-    (slack-room-info-buffer :room room :team team)))
+    (slack-room-info-buffer :room-id (oref room id) :team team)))
 
 (cl-defmethod slack-buffer-buffer ((this slack-room-info-buffer))
   (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))

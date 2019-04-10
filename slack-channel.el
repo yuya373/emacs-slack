@@ -35,27 +35,12 @@
 (defvar slack-buffer-function)
 (defvar slack-completing-read-function)
 
-(defconst slack-channel-buffer-name "*Slack - Channel*")
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
-(defclass slack-channel (slack-group)
-  ((is-member :initarg :is_member :initform nil)
-   (num-members :initarg :num_members :initform 0)))
-
-(cl-defmethod slack-merge ((this slack-channel) other)
-  (cl-call-next-method)
-  (with-slots (is-member num-members) this
-    (setq is-member (oref other is-member))
-    (setq num-members (oref other num-members))))
-
-(cl-defmethod slack-room-buffer-name ((room slack-channel) team)
-  (concat slack-channel-buffer-name
-          " : "
-          (slack-room-display-name room team)))
+(defclass slack-channel (slack-group) ())
 
 (defun slack-channel-names (team &optional filter)
-  (with-slots (channels) team
-    (slack-room-names channels team filter)))
+  (slack-room-names (slack-team-channels team) team filter))
 
 (cl-defmethod slack-room-member-p ((room slack-channel))
   (oref room is-member))
@@ -65,8 +50,7 @@
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (channels _groups _ims)
-                  (slack-merge-list (oref team channels)
-                                    channels)
+                  (slack-team-set-channels team channels)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Channel List Updated"

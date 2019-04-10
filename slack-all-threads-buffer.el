@@ -30,6 +30,8 @@
 (require 'slack-thread)
 (require 'slack-message-buffer)
 
+(defconst slack-subscriptions-thread-get-view-url "https://slack.com/api/subscriptions.thread.getView")
+(defconst slack-subscriptions-thread-clear-all-url "https://slack.com/api/subscriptions.thread.clearAll")
 
 (define-derived-mode slack-all-threads-buffer-mode
   slack-buffer-mode
@@ -46,6 +48,34 @@
    (total-unread-replies :initarg :total-unread-replies :type integer)
    (new-threads-count :initarg :new-threads-count :type integer)
    (threads :initarg :threads :type list '())))
+
+(defclass slack-thread-view ()
+  ((root-msg :initarg :root_msg :type slack-message)
+   (latest-replies :initarg :latest_replies :type list :initform '())
+   (unread-replies :initarg :unread_replies :type list :initform '())))
+
+(cl-defmethod slack-message-user-ids ((this slack-thread-view))
+  (let ((ret (slack-message-user-ids (oref this root-msg))))
+
+    (cl-loop for m in (oref this latest-replies)
+             do (cl-loop for id in (slack-message-user-ids m)
+                         do (cl-pushnew id ret :test #'string=)))
+
+    (cl-loop for m in (oref this unread-replies)
+             do (cl-loop for id in (slack-message-user-ids m)
+                         do (cl-pushnew id ret :test #'string=)))
+    ret))
+
+(defun slack-create-thread-view (payload team)
+  (let ((room (slack-room-find (plist-get (plist-get payload :root_msg)
+                                          :channel)
+                               team)))
+    (make-instance 'slack-thread-view
+                   :root_msg (slack-message-create (plist-get payload :root_msg) team room)
+                   :latest_replies (mapcar #'(lambda (e) (slack-message-create e team room))
+                                           (plist-get payload :latest_replies))
+                   :unread_replies (mapcar #'(lambda (e) (slack-message-create e team room))
+                                           (plist-get payload :unread_replies)))))
 
 
 (cl-defmethod slack-buffer-find ((_class (subclass slack-all-threads-buffer)) team)
@@ -95,15 +125,12 @@
     buf))
 
 (cl-defmethod slack-buffer-insert-thread ((this slack-all-threads-buffer) thread)
-  (oset this current-ts (oref thread last-read))
-  (let* ((root (oref thread root))
-         (replies (oref thread messages))
-         ;; (reply-count (oref thread reply-count))
-         ;; (more-replies-count (- reply-count (length replies)))
-         )
+  (with-slots (root-msg latest-replies unread-replies) thread
+    (oset this current-ts (oref root-msg last-read))
     (let* ((lui-time-stamp-position nil)
            (team (oref this team))
-           (room (slack-room-find (oref root channel) team))
+           (channel (oref root-msg channel))
+           (room (slack-room-find channel team))
            (prefix (or (and (slack-im-p room) "@") "#")))
       (lui-insert (format "%s\n"
                           (make-string lui-fill-column ?=))
@@ -114,14 +141,11 @@
                               'face
                               'slack-all-thread-buffer-thread-header-face)
                   t))
-    (slack-buffer-insert this root t)
-    ;; (let ((lui-time-stamp-position nil))
-    ;;   (when (< 1 more-replies-count)
-    ;;     (lui-insert (format "%s more replies"
-    ;;                         more-replies-count)))
-    ;;   (when (= 1 more-replies-count)
-    ;;     (lui-insert "1 more reply")))
-    (cl-loop for reply in replies
+
+    (slack-buffer-insert this root-msg t)
+    (cl-loop for reply in latest-replies
+             do (slack-buffer-insert this reply t))
+    (cl-loop for reply in unread-replies
              do (slack-buffer-insert this reply t))))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-all-threads-buffer))
@@ -140,7 +164,8 @@
 (cl-defmethod slack-buffer-insert-history ((this slack-all-threads-buffer))
   (with-slots (team threads current-ts) this
     (cl-loop for thread in (cl-remove-if #'(lambda (e)
-                                             (not (string< (oref e last-read)
+                                             (not (string< (oref (oref e root-msg)
+                                                                 last-read)
                                                            current-ts)))
                                          threads)
              do (slack-buffer-insert-thread this thread))))
@@ -168,29 +193,29 @@
 
 (cl-defmethod slack-buffer-display-thread ((this slack-all-threads-buffer) ts)
   (with-slots (team threads) this
-    (slack-if-let*
-        ((thread (cl-find-if #'(lambda (e) (string= ts (slack-ts (oref e root))))
-                             threads))
-         (root (oref thread root))
-         (room-id (oref root channel))
-         (room (slack-room-find room-id team)))
+    (slack-if-let* ((thread (cl-find-if #'(lambda (e) (string= ts (slack-ts (oref e root-msg))))
+                                        threads))
+                    (root (oref thread root-msg))
+                    (room-id (oref root channel))
+                    (room (slack-room-find room-id team)))
         (cl-labels
             ((display-thread (message)
-                             (slack-thread-show-messages (oref message thread)
+                             (slack-thread-show-messages message
                                                          room
                                                          team)))
-          (slack-if-let* ((message (slack-room-find-message room (slack-ts root))))
+          (slack-if-let* ((ts (slack-ts root))
+                          (message (slack-room-find-message room ts)))
               (display-thread message)
             (cl-labels
                 ((success (messages _next-cursor)
-                          (slack-room-append-messages room messages team)
+                          (slack-room-set-messages room messages team)
                           (let ((message (slack-room-find-message room (slack-ts root))))
                             (display-thread message))))
               (slack-conversations-history room team
-                                          :oldest (slack-ts root)
-                                          :inclusive "true"
-                                          :limit "1"
-                                          :after-success #'success)))))))
+                                           :oldest (slack-ts root)
+                                           :inclusive "true"
+                                           :limit "1"
+                                           :after-success #'success)))))))
 
 (defun slack-all-threads ()
   (interactive)
@@ -211,6 +236,68 @@
                         (apply #'open-buffer args))
                     (apply #'open-buffer args))))
       (slack-subscriptions-thread-get-view team nil #'success))))
+
+(defun slack-subscriptions-thread-clear-all (team)
+  (let ((current-ts (substring
+                     (number-to-string (time-to-seconds (current-time)))
+                     0 15)))
+    (cl-labels
+        ((success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-subscriptions-thread-clear-all"))))
+      (slack-request
+       (slack-request-create
+        slack-subscriptions-thread-clear-all-url
+        team
+        :type "POST"
+        :params (list (cons "current_ts" current-ts))
+        :success #'success)))))
+
+(defun slack-subscriptions-thread-get-view (team &optional current-ts after-success)
+  (let ((current-ts (or current-ts
+                        (substring
+                         (number-to-string (time-to-seconds (current-time)))
+                         0 15))))
+    (cl-labels
+        ((callback (total-unread-replies
+                    new-threads-count
+                    threads
+                    has-more)
+                   (when (functionp after-success)
+                     (funcall after-success
+                              total-unread-replies
+                              new-threads-count
+                              threads
+                              has-more)))
+         (success (&key data &allow-other-keys)
+                  (slack-request-handle-error
+                   (data "slack-subscriptions-thread-get-view")
+                   (let* ((total-unread-replies (plist-get data :total_unread_replies))
+                          (new-threads-count (plist-get data :new_threads_count))
+                          (threads (mapcar #'(lambda (e) (slack-create-thread-view e team))
+                                           (plist-get data :threads)))
+                          (has-more (eq (plist-get data :has_more) t))
+                          (user-ids (slack-team-missing-user-ids
+                                     team (cl-loop for thread in threads
+                                                   nconc (slack-message-user-ids thread)))))
+                     (if (< 0 (length user-ids))
+                         (slack-users-info-request
+                          user-ids team :after-success
+                          #'(lambda () (callback total-unread-replies
+                                                 new-threads-count
+                                                 threads
+                                                 has-more)))
+                       (callback total-unread-replies
+                                 new-threads-count
+                                 threads
+                                 has-more))))))
+      (slack-request
+       (slack-request-create
+        slack-subscriptions-thread-get-view-url
+        team
+        :type "POST"
+        :params (list (cons "current_ts" current-ts))
+        :success #'success)))))
 
 (provide 'slack-all-threads-buffer)
 ;;; slack-all-threads-buffer.el ends here

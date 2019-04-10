@@ -127,7 +127,7 @@
                                                      (string= (plist-get e :id)
                                                               "USLACKBOT")
                                                      (cl-find (plist-get e :id)
-                                                              (oref room members)
+                                                              (slack-room-members room)
                                                               :test #'string=)))
                                              users))))
          (users nil))
@@ -256,7 +256,7 @@
 (defun slack-conversations-kick (room team)
   (let* ((candidates (cl-loop for user in (slack-user-names team)
                               if (cl-find (plist-get (cdr user) :id)
-                                          (oref room members)
+                                          (slack-room-members room)
                                           :test #'string=)
                               collect user))
          (selected (funcall slack-completing-read-function
@@ -324,16 +324,13 @@
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (channels groups ims)
-                  (slack-merge-list (oref team channels)
-                                    channels)
-                  (slack-merge-list (oref team groups)
-                                    groups)
-                  (slack-merge-list (oref team ims)
-                                    ims)
+                  (slack-team-set-channels team channels)
+                  (slack-team-set-groups team groups)
+                  (slack-team-set-ims team ims)
                   (slack-counts-update team)
                   (slack-user-info-request
                    (mapcar #'(lambda (im) (oref im user))
-                           (oref team ims))
+                           (slack-team-ims team))
                    team)
                   (slack-team-send-presence-sub team)
                   (when (functionp after-success)
@@ -358,7 +355,7 @@
                  (let ((new-room (slack-room-create
                                   (plist-get data :channel)
                                   (eieio-object-class-name room))))
-                   (slack-merge room new-room))
+                   (slack-team-set-room team new-room))
                  (when (functionp after-success)
                    (funcall after-success)))))
     (slack-request-create
@@ -479,13 +476,13 @@
                   team :on-success #'success))))))
 
 (defun slack-conversations-members (room team &optional cursor after-success)
-  (if (oref room members-loaded-p)
+  (if (slack-room-members-loaded-p room)
       (when (functionp after-success)
-        (funcall after-success (oref room members) ""))
+        (funcall after-success (slack-room-members room) ""))
     (cl-labels
         ((callback (members next-cursor)
                    (when (< (length next-cursor) 1)
-                     (oset room members-loaded-p t))
+                     (slack-room-members-loaded room))
                    (when (functionp after-success)
                      (funcall after-success members next-cursor)))
          (success (data)
@@ -493,10 +490,8 @@
                          (next-cursor (or (and meta (plist-get meta :next_cursor)) ""))
                          (members (plist-get data :members))
                          (missing-user-ids (slack-team-missing-user-ids team members)))
-                    (oset room members
-                          (cl-remove-duplicates (append (oref room members)
-                                                        members)
-                                                :test #'string=))
+                    (slack-room-set-members room members)
+
 
                     (if (< 0 (length missing-user-ids))
                         (slack-user-info-request
@@ -557,9 +552,9 @@
                         (meta (plist-get data :response_metadata))
                         (next-cursor (or (and meta (plist-get meta :next_cursor))
                                          "")))
-                   (slack-merge room new-room)
-                   (slack-user-append users team)
-                   (slack-bot-append bots team)
+                   (slack-team-set-room team new-room)
+                   (slack-team-set-users team users)
+                   (slack-team-set-bots team bots)
                    (when (functionp after-success)
                      (funcall after-success messages next-cursor))))))
     (slack-request

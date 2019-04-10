@@ -256,7 +256,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (format "%s%s"
           (if (slack-message-display-thread-sign-p m team)
               slack-visible-thread-sign
-            "Replied to a thread: \n")
+            (if (eq major-mode 'slack-thread-message-buffer-mode)
+                ""
+              "Replied to a thread: \n"))
           (let ((body (slack-message-unescape-string (oref m text) team)))
             (when body
               (propertize body 'slack-text-type 'mrkdwn)))))

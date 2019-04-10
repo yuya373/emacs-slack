@@ -71,14 +71,14 @@ use `slack-change-current-team' to change `slack-current-team'"
    (self :initarg :self)
    (self-id :initarg :self-id)
    (self-name :initarg :self-name)
-   (channels :initarg :channels :initform nil)
-   (groups :initarg :groups :initform nil)
-   (ims :initarg :ims :initform nil)
+   (channels :initarg :channels :initform (make-hash-table :test 'equal))
+   (groups :initarg :groups :initform (make-hash-table :test 'equal))
+   (ims :initarg :ims :initform (make-hash-table :test 'equal))
    (file-room :initform nil)
    (search-results :initform nil)
-   (users :initarg :users :initform nil)
-   (bots :initarg :bots :initform nil)
-   (sent-message :initform (make-hash-table))
+   (users :initarg :users :initform (make-hash-table :test 'equal))
+   (bots :initarg :bots :initform (make-hash-table :test 'equal))
+   (sent-message :initform (make-hash-table :test 'equal))
    (message-id :initform 0)
    (subscribed-channels :initarg :subscribed-channels
                         :type list :initform nil)
@@ -122,6 +122,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (emoji-master :initform (make-hash-table :test 'equal))
    (visible-threads :initarg :visible-threads :initform nil :type boolean)
    (animate-image :initarg :animate-image :initform nil :type boolean)
+   (dnd-status :initform (make-hash-table :test 'equal))
+   (presence :initform (make-hash-table :test 'equal))
    ))
 
 (defun slack-create-team (plist)
@@ -377,15 +379,14 @@ Available options (property name, type, default value)
   (oref this token))
 
 (cl-defmethod slack-team-missing-user-ids ((this slack-team) user-ids)
-  (let ((exists-user-ids (mapcar #'(lambda (e) (plist-get e :id))
-                                 (oref this users))))
+  (let ((exists-user-ids (hash-table-keys (oref this users))))
     (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
                   (cl-remove-duplicates user-ids :test #'string=))))
 
 (cl-defmethod slack-team-send-presence-sub ((this slack-team))
   (let ((type "presence_sub")
         (ids (let ((result))
-               (cl-loop for im in (oref this ims)
+               (cl-loop for im in (slack-team-ims this)
                         do (when (slack-room-open-p im)
                              (push (oref im user) result)))
                result)))
@@ -399,6 +400,60 @@ Available options (property name, type, default value)
 
 (cl-defmethod slack-team-animate-image-p ((this slack-team))
   (oref this animate-image))
+
+(cl-defmethod slack-team-channels ((this slack-team))
+  (hash-table-values (oref this channels)))
+
+(cl-defmethod slack-team-groups ((this slack-team))
+  (hash-table-values (oref this groups)))
+
+(cl-defmethod slack-team-ims ((this slack-team))
+  (hash-table-values (oref this ims)))
+
+(cl-defmethod slack-team-set-channels ((this slack-team) channels)
+  (let ((table (oref this channels)))
+    (cl-loop for channel in channels
+             do (slack-if-let* ((old (gethash (oref channel id) table)))
+                    (slack-merge old channel)
+                  (puthash (oref channel id) channel table)))))
+
+(cl-defmethod slack-team-set-groups ((this slack-team) groups)
+  (let ((table (oref this groups)))
+    (cl-loop for group in groups
+             do (slack-if-let* ((old (gethash (oref group id) table)))
+                    (slack-merge old group)
+                  (puthash (oref group id) group table)))))
+
+(cl-defmethod slack-team-set-ims ((this slack-team) ims)
+  (let ((table (oref this ims)))
+    (cl-loop for im in ims
+             do (slack-if-let* ((old (gethash (oref im id) table)))
+                    (slack-merge old im)
+                  (puthash (oref im id) im table)))))
+
+(cl-defmethod slack-team-set-room ((this slack-team) room)
+  (cl-case (eieio-object-class-name room)
+    (slack-channel (slack-team-set-channels this (list room)))
+    (slack-group (slack-team-set-groups this (list room)))
+    (slack-im (slack-team-set-ims this (list room)))))
+
+(cl-defmethod slack-team-users ((this slack-team))
+  (hash-table-values (oref this users)))
+
+(cl-defmethod slack-team-set-users ((this slack-team) users)
+  (cl-loop for user in users
+           do (puthash (plist-get user :id)
+                       user
+                       (oref this users))))
+
+(cl-defmethod slack-team-set-bots ((this slack-team) bots)
+  (cl-loop for bot in bots
+           do (puthash (plist-get bot :id)
+                       bot
+                       (oref this bots))))
+
+(cl-defmethod slack-team-bots ((this slack-team))
+  (hash-table-values (oref this bots)))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

@@ -189,9 +189,9 @@
                             (slack-ts message)))))))
 
 (cl-defmethod slack-buffer--subscribe-cursor-event ((_this slack-buffer)
-                                                 _window
-                                                 _prev-point
-                                                 _type))
+                                                    _window
+                                                    _prev-point
+                                                    _type))
 
 (defun slack-reaction-echo-description ()
   (slack-if-let* ((buffer slack-current-buffer)
@@ -312,8 +312,6 @@
 (cl-defmethod slack-buffer-send-message ((this slack-buffer) _message)
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-room ((this slack-buffer))
-  (slack-buffer-cant-execute this))
-(cl-defmethod slack-buffer-display-unread-threads ((this slack-buffer))
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-execute-button-block-action((this slack-buffer))
   (slack-buffer-cant-execute this))

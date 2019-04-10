@@ -29,14 +29,13 @@
 (require 'slack-message-compose-buffer)
 (require 'slack-message-sender)
 
-(defclass slack-room-message-compose-buffer (slack-message-compose-buffer)
-  ((room :initarg :room type slack-room)))
+(defclass slack-room-message-compose-buffer (slack-message-compose-buffer) ())
 
 (defun slack-create-room-message-compose-buffer (room team)
   (slack-if-let* ((buf (slack-buffer-find 'slack-room-message-compose-buffer
                                           room team)))
       buf
-    (slack-room-message-compose-buffer :room room :team team)))
+    (slack-room-message-compose-buffer :room-id (oref room id) :team team)))
 
 (cl-defmethod slack-buffer-name ((_class (subclass slack-room-message-compose-buffer)) room team)
   (format "*Slack - %s : %s Compose Message"
@@ -44,9 +43,10 @@
           (slack-room-name room team)))
 
 (cl-defmethod slack-buffer-name ((this slack-room-message-compose-buffer))
-  (with-slots (room team) this
+  (with-slots (team) this
     (slack-buffer-name (eieio-object-class-name this)
-                       room team)))
+                       (slack-buffer-room this)
+                       team)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
   (let* ((buf (cl-call-next-method)))
@@ -54,14 +54,17 @@
       (setq buffer-read-only nil)
       (erase-buffer)
       (message "C-c C-c to send edited msg"))
-    (with-slots (room team) this
+    (with-slots (team) this
       (slack-buffer-push-new-3 'slack-room-message-compose-buffer
-                               room team))
+                               (slack-buffer-room this)
+                               team))
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
-  (with-slots (room team) this
-    (slack-message-send-internal message room team)
+  (with-slots (team) this
+    (slack-message-send-internal message
+                                 (slack-buffer-room this)
+                                 team)
     (cl-call-next-method)))
 
 

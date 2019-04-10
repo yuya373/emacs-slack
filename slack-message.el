@@ -56,25 +56,26 @@
    (channel :initarg :channel :initform nil)
    (ts :initarg :ts :type string :initform "")
    (text :initarg :text :type (or null string) :initform nil)
-   (item-type :initarg :item_type)
    (attachments :initarg :attachments :type (or null list) :initform nil)
    (reactions :initarg :reactions :type (or null list))
    (is-starred :initarg :is_starred :type boolean :initform nil)
    (pinned-to :initarg :pinned_to :type (or null list))
    (deleted-at :initarg :deleted-at :initform nil)
-   (thread :initarg :thread :initform nil)
-   (thread-ts :initarg :thread_ts :initform nil)
-   (hide :initarg :hide :initform nil)
-   ;; TODO remove slack-thread
-   ;; (reply-count :initarg :reply_count :initform 0 :type number)
-   ;; (reply-users-count :initarg :reply_users_count :initform 0 :type number)
-   ;; (reply-users :initarg :reply_users :initform '())
-   ;; (replies :initarg :replies :initform '())
-   ;; (subscribed :initarg :subscribed :initform nil :type boolean)
+   (hidden :initarg :hidden :initform nil)
    (files :initarg :files :initform '())
    (edited :initarg :edited :initform nil)
    (is-ephemeral :initarg :is_ephemeral :initform nil)
-   (blocks :initarg :blocks :type (or null list) :initform nil)))
+   (blocks :initarg :blocks :type (or null list) :initform nil)
+   ;; thread
+   (thread-ts :initarg :thread_ts :initform nil)
+   (latest-reply :initarg :latest_reply :initform "" :type string)
+   (last-read :initarg :last_read :initform "" :type string)
+   (replies :initarg :replies :initform '() :type list)
+   (reply-count :initarg :reply_count :initform 0 :type number)
+   (reply-users :initarg :reply_users :initform '() :type list)
+   (reply-users-count :initarg :reply_users_count :initform 0 :type number)
+   (subscribed :initarg :subscribed :initform nil :type boolean)
+   ))
 
 (defclass slack-message-edited ()
   ((user :initarg :user :type string)
@@ -87,12 +88,6 @@
 
 (defclass slack-reply-broadcast-message (slack-user-message)
   ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
-
-(defclass slack-bot-message (slack-message)
-  ((bot-id :initarg :bot_id :type string)
-   (username :initarg :username :type string :initform "")
-   (user :initarg :user :type string :initform "")
-   (icons :initarg :icons)))
 
 (defclass slack-file-comment-message (slack-message)
   ((file :initarg :file :initform nil)
@@ -111,8 +106,6 @@
 (cl-defgeneric slack-message-to-alert (slack-message))
 (cl-defmethod slack-message-bot-id ((_this slack-message)) nil)
 
-(cl-defgeneric slack-room-buffer-name (room team))
-
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
@@ -129,10 +122,6 @@
                        (plist-get payload :files))))
     (oset m files files)
     m))
-
-(cl-defmethod slack-message-set-thread ((m slack-message) payload)
-  (when (slack-message-thread-parentp m)
-    (oset m thread (slack-thread-create m payload))))
 
 (defun slack-reply-broadcast-message-create (payload)
   (let ((parent (cl-first (plist-get payload :attachments))))
@@ -202,7 +191,6 @@
           (oset message reactions
                 (mapcar #'slack-reaction-create (plist-get payload :reactions)))
           (slack-message-set-file message payload)
-          (slack-message-set-thread message payload)
           (slack-message-set-blocks message payload)
           message)))))
 
@@ -223,12 +211,6 @@
 
 (cl-defmethod slack-message-equal ((m slack-message) n)
   (string= (slack-ts m) (slack-ts n)))
-
-(cl-defmethod slack-message-get-thread ((parent slack-message))
-  (let ((thread (oref parent thread)))
-    (unless thread
-      (oset parent thread (slack-thread-create parent)))
-    (oref parent thread)))
 
 (cl-defmethod slack-message-sender-name ((m slack-message) team)
   (slack-user-name (oref m user) team))
@@ -335,10 +317,9 @@
   nil)
 
 (cl-defmethod slack-message-thread-parentp ((m slack-message))
-  (let* ((thread (oref m thread))
-         (thread-ts (or (and thread (oref thread thread-ts))
-                        (oref m thread-ts))))
-    (and thread-ts (string= (slack-ts m) thread-ts))))
+  (let* ((thread-ts (slack-thread-ts m)))
+    (when thread-ts
+      (string= (slack-ts m) thread-ts))))
 
 (cl-defmethod slack-message--inspect ((this slack-file-comment-message) _room _team)
   (let ((super (cl-call-next-method)))
@@ -347,16 +328,13 @@
               super
               file comment))))
 
-(cl-defmethod slack-message-thread ((this slack-message) _room)
-  (oref this thread))
-
 (cl-defmethod slack-message-pinned-to-room-p ((this slack-message) room)
   (cl-find (oref room id)
            (oref this pinned-to)
            :test #'string=))
 
 (cl-defmethod slack-message-user-ids ((this slack-message))
-  (let ((result))
+  (let ((result (append (oref this reply-users) nil)))
     (push (slack-message-sender-id this) result)
     (with-slots (text) this
       (when text
@@ -376,6 +354,23 @@
       t
     (or (not (slack-thread-message-p this))
         (slack-reply-broadcast-message-p this))))
+
+(cl-defmethod slack-thread-ts ((this slack-message))
+  (oref this thread-ts))
+
+(cl-defmethod slack-message-handle-replied ((this slack-message) payload)
+  (oset this reply-count (plist-get payload :reply_count))
+  (oset this reply-users-count (plist-get payload :reply_users_count))
+  (oset this latest-reply (plist-get payload :latest_reply))
+  (oset this reply-users (plist-get payload :reply_users))
+  (oset this replies (plist-get payload :replies)))
+
+(cl-defmethod slack-message-handle-thread-marked ((this slack-message) payload)
+  (oset this last-read (plist-get payload :last_read)))
+
+(cl-defmethod slack-message-handle-thread-subscribed ((this slack-message) payload)
+  (oset this subscribed t)
+  (oset this last-read (plist-get payload :last_read)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

@@ -29,8 +29,16 @@
                                     :handle usergroup-handle))
           (team (make-instance 'slack-team
                                :self-id "U38383838"
-                               :channels (list channel)
-                               :users (list user)
+                               :channels (let ((h (make-hash-table :test 'equal)))
+                                           (puthash (oref channel id)
+                                                    channel
+                                                    h)
+                                           h)
+                               :users (let ((h (make-hash-table :test 'equal)))
+                                        (puthash (plist-get user :id)
+                                                 user
+                                                 h)
+                                       h)
                                :usergroups (list usergroup))))
      ,@body))
 
@@ -451,6 +459,7 @@
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
     (should (eq 48 (match-beginning 4))))
+  (should (string-match-p slack-mrkdwn-regex-code-block "```\nbbb\naaa\n```\n"))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "```bbb```aaa")))

@@ -95,7 +95,8 @@
   (let* ((profile (slack-user-profile user))
          (header (propertize (slack-user-header user team)
                              'face 'slack-user-profile-header-face))
-         (presence (slack-user-property-to-str (plist-get user :presence) "Presence"))
+         (presence (slack-user-property-to-str (slack-user-presence user team)
+                                               "Presence"))
          (status (slack-user-property-to-str (slack-user--status user) "Status"))
          (timezone (slack-user-property-to-str (slack-user-timezone user) "Timezone"))
          (email (slack-user-property-to-str (plist-get profile :email) "Email"))
@@ -112,7 +113,7 @@
 
 (defun slack-user-profile-to-string (id team)
   "Print user's profile according to ID in TEAM."
-  (let ((user (slack-user--find id team)))
+  (let ((user (slack-user-find id team)))
     (format "\n%s\n\n%s\n\n%s"
             (slack-image-string (list (slack-user-image-url user 512)
                                       nil nil nil (window-width

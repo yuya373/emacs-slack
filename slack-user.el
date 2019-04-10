@@ -24,22 +24,32 @@
 
 ;;; Code:
 
+(require 'eieio)
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-emoji)
-;; (require 'slack-room)
+(require 'slack-dnd-status)
+(require 'slack-bot)
 
 (defvar slack-completing-read-function)
 
-(defconst slack-dnd-team-info-url "https://slack.com/api/dnd.teamInfo")
 (defconst slack-dnd-end-dnd-url "https://slack.com/api/dnd.endDnd")
 (defconst slack-dnd-set-snooze-url "https://slack.com/api/dnd.setSnooze")
 (defconst slack-set-presence-url "https://slack.com/api/users.setPresence")
 (defconst slack-user-info-url "https://slack.com/api/users.info")
 (defconst slack-user-list-url "https://slack.com/api/users.list")
 (defconst slack-user-profile-set-url "https://slack.com/api/users.profile.set")
-(defconst slack-bot-info-url "https://slack.com/api/bots.info")
 (defvar slack-current-user-id nil)
+
+(defcustom slack-dnd-sign "Z"
+  "Used to indicate user is dnd status."
+  :group 'slack
+  :type 'string)
+
+(defface slack-user-dnd-face
+  '((t (:foreground "#2aa198" :weight bold)))
+  "Used to `slack-user-dnd-sign'"
+  :group 'slack)
 
 (defcustom slack-user-active-string "*"
   "If user is active, use this string with `slack-user-active-face'."
@@ -51,19 +61,12 @@
   "Used to `slack-user-active-string'"
   :group 'slack)
 
+(cl-defmethod slack-user-find ((id string) team)
+  (gethash id (oref team users)))
+;; TODO remove this. use `slack-user-find'
 (defun slack-user--find (id team)
   "Find user by ID from TEAM."
-  (with-slots (users) team
-    (cl-find-if (lambda (user)
-                  (string= id (plist-get user :id)))
-                users)))
-
-(defun slack-user-find-by-name (name team)
-  "Find user by NAME from TEAM."
-  (with-slots (users) team
-    (cl-find-if (lambda (user)
-                  (string= name (plist-get user :name)))
-                users)))
+  (gethash id (oref team users)))
 
 (defun slack-user-id (user)
   "Get id of USER."
@@ -74,11 +77,6 @@
   "Find user by ID in TEAM, then return user's name."
   (slack-if-let* ((user (slack-user--find id team)))
       (slack-user--name user team)))
-
-(defun slack-user--find-by-name (name team)
-  (cl-find-if #'(lambda (user)
-                  (string= name (slack-user--name user team)))
-              (oref team users)))
 
 (defun slack-user--name (user team)
   (let ((real-name (slack-user-real-name user))
@@ -97,9 +95,9 @@
       (plist-get profile :display_name_normalized)))
 
 (defun slack-user-label (user team)
-  (format "%s %s"
-          (or (slack-user-dnd-status-to-string user)
-              (slack-user-presence-to-string user))
+  (format "%s%s %s"
+          (or (slack-user-dnd-status-to-string user team) " ")
+          (or (slack-user-presence-to-string user team) " ")
           (slack-user--name user team)))
 
 (defun slack-user--status (user)
@@ -117,30 +115,31 @@
 (defun slack-user-names (team &optional filter)
   "Return all users as alist (\"user-name\" . user) in TEAM."
   (let ((users (cl-remove-if #'slack-user-hidden-p
-                             (oref team users))))
+                             (slack-team-users team))))
     (mapcar (lambda (u) (cons (slack-user--name u team) u))
             (if (functionp filter)
                 (funcall filter users)
               users))))
 
-(defun slack-user-dnd-in-range-p (user)
-  (let ((current (time-to-seconds))
-        (dnd-start (plist-get (plist-get user :dnd_status) :next_dnd_start_ts))
-        (dnd-end (plist-get (plist-get user :dnd_status) :next_dnd_end_ts)))
-    (and dnd-start dnd-end
-         (<= dnd-start current)
-         (<= current dnd-end))))
+(defun slack-user-dnd-in-range-p (user team)
+  (slack-if-let* ((statuses (oref team dnd-status))
+                  (status (gethash (plist-get user :id)
+                                   statuses)))
+      (slack-dnd-in-range-p status)))
 
-(defun slack-user-dnd-status-to-string (user)
-  (if (slack-user-dnd-in-range-p user)
-      "Z"
+(defun slack-user-dnd-status-to-string (user team)
+  (if (slack-user-dnd-in-range-p user team)
+      (propertize slack-dnd-sign
+                  'face 'slack-user-dnd-face)
     nil))
 
-(defun slack-user-presence-to-string (user)
-  (if (string= (plist-get user :presence) "active")
-      (propertize slack-user-active-string
-                  'face 'slack-user-active-face)
-    " "))
+(defun slack-user-presence-to-string (user team)
+  (slack-if-let* ((statuses (oref team presence))
+                  (presence (gethash (plist-get user :id)
+                                     statuses)))
+      (if (string= presence "active")
+          (propertize slack-user-active-string
+                      'face 'slack-user-active-face))))
 
 (defun slack-user-set-status ()
   (interactive)
@@ -164,49 +163,6 @@
                         (json-encode (list (cons "status_text" text)
                                            (cons "status_emoji" emoji)))))
       :success #'on-success))))
-
-(defun slack-bot-info-request (bot-id team &optional after-success)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data "slack-bot-info-request")
-                    (let ((bot (plist-get data :bot)))
-                      (oset team bots
-                            (cons bot
-                                  (cl-remove-if #'(lambda (bot)
-                                                    (string= (plist-get bot :id) bot-id))
-                                                (oref team bots))))))
-                   (if after-success
-                       (funcall after-success))))
-    (slack-request
-     (slack-request-create
-      slack-bot-info-url
-      team
-      :params (list (cons "bot" bot-id))
-      :success #'on-success))))
-
-(defun slack-bots-info-request (bot-ids team &optional after-success)
-  (cl-labels
-      ((success (&key data &allow-other-keys)
-                (slack-request-handle-error
-                 (data "slack-bots-info-request")
-                 (let* ((bots (plist-get data :bots))
-                        (ids (mapcar #'(lambda (e) (plist-get e :id)) bots)))
-                   (oset team bots (append bots
-                                           (cl-remove-if
-                                            #'(lambda (u)
-                                                (cl-find (plist-get u :id)
-                                                         ids
-                                                         :test #'string=))
-                                            (oref team bots))))))
-                (if after-success
-                    (funcall after-success))))
-    (slack-request
-     (slack-request-create
-      slack-bot-info-url
-      team
-      :params (list (cons "bots" (mapconcat #'identity bot-ids ",")))
-      :success #'success))))
 
 (defface slack-user-profile-header-face
   '((t (:foreground "#FFA000"
@@ -263,7 +219,7 @@
   (string= user-id (oref team self-id)))
 
 (defun slack-user-name-alist (team &key filter)
-  (let ((users (oref team users)))
+  (let ((users (slack-team-users team)))
     (mapcar #'(lambda (e) (cons (slack-user-label e team) e))
             (if filter (funcall filter users)
               users))))
@@ -273,17 +229,6 @@
 
 (defun slack--user-select (team)
   (slack-select-from-list ((slack-user-names team) "Select User: ")))
-
-(defun slack-user-append (users team)
-  (oset team
-        users
-        (append (cl-remove-if #'(lambda (user)
-                                  (cl-find-if #'(lambda (e)
-                                                  (string= (plist-get e :id)
-                                                           (plist-get user :id)))
-                                              users))
-                              (oref team users))
-                users)))
 
 (cl-defun slack-users-info-request (user--ids team &key after-success)
   (let ((bot-ids nil)
@@ -313,16 +258,8 @@
               (&key data &allow-other-keys)
               (slack-request-handle-error
                (data "slack-users-info-request")
-               (let* ((users (plist-get data :users))
-                      (ids (mapcar #'(lambda (e) (plist-get e :id))
-                                   users)))
-                 (oset team users (append users
-                                          (cl-remove-if
-                                           #'(lambda (u)
-                                               (cl-find (plist-get u :id)
-                                                        ids
-                                                        :test #'string=))
-                                           (oref team users))))))
+               (let* ((users (plist-get data :users)))
+                 (slack-team-set-users team users)))
               (if (< 0 (length queue))
                   (progn
                     (slack-log (format "Fetching users... [%s/%s]"
@@ -356,11 +293,7 @@
             (slack-request-handle-error
              (data "slack-user-info-request")
              (let ((user (plist-get data :user)))
-               (oset team users
-                     (cons user
-                           (cl-remove-if #'(lambda (user)
-                                             (string= (plist-get user :id) user-id))
-                                         (oref team users))))))
+               (slack-team-set-users team (list user))))
             (when (functionp after-success)
               (funcall after-success))))
         (slack-request
@@ -412,13 +345,15 @@
       (when image
         (create-image image nil nil :ascent 80)))))
 
-(defun slack-user-presence (user)
-  (plist-get user :presence))
+(defun slack-user-presence (user team)
+  (gethash (plist-get user :id)
+           (oref team presence)))
 
 (defun slack-request-set-presence (team &optional presence)
   (unless presence
-    (let ((current-presence (slack-user-presence (slack-user--find (oref team self-id)
-                                                                   team))))
+    (let ((current-presence (gethash (oref team self-id)
+                                     (oref team presence)
+                                     "")))
 
       (setq presence (or (and (string= current-presence "away") "auto")
                          "away"))
@@ -465,32 +400,6 @@
       :success #'on-success
       ))))
 
-(defun slack-user-update-dnd-status (user dnd-status)
-  (plist-put user :dnd_status dnd-status))
-
-(defun slack-request-dnd-team-info (team &optional after-success)
-  (cl-labels
-      ((on-success
-        (&key data &allow-other-keys)
-        (slack-request-handle-error
-         (data "slack-request-dnd-team-info")
-         (let ((users (plist-get data :users)))
-           (oset team users
-                 (cl-loop for user in (oref team users)
-                          collect (plist-put
-                                   user
-                                   :dnd_status
-                                   (plist-get users
-                                              (intern (format ":%s"
-                                                              (plist-get user :id)))))))))
-        (when (functionp after-success)
-          (funcall after-success team))))
-    (slack-request
-     (slack-request-create
-      slack-dnd-team-info-url
-      team
-      :success #'on-success))))
-
 (defun slack-user-equal-p (a b)
   (string= (plist-get a :id) (plist-get b :id)))
 
@@ -509,18 +418,11 @@
                   (next-cursor (and response_metadata
                                     (plist-get response_metadata
                                                :next_cursor))))
-             (oset team users
-                   (append
-                    (cl-remove-if #'(lambda (e)
-                                      (cl-find e members
-                                               :test #'slack-user-equal-p))
-                                  (oref team users))
-                    members))
+             (slack-team-set-users team members)
 
              (if (and next-cursor (< 0 (length next-cursor)))
                  (request next-cursor)
                (progn
-                 (slack-request-dnd-team-info team)
                  (slack-log "Slack User List Updated"
                             team :level 'info))))))
          (request (&optional next-cursor)

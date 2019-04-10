@@ -98,6 +98,7 @@
 
 (cl-defmethod slack-request-retry-request ((req slack-request-request) retry-after)
   (oset req execute-at (+ retry-after (time-to-seconds)))
+  (oset req response nil)
   (slack-request-worker-push req))
 
 (cl-defmethod slack-request-retry-failed-request-p ((req slack-request-request) error-thrown symbol-status)

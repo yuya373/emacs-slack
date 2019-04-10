@@ -30,7 +30,6 @@
 (require 'slack-buffer)
 (require 'slack-conversations)
 
-(defconst slack-group-buffer-name "*Slack - Private Group*")
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
 (defconst slack-mpim-open-url "https://slack.com/api/mpim.open")
 
@@ -38,27 +37,60 @@
 (defvar slack-completing-read-function)
 
 (defclass slack-group (slack-room)
-  ((is-group :initarg :is_group :initform nil)
-   (creator :initarg :creator :initform "")
-   (is-archived :initarg :is_archived :initform nil)
-   (is-mpim :initarg :is_mpim :initform nil)
+  ((name :initarg :name :type string :initform "")
+   (name-normalized :initarg :name_normalized :type string :initform "")
+   (num-members :initarg :num_members :initform 0)
+   (creator :initarg :creator :type string :initform "")
+   (is-archived :initarg :is_archived :initform nil :type boolean)
+   (is-channel :initarg :is_channel :initform nil :type boolean)
+   (is-ext-shared :initarg :is_ext_shared :initform nil :type boolean)
+   (is-pending-ext-shared :initarg :is_pending_ext_shared :initform nil :type boolean)
+   (is-general :initarg :is_general :initform nil :type boolean)
+   (is-group :initarg :is_group :initform nil :type boolean)
+   (is-im :initarg :is_im :initform nil :type boolean)
+   (is-member :initarg :is_member :initform nil :type boolean)
+   (is-mpim :initarg :is_mpim :initform nil :type boolean)
+   (is-org-shared :initarg :is_org_shared :initform nil :type boolean)
+   (is-private :initarg :is_private :initform nil :type boolean)
+   (is-read-only :initarg :is_read_only :initform nil :type boolean)
+   (is-shared :initarg :is_shared :initform nil :type boolean)
+   (parent-conversation :initarg :parent_conversation :initform nil)
+   (pending-shared :initarg :pending_shared :initform '() :type list)
+   (previous-names :initarg :previous_names :initform '() :type list)
+   (purpose :initarg :purpose :initform nil)
+   (shared-team-ids :initarg :shared_team_ids :initform '() :type list)
    (topic :initarg :topic :initform nil)
-   (purpose :initarg :purpose :initform nil)))
+   (members :initarg :members :type list :initform '())
+   (members-loaded-p :type boolean :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-group) other)
   (cl-call-next-method)
-  (with-slots (is-group creator is-archived is-mpim members topic purpose) this
-    (setq is-group (oref other is-group))
-    (setq creator (oref other creator))
-    (setq is-archived (oref other is-archived))
-    (setq is-mpim (oref other is-mpim))
-    (setq members (oref other members))
-    (setq topic (oref other topic))
-    (setq purpose (oref other purpose))))
+  (oset this name (oref other name))
+  (oset this name-normalized (oref other name-normalized))
+  (oset this num-members (oref other num-members))
+  (oset this creator (oref other creator))
+  (oset this is-archived (oref other is-archived))
+  (oset this is-channel (oref other is-channel))
+  (oset this is-ext-shared (oref other is-ext-shared))
+  (oset this is-pending-ext-shared (oref other is-pending-ext-shared))
+  (oset this is-general (oref other is-general))
+  (oset this is-group (oref other is-group))
+  (oset this is-im (oref other is-im))
+  (oset this is-member (oref other is-member))
+  (oset this is-mpim (oref other is-mpim))
+  (oset this is-org-shared (oref other is-org-shared))
+  (oset this is-private (oref other is-private))
+  (oset this is-read-only (oref other is-read-only))
+  (oset this is-shared (oref other is-shared))
+  (oset this parent-conversation (oref other parent-conversation))
+  (oset this pending-shared (oref other pending-shared))
+  (oset this previous-names (oref other previous-names))
+  (oset this purpose (oref other purpose))
+  (oset this shared-team-ids (oref other shared-team-ids))
+  (oset this topic (oref other topic)))
 
 (defun slack-group-names (team &optional filter)
-  (with-slots (groups) team
-    (slack-room-names groups team filter)))
+  (slack-room-names (slack-team-groups team) team filter))
 
 (cl-defmethod slack-room-subscribedp ((room slack-group) team)
   (with-slots (subscribed-channels) team
@@ -66,18 +98,12 @@
       (and name
            (memq (intern name) subscribed-channels)))))
 
-(cl-defmethod slack-room-buffer-name ((room slack-group) team)
-  (concat slack-group-buffer-name
-          " : "
-          (slack-room-display-name room team)))
-
 (defun slack-group-list-update (&optional team after-success)
   (interactive)
   (let ((team (or team (slack-team-select))))
     (cl-labels
         ((success (_channels groups _ims)
-                  (slack-merge-list (oref team groups)
-                                    groups)
+                  (slack-team-set-groups team groups)
                   (when (functionp after-success)
                     (funcall after-success team))
                   (slack-log "Slack Group List Updated"
@@ -182,10 +208,8 @@
                                            groups)))))))
     (cl-labels
         ((success (_data)
-                  (oset team groups
-                        (cl-remove-if #'(lambda (e)
-                                          (slack-equalp e mpim))
-                                      (oref team groups)))
+                  (let ((room (slack-room-find (oref mpim id) team)))
+                    (oset room is-open nil))
                   (slack-log (format "%s closed"
                                      (slack-room-name mpim team))
                              team :level 'info)))
@@ -229,6 +253,20 @@
   (if (slack-mpim-p this)
       (slack-counts-mpim-latest counts this)
     (slack-counts-channel-latest counts this)))
+
+(cl-defmethod slack-room-members ((this slack-group))
+  (oref this members))
+
+(cl-defmethod slack-room-set-members ((this slack-group) members)
+  (oset this members
+        (cl-remove-duplicates (append (oref this members) members)
+                              :test #'string=)))
+
+(cl-defmethod slack-room-members-loaded-p ((this slack-group))
+  (oref this members-loaded-p))
+
+(cl-defmethod slack-room-members-loaded ((this slack-group))
+  (oset this members-loaded-p t))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

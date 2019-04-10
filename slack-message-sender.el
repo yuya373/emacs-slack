@@ -52,17 +52,16 @@
   (replace-regexp-in-string
    "@\\<\\([A-Za-z0-9._\-]+\\)\\>"
    #'(lambda (text)
-       (let* ((username (match-string 1 text))
-              (user (slack-user-find-by-name username team))
-              (user-id (slack-user-id user)))
-         (if user-id
-             (format "<@%s|%s>" user-id username)
-           (slack-if-let* ((group-id (slack-usergroup-get-id username team)))
-               (format "<!subteam^%s|@%s>" group-id username)
+       (let ((id (match-string 1 text)))
+         (slack-if-let* ((user (slack-user--find id team))
+                         (username (slack-user--name user team)))
+             (format "<@%s>" id)
+           (slack-if-let* ((group (slack-usergroup-find id team)))
+               (format "<!subteam^%s>" id)
              (cond
-              ((string= username "here") "<!here>")
-              ((cl-find username '("channel" "group") :test #'string=) "<!channel>")
-              ((string= username "everyone") "<!everyone>")
+              ((string= id "here") "<!here>")
+              ((cl-find id '("channel" "group") :test #'string=) "<!channel>")
+              ((string= id "everyone") "<!everyone>")
               (t text))))))
    message t))
 
@@ -152,11 +151,11 @@
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (usergroup
-                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                 (insert (concat (propertize (concat "@" (plist-get selected :id))
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (t
-                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                 (insert (concat (propertize (concat "@" (plist-get selected :id))
                                              'display (concat "@" (slack-user--name
                                                                    selected team))
                                              'face 'slack-message-mention-face)
