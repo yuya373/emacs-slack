@@ -24,6 +24,8 @@
 
 ;;; Code:
 (require 'slack-event)
+(require 'slack-conversations)
+
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 (defclass slack-channel-created-event (slack-room-event) ())
 
