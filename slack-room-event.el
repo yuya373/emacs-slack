@@ -168,5 +168,54 @@
                        (oref room name-normalized))
                team :level 'info)))
 
+(defclass slack-room-joined-event (slack-room-event) ())
+(defclass slack-channel-joined-event (slack-room-joined-event) ())
+(defclass slack-group-joined-event (slack-room-joined-event) ())
+
+(cl-defmethod slack-event-update ((this slack-room-joined-event) team)
+  (slack-if-let* ((room (slack-event-find-room this team)))
+      (slack-event-save-room this room team
+                             #'(lambda ()
+                                 (slack-event-update-ui this room team)))))
+
+(defun slack-create-channel-joined-event (payload)
+  (make-instance 'slack-channel-joined-event
+                 :payload payload))
+
+(defun slack-create-group-joined-event (payload)
+  (make-instance 'slack-group-joined-event
+                 :payload payload))
+
+(cl-defmethod slack-event-find-room ((this slack-room-joined-event) team)
+  (let* ((payload (oref this payload))
+         (channel (plist-get payload :channel))
+         (id (plist-get channel :id)))
+    (or (slack-room-find id team)
+        (slack-room-create channel 'slack-channel))))
+
+(cl-defmethod slack-event-save-room ((_this slack-channel-joined-event) room team cb)
+  (slack-team-set-channels team (list room))
+  (slack-conversations-info room team cb))
+
+(cl-defmethod slack-event-save-room ((_this slack-group-joined-event) room team cb)
+  (slack-team-set-groups team (list room))
+  (slack-conversations-info room team cb))
+
+(cl-defmethod slack-event-notify ((_this slack-room-joined-event) _room team)
+  (slack-counts-update team))
+
+(cl-defmethod slack-event-notify ((_this slack-channel-joined-event) room team)
+  (cl-call-next-method)
+  (slack-log (format "Joined channel %s"
+                     (slack-room-name room team))
+             team :level 'info))
+
+(cl-defmethod slack-event-notify ((_this slack-group-joined-event) room team)
+  (cl-call-next-method)
+  (slack-log (format "Joined group %s"
+                     (slack-room-name room team))
+             team :level 'info))
+
+
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here

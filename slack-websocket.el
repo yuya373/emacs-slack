@@ -600,28 +600,12 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-group-joined (payload team)
-  (let ((group (slack-room-create
-                (plist-get payload :channel)
-                'slack-group)))
-    (slack-team-set-groups team (list group))
-    (slack-conversations-info group team)
-    (slack-log (format "Joined group %s"
-                       (slack-room-display-name group team))
-               team :level 'info)
-    (slack-counts-update team)))
+  (slack-event-update (slack-create-group-joined-event payload)
+                      team))
 
 (defun slack-ws-handle-channel-joined (payload team)
-  (let ((channel (or (slack-room-find (plist-get (plist-get payload :channel) :id) team)
-                     (let ((channel (slack-room-create (plist-get payload :channel)
-                                                       'slack-channel)))
-
-                       (slack-team-set-channels team (list channel))
-                       channel))))
-    (slack-conversations-info channel team)
-    (slack-log (format "Joined channel %s"
-                       (slack-room-display-name channel team))
-               team :level 'info)
-    (slack-counts-update team)))
+  (slack-event-update (slack-create-channel-joined-event payload)
+                      team))
 
 (defun slack-ws-handle-presence-change (payload team)
   (let ((id (plist-get payload :user))
