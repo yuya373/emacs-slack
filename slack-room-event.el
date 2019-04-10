@@ -26,6 +26,7 @@
 (require 'slack-util)
 (require 'slack-event)
 (require 'slack-conversations)
+(require 'slack-group)
 
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
@@ -121,6 +122,51 @@
   (slack-log (format "Channel: %s is deleted"
                      (slack-room-name room team))
              team :level 'info))
+
+(defclass slack-room-rename-event (slack-room-event)
+  ((previous-name :initform "" :type string)))
+(defclass slack-channel-rename-event (slack-room-rename-event) ())
+(defclass slack-group-rename-event (slack-room-rename-event) ())
+
+(defun slack-create-room-rename-event (payload)
+  (let ((type (plist-get payload :type)))
+    (cond ((string= "channel_rename" type)
+           (make-instance 'slack-channel-rename-event
+                          :payload payload))
+          ((string= "group_rename" type)
+           (make-instance 'slack-group-rename-event
+                          :payload payload)))))
+
+(cl-defmethod slack-event-find-room ((this slack-room-rename-event) team)
+  (let* ((payload (oref this payload))
+         (channel (plist-get payload :channel))
+         (id (plist-get channel :id)))
+    (slack-room-find id team)))
+
+(cl-defmethod slack-event-update-name ((this slack-channel-rename-event) room _team)
+  (let* ((previous-name (oref room name-normalized))
+         (payload (oref this payload))
+         (channel (plist-get payload :channel))
+         (name (plist-get channel :name))
+         (name-normalized (plist-get channel :name_normalized)))
+    (oset this previous-name previous-name)
+    (oset room name name)
+    (oset room name-normalized name-normalized)))
+
+(cl-defmethod slack-event-save-room ((this slack-channel-rename-event) room team)
+  (slack-event-update-name this room team)
+  (slack-team-set-channels team (list room)))
+
+(cl-defmethod slack-event-save-room ((this slack-group-rename-event) room team)
+  (slack-event-update-name this room team)
+  (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-notify ((this slack-room-rename-event) room team)
+  (with-slots (previous-name) this
+    (slack-log (format "Channel renamed from %s to %s"
+                       previous-name
+                       (oref room name-normalized))
+               team :level 'info)))
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here

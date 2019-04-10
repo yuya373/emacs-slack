@@ -596,15 +596,8 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-room-rename (payload team)
-  (let* ((c (plist-get payload :channel))
-         (room (slack-room-find (plist-get c :id) team))
-         (old-name (slack-room-name room team))
-         (new-name (plist-get c :name)))
-    (oset room name new-name)
-    (slack-log (format "Renamed channel from %s to %s"
-                       old-name
-                       new-name)
-               team :level 'info)))
+  (slack-event-update (slack-create-room-rename-event payload)
+                      team))
 
 (defun slack-ws-handle-group-joined (payload team)
   (let ((group (slack-room-create
