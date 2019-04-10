@@ -584,12 +584,8 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-room-archive (payload team)
-  (let* ((id (plist-get payload :channel))
-         (room (slack-room-find id team)))
-    (oset room is-archived t)
-    (slack-log (format "Channel: %s is archived"
-                       (slack-room-display-name room team))
-               team :level 'info)))
+  (slack-event-update (slack-create-room-archive-event payload)
+                      team))
 
 (defun slack-ws-handle-room-unarchive (payload team)
   (let* ((id (plist-get payload :channel))

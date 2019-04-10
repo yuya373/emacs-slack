@@ -23,6 +23,7 @@
 ;;
 
 ;;; Code:
+(require 'slack-util)
 (require 'slack-event)
 (require 'slack-conversations)
 
@@ -47,6 +48,37 @@
                                 (slack-log (format "Created channel %s"
                                                    (slack-room-display-name room team))
                                            team :level 'info))))
+
+(defclass slack-room-archive-event (slack-room-event) ())
+(defclass slack-channel-archive-event (slack-room-archive-event) ())
+(defclass slack-group-archive-event (slack-room-archive-event) ())
+
+(defun slack-create-room-archive-event (payload)
+  (let ((type (plist-get payload :type)))
+    (cond ((string= "channel_archive" type)
+           (make-instance 'slack-channel-archive-event
+                          :payload payload))
+          ((string= "group_archive" type)
+           (make-instance 'slack-group-archive-event
+                          :payload payload)))))
+
+(cl-defmethod slack-event-find-room ((this slack-room-archive-event) team)
+  (let* ((payload (oref this payload))
+         (id (plist-get payload :channel)))
+    (slack-room-find id team)))
+
+(cl-defmethod slack-event-save-room ((_this slack-channel-archive-event) room team)
+  (oset room is-archived t)
+  (slack-team-set-channels team (list room)))
+
+(cl-defmethod slack-event-save-room ((_this slack-group-archive-event) room team)
+  (oset room is-archived t)
+  (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-notify ((_this slack-room-archive-event) room team)
+  (slack-log (format "Channel: %s is archived"
+                     (slack-room-name room team))
+             team :level 'info))
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here
