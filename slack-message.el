@@ -285,18 +285,17 @@
   (cons "timestamp" (slack-ts m)))
 
 (defun slack-message--pop-reaction (message reaction)
-  (let* ((old-reaction (slack-reaction-find message reaction))
-         (decl-p (< 1 (oref old-reaction count))))
-    (if decl-p
-        (with-slots (count users) old-reaction
-          (cl-decf count)
-          (setq users (cl-remove-if
-                       #'(lambda (old-user)
-                           (cl-find old-user
-                                    (oref reaction users)
-                                    :test #'string=))
-                       users)))
-      (slack-reaction-delete message reaction))))
+  (slack-if-let* ((old-reaction (slack-reaction-find message reaction)))
+      (if (< 1 (oref old-reaction count))
+          (with-slots (count users) old-reaction
+            (cl-decf count)
+            (setq users (cl-remove-if
+                         #'(lambda (old-user)
+                             (cl-find old-user
+                                      (oref reaction users)
+                                      :test #'string=))
+                         users)))
+        (slack-reaction-delete message reaction))))
 
 (cl-defmethod slack-message-get-text ((m slack-message))
   (oref m text))
