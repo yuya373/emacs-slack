@@ -148,14 +148,17 @@
               (cl-case (plist-get selected :type)
                 (keyword
                  (insert (concat (propertize (concat "@" (plist-get selected :name))
+                                             'rear-nonsticky t
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (usergroup
                  (insert (concat (propertize (concat "@" (plist-get selected :id))
+                                             'rear-nonsticky t
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (t
                  (insert (concat (propertize (concat "@" (plist-get selected :id))
+                                             'rear-nonsticky t
                                              'display (concat "@" (slack-user--name
                                                                    selected team))
                                              'face 'slack-message-mention-face)

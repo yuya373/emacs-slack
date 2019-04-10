@@ -106,16 +106,16 @@
                      (insert (concat "@" user-id))
                      (put-text-property beg (point) 'face 'slack-message-mention-face)
                      (put-text-property beg (point) 'display inserted)
+                     (put-text-property beg (point) 'rear-nonsticky t)
                      (insert " ")))))
          (keyword (let ((inserted arg)
                         (end (point)))
                     (when (re-search-backward (substring-no-properties inserted)
                                               (point-at-bol)
                                               t)
-                      (put-text-property (point)
-                                         end
-                                         'face
-                                         'slack-message-mention-keyword-face)
+                      (put-text-property (point) end
+                                         'face 'slack-message-mention-keyword-face)
+                      (put-text-property (point) end 'rear-nonsticky t)
                       (goto-char end)
                       (insert " "))))
          (usergroup (let* ((inserted arg)
@@ -129,6 +129,7 @@
                           (insert (concat "@" id))
                           (put-text-property beg (point) 'face 'slack-message-mention-keyword-face)
                           (put-text-property beg (point) 'display inserted)
+                          (put-text-property beg (point) 'rear-nonsticky t)
                           (insert " ")))))))
       (doc-buffer
        (cl-case (prefix-type arg)
