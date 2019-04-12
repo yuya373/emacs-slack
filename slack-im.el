@@ -40,7 +40,7 @@
 
 (defclass slack-im (slack-room)
   ((user :initarg :user :initform "")
-   (is-open :initarg :is_open :initform nil)
+   (is-open :initarg :is_open :initform t)
    (is-user-deleted :initarg :is_user_deleted :initform nil)))
 
 (cl-defmethod slack-merge ((this slack-im) other)
