@@ -359,6 +359,7 @@
   (oref this thread-ts))
 
 (cl-defmethod slack-message-handle-replied ((this slack-message) payload)
+  (oset this thread-ts (plist-get payload :thread_ts))
   (oset this reply-count (plist-get payload :reply_count))
   (oset this reply-users-count (plist-get payload :reply_users_count))
   (oset this latest-reply (plist-get payload :latest_reply))
