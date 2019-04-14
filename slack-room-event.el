@@ -30,7 +30,7 @@
 (require 'slack-modeline)
 (require 'slack-message-buffer)
 
-;; TODO: handle im_open, im_close, group_close,
+;; TODO: handle im_close, group_close,
 ;; member_joined_channel, member_left_channel
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
@@ -38,6 +38,14 @@
   (let* ((payload (oref this payload))
          (id (plist-get payload :channel)))
     (slack-room-find id team)))
+
+(defclass slack-room-async-event () () :abstract t)
+(cl-defmethod slack-event-save-room ((_this slack-room-async-event) _room _team _cb))
+(cl-defmethod slack-event-update ((this slack-room-async-event) team)
+  (slack-if-let* ((room (slack-event-find-room this team)))
+      (slack-event-save-room this room team
+                             #'(lambda ()
+                                 (slack-event-update-ui this room team)))))
 
 (defclass slack-channel-created-event (slack-room-event) ())
 
@@ -172,15 +180,9 @@
                        (oref room name-normalized))
                team :level 'info)))
 
-(defclass slack-room-joined-event (slack-room-event) ())
+(defclass slack-room-joined-event (slack-room-event slack-room-async-event) ())
 (defclass slack-channel-joined-event (slack-room-joined-event) ())
 (defclass slack-group-joined-event (slack-room-joined-event) ())
-
-(cl-defmethod slack-event-update ((this slack-room-joined-event) team)
-  (slack-if-let* ((room (slack-event-find-room this team)))
-      (slack-event-save-room this room team
-                             #'(lambda ()
-                                 (slack-event-update-ui this room team)))))
 
 (defun slack-create-channel-joined-event (payload)
   (make-instance 'slack-channel-joined-event
@@ -263,6 +265,31 @@
   (slack-if-let*
       ((buffer (slack-buffer-find 'slack-message-buffer room team)))
       (slack-buffer-update-marker-overlay buffer)))
+
+(defclass slack-im-open-event (slack-room-event slack-room-async-event) ())
+
+(defun slack-create-im-open-event (payload)
+  (make-instance 'slack-im-open-event
+                 :payload payload))
+
+(cl-defmethod slack-event-find-room ((this slack-im-open-event) team)
+  (let* ((payload (oref this payload))
+         (channel (plist-get payload :channel)))
+    (or (slack-room-find channel team)
+        (slack-room-create (list :id channel
+                                 :user (plist-get payload :user))
+                           'slack-im))))
+
+(cl-defmethod slack-event-save-room ((_this slack-im-open-event) room team cb)
+  (oset room is-open t)
+  (slack-team-set-ims team (list room))
+  (slack-conversations-info room team cb))
+
+(cl-defmethod slack-event-notify ((_this slack-im-open-event) room team)
+  (slack-log (format "Open direct message with %s"
+                     (slack-user-name (oref room user)
+                                      team))
+             team :level 'info))
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here

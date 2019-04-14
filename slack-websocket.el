@@ -506,26 +506,8 @@ TEAM is one of `slack-teams'"
                                :after-success #'after-success))))
 
 (defun slack-ws-handle-im-open (payload team)
-  (let* ((channel-id (plist-get payload :channel))
-         (im (slack-room-find channel-id team)))
-    (cl-labels
-        ((notify (im)
-                 (slack-log (format "Open direct message with %s"
-                                    (slack-user-name (oref im user)
-                                                     team))
-                            team :level 'info))
-         (update (im)
-                 (slack-conversations-info im team
-                                           #'(lambda ()
-                                               (notify im)))))
-      (unless im
-        (setq im (slack-room-create
-                  (list :id (plist-get payload :channel)
-                        :user (plist-get payload :user))
-                  'slack-im))
-        (slack-team-set-ims team (list im)))
-      (oset im is-open t)
-      (update im))))
+  (slack-event-update (slack-create-im-open-event payload)
+                      team))
 
 (defun slack-ws-handle-close (payload team)
   (slack-if-let* ((room-id (plist-get payload :channel))
