@@ -27,9 +27,10 @@
 (require 'slack-event)
 (require 'slack-conversations)
 (require 'slack-group)
+(require 'slack-modeline)
+(require 'slack-message-buffer)
 
-;; TODO: handle im_marked, channel_marked, group_marked,
-;; im_open, im_close, group_close,
+;; TODO: handle im_open, im_close, group_close,
 ;; member_joined_channel, member_left_channel
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
@@ -219,6 +220,49 @@
                      (slack-room-name room team))
              team :level 'info))
 
+(defclass slack-room-marked-event (slack-room-event) ())
+(defclass slack-channel-marked-event (slack-room-marked-event) ())
+(defclass slack-group-marked-event (slack-room-marked-event) ())
+(defclass slack-im-marked-event (slack-room-marked-event) ())
+
+(defun slack-create-room-marked-event (payload)
+  (let* ((type (plist-get payload :type))
+         (klass (cond
+                 ((string= "channel_marked" type) 'slack-channel-marked-event)
+                 ((string= "group_marked" type) 'slack-group-marked-event)
+                 ((string= "im_marked" type) 'slack-im-marked-event))))
+    (make-instance klass :payload payload)))
+
+(cl-defmethod slack-event-update-room ((this slack-room-marked-event) room team)
+  (let* ((payload (oref this payload))
+         (ts (plist-get payload :ts))
+         (unread-count-display (plist-get payload :unread_count_display))
+         (mention-count-display (plist-get payload :mention_count_display)))
+    (oset room unread-count-display unread-count-display)
+    (oset room last-read ts)
+    (slack-room-set-mention-count room mention-count-display team)
+    (slack-room-set-has-unreads room (< 0 unread-count-display) team)))
+
+(cl-defmethod slack-event-save-room ((this slack-room-marked-event) room team)
+  (slack-event-update-room this room team))
+
+(cl-defmethod slack-event-save-room ((_this slack-channel-marked-event) room team)
+  (cl-call-next-method)
+  (slack-team-set-channels team (list room)))
+
+(cl-defmethod slack-event-save-room ((_this slack-group-marked-event) room team)
+  (cl-call-next-method)
+  (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-save-room ((_this slack-im-marked-event) room team)
+  (cl-call-next-method)
+  (slack-team-set-ims team (list room)))
+
+(cl-defmethod slack-event-update-buffer ((_this slack-room-marked-event) room team)
+  (slack-update-modeline)
+  (slack-if-let*
+      ((buffer (slack-buffer-find 'slack-message-buffer room team)))
+      (slack-buffer-update-marker-overlay buffer)))
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here

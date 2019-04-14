@@ -632,22 +632,8 @@ TEAM is one of `slack-teams'"
                         (oref team files)))))
 
 (defun slack-ws-handle-room-marked (payload team)
-  (slack-if-let* ((channel (plist-get payload :channel))
-                  (room (slack-room-find channel team))
-                  (ts (plist-get payload :ts))
-                  (unread-count-display
-                   (plist-get payload :unread_count_display))
-                  (mention-count-display
-                   (plist-get payload :mention_count_display)))
-      (progn
-        (oset room unread-count-display unread-count-display)
-        (oset room last-read ts)
-        (slack-room-set-mention-count room mention-count-display team)
-        (slack-room-set-has-unreads room (< 0 unread-count-display) team)
-        (slack-update-modeline)
-        (slack-if-let*
-            ((buffer (slack-buffer-find 'slack-message-buffer room team)))
-            (slack-buffer-update-marker-overlay buffer)))))
+  (slack-event-update (slack-create-room-marked-event payload)
+                      team))
 
 (defun slack-ws-handle-thread-marked (payload team)
   (let* ((type (plist-get payload :type)))
