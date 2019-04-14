@@ -510,18 +510,8 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-close (payload team)
-  (slack-if-let* ((room-id (plist-get payload :channel))
-                  (room (slack-room-find room-id team)))
-      (cond
-       ((slack-im-p room)
-        (oset room is-open nil)
-        (slack-log (format "Direct message with %s is closed"
-                           (slack-user-name
-                            (plist-get payload :user)
-                            team))
-                   team :level 'info))
-       ((slack-group-p room)
-        (oset room is-member nil)))))
+  (slack-event-update (slack-create-room-close-event payload)
+                      team))
 
 (defun slack-ws-handle-message (payload team)
   (slack-event-update (slack-create-message-event payload)

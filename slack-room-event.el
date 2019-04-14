@@ -30,8 +30,7 @@
 (require 'slack-modeline)
 (require 'slack-message-buffer)
 
-;; TODO: handle im_close, group_close,
-;; member_joined_channel, member_left_channel
+;; TODO: handle member_joined_channel, member_left_channel
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
 (cl-defmethod slack-event-find-room ((this slack-room-event) team)
@@ -290,6 +289,33 @@
                      (slack-user-name (oref room user)
                                       team))
              team :level 'info))
+
+(defclass slack-room-close-event (slack-room-event) ())
+(defclass slack-group-close-event (slack-room-close-event) ())
+(defclass slack-im-close-event (slack-room-close-event) ())
+
+(defun slack-create-room-close-event (payload)
+  (let* ((type (plist-get payload :type))
+         (klass (cond ((string= "im_close" type)
+                       'slack-im-close-event)
+                      ((string= "group_close" type)
+                       'slack-group-close-event))))
+    (make-instance klass :payload payload)))
+
+(cl-defmethod slack-event-save-room ((_this slack-group-close-event) room team)
+  (oset room is-member nil)
+  (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-save-room ((_this slack-im-close-event) room team)
+  (oset room is-open nil)
+  (slack-team-set-ims team (list room)))
+
+(cl-defmethod slack-event-notify ((this slack-im-close-event) _room team)
+  (let* ((payload (oref this payload))
+         (user (plist-get payload :user)))
+    (slack-log (format "Direct message with %s is closed"
+                       (slack-user-name user team))
+               team :level 'info)))
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here
