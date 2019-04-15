@@ -275,6 +275,7 @@
    (block-id :initarg :block_id :type (or null string) :initform nil)
    (url :initarg :url :type (or string null) :initform nil)
    (value :initarg :value :type (or string null) :initform nil)
+   (style :initarg :style :type string :initform "default") ;; primary, danger
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
 
 (defun slack-create-button-block-element (payload block-id)
@@ -285,23 +286,37 @@
                  :action_id (plist-get payload :action_id)
                  :url (plist-get payload :url)
                  :value (plist-get payload :value)
+                 :style (or (plist-get payload :style) "default")
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
 (defface slack-button-block-element-face
-  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  '((t (:box (:line-width 1 :style released-button :foreground "#2aa198"))))
   "Used to button block element"
   :group 'slack)
 
+(defface slack-button-danger-block-element-face
+  '((t (:inherit slack-button-block-element-face :foreground "#dc322f")))
+  "Used to danger button block element"
+  :group 'slack)
+
+(defface slack-button-primary-block-element-face
+  '((t (:inherit slack-button-block-element-face :foreground "#859900")))
+  "Used to primary button block element"
+  :group 'slack)
+
 (cl-defmethod slack-block-to-string ((this slack-button-block-element) &optional _option)
-  (with-slots (text) this
-    (propertize (slack-block-to-string text)
-                'face 'slack-button-block-element-face
-                'slack-action-payload (slack-block-action-payload this)
-                'keymap (let ((map (make-sparse-keymap)))
-                          (define-key map (kbd "RET")
-                            #'slack-execute-button-block-action)
-                          map))))
+  (with-slots (text style) this
+    (let ((face (cond ((string= "danger" style) 'slack-button-danger-block-element-face)
+                      ((string= "primary" style) 'slack-button-primary-block-element-face)
+                      (t 'slack-button-block-element-face))))
+      (propertize (slack-block-to-string text)
+                  'face face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET")
+                              #'slack-execute-button-block-action)
+                            map)))))
 
 (cl-defmethod slack-block-action-payload ((this slack-button-block-element))
   (with-slots (block-id action-id value text) this

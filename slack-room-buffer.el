@@ -595,12 +595,14 @@ Execute this function when cursor is on some message."
                   (button (slack-block-find-action-from-payload action message)))
 
       (when (slack-block-handle-confirm button)
-        (let ((container (slack-buffer-block-action-container this message))
-              (service-id (slack-message-block-action-service-id message)))
-          (slack-block-action-execute service-id
-                                      (list action)
-                                      container
-                                      team)))))
+        (slack-if-let* ((url (oref button url)))
+            (browse-url url)
+          (let ((container (slack-buffer-block-action-container this message))
+                (service-id (slack-message-block-action-service-id message)))
+            (slack-block-action-execute service-id
+                                        (list action)
+                                        container
+                                        team))))))
 
 (cl-defmethod slack-buffer-execute-conversation-select-block-action ((this slack-room-buffer))
   (slack-if-let* ((cur-point (point))
