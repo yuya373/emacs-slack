@@ -128,7 +128,12 @@
                 (oset ws inhibit-reconnection t))
               (with-slots (connected conn last-pong) ws
                 (when conn
-                  (websocket-close conn)
+                  (condition-case error-var
+                      (websocket-close conn)
+                    (error (slack-log (format "An Error occured while closing websocket connection: %s"
+                                              error-var)
+                                      team
+                                      :level 'error)))
                   (slack-log "Slack Websocket Closed" team)))))
     (close ws team)
     (slack-request-worker-remove-request team)))
