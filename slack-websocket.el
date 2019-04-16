@@ -635,11 +635,8 @@ TEAM is one of `slack-teams'"
                       team))
 
 (defun slack-ws-handle-member-left_channel (payload team)
-  (slack-if-let* ((user (plist-get payload :user))
-                  (channel (slack-room-find (plist-get payload :channel) team)))
-      (oset channel members
-            (cl-remove-if #'(lambda (e) (string= e user))
-                          (oref channel members)))))
+  (slack-event-update (slack-create-member-left-room-event payload)
+                      team))
 
 (defun slack-ws-handle-dnd-updated (payload team)
   (let* ((user (plist-get payload :user))

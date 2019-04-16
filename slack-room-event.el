@@ -30,7 +30,6 @@
 (require 'slack-modeline)
 (require 'slack-message-buffer)
 
-;; TODO: handle member_left_channel
 (defclass slack-room-event (slack-event slack-room-event-processable) ())
 
 (cl-defmethod slack-event-find-room ((this slack-room-event) team)
@@ -342,6 +341,34 @@
 (cl-defmethod slack-event-save-room ((this slack-member-joined-group-event) room team)
   (slack-event-update-room this room team)
   (slack-team-set-groups team (list room)))
+
+(defclass slack-member-left-room-event (slack-room-event) ())
+(defclass slack-member-left-channel-event (slack-member-left-room-event) ())
+(defclass slack-member-left-group-event (slack-member-left-room-event) ())
+
+(defun slack-create-member-left-room-event (payload)
+  (let* ((channel-type (plist-get payload :channel_type))
+         (klass (cond ((string= "G" channel-type)
+                       'slack-member-left-group-event)
+                      ((string= "C" channel-type)
+                       'slack-member-left-channel-event))))
+    (make-instance klass :payload payload)))
+
+(cl-defmethod slack-event-update-room ((this slack-member-left-room-event) room _team)
+  (let* ((payload (oref this payload))
+         (user (plist-get payload :user)))
+    (oset room members
+          (cl-remove-if #'(lambda (e) (string= e user))
+                        (oref room members)))))
+
+(cl-defmethod slack-event-save-room ((this slack-member-left-channel-event) room team)
+  (slack-event-update-room this room team)
+  (slack-team-set-channels team (list room)))
+
+(cl-defmethod slack-event-save-room ((this slack-member-left-group-event) room team)
+  (slack-event-update-room this room team)
+  (slack-team-set-groups team (list room)))
+
 
 (provide 'slack-room-event)
 ;;; slack-room-event.el ends here
