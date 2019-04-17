@@ -89,7 +89,8 @@
                   (progn
                     (cl-loop for m in messages
                              do (slack-buffer-insert this m))
-                    (slack-buffer-update-last-read this latest-message)))
+                    (slack-buffer-update-last-read this latest-message)
+                    (slack-buffer-update-mark this)))
               (when (slack-buffer-has-next-page-p this)
                 (slack-buffer-insert-load-more this))))))
 
