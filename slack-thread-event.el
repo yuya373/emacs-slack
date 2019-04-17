@@ -66,5 +66,20 @@
     (oset message last-read last-read)
     (slack-room-push-message room message team)))
 
+(defclass slack-thread-unsubscribed-event (slack-thread-event) ())
+
+(defun slack-create-thread-unsubscribed-event (payload)
+  (make-instance 'slack-thread-unsubscribed-event
+                 :payload payload))
+
+(cl-defmethod slack-event-save-message ((this slack-thread-unsubscribed-event) message team)
+  (let* ((payload (oref this payload))
+         (subscription (plist-get payload :subscription))
+         (last-read (plist-get subscription :last_read))
+         (room (slack-room-find message team)))
+    (oset message last-read last-read)
+    (oset message subscribed nil)
+    (slack-room-push-message room message team)))
+
 (provide 'slack-thread-event)
 ;;; slack-thread-event.el ends here

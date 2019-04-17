@@ -390,6 +390,8 @@ TEAM is one of `slack-teams'"
           (slack-ws-handle-thread-marked decoded-payload team))
          ((string= type "thread_subscribed")
           (slack-ws-handle-thread-subscribed decoded-payload team))
+         ((string= type "thread_unsubscribed")
+          (slack-ws-handle-thread-unsubscribed decoded-payload team))
          ((string= type "im_open")
           (slack-ws-handle-im-open decoded-payload team))
          ((or (string= type "im_close")
@@ -617,6 +619,10 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-thread-subscribed (payload team)
   (slack-event-update (slack-create-thread-subscribed-event payload)
+                      team))
+
+(defun slack-ws-handle-thread-unsubscribed (payload team)
+  (slack-event-update (slack-create-thread-unsubscribed-event payload)
                       team))
 
 (defun slack-ws-handle-user-change (payload team)
