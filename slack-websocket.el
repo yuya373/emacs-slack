@@ -616,12 +616,8 @@ TEAM is one of `slack-teams'"
                           team))))
 
 (defun slack-ws-handle-thread-subscribed (payload team)
-  (slack-if-let* ((subscription (plist-get payload :subscription))
-                  (channel (plist-get subscription :channel))
-                  (thread-ts (plist-get subscription :thread_ts))
-                  (room (slack-room-find channel team))
-                  (message (slack-room-find-message room thread-ts)))
-      (slack-message-handle-thread-subscribed message subscription)))
+  (slack-event-update (slack-create-thread-subscribed-event payload)
+                      team))
 
 (defun slack-ws-handle-user-change (payload team)
   (let ((user (plist-get payload :user)))

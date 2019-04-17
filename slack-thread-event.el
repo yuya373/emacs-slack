@@ -27,13 +27,9 @@
 (require 'slack-util)
 (require 'slack-event)
 
-(defclass slack-thread-marked-event (slack-event slack-message-event-processable) ())
+(defclass slack-thread-event (slack-event slack-message-event-processable) ())
 
-(defun slack-create-thread-marked-event (payload)
-  (make-instance 'slack-thread-marked-event
-                 :payload payload))
-
-(cl-defmethod slack-event-find-message ((this slack-thread-marked-event) team)
+(cl-defmethod slack-event-find-message ((this slack-thread-event) team)
   (let* ((payload (oref this payload))
          (subscription (plist-get payload :subscription))
          (channel (plist-get subscription :channel))
@@ -41,11 +37,32 @@
     (slack-if-let* ((room (slack-room-find channel team)))
         (slack-room-find-message room thread-ts))))
 
+(defclass slack-thread-marked-event (slack-thread-event) ())
+
+(defun slack-create-thread-marked-event (payload)
+  (make-instance 'slack-thread-marked-event
+                 :payload payload))
+
 (cl-defmethod slack-event-save-message ((this slack-thread-marked-event) message team)
   (let* ((payload (oref this payload))
          (subscription (plist-get payload :subscription))
          (last-read (plist-get subscription :last_read))
          (room (slack-room-find message team)))
+    (oset message last-read last-read)
+    (slack-room-push-message room message team)))
+
+(defclass slack-thread-subscribed-event (slack-thread-event) ())
+
+(defun slack-create-thread-subscribed-event (payload)
+  (make-instance 'slack-thread-subscribed-event
+                 :payload payload))
+
+(cl-defmethod slack-event-save-message ((this slack-thread-subscribed-event) message team)
+  (let* ((payload (oref this payload))
+         (subscription (plist-get payload :subscription))
+         (last-read (plist-get subscription :last_read))
+         (room (slack-room-find message team)))
+    (oset message subscribed t)
     (oset message last-read last-read)
     (slack-room-push-message room message team)))
 
