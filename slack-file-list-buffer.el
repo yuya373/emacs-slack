@@ -118,17 +118,44 @@
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
-(cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
-  (let ((lui-time-stamp-time (slack-message-time-stamp message))
-        (ts (slack-file-id message))
-        (team (oref this team)))
+(cl-defmethod slack-buffer-insert-file ((this slack-file-list-buffer) file &optional not-tracked-p)
+  (let* ((team (oref this team))
+         (ts (slack-file-id file))
+         (lui-time-stamp-time (slack-message-time-stamp file))
+         (thumb (slack-image-string (slack-file-thumb-image-spec file 80)))
+         (header (format "%s%s"
+                         (if (slack-string-blankp thumb) ""
+                           (format "%s " thumb))
+                         (slack-file-link-info (slack-file-id file)
+                                               (oref file title))))
+         (user-name (propertize (or (slack-user-name (oref file user) team) "")
+                                'face '(:weight bold :height 0.8)))
+         (timestamp (and (oref file timestamp)
+                         (format-time-string "%Y-%m-%d %H:%M:%S"
+                                             (seconds-to-time
+                                              (oref file timestamp)))))
+         (description (format "%s %s %s%s"
+                              user-name
+                              timestamp
+                              ;; TODO define keymap
+                              (if (slack-string-blankp (oref file url-private-download)) ""
+                                (format "%s "
+                                        (propertize " Download "
+                                                    'face
+                                                    '(:box (:line-width 1 :style released-button)))))
+                              ;; TODO define keymap
+                              (propertize " … "
+                                          'face '(:box (:line-width 1 :style released-button)))))
+         )
     (lui-insert-with-text-properties
-     (format "@%s %s"
-             (slack-user-name (oref message user) team)
-             (slack-message-to-string message ts team))
+     (slack-format-message header description)
      'not-tracked-p not-tracked-p
      'ts ts
-     'slack-last-ts lui-time-stamp-last)
+     'slack-last-ts lui-time-stamp-last)))
+
+(cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
+  (let ((lui-time-stamp-time (slack-message-time-stamp message)))
+    (slack-buffer-insert-file this message not-tracked-p)
     (lui-insert "" t)
     ))
 
