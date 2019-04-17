@@ -349,9 +349,6 @@
 (cl-defmethod slack-thread-ts ((this slack-message))
   (oref this thread-ts))
 
-(cl-defmethod slack-message-handle-thread-marked ((this slack-message) payload)
-  (oset this last-read (plist-get payload :last_read)))
-
 (cl-defmethod slack-message-handle-thread-subscribed ((this slack-message) payload)
   (oset this subscribed t)
   (oset this last-read (plist-get payload :last_read)))

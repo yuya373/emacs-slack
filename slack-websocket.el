@@ -53,6 +53,7 @@
 (require 'slack-reaction-event)
 (require 'slack-star-event)
 (require 'slack-room-event)
+(require 'slack-thread-event)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
@@ -611,12 +612,8 @@ TEAM is one of `slack-teams'"
   (let* ((type (plist-get payload :type)))
     (slack-counts-update team)
     (when (string= type "thread")
-      (slack-if-let* ((subscription (plist-get payload :subscription))
-                      (channel (plist-get subscription :channel))
-                      (room (slack-room-find channel team))
-                      (thread-ts (plist-get subscription :thread_ts))
-                      (message (slack-room-find-message room thread-ts)))
-          (slack-message-handle-thread-marked message subscription)))))
+      (slack-event-update (slack-create-thread-marked-event payload)
+                          team))))
 
 (defun slack-ws-handle-thread-subscribed (payload team)
   (slack-if-let* ((subscription (plist-get payload :subscription))
