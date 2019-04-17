@@ -35,6 +35,7 @@
 (defvar slack-file-link-keymap
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") #'slack-file-display)
+    (define-key map [mouse-1] #'slack-file-display)
     map))
 
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
