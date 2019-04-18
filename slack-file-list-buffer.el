@@ -37,7 +37,7 @@
 
 (defcustom slack-file-dir (let ((dir (format "%s/var/slack-files/" user-emacs-directory)))
                             (unless (file-exists-p dir)
-                              (make-directory dir))
+                              (make-directory dir t))
                             dir)
   "Directory to download file."
   :type 'string
