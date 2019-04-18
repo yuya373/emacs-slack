@@ -466,21 +466,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                       (oref e title)))
                   (oref this files))))
 
-(cl-defmethod slack-file-gdoc-to-string ((this slack-file))
-  (with-slots (pretty-type name title url-private permalink) this
-    (let ((title (propertize (format "<%s|%s>" permalink (or title name))
-                             'face '(:weight bold)))
-          (description (format "<%s|%s>" url-private pretty-type)))
-      (slack-format-message title description))))
-
-(cl-defmethod slack-message-body-to-string ((file slack-file) _team)
-  (cond
-   ((slack-file-gdoc-p file) (slack-file-gdoc-to-string file))
-   (t (with-slots (name title size filetype permalink) file
-        (slack-message-put-text-property
-         (format "name: %s\nsize: %s\ntype: %s\n%s\n"
-                 (or title name) size filetype permalink))))))
-
 (cl-defmethod slack-message-to-string ((this slack-file-email) ts team)
   (let ((body (slack-file-summary this ts team))
         (thumb (slack-image-string (slack-file-thumb-image-spec this))))
@@ -530,24 +515,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           'id (oref this id)
                           'face '(:underline t)
                           'keymap slack-expand-email-keymap)))))
-
-(cl-defmethod slack-message-body-to-string ((this slack-file-email) _team)
-  (let ((from (format "From: %s" (mapconcat #'(lambda (e) (oref e original))
-                                            (oref this from)
-                                            ", ")))
-        (to (format "To: %s" (mapconcat #'(lambda (e) (oref e original))
-                                        (oref this to)
-                                        ", ")))
-        (cc (format "CC: %s" (mapconcat #'(lambda (e) (oref e original))
-                                        (oref this cc)
-                                        ", ")))
-        (subject (format "Subject: %s" (oref this subject)))
-        (body (propertize (format "\n%s" (oref this plain-text))
-                          'slack-defer-face #'slack-put-email-body-overlay))
-        (date (format "Date: %s" (slack-message-time-to-string (oref this created)))))
-    (mapconcat #'identity
-               (list from to cc subject date body)
-               "\n")))
 
 (cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots

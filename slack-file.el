@@ -30,6 +30,14 @@
 (require 'slack-buffer)
 (require 'slack-image)
 
+(defcustom slack-file-dir (let ((dir (format "%s/var/slack-files/" user-emacs-directory)))
+                            (unless (file-exists-p dir)
+                              (make-directory dir t))
+                            dir)
+  "Directory to download file."
+  :type 'string
+  :group 'slack)
+
 (defvar slack-file-link-keymap)
 (defvar slack-file-download-button-keymap)
 (defvar slack-default-directory)
@@ -556,6 +564,20 @@
                     (cons "count" count))
       :success #'success))))
 
+(cl-defmethod slack-file-download ((file slack-file) team)
+  (slack-if-let* ((url (oref file url-private-download))
+                  (url-not-blank-p (not (slack-string-blankp url)))
+                  (filename (file-name-nondirectory url))
+                  (dir (expand-file-name slack-file-dir))
+                  (confirmed-p (y-or-n-p (format "Download %s to %s ? "
+                                                 filename dir))))
+      (slack-url-copy-file url (format "%s%s" dir filename)
+                           :token (slack-team-token team)
+                           :sync t)))
+
+(cl-defmethod slack-file-downloadable-p ((file slack-file))
+  (not (slack-string-blankp (oref file url-private-download))))
+
 (cl-defmethod slack-file-download-button ((file slack-file))
   (propertize " Download "
               'file-id (slack-file-id file)
@@ -564,7 +586,7 @@
               'keymap slack-file-download-button-keymap))
 
 (cl-defmethod slack-file-action-button ((file slack-file))
-  (propertize " … "
+  (propertize " Actions "
               'file-id (slack-file-id file)
               'face '(:box (:line-width 1 :style released-button))
               'keymap (let ((map (make-sparse-keymap)))
@@ -573,11 +595,12 @@
                         map)))
 
 (cl-defmethod slack-file-run-action ((file slack-file) buf)
-  (let* ((actions (list (cons "View details"
-                              #'(lambda ()
-                                  (slack-buffer-display-file
-                                   buf
-                                   (slack-file-id file))))
+  (let* ((actions (list (and (not (slack-file-info-buffer-p buf))
+                             (cons "View details"
+                                   #'(lambda ()
+                                       (slack-buffer-display-file
+                                        buf
+                                        (slack-file-id file)))))
                         (cons "Copy link to file"
                               #'(lambda ()
                                   (kill-new (oref file permalink))))
@@ -595,10 +618,62 @@
                         (cons "Open original"
                               #'(lambda ()
                                   (browse-url (oref file url-private))))))
-         (selected (completing-read "Action: " actions nil t))
+         (selected (completing-read "Action: "
+                                    (cl-remove-if #'null actions)
+                                    nil t))
          (action (cdr-safe (assoc-string selected actions))))
     (when action
       (funcall action))))
+
+(cl-defmethod slack-file-body-to-string ((file slack-file))
+  (let* ((url (oref file url-private))
+         (pretty-type (oref file pretty-type))
+         (size (let ((size (oref file size))
+                     (unit ""))
+                 (when size
+                   (setq unit "KB")
+                   (setq size (/ size 1000.0))
+                   (when (<= 1000 size)
+                     (setq unit "MB")
+                     (setq size (/ size 1000.0)))
+                   (setq size (format "%s%s" size unit)))
+                 size))
+         (title (or (oref file title) (oref file name))))
+    (slack-format-message (propertize (format "<%s|%s>" url title)
+                                      'face '(:weight bold))
+                          (format "%s%s"
+                                  (or (and size (format "%s " size)) "")
+                                  pretty-type))))
+
+(cl-defmethod slack-file-body-to-string ((this slack-file-email))
+  (let* ((label-face '(:foreground "#586e75" :weight bold))
+         (from (format "%s %s"
+                       (propertize "From:" 'face label-face)
+                       (mapconcat #'(lambda (e) (oref e original))
+                                  (oref this from)
+                                  ", ")))
+         (to (format "%s %s"
+                     (propertize "To:" 'face label-face)
+                     (mapconcat #'(lambda (e) (oref e original))
+                                (oref this to)
+                                ", ")))
+         (cc (format "%s %s"
+                     (propertize "CC:" 'face label-face)
+                     (mapconcat #'(lambda (e) (oref e original))
+                                (oref this cc)
+                                ", ")))
+         (subject (format "%s %s"
+                          (propertize "Subject:" 'face label-face)
+                          (propertize (oref this subject)
+                                      'face '(:weight bold :height 1.1))))
+         (body (propertize (format "\n%s" (oref this plain-text))
+                           'slack-defer-face #'slack-put-email-body-overlay))
+         (date (format "%s %s"
+                       (propertize "Date:" 'face label-face)
+                       (slack-message-time-to-string (oref this created)))))
+    (mapconcat #'identity
+               (list from to cc subject date "" body)
+               "\n")))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

@@ -35,14 +35,6 @@
     (define-key map [mouse-1] 'slack-download-file-at-point)
     map))
 
-(defcustom slack-file-dir (let ((dir (format "%s/var/slack-files/" user-emacs-directory)))
-                            (unless (file-exists-p dir)
-                              (make-directory dir t))
-                            dir)
-  "Directory to download file."
-  :type 'string
-  :group 'slack)
-
 (define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack Files")
 
 ;; TODO impl without slack-message-buffer
@@ -134,16 +126,8 @@
 
 (cl-defmethod slack-buffer-download-file ((this slack-file-list-buffer) file-id)
   (slack-if-let* ((team (oref this team))
-                  (file (slack-file-find file-id team))
-                  (url (oref file url-private-download))
-                  (url-not-blank-p (not (slack-string-blankp url)))
-                  (filename (file-name-nondirectory url))
-                  (dir (expand-file-name slack-file-dir))
-                  (confirmed-p (y-or-n-p (format "Download %s to %s ? "
-                                                 filename dir))))
-      (slack-url-copy-file url (format "%s%s" dir filename)
-                           :token (slack-team-token team)
-                           :sync t)))
+                  (file (slack-file-find file-id team)))
+      (slack-file-download file team)))
 
 (defun slack-download-file-at-point ()
   (interactive)
@@ -180,9 +164,10 @@
          (description (format "%s %s %s%s"
                               user-name
                               timestamp
-                              (if (slack-string-blankp (oref file url-private-download)) ""
-                                (format "%s "
-                                        (slack-file-download-button file)))
+                              (if (slack-file-downloadable-p file)
+                                  (format "%s "
+                                          (slack-file-download-button file))
+                                "")
                               (slack-file-action-button file))))
     (slack-format-message header description)))
 
