@@ -151,9 +151,8 @@
                   (buf slack-current-buffer))
       (slack-buffer-download-file buf file-id)))
 
-(cl-defmethod slack-buffer-insert-file ((this slack-file-list-buffer) file &optional not-tracked-p)
+(cl-defmethod slack-buffer-file-to-string ((this slack-file-list-buffer) file)
   (let* ((team (oref this team))
-         (ts (slack-file-id file))
          (lui-time-stamp-time (slack-message-time-stamp file))
          (thumb (slack-image-string (slack-file-thumb-image-spec file 80)))
          (header (format "%s%s"
@@ -175,19 +174,18 @@
                                         (slack-file-download-button file)))
                               ;; TODO define keymap
                               (propertize " … "
-                                          'face '(:box (:line-width 1 :style released-button)))))
-         )
-    (lui-insert-with-text-properties
-     (slack-format-message header description)
-     'not-tracked-p not-tracked-p
-     'ts ts
-     'slack-last-ts lui-time-stamp-last)))
+                                          'face '(:box (:line-width 1 :style released-button))))))
+    (slack-format-message header description)))
 
 (cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
-  (let ((lui-time-stamp-time (slack-message-time-stamp message)))
-    (slack-buffer-insert-file this message not-tracked-p)
-    (lui-insert "" t)
-    ))
+  (let ((lui-time-stamp-time (slack-message-time-stamp message))
+        (ts (slack-file-id message)))
+    (lui-insert-with-text-properties
+     (slack-buffer-file-to-string this message)
+     'not-tracked-p not-tracked-p
+     'ts ts
+     'slack-last-ts lui-time-stamp-last)
+    (lui-insert "" t)))
 
 (cl-defmethod slack-buffer--replace ((this slack-file-list-buffer) ts)
   (with-slots (team) this
@@ -197,9 +195,7 @@
 (cl-defmethod slack-buffer-replace ((this slack-file-list-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)
-      (lui-replace (slack-message-to-string message
-                                            (slack-ts message)
-                                            team)
+      (lui-replace (slack-buffer-file-to-string this message)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
                             (slack-file-id message)))))))
