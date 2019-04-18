@@ -151,6 +151,17 @@
                   (buf slack-current-buffer))
       (slack-buffer-download-file buf file-id)))
 
+(defun slack-buffer--run-file-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (file-id (get-text-property (point) 'file-id)))
+      (slack-buffer-run-file-action buf file-id)))
+
+(cl-defmethod slack-buffer-run-file-action ((this slack-file-list-buffer) file-id)
+  (let* ((team (oref this team))
+         (file (slack-file-find file-id team)))
+    (slack-file-run-action file this)))
+
 (cl-defmethod slack-buffer-file-to-string ((this slack-file-list-buffer) file)
   (let* ((team (oref this team))
          (lui-time-stamp-time (slack-message-time-stamp file))
@@ -172,9 +183,7 @@
                               (if (slack-string-blankp (oref file url-private-download)) ""
                                 (format "%s "
                                         (slack-file-download-button file)))
-                              ;; TODO define keymap
-                              (propertize " … "
-                                          'face '(:box (:line-width 1 :style released-button))))))
+                              (slack-file-action-button file))))
     (slack-format-message header description)))
 
 (cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)

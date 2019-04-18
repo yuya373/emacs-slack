@@ -563,5 +563,42 @@
               '(:box (:line-width 1 :style released-button))
               'keymap slack-file-download-button-keymap))
 
+(cl-defmethod slack-file-action-button ((file slack-file))
+  (propertize " … "
+              'file-id (slack-file-id file)
+              'face '(:box (:line-width 1 :style released-button))
+              'keymap (let ((map (make-sparse-keymap)))
+                        (define-key map (kbd "RET") 'slack-buffer--run-file-action)
+                        (define-key map [mouse-1] 'slack-buffer--run-file-action)
+                        map)))
+
+(cl-defmethod slack-file-run-action ((file slack-file) buf)
+  (let* ((actions (list (cons "View details"
+                              #'(lambda ()
+                                  (slack-buffer-display-file
+                                   buf
+                                   (slack-file-id file))))
+                        (cons "Copy link to file"
+                              #'(lambda ()
+                                  (kill-new (oref file permalink))))
+                        (if (oref file is-starred)
+                            (cons "Unstar file"
+                                  #'(lambda ()
+                                      (slack-buffer-remove-star
+                                       buf
+                                       (slack-file-id file))))
+                          (cons "Star file"
+                                #'(lambda ()
+                                    (slack-buffer-add-star
+                                     buf
+                                     (slack-file-id file)))))
+                        (cons "Open original"
+                              #'(lambda ()
+                                  (browse-url (oref file url-private))))))
+         (selected (completing-read "Action: " actions nil t))
+         (action (cdr-safe (assoc-string selected actions))))
+    (when action
+      (funcall action))))
+
 (provide 'slack-file)
 ;;; slack-file.el ends here
