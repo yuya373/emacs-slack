@@ -31,6 +31,7 @@
 (require 'slack-image)
 
 (defvar slack-file-link-keymap)
+(defvar slack-file-download-button-keymap)
 (defvar slack-default-directory)
 (defvar slack-completing-read-function)
 (defvar slack-current-buffer)
@@ -554,6 +555,13 @@
       :params (list (cons "page" page)
                     (cons "count" count))
       :success #'success))))
+
+(cl-defmethod slack-file-download-button ((file slack-file))
+  (propertize " Download "
+              'file-id (slack-file-id file)
+              'face
+              '(:box (:line-width 1 :style released-button))
+              'keymap slack-file-download-button-keymap))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

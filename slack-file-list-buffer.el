@@ -29,6 +29,20 @@
 (require 'slack-buffer)
 (require 'slack-message-buffer)
 
+(defvar slack-file-download-button-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'slack-download-file-at-point)
+    (define-key map [mouse-1] 'slack-download-file-at-point)
+    map))
+
+(defcustom slack-file-dir (let ((dir (format "%s/var/slack-files/" user-emacs-directory)))
+                            (unless (file-exists-p dir)
+                              (make-directory dir))
+                            dir)
+  "Directory to download file."
+  :type 'string
+  :group 'slack)
+
 (define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack Files")
 
 ;; TODO impl without slack-message-buffer
@@ -118,6 +132,25 @@
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
+(cl-defmethod slack-buffer-download-file ((this slack-file-list-buffer) file-id)
+  (slack-if-let* ((team (oref this team))
+                  (file (slack-file-find file-id team))
+                  (url (oref file url-private-download))
+                  (url-not-blank-p (not (slack-string-blankp url)))
+                  (filename (file-name-nondirectory url))
+                  (dir (expand-file-name slack-file-dir))
+                  (confirmed-p (y-or-n-p (format "Download %s to %s ? "
+                                                 filename dir))))
+      (slack-url-copy-file url (format "%s%s" dir filename)
+                           :token (slack-team-token team)
+                           :sync t)))
+
+(defun slack-download-file-at-point ()
+  (interactive)
+  (slack-if-let* ((file-id (get-text-property (point) 'file-id))
+                  (buf slack-current-buffer))
+      (slack-buffer-download-file buf file-id)))
+
 (cl-defmethod slack-buffer-insert-file ((this slack-file-list-buffer) file &optional not-tracked-p)
   (let* ((team (oref this team))
          (ts (slack-file-id file))
@@ -137,12 +170,9 @@
          (description (format "%s %s %s%s"
                               user-name
                               timestamp
-                              ;; TODO define keymap
                               (if (slack-string-blankp (oref file url-private-download)) ""
                                 (format "%s "
-                                        (propertize " Download "
-                                                    'face
-                                                    '(:box (:line-width 1 :style released-button)))))
+                                        (slack-file-download-button file)))
                               ;; TODO define keymap
                               (propertize " … "
                                           'face '(:box (:line-width 1 :style released-button)))))

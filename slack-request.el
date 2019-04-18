@@ -330,7 +330,7 @@
         ((on-success (&key _data &allow-other-keys)
                      (when (functionp success) (funcall success)))
          (on-error (&key error-thrown symbol-status response _data)
-                   (message "Error Fetching Image: %s %s %s, url: %s"
+                   (message "Error Download File: %s %s %s, url: %s"
                             (request-response-status-code response)
                             error-thrown symbol-status url)
                    (if (file-exists-p newname)
