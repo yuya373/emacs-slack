@@ -98,8 +98,8 @@
     (slack-message-to-string message team)))
 
 (cl-defmethod slack-to-string ((this slack-star-file) team)
-  (with-slots (date-create file) this
-    (slack-message-to-string file date-create team)))
+  (with-slots (file) this
+    (slack-message-to-string file (slack-ts this) team)))
 
 (defun slack-create-star-paging (payload)
   (make-instance 'slack-star-paging
