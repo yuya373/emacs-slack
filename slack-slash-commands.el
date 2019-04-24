@@ -29,6 +29,8 @@
 (require 'slack-channel)
 (require 'slack-user)
 (require 'slack-message-formatter)
+(require 'slack-event)
+(declare-function slack-create-message-event "slack-message-event")
 
 (defclass slack-command ()
   ((name :initarg :name :type string)
@@ -146,8 +148,8 @@
                                                 :channel channel
                                                 :ts (number-to-string
                                                      (time-to-seconds))))
-                                 (message (slack-message-create payload team)))
-                                (slack-message-update message team)
+                                 (event (slack-create-message-event payload)))
+                                (slack-event-update event team)
                               (message "%s" (slack-message-unescape-string response
                                                                            team)))))))
         (slack-request

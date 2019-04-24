@@ -284,27 +284,18 @@
 (cl-defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (slack-ts m)))
 
-(cl-defmethod slack-message-append-reaction ((m slack-message) reaction &optional _type _file-id)
-  (slack-if-let* ((old-reaction (slack-reaction-find m reaction)))
-      (slack-reaction-join old-reaction reaction)
-    (slack-reaction-push m reaction)))
-
-(cl-defmethod slack-message-pop-reaction ((m slack-message) reaction &optional _type _file-id)
-  (slack-message--pop-reaction m reaction))
-
 (defun slack-message--pop-reaction (message reaction)
-  (let* ((old-reaction (slack-reaction-find message reaction))
-         (decl-p (< 1 (oref old-reaction count))))
-    (if decl-p
-        (with-slots (count users) old-reaction
-          (cl-decf count)
-          (setq users (cl-remove-if
-                       #'(lambda (old-user)
-                           (cl-find old-user
-                                    (oref reaction users)
-                                    :test #'string=))
-                       users)))
-      (slack-reaction-delete message reaction))))
+  (slack-if-let* ((old-reaction (slack-reaction-find message reaction)))
+      (if (< 1 (oref old-reaction count))
+          (with-slots (count users) old-reaction
+            (cl-decf count)
+            (setq users (cl-remove-if
+                         #'(lambda (old-user)
+                             (cl-find old-user
+                                      (oref reaction users)
+                                      :test #'string=))
+                         users)))
+        (slack-reaction-delete message reaction))))
 
 (cl-defmethod slack-message-get-text ((m slack-message))
   (oref m text))
@@ -314,7 +305,7 @@
        (not (string= (slack-ts this) (oref this thread-ts)))))
 
 (cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
-  nil)
+  t)
 
 (cl-defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread-ts (slack-thread-ts m)))
@@ -358,20 +349,12 @@
 (cl-defmethod slack-thread-ts ((this slack-message))
   (oref this thread-ts))
 
-(cl-defmethod slack-message-handle-replied ((this slack-message) payload)
-  (oset this thread-ts (plist-get payload :thread_ts))
-  (oset this reply-count (plist-get payload :reply_count))
-  (oset this reply-users-count (plist-get payload :reply_users_count))
-  (oset this latest-reply (plist-get payload :latest_reply))
-  (oset this reply-users (plist-get payload :reply_users))
-  (oset this replies (plist-get payload :replies)))
-
-(cl-defmethod slack-message-handle-thread-marked ((this slack-message) payload)
-  (oset this last-read (plist-get payload :last_read)))
-
 (cl-defmethod slack-message-handle-thread-subscribed ((this slack-message) payload)
   (oset this subscribed t)
   (oset this last-read (plist-get payload :last_read)))
+
+(cl-defmethod slack-message-ephemeral-p ((this slack-message))
+  (oref this is-ephemeral))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

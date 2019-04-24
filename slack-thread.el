@@ -159,7 +159,9 @@ Any other non-nil value: send to the room."
 
 (cl-defmethod slack-thread-mark ((this slack-message) room ts team)
   (let* ((channel (oref room id))
-         (thread-ts (oref this thread-ts))
+         (thread-ts (or (oref this thread-ts)
+                        ;; initial thread reply
+                        (slack-ts this)))
          (params (list (cons "channel" channel)
                        (cons "thread_ts" thread-ts)
                        (cons "ts" ts))))
