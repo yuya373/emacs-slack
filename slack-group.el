@@ -40,7 +40,7 @@
   ((name :initarg :name :type string :initform "")
    (name-normalized :initarg :name_normalized :type string :initform "")
    (num-members :initarg :num_members :initform 0)
-   (creator :initarg :creator :type string :initform "")
+   (creator :initarg :creator :type (or null string) :initform nil)
    (is-archived :initarg :is_archived :initform nil :type boolean)
    (is-channel :initarg :is_channel :initform nil :type boolean)
    (is-ext-shared :initarg :is_ext_shared :initform nil :type boolean)
