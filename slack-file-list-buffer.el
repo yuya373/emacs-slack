@@ -29,6 +29,12 @@
 (require 'slack-buffer)
 (require 'slack-message-buffer)
 
+(defvar slack-file-download-button-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'slack-download-file-at-point)
+    (define-key map [mouse-1] 'slack-download-file-at-point)
+    map))
+
 (define-derived-mode slack-file-list-buffer-mode slack-buffer-mode "Slack Files")
 
 ;; TODO impl without slack-message-buffer
@@ -118,19 +124,62 @@
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
 
+(cl-defmethod slack-buffer-download-file ((this slack-file-list-buffer) file-id)
+  (slack-if-let* ((team (oref this team))
+                  (file (slack-file-find file-id team)))
+      (slack-file-download file team)))
+
+(defun slack-download-file-at-point ()
+  (interactive)
+  (slack-if-let* ((file-id (get-text-property (point) 'file-id))
+                  (buf slack-current-buffer))
+      (slack-buffer-download-file buf file-id)))
+
+(defun slack-buffer--run-file-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (file-id (get-text-property (point) 'file-id)))
+      (slack-buffer-run-file-action buf file-id)))
+
+(cl-defmethod slack-buffer-run-file-action ((this slack-file-list-buffer) file-id)
+  (let* ((team (oref this team))
+         (file (slack-file-find file-id team)))
+    (slack-file-run-action file this)))
+
+(cl-defmethod slack-buffer-file-to-string ((this slack-file-list-buffer) file)
+  (let* ((team (oref this team))
+         (lui-time-stamp-time (slack-message-time-stamp file))
+         (thumb (slack-image-string (slack-file-thumb-image-spec file 80)))
+         (header (format "%s%s"
+                         (if (slack-string-blankp thumb) ""
+                           (format "%s " thumb))
+                         (slack-file-link-info (slack-file-id file)
+                                               (oref file title))))
+         (user-name (propertize (or (slack-user-name (oref file user) team) "")
+                                'face '(:weight bold :height 0.8)))
+         (timestamp (and (oref file timestamp)
+                         (format-time-string "%Y-%m-%d %H:%M:%S"
+                                             (seconds-to-time
+                                              (oref file timestamp)))))
+         (description (format "%s %s %s%s"
+                              user-name
+                              timestamp
+                              (if (slack-file-downloadable-p file)
+                                  (format "%s "
+                                          (slack-file-download-button file))
+                                "")
+                              (slack-file-action-button file))))
+    (slack-format-message header description)))
+
 (cl-defmethod slack-buffer-insert ((this slack-file-list-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
-        (ts (slack-file-id message))
-        (team (oref this team)))
+        (ts (slack-file-id message)))
     (lui-insert-with-text-properties
-     (format "@%s %s"
-             (slack-user-name (oref message user) team)
-             (slack-message-to-string message ts team))
+     (slack-buffer-file-to-string this message)
      'not-tracked-p not-tracked-p
      'ts ts
      'slack-last-ts lui-time-stamp-last)
-    (lui-insert "" t)
-    ))
+    (lui-insert "" t)))
 
 (cl-defmethod slack-buffer--replace ((this slack-file-list-buffer) ts)
   (with-slots (team) this
@@ -140,9 +189,7 @@
 (cl-defmethod slack-buffer-replace ((this slack-file-list-buffer) message)
   (with-slots (team) this
     (with-current-buffer (slack-buffer-buffer this)
-      (lui-replace (slack-message-to-string message
-                                            (slack-ts message)
-                                            team)
+      (lui-replace (slack-buffer-file-to-string this message)
                    (lambda ()
                      (equal (get-text-property (point) 'ts)
                             (slack-file-id message)))))))

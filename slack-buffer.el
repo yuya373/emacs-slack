@@ -124,7 +124,7 @@
     (error (progn
              (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
                  (kill-buffer buf))
-             (slack-log (format "Backtrace: %S" (backtrace))
+             (slack-log (format "Backtrace: %S" (with-output-to-string (backtrace)))
                         (oref this team)
                         :level 'error)
              (signal (car err) (cdr err))))))

@@ -35,6 +35,7 @@
 (defvar slack-file-link-keymap
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") #'slack-file-display)
+    (define-key map [mouse-1] #'slack-file-display)
     map))
 
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
@@ -95,12 +96,33 @@
       (slack-buffer-insert this))
     buf))
 
+(cl-defmethod slack-buffer-download-file ((this slack-file-info-buffer) file-id)
+  (slack-if-let* ((team (oref this team))
+                  (file (slack-file-find file-id team)))
+      (slack-file-download file team)))
+
+(cl-defmethod slack-buffer-run-file-action ((this slack-file-info-buffer) file-id)
+  (slack-if-let* ((team (oref this team))
+                  (file (slack-file-find file-id team)))
+      (slack-file-run-action file this)))
+
 (cl-defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
   (with-slots (file team) this
-    (let* ((header (format "%s %s\n"
-                           (slack-message-put-header-property (oref file title))
-                           (if (oref file is-starred) ":star:" "")))
-           (body (slack-message-body-to-string file team))
+    (let* ((user-name (slack-user-name (oref file user) team))
+           (header (format "%s %s %s%s"
+                           (propertize user-name
+                                       'face '(:weight bold))
+                           (if (oref file is-starred) ":star:" "")
+                           (if (slack-file-downloadable-p file)
+                               (format "%s "
+                                       (slack-file-download-button file))
+                             "")
+                           (slack-file-action-button file)))
+           (timestamp (and (oref file timestamp)
+                           (format-time-string "%Y-%m-%d %H:%M:%S"
+                                               (seconds-to-time
+                                                (oref file timestamp)))))
+           (body (slack-file-body-to-string file))
            (thumb (or (and (slack-file-image-p file)
                            (slack-message-large-image-to-string file))
                       (slack-message-image-to-string file)))
@@ -109,9 +131,12 @@
                                 (oref file comments)
                                 "\n")))
       (propertize (slack-format-message header
+                                        timestamp
+                                        " "
                                         body
+                                        " "
                                         thumb
-                                        "\n"
+                                        " "
                                         comments)
                   'file-id (oref file id)))))
 
