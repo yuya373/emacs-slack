@@ -720,9 +720,10 @@
 (cl-defmethod slack-message-update-buffer ((this slack-message) team)
   (when (slack-message-visible-p this team)
     (let ((room (slack-room-find this team)))
-      (slack-room-update-buffer room team this nil)
-      (when (slack-thread-message-p this)
-        (slack-thread-message-update-buffer this room team nil)))))
+      (slack-room-update-buffer room team this nil)))
+  (when (slack-thread-message-p this)
+    (let ((room (slack-room-find this team)))
+      (slack-thread-message-update-buffer this room team nil))))
 
 (cl-defmethod slack-message-replace-buffer ((this slack-message) team)
   (let ((room (slack-room-find this team)))
