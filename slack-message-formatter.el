@@ -449,9 +449,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                 text t))))
 
 (cl-defmethod slack-message--inspect ((this slack-message) room team)
-  (format "RAW: %s\nROOM: %s\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+  (format "RAW: %s\nROOM: %s\nUSER: %s\nBOT: %S\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
           (oref this text)
           (oref room id)
+          (oref this user)
+          (and (slot-exists-p this 'bot-id)
+               (slot-boundp this 'bot-id)
+               (oref this bot-id))
           (eieio-object-class this)
           (length (oref this attachments))
           (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
