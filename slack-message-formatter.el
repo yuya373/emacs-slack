@@ -318,7 +318,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                               #'replace text t t)))
 
 (defun slack-unescape-!date (text &optional zone)
-  (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|\\(.*\\)>")
+  (let ((date-regexp "<!date^\\([[:digit:]]*\\)^\\(.*?\\)\\(\\^.*\\)?|\\(.*?\\)>")
         (time-format-regexp "{\\(.*?\\)}"))
     (cl-labels
         ((unescape-date-string
