@@ -456,7 +456,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (length (oref this attachments))
           (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
                                       (slack-unescape-channel
-                                       (oref e title)
+                                       (or (oref e title) "")
                                        team)
                                       (oref e pretext)
                                       (oref e text)))
