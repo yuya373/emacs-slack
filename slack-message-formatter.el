@@ -69,7 +69,7 @@
   :group 'slack)
 
 (defface slack-attachment-header
-  '((t (:weight bold)))
+  '((t (:inherit slack-message-output-header)))
   "Face used to shared message header."
   :group 'slack)
 
@@ -458,9 +458,10 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (oref this bot-id))
           (eieio-object-class this)
           (length (oref this attachments))
-          (mapcar (lambda (e) (format "\n(TITLE: %s\nPRETEXT: %s\nTEXT: %s)"
+          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s)"
+                                      (eieio-object-class e)
                                       (slack-unescape-channel
-                                       (oref e title)
+                                       (or (oref e title) "")
                                        team)
                                       (oref e pretext)
                                       (oref e text)))
@@ -582,13 +583,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                        (format "\n\t%s\n" pad))))))
       (slack-message-unescape-string
        (slack-format-message
-        (or (and header (format "\t%s\n" header)) "")
-        (or (and pretext (format "\t%s\n" pretext)) "")
+        (or (and header (format "\t%s" header)) "")
+        (or (and pretext (format "\t%s" pretext)) "")
         (or (and body (format "\t%s" body)) "")
         (or (and fields fields) "")
         (or (and actions (format "\t%s" actions)) "")
         (or (and files (format "\t%s" files)) "")
-        (or (and footer (format "\n\t%s" footer)) "")
+        (or (and footer (format "\t%s" footer)) "")
         (or (and image (< 0 (length image))
                  (format "\n\t%s\t%s" pad image)) ""))
        team))))
