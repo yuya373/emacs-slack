@@ -56,7 +56,8 @@
    (author-subname :initarg :author_subname :initform nil)
    (callback-id :initarg :callback_id :initform nil)
    (id :initarg :id :initform nil)
-   (actions :initarg :actions :initform '())))
+   (actions :initarg :actions :initform '())
+   (files :initarg :files :initform '())))
 
 (defclass slack-shared-message (slack-attachment)
   ((channel-id :initarg :channel_id :initform nil)
@@ -167,6 +168,12 @@
   (when (numberp (plist-get payload :ts))
     (setq payload
           (plist-put payload :ts (number-to-string (plist-get payload :ts)))))
+
+  (setq payload
+        (plist-put payload
+                   :files
+                   (mapcar #'slack-file-create
+                           (plist-get payload :files))))
 
   ;; (message "PAYLOAD: %s" payload)
 
