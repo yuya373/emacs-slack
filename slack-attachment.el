@@ -201,9 +201,9 @@
   :group 'slack)
 
 (cl-defmethod slack-attachment-action-run-payload ((this slack-attachment-action)
-                                                _team
-                                                common-payload
-                                                _service-id)
+                                                   _team
+                                                   common-payload
+                                                   _service-id)
   (with-slots (id name text type value style) this
     (cons (cons "actions" (list (list (cons "id" id)
                                       (cons "name" name)
@@ -214,11 +214,11 @@
           common-payload)))
 
 (cl-defmethod slack-attachment-action-get-suggestions ((this
-                                                     slack-attachment-select-action)
-                                                    team
-                                                    common-payload
-                                                    service-id
-                                                    after-success)
+                                                        slack-attachment-select-action)
+                                                       team
+                                                       common-payload
+                                                       service-id
+                                                       after-success)
   (with-slots (name) this
     (let ((url "https://slack.com/api/chat.attachmentSuggestion")
           (params (list (cons "service_id" service-id)
@@ -254,10 +254,10 @@
           :sync t))))))
 
 (cl-defmethod slack-attachment-action-selected-options ((this
-                                                      slack-attachment-select-action)
-                                                     team
-                                                     common-payload
-                                                     service-id)
+                                                         slack-attachment-select-action)
+                                                        team
+                                                        common-payload
+                                                        service-id)
   (with-slots (data-source) this
     (cond
      ((string= data-source "external")
@@ -312,9 +312,9 @@
                (oref this data-source))))))
 
 (cl-defmethod slack-attachment-action-run-payload ((this slack-attachment-select-action)
-                                                team
-                                                common-payload
-                                                service-id)
+                                                   team
+                                                   common-payload
+                                                   service-id)
   (with-slots (id name text type value style data-source min-query-length) this
     (slack-if-let*
         ((selected-options (slack-attachment-action-selected-options this
@@ -372,7 +372,7 @@
 
 
 (cl-defmethod slack-attachment-action-to-string ((action slack-attachment-select-action)
-                                              attachment _team)
+                                                 attachment _team)
   (with-slots (id name text type data-source style options option-groups) action
     (let* ((callback-id (slack-attachment-callback-id attachment))
            (attachment-id (slack-attachment-id attachment))
@@ -386,7 +386,7 @@
                   'keymap slack-attachment-action-keymap))))
 
 (cl-defmethod slack-attachment-action-to-string ((action slack-attachment-action)
-                                              attachment _team)
+                                                 attachment _team)
   (with-slots (id name text type value style) action
     (let* ((callback-id (slack-attachment-callback-id attachment))
            (attachment-id (slack-attachment-id attachment))
