@@ -522,7 +522,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots
-      (fallback text ts color from-url footer fields pretext actions) attachment
+      (fallback text ts color from-url footer fields pretext actions files) attachment
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
            (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
                     pad-raw))
@@ -559,7 +559,27 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                             ""))
                                 'face 'slack-attachment-footer))))
            (image (slack-image-string (slack-image-spec attachment)
-                                      (format "\t%s\t" pad))))
+                                      (format "\t%s\t" pad)))
+           (files (when files
+                    (format "%s\t%s"
+                            pad
+                            (mapconcat #'(lambda (file)
+                                           (let* ((title (or (oref file title)
+                                                             (oref file name)))
+                                                  (type (or (oref file pretty-type)
+                                                            (oref file mimetype)))
+                                                  (id (oref file id))
+                                                  (footer (format "%s %s"
+                                                                  (slack-file-size file)
+                                                                  type)))
+                                             (format "%s\n\t%s\t%s"
+                                                     (slack-file-link-info id title)
+                                                     pad
+                                                     (propertize footer
+                                                                 'face
+                                                                 'slack-attachment-footer))))
+                                       files
+                                       (format "\n\t%s\n" pad))))))
       (slack-message-unescape-string
        (slack-format-message
         (or (and header (format "\t%s\n" header)) "")
@@ -567,6 +587,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
         (or (and body (format "\t%s" body)) "")
         (or (and fields fields) "")
         (or (and actions (format "\t%s" actions)) "")
+        (or (and files (format "\t%s" files)) "")
         (or (and footer (format "\n\t%s" footer)) "")
         (or (and image (< 0 (length image))
                  (format "\n\t%s\t%s" pad image)) ""))
