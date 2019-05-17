@@ -625,19 +625,22 @@
     (when action
       (funcall action))))
 
+(cl-defmethod slack-file-size ((file slack-file))
+  (let ((size (oref file size))
+        (unit ""))
+    (when size
+      (setq unit "KB")
+      (setq size (/ size 1000.0))
+      (when (<= 1000 size)
+        (setq unit "MB")
+        (setq size (/ size 1000.0)))
+      (setq size (format "%s%s" size unit)))
+    size))
+
 (cl-defmethod slack-file-body-to-string ((file slack-file))
   (let* ((url (oref file url-private))
          (pretty-type (oref file pretty-type))
-         (size (let ((size (oref file size))
-                     (unit ""))
-                 (when size
-                   (setq unit "KB")
-                   (setq size (/ size 1000.0))
-                   (when (<= 1000 size)
-                     (setq unit "MB")
-                     (setq size (/ size 1000.0)))
-                   (setq size (format "%s%s" size unit)))
-                 size))
+         (size (slack-file-size file))
          (title (or (oref file title) (oref file name))))
     (slack-format-message (propertize (format "<%s|%s>" url title)
                                       'face '(:weight bold))
