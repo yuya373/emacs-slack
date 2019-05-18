@@ -37,8 +37,11 @@
 
 (cl-defmethod slack-buffer-name ((_class (subclass slack-search-result-buffer)) search-result team)
   (with-slots (query sort sort-dir) search-result
-    (format "*Slack - %s : Search Result - QUERY: %s, ORDER BY: %s %s"
+    (format "*Slack - %s : %s Search Result - QUERY: %s, ORDER BY: %s %s"
             (oref team name)
+            (if (slack-file-search-result-p search-result)
+                "File"
+              "Message")
             query
             sort
             (upcase sort-dir))))
