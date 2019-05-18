@@ -39,6 +39,7 @@
     map))
 
 (define-derived-mode slack-file-info-buffer-mode slack-buffer-mode  "Slack File Info"
+  (setq-local lui-max-buffer-size nil)
   (add-hook 'lui-post-output-hook 'slack-display-image t t))
 
 (defclass slack-file-info-buffer (slack-buffer)
