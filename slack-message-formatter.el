@@ -491,15 +491,17 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
               (slack-message-unescape-string comment team)))))
 
 (cl-defmethod slack-file-summary ((file slack-file) _ts team)
-  (with-slots (mode pretty-type mimetype permalink name title) file
+  (with-slots (mode permalink) file
     (if (string= mode "tombstone")
         "This file was deleted."
-      (format "uploaded this %s: %s <%s|open in browser>"
-              (or pretty-type mimetype)
-              (slack-file-link-info (oref file id)
-                                    (slack-message-unescape-string (or title name)
-                                                                   team))
-              permalink))))
+      (let ((type (slack-file-type file))
+            (title (slack-file-title file)))
+        (format "uploaded this %s: %s <%s|open in browser>"
+                type
+                (slack-file-link-info (oref file id)
+                                      (slack-message-unescape-string title
+                                                                     team))
+                permalink)))))
 
 (cl-defmethod slack-file-summary ((this slack-file-email) ts team)
   (with-slots (preview-plain-text plain-text is-expanded) this
@@ -565,10 +567,8 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                     (format "%s\t%s"
                             pad
                             (mapconcat #'(lambda (file)
-                                           (let* ((title (or (oref file title)
-                                                             (oref file name)))
-                                                  (type (or (oref file pretty-type)
-                                                            (oref file mimetype)))
+                                           (let* ((title (slack-file-title file))
+                                                  (type (slack-file-type file))
                                                   (id (oref file id))
                                                   (footer (format "%s %s"
                                                                   (slack-file-size file)

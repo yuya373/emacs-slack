@@ -639,14 +639,14 @@
 
 (cl-defmethod slack-file-body-to-string ((file slack-file))
   (let* ((url (oref file url-private))
-         (pretty-type (oref file pretty-type))
+         (type (slack-file-type file))
          (size (slack-file-size file))
-         (title (or (oref file title) (oref file name))))
+         (title (slack-file-title file)))
     (slack-format-message (propertize (format "<%s|%s>" url title)
                                       'face '(:weight bold))
                           (format "%s%s"
                                   (or (and size (format "%s " size)) "")
-                                  pretty-type))))
+                                  type))))
 
 (cl-defmethod slack-file-body-to-string ((this slack-file-email))
   (let* ((label-face '(:foreground "#586e75" :weight bold))
@@ -677,6 +677,14 @@
     (mapconcat #'identity
                (list from to cc subject date "" body)
                "\n")))
+
+(cl-defmethod slack-file-title ((file slack-file))
+  (or (oref file title)
+      (oref file name)))
+
+(cl-defmethod slack-file-type ((file slack-file))
+  (or (oref file pretty-type)
+      (oref file mimetype)))
 
 (provide 'slack-file)
 ;;; slack-file.el ends here

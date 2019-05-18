@@ -47,8 +47,7 @@
 (cl-defmethod slack-buffer-name ((_class (subclass slack-file-info-buffer)) file team)
   (format "*Slack - %s File: %s"
           (oref team name)
-          (or (oref file title)
-              (oref file name)
+          (or (slack-file-title file)
               (oref file id))))
 
 (cl-defmethod slack-buffer-display-file ((this slack-buffer) file-id)

@@ -154,7 +154,7 @@
                          (if (slack-string-blankp thumb) ""
                            (format "%s " thumb))
                          (slack-file-link-info (slack-file-id file)
-                                               (oref file title))))
+                                               (slack-file-title file))))
          (user-name (propertize (or (slack-user-name (oref file user) team) "")
                                 'face '(:weight bold :height 0.8)))
          (timestamp (and (oref file timestamp)
