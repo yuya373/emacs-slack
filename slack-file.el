@@ -219,7 +219,13 @@
    (timestamp :initarg :timestamp :type number)
    (comments :initarg :comments :type list :initform '())
    (mode :initarg :mode :type (or null string) :initform nil)
-   ))
+   (content :initarg :content :type (or null slack-file-content) :initform nil)))
+
+(defclass slack-file-content ()
+  ((content :initarg :content :initform nil)
+   (content-highlight-html :initarg :content_highlight_html :initform nil)
+   (content-highlight-css :initarg :content_highlight_css :initform nil)
+   (is-truncated :initarg :is_truncated :initform nil :type boolean)))
 
 (defclass slack-file-email (slack-file)
   ((from :initarg :from :type (or null list) :initform nil)
@@ -320,16 +326,27 @@
 
 (defun slack-file-request-info (file-id page team &optional after-success)
   (cl-labels
-      ((on-file-info (&key data &allow-other-keys)
-                     (slack-request-handle-error
-                      (data "slack-file-info")
-                      (let* ((file (slack-file-create (plist-get data :file)))
-                             (comments (mapcar #'slack-file-comment-create
-                                               (plist-get data :comments))))
-                        (oset file comments comments)
-                        (slack-file-pushnew file team)
-                        (if after-success
-                            (funcall after-success file team))))))
+      ((on-file-info
+        (&key data &allow-other-keys)
+        (slack-request-handle-error
+         (data "slack-file-info")
+         (let* ((file (slack-file-create (plist-get data :file)))
+                (comments (mapcar #'slack-file-comment-create
+                                  (plist-get data :comments)))
+                (content (make-instance 'slack-file-content
+                                        :content
+                                        (plist-get data :content)
+                                        :content_highlight_html
+                                        (plist-get data :content_highlight_html)
+                                        :content_highlight_css
+                                        (plist-get data :content_highlight_css)
+                                        :is_truncated
+                                        (eq t (plist-get data :is_truncated)))))
+           (oset file comments comments)
+           (oset file content content)
+           (slack-file-pushnew file team)
+           (if after-success
+               (funcall after-success file team))))))
     (slack-request
      (slack-request-create
       slack-file-info-url

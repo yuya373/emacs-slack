@@ -105,6 +105,15 @@
                   (file (slack-file-find file-id team)))
       (slack-file-run-action file this)))
 
+(cl-defmethod slack-buffer-file-content-to-string ((this slack-file-info-buffer))
+  (with-slots (file) this
+    (slack-if-let* ((content (oref file content))
+                    (html (oref content content-highlight-html))
+                    (css (oref content content-highlight-css)))
+        (propertize (concat "<style>\n" css "</style>" "\n" html)
+                    'slack-file-html-content t)
+      "")))
+
 (cl-defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
   (with-slots (file team) this
     (let* ((user-name (slack-user-name (oref file user) team))
@@ -122,6 +131,7 @@
                                                (seconds-to-time
                                                 (oref file timestamp)))))
            (body (slack-file-body-to-string file))
+           (content (slack-buffer-file-content-to-string this))
            (thumb (or (and (slack-file-image-p file)
                            (slack-message-large-image-to-string file))
                       (slack-message-image-to-string file)))
@@ -133,6 +143,8 @@
                                         timestamp
                                         " "
                                         body
+                                        " "
+                                        content
                                         " "
                                         thumb
                                         " "
@@ -147,7 +159,14 @@
        (slack-buffer-file-to-string this)
        ;; saved-text-properties not working??
        'file-id (oref file id)
-       'ts (slack-ts file)))))
+       'ts (slack-ts file))))
+  (slack-if-let* ((html-beg (cl-loop for i from (point-min) to lui-output-marker
+                                     if (get-text-property i 'slack-file-html-content)
+                                     return i))
+                  (html-end (next-single-property-change html-beg
+                                                         'slack-file-html-content))
+                  (inhibit-read-only t))
+      (shr-render-region html-beg html-end)))
 
 (cl-defmethod slack-buffer-add-reaction-to-message
   ((this slack-file-info-buffer) reaction _ts)
