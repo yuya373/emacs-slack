@@ -53,7 +53,7 @@
 (cl-defmethod slack-buffer-display-file ((this slack-buffer) file-id)
   (with-slots (team) this
     (cl-labels
-        ((open (file _)
+        ((open (file &rest _args)
                (slack-buffer-display
                 (slack-create-file-info-buffer team file))))
       (slack-file-request-info file-id 1 team #'open))))
@@ -209,8 +209,8 @@
                   (page (oref file page)))
       (slack-file-request-info
        file page team
-       #'(lambda (file team)
            (slack-redisplay file team)))))
+       #'(lambda (file team &rest _args)
 
 (defun slack-file-display ()
   (interactive)

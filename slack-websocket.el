@@ -596,7 +596,7 @@ TEAM is one of `slack-teams'"
                   (buffer (slack-buffer-find 'slack-file-list-buffer
                                              team)))
       (slack-file-request-info file-id 1 team
-                               #'(lambda (file _team)
+                               #'(lambda (file &rest _args)
                                    (slack-buffer-update buffer file)))))
 
 (defun slack-ws-handle-file-deleted (payload team)
