@@ -167,7 +167,8 @@
                   (html-end (next-single-property-change html-beg
                                                          'slack-file-html-content))
                   (inhibit-read-only t))
-      (shr-render-region html-beg html-end)))
+      (shr-render-region html-beg html-end))
+  (goto-char (point-min)))
 
 (cl-defmethod slack-buffer-add-reaction-to-message
   ((this slack-file-info-buffer) reaction _ts)
