@@ -524,11 +524,6 @@
 (cl-defmethod slack-message-star-api-params ((this slack-file))
   (cons "file" (oref this id)))
 
-(defun slack-redisplay (file team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
-                                             team)))
-      (slack-buffer-replace buffer file)))
-
 (cl-defmethod slack-ts ((this slack-file))
   (number-to-string (oref this created)))
 

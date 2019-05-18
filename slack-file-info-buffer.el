@@ -209,8 +209,9 @@
                   (page (oref file page)))
       (slack-file-request-info
        file page team
-           (slack-redisplay file team)))))
        #'(lambda (file team &rest _args)
+           (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer team)))
+               (slack-buffer-replace buffer file))))))
 
 (defun slack-file-display ()
   (interactive)
