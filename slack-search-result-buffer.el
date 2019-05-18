@@ -59,13 +59,24 @@
                    :team team
                    :search-result search-result)))
 
+(cl-defmethod slack-buffer-file-search-result-to-string ((this slack-search-result-buffer) file)
+  (let ((title (slack-file-title file))
+        (type (slack-file-type file))
+        (user-name (slack-user-name (oref file user)
+                                    (oref this team)))
+        (id (oref file id)))
+    (format "%s\n%s"
+            (slack-file-link-info id title)
+            (propertize (format "%s %s" user-name type)
+                        'face 'slack-attachment-footer))))
+
 (cl-defmethod slack-buffer-insert ((this slack-search-result-buffer) match)
   (with-slots (team) this
     (let* ((time (slack-ts-to-time (slack-ts match)))
            (lui-time-stamp-time time)
-           (lui-time-stamp-format "[%Y-%m-%d %H:%M:%S]"))
+           (lui-time-stamp-format "[%Y-%m-%d %H:%M] "))
       (if (slack-file-p match)
-          (lui-insert (slack-message-to-string match (slack-ts match) team) t)
+          (lui-insert (slack-buffer-file-search-result-to-string this match) t)
         (lui-insert (slack-message-to-string match team) t))
       (lui-insert "" t))))
 
