@@ -263,8 +263,10 @@
 
 (defun slack-file-find (id team)
   (let ((files (oref team files)))
-    (cl-find-if #'(lambda (file) (string= (oref file id) id))
-                files)))
+    (gethash id files)))
+
+(cl-defmethod slack-file-pushnew ((f slack-file) team)
+  (slack-team-set-files team (list f)))
 
 (defun slack-file-create-email-from (payload &optional type)
   (and payload
@@ -309,9 +311,6 @@
 
 (cl-defmethod slack-equalp ((old slack-file) new)
   (string= (oref old id) (oref new id)))
-
-(cl-defmethod slack-file-pushnew ((f slack-file) team)
-  (slack-merge-list (oref team files) (list f)))
 
 (defconst slack-file-info-url "https://slack.com/api/files.info")
 
@@ -499,12 +498,6 @@
               'face '(:underline t :weight bold)
               'keymap slack-file-link-keymap))
 
-(defmacro slack-with-file (id team &rest body)
-  (declare (indent 2) (debug t))
-  `(cl-loop for file in (oref ,team files)
-            do (when (string= (oref file id) ,id)
-                 ,@body)))
-
 (cl-defmethod slack-message-star-added ((this slack-file))
   (oset this is-starred t))
 
@@ -546,12 +539,10 @@
                        (user-ids (slack-team-missing-user-ids
                                   team (cl-loop for file in files
                                                 nconc (slack-message-user-ids file)))))
-                  (if (string= page "1")
-                      (oset team files files)
-                    (oset team files (append (oref team files) files)))
-                  (oset team files (cl-sort (oref team files)
-                                            #'<
-                                            :key #'(lambda (e) (oref e created))))
+                  (when (string= page "1")
+                    (oset team files (make-hash-table :test 'equal))
+                    (oset team file-ids '()))
+                  (slack-team-set-files team files)
                   (if (< 0 (length user-ids))
                       (slack-users-info-request
                        user-ids team :after-success #'(lambda () (callback paging)))

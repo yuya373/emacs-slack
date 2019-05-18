@@ -601,10 +601,7 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-file-deleted (payload team)
   (let ((file-id (plist-get payload :file_id)))
-    (oset team files
-          (cl-remove-if #'(lambda (f) (string= file-id
-                                               (oref f id)))
-                        (oref team files)))))
+    (remhash file-id (oref team files))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (slack-event-update (slack-create-room-marked-event payload)
