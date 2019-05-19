@@ -121,56 +121,69 @@
 
 (defun slack-group-rename ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-current-room-or-select
-                (slack-group-names team #'(lambda (groups)
-                                            (cl-remove-if #'slack-room-archived-p
-                                                          groups))))))
-    (slack-conversations-rename room team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-rename room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-group-names team #'(lambda (groups)
+                                                  (cl-remove-if #'slack-room-archived-p
+                                                                groups)))
+                      "Select Channel: "))))
+      (slack-conversations-rename room team))))
 
 (defun slack-group-invite ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (room (slack-current-room-or-select
-                (slack-group-names team
-                                   #'(lambda (rooms)
-                                       (cl-remove-if #'slack-room-archived-p
-                                                     rooms))))))
-    (slack-conversations-invite room team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-invite room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-group-names team
+                                         #'(lambda (rooms)
+                                             (cl-remove-if #'slack-room-archived-p
+                                                           rooms)))
+                      "Select Channel: "))))
+      (slack-conversations-invite room team))))
 
 (defun slack-group-leave ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (group (slack-current-room-or-select
-                 (slack-group-names team))))
-    (slack-conversations-leave group team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-leave room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names team)
+                       "Select Channel: "))))
+      (slack-conversations-leave group team))))
 
 (cl-defmethod slack-room-archived-p ((room slack-group))
   (oref room is-archived))
 
 (defun slack-group-archive ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (group (slack-current-room-or-select
-                 #'(lambda ()
-                     (slack-group-names
-                      team
-                      #'(lambda (groups)
-                          (cl-remove-if #'slack-room-archived-p
-                                        groups)))))))
-    (slack-conversations-archive group team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-archive room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names
+                        team
+                        #'(lambda (groups)
+                            (cl-remove-if #'slack-room-archived-p
+                                          groups)))
+                       "Select Channel: "))))
+      (slack-conversations-archive group team))))
 
 (defun slack-group-unarchive ()
   (interactive)
-  (let* ((team (slack-team-select))
-         (group (slack-current-room-or-select
-                 #'(lambda ()
-                     (slack-group-names
-                      team
-                      #'(lambda (groups)
-                          (cl-remove-if-not #'slack-room-archived-p
-                                            groups)))))))
-    (slack-conversations-unarchive group team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-unarchive room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names
+                        team
+                        #'(lambda (groups)
+                            (cl-remove-if-not #'slack-room-archived-p
+                                              groups)))
+                       "Select Channel: "))))
+      (slack-conversations-unarchive group team))))
 
 
 (defun slack-group-members-s (group team)
@@ -198,22 +211,29 @@
 (defun slack-group-mpim-close ()
   "Close mpim."
   (interactive)
-  (let* ((team (slack-team-select))
-         (mpim (slack-current-room-or-select
-                #'(lambda ()
-                    (slack-group-names
-                     team
-                     #'(lambda (groups)
-                         (cl-remove-if-not #'slack-mpim-p
-                                           groups)))))))
-    (cl-labels
-        ((success (_data)
-                  (let ((room (slack-room-find (oref mpim id) team)))
-                    (oset room is-open nil))
-                  (slack-log (format "%s closed"
-                                     (slack-room-name mpim team))
-                             team :level 'info)))
-      (slack-conversations-close mpim team #'success))))
+  (cl-labels
+      ((on-success (room team)
+                   #'(lambda (data)
+                       (when (and (eq t (plist-get data :no_op)))
+                         (oset room is-member nil)
+                         (slack-team-set-room team room)
+                         (slack-log (format "%s closed"
+                                            (slack-room-name room team))
+                                    team :level 'info)))))
+    (slack-if-let-room-and-team (room team)
+        (slack-conversations-close room
+                                   team
+                                   (on-success room team))
+      (let* ((team (slack-team-select))
+             (mpim (slack-select-from-list
+                       ((slack-group-names
+                         team
+                         #'(lambda (groups)
+                             (cl-remove-if-not #'(lambda (e) (and (slack-mpim-p e)
+                                                                  (oref e is-member)))
+                                               groups)))
+                        "Select Channel: "))))
+        (slack-conversations-close mpim team (on-success mpim team))))))
 
 
 (cl-defmethod slack-mpim-p ((room slack-group))

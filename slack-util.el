@@ -65,6 +65,23 @@
             (value (pop ,dup)))
        ,@body)))
 
+(defun slack-current-room-and-team ()
+  (if (and (bound-and-true-p slack-current-buffer)
+           (slot-exists-p slack-current-buffer 'room-id)
+           (slot-boundp slack-current-buffer 'room-id)
+           (slot-exists-p slack-current-buffer 'team)
+           (slot-boundp slack-current-buffer 'team))
+      (list (slack-buffer-room slack-current-buffer)
+            (oref slack-current-buffer team))
+    (list nil nil)))
+
+(defmacro slack-if-let-room-and-team (var-list then &rest else)
+  (declare (indent 2) (debug t))
+  `(destructuring-bind ,var-list (slack-current-room-and-team)
+     (if (and ,@var-list)
+         ,then
+       ,@else)))
+
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
 
