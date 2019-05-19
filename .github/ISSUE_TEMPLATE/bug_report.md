@@ -32,6 +32,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment:**
  - OS: [e.g. macOS]
  - Emacs Version: [e.g. 25]
+ - emacs-slack Version: [e.g. `9ffc86` (commit hash) or `20190519.716` (melpa version)]
 
 **Additional context**
 Add any other context about the problem here.
