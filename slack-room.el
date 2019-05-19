@@ -239,17 +239,6 @@
                       (cons "ts"  ts))
         :success #'on-update-mark)))))
 
-(defun slack-current-room-or-select (room-alist-func &optional select)
-  (if (and (not select)
-           (bound-and-true-p slack-current-buffer)
-           (slot-boundp slack-current-buffer 'room))
-      (slack-buffer-room slack-current-buffer)
-    (let* ((room-alist (if (functionp room-alist-func)
-                           (funcall room-alist-func)
-                         room-alist-func)))
-      (slack-select-from-list
-          (room-alist "Select Channel: ")))))
-
 (cl-defmethod slack-room-member-p ((_room slack-room)) t)
 
 (cl-defmethod slack-room-archived-p ((_room slack-room)) nil)
