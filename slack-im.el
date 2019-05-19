@@ -114,13 +114,13 @@
 (defun slack-im-close ()
   "Close direct message."
   (interactive)
-  (let* ((team (slack-team-select))
-         (im (slack-current-room-or-select
-              #'(lambda ()
-                  (cl-remove-if #'(lambda (im-names)
-                                    (not (oref (cdr im-names) is-open)))
-                                (slack-im-names team))))))
-    (slack-conversations-close im team)))
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-close room team)
+    (let* ((team (slack-team-select))
+           (im (slack-select-from-list
+                   ((slack-im-names team)
+                    "Select Channel: "))))
+      (slack-conversations-close im team))))
 
 (defun slack-im-open ()
   (interactive)
