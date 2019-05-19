@@ -153,7 +153,7 @@
          (id (plist-get channel :id)))
     (slack-room-find id team)))
 
-(cl-defmethod slack-event-update-name ((this slack-channel-rename-event) room _team)
+(cl-defmethod slack-event-update-name ((this slack-room-rename-event) room _team)
   (let* ((previous-name (oref room name-normalized))
          (payload (oref this payload))
          (channel (plist-get payload :channel))
@@ -304,6 +304,11 @@
 (cl-defmethod slack-event-save-room ((_this slack-group-close-event) room team)
   (oset room is-member nil)
   (slack-team-set-groups team (list room)))
+
+(cl-defmethod slack-event-notify ((_this slack-group-close-event) room team)
+  (slack-log (format "%s closed"
+                     (slack-room-name room team))
+             team :level 'info))
 
 (cl-defmethod slack-event-save-room ((_this slack-im-close-event) room team)
   (oset room is-open nil)
