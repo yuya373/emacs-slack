@@ -51,13 +51,13 @@
                                       team))
 
 (defun slack-file-remove-reaction (file-id team)
-  (slack-with-file file-id team
-    (let ((reaction (slack-message-reaction-select
-                     (slack-message-reactions file))))
-      (slack-message-reaction-remove-request
-       (list (cons "file" file-id)
-             (cons "name" reaction))
-       team))))
+  (let* ((file (slack-file-find file-id team))
+         (reaction (slack-message-reaction-select
+                    (slack-message-reactions file))))
+    (slack-message-reaction-remove-request
+     (list (cons "file" file-id)
+           (cons "name" reaction))
+     team)))
 
 (defun slack-message-show-reaction-users ()
   (interactive)

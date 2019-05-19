@@ -117,7 +117,8 @@ use `slack-change-current-team' to change `slack-current-team'"
    (commands :initform '() :type list)
    (usergroups :initarg :usergroups :initform '() :type list)
    (ws :type slack-team-ws)
-   (files :initform '() :type list)
+   (files :initarg :files :initform (make-hash-table :test 'equal))
+   (file-ids :initarg file-ids :initform '())
    (counts :initform nil)
    (emoji-master :initform (make-hash-table :test 'equal))
    (visible-threads :initarg :visible-threads :initform nil :type boolean)
@@ -454,6 +455,28 @@ Available options (property name, type, default value)
 
 (cl-defmethod slack-team-bots ((this slack-team))
   (hash-table-values (oref this bots)))
+
+(cl-defmethod slack-team-set-files ((this slack-team) files)
+  (let ((table (oref this files)))
+    (cl-loop for file in files
+             do (slack-if-let* ((old (gethash (oref file id) table)))
+                    (slack-merge old file)
+                  (let ((id (oref file id)))
+                    (push id (oref this file-ids))
+                    (puthash id file table)))))
+  (oset this
+        file-ids
+        (cl-sort (oref this file-ids)
+                 #'>
+                 :key #'(lambda (id) (let ((file (gethash id (oref this files))))
+                                       (oref file created))))))
+
+(cl-defmethod slack-team-files ((this slack-team))
+  (let ((ret))
+    (cl-loop for id in (oref this file-ids)
+             do (push (gethash id (oref this files))
+                      ret))
+    ret))
 
 (provide 'slack-team)
 ;;; slack-team.el ends here

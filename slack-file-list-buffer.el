@@ -75,7 +75,7 @@
 
 (cl-defmethod slack-buffer-insert-history ((this slack-file-list-buffer))
   (with-slots (team) this
-    (let ((files (oref team files))
+    (let ((files (slack-team-files team))
           (before-oldest (oref this oldest))
           (before-oldest-id (oref this oldest-id)))
       (slack-buffer-set-oldest this (car files))
@@ -108,7 +108,7 @@
       (slack-buffer-set-current-buffer this)
       (slack-buffer-insert-load-more this)
       (let* ((inhibit-read-only t)
-             (files (oref (oref this team) files)))
+             (files (slack-team-files (oref this team))))
         (cl-loop for file in files
                  do (slack-buffer-insert this file))
         (slack-buffer-set-oldest this (car files)))
@@ -196,10 +196,7 @@
 
 (cl-defmethod slack-buffer-toggle-email-expand ((this slack-file-list-buffer) file-id)
   (with-slots (team) this
-    (slack-if-let* ((file (cl-find-if
-                           #'(lambda (e) (string= (oref e id)
-                                                  file-id))
-                           (oref team files))))
+    (slack-if-let* ((file (slack-file-find file-id team)))
         (progn
           (oset file is-expanded (not (oref file is-expanded)))
           (slack-buffer-update this file :replace t)))))

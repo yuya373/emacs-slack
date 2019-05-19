@@ -596,15 +596,12 @@ TEAM is one of `slack-teams'"
                   (buffer (slack-buffer-find 'slack-file-list-buffer
                                              team)))
       (slack-file-request-info file-id 1 team
-                               #'(lambda (file _team)
+                               #'(lambda (file &rest _args)
                                    (slack-buffer-update buffer file)))))
 
 (defun slack-ws-handle-file-deleted (payload team)
   (let ((file-id (plist-get payload :file_id)))
-    (oset team files
-          (cl-remove-if #'(lambda (f) (string= file-id
-                                               (oref f id)))
-                        (oref team files)))))
+    (remhash file-id (oref team files))))
 
 (defun slack-ws-handle-room-marked (payload team)
   (slack-event-update (slack-create-room-marked-event payload)
