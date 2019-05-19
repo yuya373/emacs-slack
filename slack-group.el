@@ -48,7 +48,7 @@
    (is-general :initarg :is_general :initform nil :type boolean)
    (is-group :initarg :is_group :initform nil :type boolean)
    (is-im :initarg :is_im :initform nil :type boolean)
-   (is-member :initarg :is_member :initform nil :type boolean)
+   (is-member :initarg :is_member :initform t :type boolean)
    (is-mpim :initarg :is_mpim :initform nil :type boolean)
    (is-org-shared :initarg :is_org_shared :initform nil :type boolean)
    (is-private :initarg :is_private :initform nil :type boolean)
@@ -267,6 +267,12 @@
 
 (cl-defmethod slack-room-members-loaded ((this slack-group))
   (oset this members-loaded-p t))
+
+(cl-defmethod slack-room-hidden-p ((this slack-group))
+  (not (slack-room-member-p this)))
+
+(cl-defmethod slack-room-member-p ((room slack-group))
+  (oref room is-member))
 
 (provide 'slack-group)
 ;;; slack-group.el ends here

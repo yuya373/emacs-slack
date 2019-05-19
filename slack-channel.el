@@ -37,13 +37,12 @@
 
 (defconst slack-channel-update-mark-url "https://slack.com/api/channels.mark")
 
-(defclass slack-channel (slack-group) ())
+(defclass slack-channel (slack-group)
+  ((is-member :initarg :is_member :initform nil :type boolean)))
+
 
 (defun slack-channel-names (team &optional filter)
   (slack-room-names (slack-team-channels team) team filter))
-
-(cl-defmethod slack-room-member-p ((room slack-channel))
-  (oref room is-member))
 
 (defun slack-channel-list-update (&optional team after-success)
   (interactive)
