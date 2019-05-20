@@ -1,6 +1,7 @@
 <p>
-  <a href="https://melpa.org/#/slack"><img alt="MELPA" src="https://melpa.org/packages/slack-badge.svg"/></a>
-  <a href="https://travis-ci.com/yuya373/emacs-slack"><img src="https://travis-ci.com/yuya373/emacs-slack.svg?branch=master" alt="Build Status"></a>
+  <a href="https://melpa.org/#/slack" target="_blank"><img alt="MELPA" src="https://melpa.org/packages/slack-badge.svg"/></a>
+  <a href="https://travis-ci.com/yuya373/emacs-slack" target="_blank"><img src="https://travis-ci.com/yuya373/emacs-slack.svg?branch=master" alt="Build Status"></a>
+  <a href="https://patreon.com/yuya373" target="_blank"><img src="https://img.shields.io/badge/patreon-Become a patron-052D49.svg?logo=patreon&labelColor=E85B46&logoColor=white" alt="Become a patron" /></a>
 </p>
 <p align="center"><img src="https://raw.githubusercontent.com/yuya373/emacs-slack/assets/assets/slack-logo.svg?sanitize=true" width=300 height=126/></p>
 <p align="center"><b>Emacs Slack</b></p>
