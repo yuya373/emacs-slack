@@ -57,6 +57,14 @@
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
 
+(defun slack-ws-on-timeout (team-id)
+  (let* ((team (slack-team-find team-id))
+         (ws (oref team ws)))
+    (slack-log (format "websocket open timeout")
+               team)
+    (slack-ws--close ws team)
+    (slack-ws-reconnect ws team)))
+
 (cl-defmethod slack-ws-open ((ws slack-team-ws) team &key (on-open nil) (ws-url nil))
   (slack-if-let* ((conn (oref ws conn))
                   (state (websocket-ready-state conn)))
@@ -68,14 +76,9 @@
              (slack-log "Websocket is closed" team)))
 
     (progn
-      (cl-labels
-          ((on-timeout ()
-                       (slack-log (format "websocket open timeout")
-                                  team)
-                       (slack-ws--close ws team)
-                       (slack-ws-reconnect ws team)))
-        (slack-ws-set-connect-timeout-timer ws #'on-timeout))
-
+      (slack-ws-set-connect-timeout-timer ws
+                                          #'slack-ws-on-timeout
+                                          (slack-team-id team))
       (cl-labels
           ((on-message (_websocket frame)
                        (slack-ws-on-message ws frame team))
