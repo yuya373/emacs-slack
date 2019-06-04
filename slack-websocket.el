@@ -508,7 +508,9 @@ TEAM is one of `slack-teams'"
                                     (slack-typing-add-user typing user limit))
                                 (setq typing (slack-typing-create room limit user))
                                 (setq typing-timer
-                                      (run-with-timer t 1 #'slack-typing-display team)))))))
+                                      (run-with-timer t 1
+                                                      #'slack-typing-display
+                                                      (slack-team-id team))))))))
         (slack-if-let*
             ((user (slack-user-name user-id team)))
             (update-typing user)
