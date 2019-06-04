@@ -181,21 +181,26 @@
       (cl-loop for msg in candidate
                do (slack-ws-send ws msg team)))))
 
-(cl-defmethod slack-ws-ping ((ws slack-team-ws) team)
-  (with-slots (message-id) team
-    (let* ((time (number-to-string (time-to-seconds (current-time))))
-           (m (list :id message-id
-                    :type "ping"
-                    :time time)))
-      (cl-labels
-          ((on-timeout ()
-                       (slack-log "Slack Websocket PING Timeout." team :level 'warn)
-                       (slack-ws--close ws team)
-                       (slack-ws-reconnect ws team)))
-        (slack-ws-set-ping-check-timer ws time #'on-timeout))
-      (slack-team-send-message team m)
-      (slack-log (format "Send PING: %s" time)
-                 team :level 'trace))))
+(defun slack-ws-on-ping-timeout (team-id)
+  (let* ((team (slack-team-find team-id))
+         (ws (oref team ws)))
+    (slack-log "Slack Websocket PING Timeout." team :level 'warn)
+    (slack-ws--close ws team)
+    (slack-ws-reconnect ws team)))
+
+(defun slack-ws-ping (team-id)
+  (let ((team (slack-team-find team-id)))
+    (with-slots (message-id ws) team
+      (let* ((time (number-to-string (time-to-seconds (current-time))))
+             (m (list :id message-id
+                      :type "ping"
+                      :time time)))
+        (slack-ws-set-ping-check-timer ws time
+                                       #'slack-ws-on-ping-timeout
+                                       (slack-team-id team))
+        (slack-team-send-message team m)
+        (slack-log (format "Send PING: %s" time)
+                   team :level 'trace)))))
 
 (defvar slack-disconnected-timer nil)
 (defun slack-notify-abandon-reconnect (team)
@@ -303,7 +308,7 @@ TEAM is one of `slack-teams'"
          (timer (gethash key (oref ws ping-check-timers))))
     (slack-log (format "Receive PONG: %s" key)
                team :level 'trace)
-    (slack-ws-set-ping-timer ws #'slack-ws-ping ws team)
+    (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
     (when timer
       (cancel-timer timer)
       (remhash key (oref ws ping-check-timers))
@@ -344,7 +349,7 @@ TEAM is one of `slack-teams'"
           (slack-ws-cancel-connect-timeout-timer ws)
           (slack-ws-cancel-reconnect-timer ws)
           (slack-cancel-notify-adandon-reconnect)
-          (slack-ws-set-ping-timer ws #'slack-ws-ping ws team)
+          (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
           (slack-ws-resend ws team)
           (slack-log "Slack Websocket Is Ready!" team :level 'info))
          ((plist-get decoded-payload :reply_to)
