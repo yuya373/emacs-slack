@@ -233,72 +233,88 @@
       :type "POST"
       :success #'on-success))))
 
-(cl-defmethod slack-ws--reconnect ((ws slack-team-ws) team &optional force)
-  (cl-labels ((abort ()
-                     (slack-notify-abandon-reconnect team)
-                     (slack-ws--close ws team t))
-              (use-reconnect-url ()
-                                 (slack-log "Reconnect with reconnect-url" team)
-                                 (slack-ws-open ws team
-                                                :ws-url (oref ws reconnect-url)))
-              (on-authorize-error (&key error-thrown symbol-status &allow-other-keys)
-                                  (slack-log (format "Reconnect Failed: %s, %s"
-                                                     error-thrown
-                                                     symbol-status)
-                                             team)
-                                  (slack-ws-reconnect ws team))
-              (on-open ()
-                       (slack-conversations-list-update team)
-                       ;; (slack-user-list-update team)
+(defun slack-ws-abort-reconnect (team-id)
+  (let* ((team (slack-team-find team-id))
+         (ws (oref team ws)))
+    (slack-notify-abandon-reconnect team)
+    (slack-ws--close ws team t)))
 
-                       (slack-dnd-status-team-info team)
-                       (cl-loop for buffer in (oref team slack-message-buffer)
-                                do (slack-if-let*
-                                       ((live-p (buffer-live-p buffer))
-                                        (buffer (with-current-buffer buffer
-                                                  (and (bound-and-true-p
-                                                        slack-current-buffer)
-                                                       slack-current-buffer))))
-                                       (slack-buffer-load-missing-messages buffer)))
-                       (slack-team-kill-buffers
-                        team :except '(slack-message-buffer
-                                       slack-message-edit-buffer
-                                       slack-message-share-buffer
-                                       slack-room-message-compose-buffer)))
-              (on-authorize-success (data)
-                                    (let ((team-data (plist-get data :team))
-                                          (self-data (plist-get data :self)))
-                                      (slack-team-set-ws-url team (plist-get data :url))
-                                      (oset team domain (plist-get team-data :domain))
-                                      (oset team id (plist-get team-data :id))
-                                      (oset team name (plist-get team-data :name))
-                                      (oset team self self-data)
-                                      (oset team self-id (plist-get self-data :id))
-                                      (oset team self-name (plist-get self-data :name))
-                                      (slack-ws-open ws team :on-open #'on-open)))
-              (do-reconnect ()
-                            (slack-ws-inc-reconnect-count ws)
-                            (slack-ws--close ws team)
-                            (if (slack-ws-use-reconnect-url-p ws)
-                                (slack-request-api-test team #'use-reconnect-url)
-                              (slack-authorize team
-                                               #'on-authorize-error
-                                               #'on-authorize-success))
-                            (slack-log (format "Reconnecting... [%s/%s]"
-                                               (oref ws reconnect-count)
-                                               (oref ws reconnect-count-max))
-                                       team
-                                       :level 'warn)))
-    (if (and (not force)
-             (slack-ws-reconnect-count-exceed-p ws))
-        (abort)
-      (do-reconnect))))
+(defun slack-ws-reconnect-with-reconnect-url (team-id)
+  (let* ((team (slack-team-find team-id))
+         (ws (oref team ws)))
+    (slack-log "Reconnect with reconnect-url" team)
+    (slack-ws-open ws team
+                   :ws-url (oref ws reconnect-url))))
+
+(defun slack-ws-on-reconnect-open (team-id)
+  (let* ((team (slack-team-find team-id)))
+    (slack-conversations-list-update team)
+    ;; (slack-user-list-update team)
+
+    (slack-dnd-status-team-info team)
+    (cl-loop for buffer in (oref team slack-message-buffer)
+             do (slack-if-let*
+                    ((live-p (buffer-live-p buffer))
+                     (buffer (with-current-buffer buffer
+                               (and (bound-and-true-p
+                                     slack-current-buffer)
+                                    slack-current-buffer))))
+                    (slack-buffer-load-missing-messages buffer)))
+    (slack-team-kill-buffers
+     team :except '(slack-message-buffer
+                    slack-message-edit-buffer
+                    slack-message-share-buffer
+                    slack-room-message-compose-buffer))))
+
+(defun slack-ws--reconnect (team-id &optional force)
+  (let* ((team (slack-team-find team-id))
+         (ws (oref team ws)))
+    (cl-labels
+        ((on-authorize-error (&key error-thrown symbol-status &allow-other-keys)
+                             (slack-log (format "Reconnect Failed: %s, %s"
+                                                error-thrown
+                                                symbol-status)
+                                        team)
+                             (slack-ws-reconnect ws team))
+         (on-authorize-success (data)
+                               (let ((team-data (plist-get data :team))
+                                     (self-data (plist-get data :self)))
+                                 (slack-team-set-ws-url team (plist-get data :url))
+                                 (oset team domain (plist-get team-data :domain))
+                                 (oset team id (plist-get team-data :id))
+                                 (oset team name (plist-get team-data :name))
+                                 (oset team self self-data)
+                                 (oset team self-id (plist-get self-data :id))
+                                 (oset team self-name (plist-get self-data :name))
+                                 (slack-ws-open ws team
+                                                :on-open #'(lambda ()
+                                                             (slack-ws-on-reconnect-open team-id))))))
+      (if (and (not force) (slack-ws-reconnect-count-exceed-p ws))
+          (slack-ws-abort-reconnect team-id)
+        (progn
+          (slack-ws-inc-reconnect-count ws)
+          (slack-ws--close ws team)
+          (if (slack-ws-use-reconnect-url-p ws)
+              (slack-request-api-test team
+                                      #'(lambda ()
+                                          (slack-ws-reconnect-with-reconnect-url team-id)))
+            (slack-authorize team
+                             #'on-authorize-error
+                             #'on-authorize-success))
+          (slack-log (format "Reconnecting... [%s/%s]"
+                             (oref ws reconnect-count)
+                             (oref ws reconnect-count-max))
+                     team
+                     :level 'warn))))))
 
 (cl-defmethod slack-ws-reconnect ((ws slack-team-ws) team &optional force)
   "Reconnect if `reconnect-count' is not exceed `reconnect-count-max'.
 if FORCE is t, ignore `reconnect-count-max'.
 TEAM is one of `slack-teams'"
-  (slack-ws-set-reconnect-timer ws #'slack-ws--reconnect ws team force))
+  (slack-ws-set-reconnect-timer ws
+                                #'slack-ws--reconnect
+                                (slack-team-id team)
+                                force))
 
 ;; Message handler
 
