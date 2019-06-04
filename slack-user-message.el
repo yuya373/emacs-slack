@@ -4,6 +4,7 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-message-editor)
 
 (defvar slack-user-message-keymap
@@ -20,7 +21,8 @@
            (time (slack-message-time-to-string ts))
            (edited-at (slack-message-time-to-string (slack-message-edited-at m)))
            (deleted-at (slack-message-time-to-string deleted-at))
-           (header (or (and status (< 0 (length status))
+           (header (or (and status
+                            (not (slack-string-blankp status))
                             (format "%s %s" name status))
                        (format "%s" name))))
       (if deleted-at
