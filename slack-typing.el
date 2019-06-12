@@ -69,35 +69,36 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
 (cl-defmethod slack-typing-set-limit ((this slack-typing) limit)
   (oset this limit limit))
 
-(defun slack-typing-display (team)
+(defun slack-typing-display (team-id)
   "Display currentrly typing users according to TEAM and it's `slack-typing' instance."
-  (with-slots (typing typing-timer) team
-    (let ((current (float-time)))
-      (if (or (null typing)
+  (let ((team (slack-team-find team-id)))
+    (with-slots (typing typing-timer) team
+      (let ((current (float-time)))
+        (if (or (null typing)
+                (and typing-timer
+                     (timerp typing-timer)
+                     (< (oref typing limit) current)))
+            (progn
               (and typing-timer
-                   (timerp typing-timer)
-                   (< (oref typing limit) current)))
-          (progn
-            (and typing-timer
-                 (cancel-timer typing-timer))
-            (setq typing-timer nil)
-            (setq typing nil)
-            (message ""))
-        (with-slots (users room-id) typing
-          (slack-if-let* ((room (slack-room-find room-id team))
-                          (buf (slack-buffer-find 'slack-message-buffer room team))
-                          (show-typing-p (slack-buffer-show-typing-p
-                                          (get-buffer (slack-buffer-name buf)))))
-              (let ((visible-users (cl-remove-if
-                                    #'(lambda (u) (< (oref u limit) current))
-                                    users)))
-                (slack-log
-                 (format "%s is typing..."
-                         (mapconcat #'(lambda (u) (oref u user-name))
-                                    visible-users
-                                    ", "))
-                 team
-                 :level 'info))))))))
+                   (cancel-timer typing-timer))
+              (setq typing-timer nil)
+              (setq typing nil)
+              (message ""))
+          (with-slots (users room-id) typing
+            (slack-if-let* ((room (slack-room-find room-id team))
+                            (buf (slack-buffer-find 'slack-message-buffer room team))
+                            (show-typing-p (slack-buffer-show-typing-p
+                                            (get-buffer (slack-buffer-name buf)))))
+                (let ((visible-users (cl-remove-if
+                                      #'(lambda (u) (< (oref u limit) current))
+                                      users)))
+                  (slack-log
+                   (format "%s is typing..."
+                           (mapconcat #'(lambda (u) (oref u user-name))
+                                      visible-users
+                                      ", "))
+                   team
+                   :level 'info)))))))))
 
 
 (provide 'slack-typing)

@@ -478,5 +478,8 @@ Available options (property name, type, default value)
                       ret))
     ret))
 
+(cl-defmethod slack-team-id ((this slack-team))
+  (oref this id))
+
 (provide 'slack-team)
 ;;; slack-team.el ends here
