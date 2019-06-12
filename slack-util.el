@@ -129,7 +129,7 @@
 
 (defun slack-string-blankp (str)
   (if str
-      (> 1 (length str))
+      (not (null (string-match-p "\\`[ \t\n\r]*\\'" str)))
     t))
 
 (defun slack-parse-time-string (time)
