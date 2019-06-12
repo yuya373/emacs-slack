@@ -494,11 +494,16 @@
 
 (cl-defmethod slack-file-thumb-image-spec ((file slack-file) &optional (size 360))
   (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
-    (or (and (<= 360 size) thumb-360 (list thumb-360 thumb-360-w thumb-360-h))
-        (and (<= 160 size) thumb-160 (list thumb-160 nil nil))
-        (and (<= 80 size) thumb-80 (list thumb-80 nil nil))
-        (and (<= 64 size) thumb-64 (list thumb-64 nil nil))
-        (and thumb-pdf (list thumb-pdf thumb-pdf-w thumb-pdf-h))
+    (or (and (<= 360 size) thumb-360
+             (list thumb-360 thumb-360-w thumb-360-h size size))
+        (and (<= 160 size) thumb-160
+             (list thumb-160 nil nil size size))
+        (and (<= 80 size) thumb-80
+             (list thumb-80 nil nil size size))
+        (and (<= 64 size) thumb-64
+             (list thumb-64 nil nil size size))
+        (and thumb-pdf
+             (list thumb-pdf thumb-pdf-w thumb-pdf-h size size))
         (list nil nil nil))))
 
 (cl-defmethod slack-file-image-spec ((this slack-file))
