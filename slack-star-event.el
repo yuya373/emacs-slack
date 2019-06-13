@@ -116,7 +116,8 @@
          (room (slack-room-find channel team))
          (message (plist-get item :message))
          (ts (plist-get message :ts)))
-    (slack-room-find-message room ts)))
+    (when room
+      (slack-room-find-message room ts))))
 
 (cl-defmethod slack-event-update ((this slack-message-star-event) team)
   (cl-call-next-method)
