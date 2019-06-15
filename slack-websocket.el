@@ -192,15 +192,15 @@
   (let ((team (slack-team-find team-id)))
     (with-slots (message-id ws) team
       (let* ((time (number-to-string (time-to-seconds (current-time))))
-             (m (list :id message-id
-                      :type "ping"
-                      :time time)))
+             (ping-message (list :id message-id
+                                 :type "ping"
+                                 :time time)))
+        (slack-team-send-message team ping-message)
+        (slack-log (format "Send PING: %s" time) team :level 'trace)
         (slack-ws-set-ping-check-timer ws time
                                        #'slack-ws-on-ping-timeout
                                        (slack-team-id team))
-        (slack-team-send-message team m)
-        (slack-log (format "Send PING: %s" time)
-                   team :level 'trace)))))
+        ))))
 
 (defvar slack-disconnected-timer nil)
 (defun slack-notify-abandon-reconnect (team)
