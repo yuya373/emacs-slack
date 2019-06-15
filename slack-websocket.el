@@ -324,12 +324,14 @@ TEAM is one of `slack-teams'"
          (timer (gethash key (oref ws ping-check-timers))))
     (slack-log (format "Receive PONG: %s" key)
                team :level 'trace)
-    (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
     (when timer
       (cancel-timer timer)
       (remhash key (oref ws ping-check-timers))
       (slack-log (format "Remove PING Check Timer: %s" key)
-                 team :level 'trace))))
+                 team :level 'trace))
+
+    (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
+    ))
 
 ;; (:type error :error (:msg Socket URL has expired :code 1))
 (cl-defmethod slack-ws-handle-error ((ws slack-team-ws) payload team)
