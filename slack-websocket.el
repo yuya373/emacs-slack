@@ -200,6 +200,9 @@
         (slack-ws-set-ping-check-timer ws time
                                        #'slack-ws-on-ping-timeout
                                        (slack-team-id team))
+        (slack-log (format "Set PING timeout timer. timeout in %s sec"
+                           (oref ws check-ping-timeout-sec))
+                   team :level 'trace)
         ))))
 
 (defvar slack-disconnected-timer nil)
@@ -322,7 +325,9 @@ TEAM is one of `slack-teams'"
   (slack-ws-remove-from-resend-queue ws payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref ws ping-check-timers))))
-    (slack-log (format "Receive PONG: %s" key)
+    (slack-log (format "Receive PONG: %s. RTT is %s sec"
+                       key
+                       (- (time-to-seconds (current-time)) (string-to-number key)))
                team :level 'trace)
     (when timer
       (cancel-timer timer)
