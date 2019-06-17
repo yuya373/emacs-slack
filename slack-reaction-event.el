@@ -57,7 +57,8 @@
          (channel (plist-get item :channel))
          (room (slack-room-find channel team))
          (ts (plist-get item :ts)))
-    (slack-room-find-message room ts)))
+    (when room
+      (slack-room-find-message room ts))))
 
 (cl-defmethod slack-event-save-message ((this slack-message-reaction-removed-event) message _team)
   (let* ((payload (oref this payload))

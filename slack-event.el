@@ -46,8 +46,8 @@
 (defclass slack-message-event-processable () () :abstract t)
 (cl-defmethod slack-event-find-message ((_this slack-message-event-processable) _team))
 (cl-defmethod slack-event-save-message ((_this slack-message-event-processable) message team)
-  (let ((room (slack-room-find message team)))
-    (slack-room-push-message room message team)))
+  (slack-if-let* ((room (slack-room-find message team)))
+      (slack-room-push-message room message team)))
 
 (cl-defmethod slack-event-update ((this slack-message-event-processable) team)
   (let ((message (slack-event-find-message this team)))

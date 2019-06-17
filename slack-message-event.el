@@ -76,7 +76,8 @@
          (channel (plist-get payload :channel))
          (room (slack-room-find channel team))
          (ts (plist-get payload :deleted_ts)))
-    (slack-room-find-message room ts)))
+    (when room
+      (slack-room-find-message room ts))))
 
 (cl-defmethod slack-event-find-message ((this slack-message-replied-event) team)
   (let* ((payload (oref this payload))
@@ -84,7 +85,8 @@
          (thread-ts (plist-get message-payload :thread_ts))
          (channel (plist-get payload :channel))
          (room (slack-room-find channel team)))
-    (slack-room-find-message room thread-ts)))
+    (when room
+      (slack-room-find-message room thread-ts))))
 
 (cl-defmethod slack-event-save-message ((this slack-message-changed-event) message team)
   (with-slots (payload) this
@@ -95,19 +97,19 @@
           (slack-room-push-message room message team)))))
 
 (cl-defmethod slack-event-save-message ((_this slack-message-deleted-event) message team)
-  (let ((room (slack-room-find message team)))
-    (slack-room-delete-message room (slack-ts message))))
+  (slack-if-let* ((room (slack-room-find message team)))
+      (slack-room-delete-message room (slack-ts message))))
 
 (cl-defmethod slack-event-save-message ((this slack-message-replied-event) message team)
-  (let ((payload (plist-get (oref this payload) :message))
-        (room (slack-room-find message team)))
-    (oset message thread-ts (plist-get payload :thread_ts))
-    (oset message reply-count (plist-get payload :reply_count))
-    (oset message reply-users-count (plist-get payload :reply_users_count))
-    (oset message latest-reply (plist-get payload :latest_reply))
-    (oset message reply-users (plist-get payload :reply_users))
-    (oset message replies (plist-get payload :replies))
-    (slack-room-push-message room message team)))
+  (slack-if-let* ((room (slack-room-find message team)))
+      (let ((payload (plist-get (oref this payload) :message)))
+        (oset message thread-ts (plist-get payload :thread_ts))
+        (oset message reply-count (plist-get payload :reply_count))
+        (oset message reply-users-count (plist-get payload :reply_users_count))
+        (oset message latest-reply (plist-get payload :latest_reply))
+        (oset message reply-users (plist-get payload :reply_users))
+        (oset message replies (plist-get payload :replies))
+        (slack-room-push-message room message team))))
 
 (cl-defmethod slack-event-update-buffer ((_this slack-message-event) message team)
   (slack-message-update-buffer message team))
@@ -132,12 +134,12 @@
         (slack-buffer-message-delete buf (slack-ts message)))))
 
 (cl-defmethod slack-event-update-buffer ((_this slack-message-replied-event) message team)
-  (let ((room (slack-room-find message team)))
-    (slack-room-update-buffer room team message t)))
+  (slack-if-let* ((room (slack-room-find message team)))
+      (slack-room-update-buffer room team message t)))
 
 (cl-defmethod slack-event-notify ((_this slack-message-event) message team)
-  (let ((room (slack-room-find message team)))
-    (slack-message-notify message room team)))
+  (slack-if-let* ((room (slack-room-find message team)))
+      (slack-message-notify message room team)))
 
 (cl-defmethod slack-event-notify ((_this slack-message-changed-event) _message _team))
 
@@ -155,18 +157,19 @@
 (cl-defmethod slack-event-notify ((_this slack-message-replied-event) _message _team))
 
 (cl-defmethod slack-message-event-update-modeline ((_this slack-message-event) message team)
-  (let ((room (slack-room-find message team)))
-    (when (and (not (slack-message-ephemeral-p message))
-               (slack-message-visible-p message team))
-      (slack-room-set-has-unreads room t team)
+  (slack-if-let* ((room (slack-room-find message team)))
+      (progn
+        (when (and (not (slack-message-ephemeral-p message))
+                   (slack-message-visible-p message team))
+          (slack-room-set-has-unreads room t team)
 
-      (when (or (slack-message-mentioned-p message team)
-                (slack-im-p room)
-                (slack-mpim-p room))
-        (let* ((count (slack-room-mention-count room team))
-               (next-count (+ count 1)))
-          (slack-room-set-mention-count room next-count team))))
-    (slack-update-modeline)))
+          (when (or (slack-message-mentioned-p message team)
+                    (slack-im-p room)
+                    (slack-mpim-p room))
+            (let* ((count (slack-room-mention-count room team))
+                   (next-count (+ count 1)))
+              (slack-room-set-mention-count room next-count team))))
+        (slack-update-modeline))))
 
 (cl-defmethod slack-message-event-update-modeline ((_this slack-message-changed-event) _message _team)
   (slack-update-modeline))
