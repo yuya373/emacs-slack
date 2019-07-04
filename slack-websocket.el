@@ -506,18 +506,20 @@ TEAM is one of `slack-teams'"
       (cl-labels
           ((update-typing (user)
                           (let ((limit (+ 3 (float-time))))
-                            (with-slots (typing typing-timer) team
-                              (slack-if-let* ((typing (oref team typing))
-                                              (typing-room (slack-room-find (oref typing room-id) team))
-                                              (same-room-p (string= (oref room id) (oref typing-room id))))
-                                  (progn
-                                    (slack-typing-set-limit typing limit)
-                                    (slack-typing-add-user typing user limit))
-                                (setq typing (slack-typing-create room limit user))
-                                (setq typing-timer
-                                      (run-with-timer t 1
-                                                      #'slack-typing-display
-                                                      (slack-team-id team))))))))
+                            (slack-if-let* ((typing (oref team typing))
+                                            (typing-room (slack-room-find (oref typing room-id) team))
+                                            (same-room-p (string= (oref room id) (oref typing-room id))))
+                                (progn
+                                  (slack-typing-set-limit typing limit)
+                                  (slack-typing-add-user typing user limit))
+                              (oset team
+                                    typing
+                                    (slack-typing-create room limit user))
+                              (oset team
+                                    typing-timer
+                                    (run-with-timer t 1
+                                                    #'slack-typing-display
+                                                    (slack-team-id team)))))))
         (slack-if-let*
             ((user (slack-user-name user-id team)))
             (update-typing user)
