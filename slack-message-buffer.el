@@ -583,13 +583,14 @@
           (hash-table-values images)))))
 
 (defun slack-buffer-animate-image (ts)
-  (slack-if-let* ((images (slack-buffer-get-images ts)))
-      (cl-loop for image in images
-               do (when (and image (image-multi-frame-p image))
-                    (image-animate image nil t)))))
+  (when (display-graphic-p)
+    (slack-if-let* ((images (slack-buffer-get-images ts)))
+        (cl-loop for image in images
+                 do (when (and image (image-multi-frame-p image))
+                      (image-animate image nil t))))))
 
 (defun slack-buffer-cancel-animate-image (ts)
-  (when ts
+  (when (and ts (display-graphic-p))
     (slack-if-let* ((images (slack-buffer-get-images ts)))
         (cl-loop for image in images
                  do (when (and image (image-multi-frame-p image))
