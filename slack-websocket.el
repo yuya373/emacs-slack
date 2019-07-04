@@ -192,15 +192,18 @@
   (let ((team (slack-team-find team-id)))
     (with-slots (message-id ws) team
       (let* ((time (number-to-string (time-to-seconds (current-time))))
-             (m (list :id message-id
-                      :type "ping"
-                      :time time)))
+             (ping-message (list :id message-id
+                                 :type "ping"
+                                 :time time)))
+        (slack-team-send-message team ping-message)
+        (slack-log (format "Send PING: %s" time) team :level 'trace)
         (slack-ws-set-ping-check-timer ws time
                                        #'slack-ws-on-ping-timeout
                                        (slack-team-id team))
-        (slack-team-send-message team m)
-        (slack-log (format "Send PING: %s" time)
-                   team :level 'trace)))))
+        (slack-log (format "Set PING timeout timer. timeout in %s sec"
+                           (oref ws check-ping-timeout-sec))
+                   team :level 'trace)
+        ))))
 
 (defvar slack-disconnected-timer nil)
 (defun slack-notify-abandon-reconnect (team)
@@ -322,14 +325,18 @@ TEAM is one of `slack-teams'"
   (slack-ws-remove-from-resend-queue ws payload team)
   (let* ((key (plist-get payload :time))
          (timer (gethash key (oref ws ping-check-timers))))
-    (slack-log (format "Receive PONG: %s" key)
+    (slack-log (format "Receive PONG: %s. RTT is %s sec"
+                       key
+                       (- (time-to-seconds (current-time)) (string-to-number key)))
                team :level 'trace)
-    (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
     (when timer
       (cancel-timer timer)
       (remhash key (oref ws ping-check-timers))
       (slack-log (format "Remove PING Check Timer: %s" key)
-                 team :level 'trace))))
+                 team :level 'trace))
+
+    (slack-ws-set-ping-timer ws #'slack-ws-ping (slack-team-id team))
+    ))
 
 ;; (:type error :error (:msg Socket URL has expired :code 1))
 (cl-defmethod slack-ws-handle-error ((ws slack-team-ws) payload team)
