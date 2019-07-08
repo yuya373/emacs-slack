@@ -219,7 +219,8 @@
    (timestamp :initarg :timestamp :type number)
    (comments :initarg :comments :type list :initform '())
    (mode :initarg :mode :type (or null string) :initform nil)
-   (content :initarg :content :type (or null slack-file-content) :initform nil)))
+   (content :initarg :content :type (or null slack-file-content) :initform nil)
+   (is-hidden-by-limit :initarg :is_hidden_by_limit :initform nil)))
 
 (defclass slack-file-content ()
   ((content :initarg :content :initform nil)
@@ -693,6 +694,13 @@
 (cl-defmethod slack-file-type ((file slack-file))
   (or (oref file pretty-type)
       (oref file mimetype)))
+
+(cl-defmethod slack-file-hidden-by-limit-p ((file slack-file))
+  (or (oref file is-hidden-by-limit)
+      (string= (oref file mode) "hidden_by_limit")))
+
+(cl-defmethod slack-file-hidden-by-limit-message ((_file slack-file))
+  "This file can’t be shown because your workspace has passed the free plan’s storage limit.")
 
 (provide 'slack-file)
 ;;; slack-file.el ends here
