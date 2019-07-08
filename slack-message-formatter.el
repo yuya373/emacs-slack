@@ -472,14 +472,18 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                   (oref this files))))
 
 (cl-defmethod slack-message-to-string ((this slack-file-email) ts team)
-  (let ((body (slack-file-summary this ts team))
-        (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-    (slack-format-message body thumb)))
+  (if (slack-file-hidden-by-limit-p this)
+      (slack-file-hidden-by-limit-message this)
+    (let ((body (slack-file-summary this ts team))
+          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
+      (slack-format-message body thumb))))
 
 (cl-defmethod slack-message-to-string ((this slack-file) ts team)
-  (let ((body (slack-file-summary this ts team))
-        (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-    (slack-format-message body thumb)))
+  (if (slack-file-hidden-by-limit-p this)
+      (slack-file-hidden-by-limit-message this)
+    (let ((body (slack-file-summary this ts team))
+          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
+      (slack-format-message body thumb))))
 
 (cl-defmethod slack-message-to-string ((this slack-file-comment) team)
   (with-slots (user comment) this
@@ -567,18 +571,20 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                     (format "%s\t%s"
                             pad
                             (mapconcat #'(lambda (file)
-                                           (let* ((title (slack-file-title file))
-                                                  (type (slack-file-type file))
-                                                  (id (oref file id))
-                                                  (footer (format "%s %s"
-                                                                  (slack-file-size file)
-                                                                  type)))
-                                             (format "%s\n\t%s\t%s"
-                                                     (slack-file-link-info id title)
-                                                     pad
-                                                     (propertize footer
-                                                                 'face
-                                                                 'slack-attachment-footer))))
+                                           (if (slack-file-hidden-by-limit-p file)
+                                               (slack-file-hidden-by-limit-message file)
+                                             (let* ((title (slack-file-title file))
+                                                    (type (slack-file-type file))
+                                                    (id (oref file id))
+                                                    (footer (format "%s %s"
+                                                                    (slack-file-size file)
+                                                                    type)))
+                                               (format "%s\n\t%s\t%s"
+                                                       (slack-file-link-info id title)
+                                                       pad
+                                                       (propertize footer
+                                                                   'face
+                                                                   'slack-attachment-footer)))))
                                        files
                                        (format "\n\t%s\n" pad))))))
       (slack-message-unescape-string
