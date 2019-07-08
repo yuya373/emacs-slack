@@ -32,6 +32,9 @@
 (declare-function slack-team-token "slack-team")
 (require 'slack-log)
 
+(defconst slack-request-max-retry 3
+  "Maximum number of retries for failed request.")
+
 (defcustom slack-request-timeout 30
   "Request Timeout in seconds."
   :type 'integer
@@ -67,6 +70,7 @@
    (headers :initarg :headers :initform nil)
    (timeout :initarg :timeout :initform `,slack-request-timeout)
    (execute-at :initform 0.0 :type float)
+   (retry-count :initform 0 :type number)
    (without-auth :initarg :without-auth :initform nil :type boolean)))
 
 (cl-defun slack-request-create
@@ -97,9 +101,12 @@
               (oref other params))))
 
 (cl-defmethod slack-request-retry-request ((req slack-request-request) retry-after)
-  (oset req execute-at (+ retry-after (time-to-seconds)))
-  (oset req response nil)
-  (slack-request-worker-push req))
+  (with-slots (retry-count) req
+    (when (< retry-count slack-request-max-retry)
+      (oset req execute-at (+ retry-after (time-to-seconds)))
+      (oset req retry-count (1+ (oref req retry-count)))
+      (oset req response nil)
+      (slack-request-worker-push req))))
 
 (cl-defmethod slack-request-retry-failed-request-p ((req slack-request-request) error-thrown symbol-status)
   (with-slots (type) req
@@ -109,13 +116,14 @@
              (eq symbol-status 'timeout)))))
 
 (cl-defmethod slack-request-log-failed-retry ((req slack-request-request) error-thrown symbol-status data)
-  (with-slots (url params team) req
-    (slack-log (format "Retry Requst by Error. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S"
+  (with-slots (url params team retry-count) req
+    (slack-log (format "Retry Request by Error. URL: %S, PARAMS: %S, ERROR-THROWN: %S, SYMBOL-STATUS: %S, DATA: %S, COUNT: %d"
                        url
                        params
                        error-thrown
                        symbol-status
-                       data)
+                       data
+                       retry-count)
                team :level 'warn)))
 
 (cl-defmethod slack-request-log-retry ((req slack-request-request) retry-after-sec)
