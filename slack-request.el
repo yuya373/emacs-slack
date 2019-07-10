@@ -101,19 +101,19 @@
               (oref other params))))
 
 (cl-defmethod slack-request-retry-request ((req slack-request-request) retry-after)
-  (with-slots (retry-count) req
-    (when (< retry-count slack-request-max-retry)
-      (oset req execute-at (+ retry-after (time-to-seconds)))
-      (oset req retry-count (1+ (oref req retry-count)))
-      (oset req response nil)
-      (slack-request-worker-push req))))
+  (oset req execute-at (+ retry-after (time-to-seconds)))
+  (oset req retry-count (1+ (oref req retry-count)))
+  (oset req response nil)
+  (slack-request-worker-push req))
 
 (cl-defmethod slack-request-retry-failed-request-p ((req slack-request-request) error-thrown symbol-status)
-  (with-slots (type) req
-    (and (string= type "GET")
-         (or (and error-thrown
-                  (eq 'end-of-file (car error-thrown)))
-             (eq symbol-status 'timeout)))))
+  (with-slots (type retry-count) req
+    (or (or (zerop slack-request-max-retry)
+            (<= retry-count slack-request-max-retry))
+        (and (string= type "GET")
+             (or (and error-thrown
+                      (eq 'end-of-file (car error-thrown)))
+                 (eq symbol-status 'timeout))))))
 
 (cl-defmethod slack-request-log-failed-retry ((req slack-request-request) error-thrown symbol-status data)
   (with-slots (url params team retry-count) req
