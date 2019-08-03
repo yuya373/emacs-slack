@@ -189,13 +189,15 @@
 (defun slack-create-group-joined-event (payload)
   (make-instance 'slack-group-joined-event
                  :payload payload))
-
 (cl-defmethod slack-event-find-room ((this slack-room-joined-event) team)
   (let* ((payload (oref this payload))
          (channel (plist-get payload :channel))
-         (id (plist-get channel :id)))
+         (id (plist-get channel :id))
+         (class (or (and (eq t (plist-get channel :is_private))
+                         'slack-group)
+                    'slack-channel)))
     (or (slack-room-find id team)
-        (slack-room-create channel 'slack-channel))))
+        (slack-room-create channel class))))
 
 (cl-defmethod slack-event-save-room ((_this slack-channel-joined-event) room team cb)
   (slack-team-set-channels team (list room))
