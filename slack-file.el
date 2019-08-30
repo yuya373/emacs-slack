@@ -436,7 +436,8 @@
        (team (oref buffer team))
        (file (car (find-file-read-args "Select File: " t)))
        (filename (read-from-minibuffer "Filename: "
-                                       (file-name-nondirectory file)))
+                                       (expand-file-name
+                                        (file-name-nondirectory file))))
        (filetype (slack-file-select-filetype (file-name-extension file)))
        (initial-comment (read-from-minibuffer "Message: ")))
       (cl-labels
