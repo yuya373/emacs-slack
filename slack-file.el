@@ -434,10 +434,9 @@
   (slack-if-let*
       ((buffer slack-current-buffer)
        (team (oref buffer team))
-       (file (car (find-file-read-args "Select File: " t)))
+       (file (expand-file-name (car (find-file-read-args "Select File: " t))))
        (filename (read-from-minibuffer "Filename: "
-                                       (expand-file-name
-                                        (file-name-nondirectory file))))
+                                       (file-name-nondirectory file)))
        (filetype (slack-file-select-filetype (file-name-extension file)))
        (initial-comment (read-from-minibuffer "Message: ")))
       (cl-labels
