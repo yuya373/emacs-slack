@@ -1,5 +1,7 @@
-(add-to-list 'load-path "~/.emacs.d/el-get/el-get")
+(setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
+(setq package-check-signature nil)
 
+(add-to-list 'load-path "~/.emacs.d/el-get/el-get")
 (setq el-get-byte-compile nil)
 (setq el-get-bundle-byte-compile nil)
 
