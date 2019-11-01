@@ -29,7 +29,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 [How to get token](#how-to-get-token-the-easy-way)
 
 ```elisp
-;; I'm using use-package and el-get and evil
+;; I'm using use-package, el-get and evil
 
 (el-get-bundle slack)
 (use-package slack
