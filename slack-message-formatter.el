@@ -207,15 +207,16 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                  " "))))
 
 (cl-defmethod slack-message-blocks-to-string ((m slack-message) team)
-  (when (oref m blocks)
-    (mapconcat #'(lambda (e) (let ((str (slack-message-unescape-string
-                                         (slack-block-to-string e)
-                                         team)))
-                               (if (oref m deleted-at)
-                                   (slack-message-put-deleted-property str)
-                                 str)))
-               (oref m blocks)
-               "\n\n")))
+  (unless (oref team disable-block-format)
+    (when (oref m blocks)
+      (mapconcat #'(lambda (e) (let ((str (slack-message-unescape-string
+                                           (slack-block-to-string e)
+                                           team)))
+                                 (if (oref m deleted-at)
+                                     (slack-message-put-deleted-property str)
+                                   str)))
+                 (oref m blocks)
+                 "\n\n"))))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
