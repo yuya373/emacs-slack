@@ -395,16 +395,18 @@
     (let* ((url-obj (url-generic-parse-url url))
            (need-token-p (and url-obj
                               (string-match-p "slack" (url-host url-obj))))
-           (header (or (and token
-                            need-token-p
-                            (string-prefix-p "https" url)
-                            (format "-H \"Authorization: Bearer %s\"" token))
-                       ""))
-           (output (format "--output \"%s\"" name))
-           (command (format "curl --silent --show-error --fail --location %s %s \"%s\"" output header url))
-           (proc (start-process-shell-command "slack-curl-downloader"
-                                              "slack-curl-downloader"
-                                              command)))
+           (proc (apply #'start-process
+                        "slack-curl-downloader"
+                        "slack-curl-downloader"
+                        (executable-find "curl")
+                        "--silent"
+                        "--show-error"
+                        "--fail"
+                        "--location"
+                        "--output" name
+                        "--url" url
+                        (when (and token need-token-p (string-prefix-p "https" url))
+                          `("-H" ,(format "Authorization: Bearer %s" token))))))
       (set-process-sentinel proc #'sentinel))))
 
 (provide 'slack-request)
