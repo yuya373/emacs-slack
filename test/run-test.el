@@ -6,6 +6,7 @@
 (require 'slack-block)
 (require 'slack-mrkdwn)
 (require 'slack-message-sender)
+(require 'slack-view)
 
 (defvar slack-channel-button-keymap nil)
 (setq slack-render-image-p t)
@@ -466,7 +467,6 @@
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "```bbb```aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))))
-
 
 (ert-deftest slack-test-mrkdwn-regex-blockquote ()
   (let ((blockquote " > aaa aaa"))
@@ -945,6 +945,43 @@ https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-a
            (block (slack-create-rich-text-element payload)))
       (should (string= "https://google.com"
                        (slack-block-to-mrkdwn block))))))
+
+(ert-deftest slack-test-create-view ()
+  (let ((payload `(:id "VQX0UQ2UA"
+                      :team_id "T0G2VUABE"
+                      :type "modal"
+                      :blocks ((:type "section"
+                                      :block_id "section1"
+                                      :text (:type "mrkdwn" :text "It's Block Kit...but _in a modal_" :verbatim :json-false)
+                                      :accessory (:type "button" :action_id "button_abc" :style "danger"
+                                                        :text (:type "plain_text" :text "Click me" :emoji t)
+                                                        :value "Button value"))
+                               (:type "input"
+                                      :block_id "3YCP"
+                                      :label (:type "plain_text" :text "Input label" :emoji t)
+                                      :optional
+                                      :json-false
+                                      :element (:type "plain_text_input" :action_id "input1"
+                                                      :placeholder (:type "plain_text" :text "Type in here" :emoji t)
+                                                      :multiline :json-false)))
+                      :private_metadata ""
+                      :callback_id ""
+                      :state (:values nil)
+                      :hash "1575477685.ea789cd6"
+                      :title (:type "plain_text" :text "Modal title" :emoji t)
+                      :clear_on_close
+                      :json-false
+                      :notify_on_close
+                      :json-false
+                      :close (:type "plain_text" :text "Cancel" :emoji t)
+                      :submit (:type "plain_text" :text "Save" :emoji t)
+                      :previous_view_id nil
+                      :root_view_id "VQX0UQ2UA"
+                      :app_id "AG9LJK472"
+                      :external_id ""
+                      :app_installed_team_id "T0G2VUABE"
+                      :bot_id "BG9RSLWLR")))
+    (should (not (null (slack-create-view payload))))))
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
