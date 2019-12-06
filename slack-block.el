@@ -655,7 +655,8 @@
 (cl-defmethod slack-block-to-string ((this slack-date-picker-block-element) &optional _option)
   (with-slots (placeholder initial-date) this
     (let ((text (or initial-date
-                    (slack-block-to-string placeholder))))
+                    (slack-block-to-string placeholder)
+                    "Pick a date")))
       (propertize text
                   'face 'slack-date-picker-block-element-face
                   'slack-action-payload (slack-block-action-payload this)
