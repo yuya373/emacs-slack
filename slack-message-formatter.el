@@ -539,6 +539,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
            (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
                     pad-raw))
+           (mrkdwn-in (oref attachment mrkdwn-in))
            (header-raw (slack-attachment-header attachment))
            (header (and (not (slack-string-blankp header-raw))
                         (format "%s\t%s" pad
@@ -596,8 +597,16 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (slack-message-unescape-string
        (slack-format-message
         (or (and header (format "\t%s" header)) "")
-        (or (and pretext (format "\t%s" pretext)) "")
-        (or (and body (format "\t%s" body)) "")
+        (or (and pretext (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "pretext" e))
+                                                        mrkdwn-in)
+                                            (propertize pretext 'slack-text-type 'mrkdwn)
+                                          pretext)))
+            "")
+        (or (and body (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "text" e))
+                                                     mrkdwn-in)
+                                         (propertize body 'slack-text-type 'mrkdwn)
+                                       body)))
+            "")
         (or (and fields fields) "")
         (or (and actions (format "\t%s" actions)) "")
         (or (and files (format "\t%s" files)) "")
