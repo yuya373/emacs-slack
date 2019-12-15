@@ -212,7 +212,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (let ((block-messages (cl-remove-if #'(lambda (block-message)
                                               (< (length block-message) 1))
                                           (mapcar #'(lambda (bl)
-                                                      (slack-block-to-string bl))
+                                                      (slack-block-to-string bl (list :team team)))
                                                   (oref m blocks)))))
         (when (< 0 (length block-messages))
           (mapconcat #'(lambda (block-message)
