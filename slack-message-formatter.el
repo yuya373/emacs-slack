@@ -226,8 +226,12 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
          (attachment-body (slack-message-attachment-body m team))
-         (body (or (slack-message-blocks-to-string m team)
-                   (slack-message-body-to-string m team)))
+         (body (format "%s%s"
+                       (if (slack-message-display-thread-sign-p m team)
+                           slack-visible-thread-sign
+                         "")
+                       (or (slack-message-blocks-to-string m team)
+                           (slack-message-body-to-string m team))))
          (files (mapconcat #'(lambda (file)
                                (format "%s\n"
                                        (slack-message-to-string file
@@ -252,19 +256,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (with-slots (text) m
     (let ((body (slack-message-unescape-string text team)))
       (when body
-        (format "%s%s"
-                (if (slack-message-display-thread-sign-p m team)
-                    slack-visible-thread-sign
-                  "")
-                (propertize body 'slack-text-type 'mrkdwn))))))
+        (propertize body 'slack-text-type 'mrkdwn)))))
 
 (cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "%s%s"
-          (if (slack-message-display-thread-sign-p m team)
-              slack-visible-thread-sign
-            (if (eq major-mode 'slack-thread-message-buffer-mode)
-                ""
-              "Replied to a thread: \n"))
+          (if (eq major-mode 'slack-thread-message-buffer-mode)
+              ""
+            "Replied to a thread: \n")
           (let ((body (slack-message-unescape-string (oref m text) team)))
             (when body
               (propertize body 'slack-text-type 'mrkdwn)))))
