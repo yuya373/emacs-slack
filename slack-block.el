@@ -167,12 +167,16 @@
 (defclass slack-rich-text-quote (slack-rich-text-block-element) ())
 
 (cl-defmethod slack-block-to-string ((this slack-rich-text-quote) &optional option)
-  (let ((text (mapconcat #'(lambda (element) (slack-block-to-string element option))
-                         (oref this elements)
-                         "")))
-    (propertize text
-                'face 'slack-mrkdwn-blockquote-face
-                'display "┃")))
+  (let* ((text (mapconcat #'(lambda (element) (slack-block-to-string element option))
+                          (oref this elements)
+                          ""))
+         (texts (split-string text "[\n\r]" nil nil))
+         (text-with-pad (mapconcat #'(lambda (text) (format "┃%s" text))
+                                   texts
+                                   "\n")))
+
+    (propertize text-with-pad
+                'face 'slack-mrkdwn-blockquote-face)))
 
 (defun slack-create-rich-text-quote (payload)
   (make-instance 'slack-rich-text-quote
@@ -186,20 +190,22 @@
    ))
 
 (cl-defmethod slack-block-to-string ((this slack-rich-text-list) &optional option)
-  (let ((indent (make-string (oref this indent) ? ))
+  (let ((indent (make-string (* 2 (oref this indent)) ? ))
         (texts (mapcar #'(lambda (element) (slack-block-to-string element option))
                        (oref this elements)))
-        (str "")
+        (texts-with-dot nil)
+        (dot "・")
         (i 1))
     (dolist (text texts)
-      (setq str
-            (format "%s%s %s\n"
-                    str
-                    (if (string= (oref this style) "ordered") i "・")
-                    text))
-
+      (push (format "%s%s %s"
+                    indent
+                    (if (string= (oref this style) "ordered")
+                        (format "%s." i)
+                      dot)
+                    text)
+            texts-with-dot)
       (setq i (+ i 1)))
-    str))
+    (mapconcat #'identity (reverse texts-with-dot) "\n")))
 
 (defun slack-create-rich-text-list (payload)
   (make-instance 'slack-rich-text-list
@@ -230,7 +236,7 @@
     (when (oref this code)
       (setq props
             (plist-put props :inherit 'slack-preview-face)))
-    (apply #'propertize text props)))
+    (apply #'propertize text (list 'face props))))
 
 (defun slack-create-rich-text-element-style (payload)
   (when payload
@@ -381,7 +387,7 @@
 (defclass slack-rich-text-usergroup-element (slack-rich-text-element)
   ((usergroup-id :initarg :usergroup_id :type string)))
 
-(cl-defmethod slack-block-to-string ((this slack-rich-text-usergroup-element) &option option)
+(cl-defmethod slack-block-to-string ((this slack-rich-text-usergroup-element) &optional option)
   (let ((team (plist-get option :team))
         (id (oref this usergroup-id)))
 
@@ -400,7 +406,7 @@
 (defclass slack-rich-text-date-element (slack-rich-text-element)
   ((timestamp :initarg :timestamp :type number)))
 
-(cl-defmethod slack-block-to-string ((this slack-rich-text-date-element) &option _option)
+(cl-defmethod slack-block-to-string ((this slack-rich-text-date-element) &optional _option)
   (slack-message-time-to-string (oref this timestamp)))
 
 (defun slack-create-rich-text-date-element (payload)
@@ -414,7 +420,7 @@
   ((range :initarg :range :type string) ;; channel or everyone or here
    ))
 
-(cl-defmethod slack-block-to-string ((this slack-rich-text-broadcast-element) &option _option)
+(cl-defmethod slack-block-to-string ((this slack-rich-text-broadcast-element) &optional _option)
   (propertize (format "@%s" (oref this range))
               'face 'slack-message-mention-keyword-face))
 
