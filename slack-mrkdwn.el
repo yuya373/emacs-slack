@@ -72,6 +72,8 @@
   "Face used to `>'"
   :group 'slack)
 
+(defconst slack-mrkdwn-regex-list "^\\([[:blank:]]*\\)\\([0-9]+\\.\\|[-*]\\)\\([[:blank:]]+\\)\\(.*\\)$")
+
 (defun slack-mrkdwn-plain-text-p (point)
   (let ((text-type (get-text-property point 'slack-text-type)))
     (or (null text-type)
