@@ -116,6 +116,9 @@
           (put-text-property beg end
                              'slack-code-block-type 'inline)))))
 
+(defun slack-put-mrkdwn-type (beg end type)
+  (put-text-property beg end 'slack-mrkdwn-type type))
+
 (defun slack-mrkdwn-add-bold-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-bold (point-max) t)
@@ -124,6 +127,7 @@
         (unless (or (slack-mrkdwn-plain-text-p beg)
                     (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-bold-face)
+          (slack-put-mrkdwn-type (match-beginning 2) (match-end 4) 'bold)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
               (put-text-property markup-start-beg
@@ -142,6 +146,7 @@
                     (end (match-end 3)))
         (unless (slack-mrkdwn-plain-text-p beg)
           (put-text-property beg end 'face 'slack-mrkdwn-italic-face)
+          (slack-put-mrkdwn-type (match-beginning 2) (match-end 4) 'italic)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
               (put-text-property markup-start-beg
@@ -161,6 +166,7 @@
         (unless (or (slack-mrkdwn-plain-text-p beg)
                     (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-strike-face)
+          (slack-put-mrkdwn-type (match-beginning 2) (match-end 4) 'strike)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
               (put-text-property markup-start-beg
@@ -180,6 +186,7 @@
         (unless (or (slack-mrkdwn-plain-text-p beg)
                     (slack-mrkdwn-inside-code-block-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-code-face)
+          (slack-put-mrkdwn-type (match-beginning 2) (match-end 4) 'code)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
               (put-text-property markup-start-beg
@@ -201,6 +208,7 @@
           (overlay-put (make-overlay beg end)
                        'face 'slack-mrkdwn-code-block-face)
           (put-text-property beg end 'face 'slack-mrkdwn-code-face)
+          (slack-put-mrkdwn-type (match-beginning 1) (match-end 4) 'code-block)
           (slack-if-let* ((markup-start-beg (match-beginning 1))
                           (markup-start-end (match-end 1)))
               (put-text-property markup-start-beg
@@ -221,6 +229,7 @@
                     (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end
                              'face 'slack-mrkdwn-blockquote-face)
+          (slack-put-mrkdwn-type (match-beginning 1) (match-end 3) 'blockquote)
           (slack-if-let* ((markup-start-beg (match-beginning 1))
                           (markup-start-end (match-end 1)))
               (progn
