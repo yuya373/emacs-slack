@@ -193,35 +193,31 @@
                                           (setq rich-text-section-elements nil))))
 
         (while (and cur-point (< cur-point (point-max)))
-          (let ((mrkdwn-type (get-text-property cur-point 'slack-mrkdwn-type))
-                (end (next-mrkdwn-change cur-point)))
-            (cl-case mrkdwn-type
-              (bold (push-text-element (buffer-substring-no-properties (+ 1 cur-point) (- end 1))
-                                       (list (cons "bold" t))))
-              (italic (push-text-element (buffer-substring-no-properties (1+ cur-point) (1- end))
-                                         (list (cons "italic" t))))
-              (strike (push-text-element (buffer-substring-no-properties (1+ cur-point) (1- end))
-                                         (list (cons "strike" t))))
-              (code (push-text-element (buffer-substring-no-properties (1+ cur-point) (1- end))
-                                       (list (cons "code" t))))
+          (let* ((block-props (get-text-property cur-point 'slack-block-props))
+                 (block-type (and block-props (plist-get block-props :type)))
+                 (block-text (and block-props (plist-get block-props :text)))
+                 (end (or (next-single-property-change cur-point 'slack-block-props)
+                          (point-max))))
+            (cl-case block-type
+              (bold (push-text-element block-text (list (cons "bold" t))))
+              (italic (push-text-element block-text (list (cons "italic" t))))
+              (strike (push-text-element block-text (list (cons "strike" t))))
+              (code (push-text-element block-text (list (cons "code" t))))
               (code-block (progn
                             (commit-section-block)
                             (push (list (cons "type" "rich_text_preformatted")
-                                        (cons "elements" (list (create-text-element
-                                                                (buffer-substring-no-properties (+ cur-point 3)
-                                                                                                (- end 3))))))
+                                        (cons "elements" (list (create-text-element block-text))))
                                   elements)))
               (blockquote (progn
                             (commit-section-block)
                             (push (list (cons "type" "rich_text_quote")
-                                        (cons "elements" (list (create-text-element
-                                                                (buffer-substring-no-properties (+ cur-point 1)
-                                                                                                end)))))
+                                        (cons "elements" (list (create-text-element block-text))))
                                   elements)))
               (t (push-text-element (buffer-substring-no-properties cur-point end))))
 
             (setq cur-point end)))
         (commit-section-block))
+
       (let ((blocks (cons "blocks" (list (list (cons "type" "rich_text")
                                                (cons "elements" (reverse elements)))))))
         (let ((buf (get-buffer-create "emacs-slack blocks")))
