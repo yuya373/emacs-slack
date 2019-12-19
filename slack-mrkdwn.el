@@ -86,7 +86,8 @@
   (slack-mrkdwn-add-strike-face)
   (slack-mrkdwn-add-code-face)
   (slack-mrkdwn-add-code-block-face)
-  (slack-mrkdwn-add-blockquote-face))
+  (slack-mrkdwn-add-blockquote-face)
+  (slack-mrkdwn-add-list-face))
 
 (defun slack-mrkdwn-inside-code-p (point)
   (or (slack-mrkdwn-inside-code-block-p point)
@@ -272,6 +273,24 @@
                 (put-text-property markup-start-beg
                                    markup-start-end
                                    'display "┃")))))))
+
+(defun slack-mrkdwn-add-list-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-list (point-max) t)
+    (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
+      (let* ((list-sign (match-string 2))
+             (list-style (if (or (string= "-" list-sign)
+                                 (string= "*" list-sign))
+                             "bullet"
+                           "ordered"))
+             (list-indent (length (match-string 1))))
+        (slack-mrkdwn-put-section-block-props (match-beginning 0)
+                                              (match-end 0)
+                                              (list :section-type 'list
+                                                    :style list-style
+                                                    :indent list-indent
+                                                    :element-beg (match-beginning 4)
+                                                    :element-end (match-end 4)))))))
 
 (provide 'slack-mrkdwn)
 ;;; slack-mrkdwn.el ends here

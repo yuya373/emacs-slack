@@ -169,20 +169,30 @@
   (interactive)
   (with-current-buffer (current-buffer)
     (slack-mrkdwn-add-face)
-    (cl-labels ((create-elements-from-ranges (ranges)
+    (cl-labels ((with-ranges (ranges cb)
+                             (let ((str (mapconcat #'(lambda (range)
+                                                       (buffer-substring-no-properties
+                                                        (car range)
+                                                        (cdr range)))
+                                                   (reverse ranges)
+                                                   "\n")))
+                               (with-temp-buffer
+                                 (insert str)
+                                 (slack-mrkdwn-add-face)
+                                 (funcall cb))))
+                (create-elements-from-ranges (ranges)
+
                                              (when (< 0 (length ranges))
-                                               (let ((str (mapconcat #'(lambda (range)
-                                                                         (buffer-substring-no-properties
-                                                                          (car range)
-                                                                          (cdr range)))
-                                                                     (reverse ranges)
-                                                                     "\n")))
-                                                 (with-temp-buffer
-                                                   (insert str)
-                                                   (slack-mrkdwn-add-face)
-                                                   (create-elements
-                                                    (point-min)
-                                                    (point-max))))))
+                                               (with-ranges ranges #'(lambda ()
+                                                                       (create-elements
+                                                                        (point-min)
+                                                                        (point-max))))))
+                (create-section-elements-from-ranges (ranges)
+                                                     (when (< 0 (length ranges))
+                                                       (with-ranges ranges #'(lambda ()
+                                                                               (create-section-elements
+                                                                                (point-min)
+                                                                                (point-max))))))
                 (create-section-elements (start end)
                                          (let* ((cur-point start)
                                                 (elements nil)
@@ -216,8 +226,10 @@
                                                                                   (setq blockquote-ranges nil)))
                                                        (commit-list-block ()
                                                                           (when (commit-block "rich_text_list"
-                                                                                              (create-elements-from-ranges
-                                                                                               list-ranges)
+                                                                                              (mapcan #'(lambda (range)
+                                                                                                          (create-section-elements-from-ranges
+                                                                                                           (list range)))
+                                                                                                      (reverse list-ranges))
                                                                                               (cons "style" list-style)
                                                                                               (cons "indent" list-indent))
                                                                             (setq list-ranges nil)
@@ -246,15 +258,17 @@
                                                                  ;; Skip newline
                                                                  (setq end (1+ end))
                                                                  ))
-                                                   ;; (list (progn
-                                                   ;;         (commit-section-block)
-                                                   ;;         (commit-preformatted-block)
-                                                   ;;         (commit-blockquote-block)
-                                                   ;;         (push (cons (plist-get block-props :element-beg)
-                                                   ;;                     (plist-get block-props :element-end))
-                                                   ;;               list-ranges)
-                                                   ;;         (setq list-style (plist-get block-props :style))
-                                                   ;;         (setq list-indent (plist-get block-props :indent))))
+                                                   (list (progn
+                                                           (commit-section-block)
+                                                           (commit-preformatted-block)
+                                                           (commit-blockquote-block)
+                                                           (push (cons (plist-get block-props :element-beg)
+                                                                       (plist-get block-props :element-end))
+                                                                 list-ranges)
+                                                           (setq list-style (plist-get block-props :style))
+                                                           (setq list-indent (plist-get block-props :indent)))
+                                                         ;; Skip newline
+                                                         (setq end (1+ end)))
                                                    (t (progn
                                                         (commit-preformatted-block)
                                                         (commit-blockquote-block)
