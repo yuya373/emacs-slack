@@ -455,10 +455,10 @@
     (should (eq 46 (match-beginning 4))))
   (let ((block "   ```\nThis is a code block\nAnd it's multi-line\n```   "))
     (string-match slack-mrkdwn-regex-code-block block)
-    (should (equal "This is a code block\nAnd it's multi-line\n"
+    (should (equal "This is a code block\nAnd it's multi-line"
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
-    (should (eq 48 (match-beginning 4))))
+    (should (eq 47 (match-beginning 4))))
   (should (string-match-p slack-mrkdwn-regex-code-block "```\nbbb\naaa\n```\n"))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
