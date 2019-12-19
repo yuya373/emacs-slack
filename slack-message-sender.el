@@ -129,7 +129,11 @@
       (with-slots (team) buf
         (slack-select-from-list
             ((slack-channel-names team) "Select Channel: ")
-            (insert (concat "#" (slack-room-name selected team)))))))
+            (insert (concat (propertize (format "<#%s>" (oref selected id))
+                                        'rear-nonsticky t
+                                        'display (format "@%s" (slack-room-name selected team))
+                                        'face 'slack-message-mention-face)
+                            " "))))))
 
 (defun slack-message-embed-mention ()
   (interactive)
@@ -148,20 +152,21 @@
               (alist "Select User: ")
               (cl-case (plist-get selected :type)
                 (keyword
-                 (insert (concat (propertize (concat "@" (plist-get selected :name))
+                 (insert (concat (propertize (format "<!%s>" (plist-get selected :name))
                                              'rear-nonsticky t
+                                             'display (concat "@" (plist-get selected :name))
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (usergroup
-                 (insert (concat (propertize (concat "@" (plist-get selected :id))
+                 (insert (concat (propertize (format "<!subteam^%s>" (plist-get selected :id))
                                              'rear-nonsticky t
+                                             'display (concat "@" (plist-get selected :name))
                                              'face 'slack-message-mention-keyword-face)
                                  " ")))
                 (t
-                 (insert (concat (propertize (concat "@" (plist-get selected :id))
+                 (insert (concat (propertize (format "<@%s>" (plist-get selected :id))
                                              'rear-nonsticky t
-                                             'display (concat "@" (slack-user--name
-                                                                   selected team))
+                                             'display (concat "@" (slack-user--name selected team))
                                              'face 'slack-message-mention-face)
                                  " ")))))))))
 
