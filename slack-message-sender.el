@@ -40,6 +40,11 @@
 (defvar slack-completing-read-function)
 (defvar slack-buffer-function)
 
+(defconst slack-channel-mention-regex "\\(<#\\([A-Za-z0-9]+\\)>\\)")
+(defconst slack-user-mention-regex "\\(<@\\([A-Za-z0-9]+\\)>\\)")
+(defconst slack-usergroup-mention-regex "\\(<!subteam^\\([A-Za-z0-9]+\\)>\\)")
+(defconst slack-special-mention-regex "\\(<!\\(here\\|channel\\|everyone\\)>\\)")
+
 (defun slack-escape-message (message)
   "Escape '<,' '>' & '&' in MESSAGE."
   (replace-regexp-in-string
@@ -170,10 +175,37 @@
                                              'face 'slack-message-mention-face)
                                  " ")))))))))
 
-(defun slack-create-block-from-buffer ()
+(defun slack-mark-mentions ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-user-mention-regex (point-max) t)
+    (slack-mrkdwn-put-block-props (match-beginning 1)
+                                  (match-end 1)
+                                  (list :type 'user
+                                        :user-id (match-string 2))))
+  (goto-char (point-min))
+  (while (re-search-forward slack-usergroup-mention-regex (point-max) t)
+    (slack-mrkdwn-put-block-props (match-beginning 1)
+                                  (match-end 1)
+                                  (list :type 'usergroup
+                                        :usergroup-id (match-string 2))))
+  (goto-char (point-min))
+  (while (re-search-forward slack-channel-mention-regex (point-max) t)
+    (slack-mrkdwn-put-block-props (match-beginning 1)
+                                  (match-end 1)
+                                  (list :type 'channel
+                                        :channel-id (match-string 2))))
+  (goto-char (point-min))
+  (while (re-search-forward slack-special-mention-regex (point-max) t)
+    (slack-mrkdwn-put-block-props (match-beginning 1)
+                                  (match-end 1)
+                                  (list :type 'broadcast
+                                        :range (match-string 2)))))
+
+(defun slack-create-blocks-from-buffer ()
   (interactive)
   (with-current-buffer (current-buffer)
     (slack-mrkdwn-add-face)
+    (slack-mark-mentions)
     (cl-labels ((with-ranges (ranges cb)
                              (let ((str (mapconcat #'(lambda (range)
                                                        (buffer-substring-no-properties
@@ -311,6 +343,14 @@
                                                                (strike (create-text-element block-text (list (cons "strike" t))))
                                                                (code (create-text-element block-text (list (cons "code" t))))
                                                                (text (create-text-element block-text))
+                                                               (user (list (cons "type" "user")
+                                                                           (cons "user_id" (plist-get block-props :user-id))))
+                                                               (usergroup (list (cons "type" "usergroup")
+                                                                                (cons "usergroup_id" (plist-get block-props :usergroup-id))))
+                                                               (channel (list (cons "type" "channel")
+                                                                              (cons "channel_id" (plist-get block-props :channel-id))))
+                                                               (broadcast (list (cons "type" "broadcast")
+                                                                                (cons "range" (plist-get block-props :range))))
                                                                (t (create-text-element
                                                                    (buffer-substring-no-properties cur-point
                                                                                                    next-change-point)))))))
@@ -321,15 +361,16 @@
 
                                        (reverse elements))))))
       (let ((elements (create-section-elements (point-min) (point-max))))
-        (let ((blocks (cons "blocks" (list (list (cons "type" "rich_text")
-                                                 (cons "elements" elements))))))
-          (let ((buf (get-buffer-create "emacs-slack blocks")))
-            (with-current-buffer buf
-              (delete-region (point-min) (point-max))
-              (insert (json-encode-list (list blocks)))
-              (json-mode)
-              (json-pretty-print-buffer))
-            (switch-to-buffer-other-window buf)))))))
+        (let ((blocks (list (cons "blocks" (list (list (cons "type" "rich_text")
+                                                       (cons "elements" elements)))))))
+          ;; (let ((buf (get-buffer-create "emacs-slack blocks")))
+          ;;   (with-current-buffer buf
+          ;;     (delete-region (point-min) (point-max))
+          ;;     (insert (json-encode-list blocks))
+          ;;     (json-mode)
+          ;;     (json-pretty-print-buffer))
+          ;;   (switch-to-buffer-other-window buf))
+          blocks)))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here
