@@ -521,8 +521,7 @@
                                         (list :type "text" :text "\nWorld"))))
          (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
     (should (eq 'slack-mrkdwn-blockquote-face
-                (get-text-property 0 'face text)))
-    (should (eq 3 (length (split-string text "\n" nil nil))))))
+                (get-text-property 0 'face text)))))
 
 (ert-deftest slack-test-rich-text-list ()
   (let ((elements (list (list :type "rich_text_section"
@@ -541,7 +540,8 @@
                                "\n"
                                "・ bar"
                                "\n"
-                               "・ baz")
+                               "・ baz"
+                               "\n")
                        text)))
 
     (let* ((payload (list :type "rich_text_list"
@@ -553,7 +553,8 @@
                                "\n"
                                "  ・ bar"
                                "\n"
-                               "  ・ baz")
+                               "  ・ baz"
+                               "\n")
                        text)))
 
     (let* ((payload (list :type "rich_text_list"
@@ -565,7 +566,8 @@
                                "\n"
                                "2. bar"
                                "\n"
-                               "3. baz")
+                               "3. baz"
+                               "\n")
                        text)))
 
     (let* ((payload (list :type "rich_text_list"
@@ -577,7 +579,8 @@
                                "\n"
                                "  2. bar"
                                "\n"
-                               "  3. baz")
+                               "  3. baz"
+                               "\n")
                        text)))))
 
 (ert-deftest slack-test-rich-text-text-element ()
@@ -647,6 +650,182 @@
 (ert-deftest slack-test-rich-text-range-element ()
   (let ((payload (list :type "broadcast" :range "here")))
     (should (string= "@here" (slack-block-to-string (slack-create-rich-text-element payload))))))
+
+(defun slack-test-parse-blocks (str)
+  (let* ((json-object-type 'plist)
+         (json-array-type 'list))
+    (plist-get (json-read-from-string (json-encode
+                                       (with-temp-buffer
+                                         (insert str)
+                                         (slack-create-blocks-from-buffer))))
+               :blocks)))
+
+(ert-deftest slack-test-create-blocks-from-buffer ()
+  (let* ((str (string-trim "
+bold *bold* bold
+italic _italic_ italic
+strike ~strike~ strike
+code `code` code
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (dolist (style  '(("bold" . :bold)
+                            ("italic" . :italic)
+                            ("strike" . :strike)
+                            ("code" . :code)))
+            (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                   (not (plist-get (plist-get el :style)
+                                                                                   (cdr style)))))
+                                                elements))))
+            (should (string= (car style)
+                             (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                        (plist-get (plist-get el :style)
+                                                                                   (cdr style))))
+                                                    elements)
+                                        :text))))))))
+  (let* ((str (string-trim "
+```
+code
+block
+```
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_preformatted" (plist-get section :type)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 1 (length elements)))
+            (let ((element (car elements)))
+              (should (string= "text" (plist-get element :type)))
+              (should (string= "code\nblock" (plist-get element :text)))))))))
+
+  (let* ((str (string-trim "
+> bold *bold* bold
+> quote
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_quote" (plist-get section :type)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+            (dolist (style '(("bold" . :bold)))
+              (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                     (not (plist-get (plist-get el :style)
+                                                                                     (cdr style)))))
+                                                  elements))))
+              (should (string= (car style)
+                               (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                          (plist-get (plist-get el :style)
+                                                                                     (cdr style))))
+                                                      elements)
+                                          :text)))))))))
+
+  (let* ((str (string-trim "
+1. list
+2. *bold*
+3. ordered
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_list" (plist-get section :type)))
+          (should (string= "ordered" (plist-get section :style)))
+          (should (eq 0 (plist-get section :indent)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+
+            (let* ((bold-section (cadr elements))
+                   (elements (plist-get bold-section :elements)))
+              (dolist (style '(("bold" . :bold)))
+                (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                       (not (plist-get (plist-get el :style)
+                                                                                       (cdr style)))))
+                                                    elements))))
+                (should (string= (car style)
+                                 (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                            (plist-get (plist-get el :style)
+                                                                                       (cdr style))))
+                                                        elements)
+                                            :text))))))))))
+  (let* ((str (string-trim "
+ - list
+ - `code`
+ - bullet
+
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_list" (plist-get section :type)))
+          (should (string= "bullet" (plist-get section :style)))
+          (should (eq 1 (plist-get section :indent)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+
+            (let* ((bold-section (cadr elements))
+                   (elements (plist-get bold-section :elements)))
+              (dolist (style '(("code" . :code)))
+                (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                       (not (plist-get (plist-get el :style)
+                                                                                       (cdr style)))))
+                                                    elements))))
+                (should (string= (car style)
+                                 (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                            (plist-get (plist-get el :style)
+                                                                                       (cdr style))))
+                                                        elements)
+                                            :text))))))))))
+  (let* ((str (string-trim "
+<@U0G2XCVQV>
+<!channel>
+<#C0G31N06B>
+<!subteam^USLACKBOT>
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (dolist (mention  '(("U0G2XCVQV" . ("user" . :user_id))
+                              ("channel" . ("broadcast" . :range))
+                              ("C0G31N06B" . ("channel" . :channel_id))
+                              ("USLACKBOT" . ("usergroup" . :usergroup_id))))
+            (let ((type (cadr mention))
+                  (v (car mention))
+                  (key (cddr mention)))
+              (should (eq 1 (length (cl-remove-if #'(lambda (el) (not (string= (plist-get el :type)
+                                                                               type)))
+                                                  elements))))
+              (should (string= v
+                               (plist-get (cl-find-if #'(lambda (el) (string= (plist-get el :type)
+                                                                              type))
+                                                      elements)
+                                          key))))
+
+            )))))
+  )
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
