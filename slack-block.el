@@ -154,7 +154,7 @@
   (let ((text (mapconcat #'(lambda (element) (slack-block-to-string element option))
                          (oref this elements)
                          "")))
-    (propertize text
+    (propertize (concat text "\n")
                 'face 'slack-mrkdwn-code-block-face)))
 
 (defun slack-create-rich-text-preformatted (payload)
@@ -175,7 +175,7 @@
                                    texts
                                    "\n")))
 
-    (propertize text-with-pad
+    (propertize (concat text-with-pad "\n")
                 'face 'slack-mrkdwn-blockquote-face)))
 
 (defun slack-create-rich-text-quote (payload)
@@ -205,7 +205,8 @@
                     text)
             texts-with-dot)
       (setq i (+ i 1)))
-    (mapconcat #'identity (reverse texts-with-dot) "\n")))
+    (concat (mapconcat #'identity (reverse texts-with-dot) "\n")
+            "\n")))
 
 (defun slack-create-rich-text-list (payload)
   (make-instance 'slack-rich-text-list
