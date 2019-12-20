@@ -74,6 +74,16 @@
 
 (defconst slack-mrkdwn-regex-list "^\\([[:blank:]]*\\)\\([0-9]+\\.\\|[-*]\\)\\([[:blank:]]\\)\\(.*\\)$")
 
+(defface slack-mrkdwn-list-face
+  '((t (:foreground "#fdf6e3" :weight bold)))
+  "Face used to mrkdwn list"
+  :group 'slack)
+
+(defcustom slack-mrkdwn-list-bullet "•"
+  "Used to display unordered list bullet"
+  :group 'slack
+  :type 'string)
+
 (defun slack-mrkdwn-plain-text-p (point)
   (let ((text-type (get-text-property point 'slack-text-type)))
     (or (null text-type)
@@ -86,7 +96,8 @@
   (slack-mrkdwn-add-strike-face)
   (slack-mrkdwn-add-code-face)
   (slack-mrkdwn-add-code-block-face)
-  (slack-mrkdwn-add-blockquote-face))
+  (slack-mrkdwn-add-blockquote-face)
+  (slack-mrkdwn-add-list-face))
 
 (defun slack-mrkdwn-inside-code-p (point)
   (or (slack-mrkdwn-inside-code-block-p point)
@@ -234,6 +245,21 @@
                 (put-text-property markup-start-beg
                                    markup-start-end
                                    'display "┃")))))))
+
+(defun slack-mrkdwn-add-list-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-list (point-max) t)
+    (slack-if-let* ((beg (match-beginning 2))
+                    (end (match-end 2)))
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
+          (put-text-property beg end
+                             'face 'slack-mrkdwn-list-face)
+          (when (let ((list-sign (match-string 2)))
+                  (or (string= "-" list-sign)
+                      (string= "*" list-sign)))
+            (put-text-property beg end
+                               'display slack-mrkdwn-list-bullet))))))
 
 (provide 'slack-mrkdwn)
 ;;; slack-mrkdwn.el ends here
