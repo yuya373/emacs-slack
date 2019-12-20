@@ -4,7 +4,7 @@
 (require 'slack-usergroup)
 (require 'slack-message-formatter)
 (require 'slack-block)
-(require 'slack-mrkdwn)
+(require 'slack-message-sender)
 
 (defvar slack-channel-button-keymap nil)
 
