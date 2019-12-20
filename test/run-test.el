@@ -822,9 +822,26 @@ block
                                (plist-get (cl-find-if #'(lambda (el) (string= (plist-get el :type)
                                                                               type))
                                                       elements)
-                                          key))))
-
-            )))))
+                                          key)))))))))
+  (let* ((str (string-trim "
+:dog2:
+:man-biking:
+:man_dancing:
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (not (null section)))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (should (equal '("dog2" "man-biking" "man_dancing")
+                         (mapcar #'(lambda (el) (plist-get el :name))
+                                 (cl-remove-if #'(lambda (el) (not (string= "emoji" (plist-get el :type))))
+                                               elements)))))
+        )))
   )
 
 (if noninteractive
