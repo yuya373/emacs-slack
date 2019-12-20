@@ -842,6 +842,25 @@ block
                                  (cl-remove-if #'(lambda (el) (not (string= "emoji" (plist-get el :type))))
                                                elements)))))
         )))
+  (let* ((str (string-trim "
+https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (not (null section)))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (should (eq 1 (length (cl-remove-if #'(lambda (el) (not (string= "link" (plist-get el :type))))
+                                              elements))))
+          (should (string= "https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less"
+                           (plist-get (cl-find-if #'(lambda (el) (string= "link" (plist-get el :type)))
+                                                  elements)
+                                      :url))))
+        )))
   )
 
 (if noninteractive

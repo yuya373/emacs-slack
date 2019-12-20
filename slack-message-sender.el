@@ -210,12 +210,25 @@
                                   (list :type 'emoji
                                         :name (match-string 1)))))
 
+(defun slack-mark-links ()
+  (goto-char (point-min))
+  (let ((regex (regexp-opt thing-at-point-uri-schemes)))
+    (while (re-search-forward regex (point-max) t)
+      (let ((bounds (bounds-of-thing-at-point 'url)))
+        (when bounds
+          (slack-mrkdwn-put-block-props (car bounds)
+                                        (cdr bounds)
+                                        (list :type 'link
+                                              :url (buffer-substring-no-properties (car bounds)
+                                                                                   (cdr bounds)))))))))
+
 (defun slack-create-blocks-from-buffer ()
   (interactive)
   (with-current-buffer (current-buffer)
     (slack-mrkdwn-add-face)
     (slack-mark-mentions)
     (slack-mark-emojis)
+    (slack-mark-links)
     (cl-labels ((with-ranges (ranges cb)
                              (let ((str (mapconcat #'(lambda (range)
                                                        (buffer-substring-no-properties
@@ -363,6 +376,8 @@
                                                                                 (cons "range" (plist-get block-props :range))))
                                                                (emoji (list (cons "type" "emoji")
                                                                             (cons "name" (plist-get block-props :name))))
+                                                               (link (list (cons "type" "link")
+                                                                           (cons "url" (plist-get block-props :url))))
                                                                (t (create-text-element
                                                                    (buffer-substring-no-properties cur-point
                                                                                                    next-change-point)))))))
@@ -375,13 +390,13 @@
       (let ((elements (create-section-elements (point-min) (point-max))))
         (let ((blocks (list (cons "blocks" (list (list (cons "type" "rich_text")
                                                        (cons "elements" elements)))))))
-          (let ((buf (get-buffer-create "emacs-slack blocks")))
-            (with-current-buffer buf
-              (delete-region (point-min) (point-max))
-              (insert (json-encode-list blocks))
-              (json-mode)
-              (json-pretty-print-buffer))
-            (switch-to-buffer-other-window buf))
+          ;; (let ((buf (get-buffer-create "emacs-slack blocks")))
+          ;;   (with-current-buffer buf
+          ;;     (delete-region (point-min) (point-max))
+          ;;     (insert (json-encode-list blocks))
+          ;;     (json-mode)
+          ;;     (json-pretty-print-buffer))
+          ;;   (switch-to-buffer-other-window buf))
           blocks)))))
 
 (provide 'slack-message-sender)
