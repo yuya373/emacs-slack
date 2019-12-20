@@ -355,5 +355,10 @@
 (cl-defmethod slack-message-ephemeral-p ((this slack-message))
   (oref this is-ephemeral))
 
+(cl-defmethod slack-message-subscribed-thread-message-p ((this slack-message) room)
+  (and (slack-thread-messagep this)
+       (slack-if-let* ((parent (slack-room-find-thread-parent room this)))
+           (oref parent subscribed))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
