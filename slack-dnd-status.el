@@ -64,12 +64,17 @@
            (oset team dnd-status statuses)))
         (when (functionp after-success)
           (funcall after-success team))))
-    (slack-request
-     (slack-request-create
-      slack-dnd-team-info-url
-      team
-      :success #'on-success))))
-
+    (let ((user-ids (let ((result))
+                      (cl-loop for im in (slack-team-ims team)
+                               do (when (slack-room-open-p im)
+                                    (push (oref im user) result)))
+                      result)))
+      (slack-request
+       (slack-request-create
+        slack-dnd-team-info-url
+        team
+        :params (list (cons "users" (mapconcat #'identity user-ids ",")))
+        :success #'on-success)))))
 
 (provide 'slack-dnd-status)
 ;;; slack-dnd-status.el ends here
