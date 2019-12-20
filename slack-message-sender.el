@@ -45,54 +45,6 @@
 (defconst slack-usergroup-mention-regex "\\(<!subteam^\\([A-Za-z0-9]+\\)>\\)")
 (defconst slack-special-mention-regex "\\(<!\\(here\\|channel\\|everyone\\)>\\)")
 
-(defun slack-escape-message (message)
-  "Escape '<,' '>' & '&' in MESSAGE."
-  (replace-regexp-in-string
-   ">" "&gt;"
-   (replace-regexp-in-string
-    "<" "&lt;"
-    (replace-regexp-in-string "&" "&amp;" message))))
-
-
-(defun slack-link-users (message team)
-  "Add links to all references to valid users in MESSAGE."
-  (replace-regexp-in-string
-   slack-user-mention-regex
-   #'(lambda (text)
-       (let ((id (match-string 1 text)))
-         (slack-if-let* ((user (slack-user--find id team))
-                         (username (slack-user--name user team)))
-             (format "<@%s>" id)
-           (slack-if-let* ((group (slack-usergroup-find id team)))
-               (format "<!subteam^%s>" id)
-             (cond
-              ((string= id "here") "<!here>")
-              ((cl-find id '("channel" "group") :test #'string=) "<!channel>")
-              ((string= id "everyone") "<!everyone>")
-              (t text))))))
-   message t))
-
-(defun slack-link-channels (message team)
-  "Add links to all references to valid channels in MESSAGE."
-  (let ((channel-ids
-         (mapcar #'(lambda (x)
-                     (let ((channel (cdr x)))
-                       (cons (slack-room-name channel team)
-                             (slot-value channel 'id))))
-                 (slack-channel-names team))))
-    (replace-regexp-in-string
-     "#\\<\\([A-Za-z0-9_\-]+\\)\\>"
-     #'(lambda (text)
-         (let* ((channel (match-string 1 text))
-                (id (cdr (assoc channel channel-ids))))
-           (if id
-               (format "<#%s|%s>" id channel)
-             text)))
-     message t)))
-
-(defun slack-message-prepare-links (message team)
-  (slack-link-channels (slack-link-users message team) team))
-
 (cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil))
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
@@ -131,18 +83,6 @@
       :headers (list (cons "Content-Type"
                            "application/json;charset=utf-8"))
       :success #'success))))
-
-(defun slack-message-read-room (team)
-  (let* ((list (slack-message-room-list team))
-         (choices (mapcar #'car list))
-         (room-name (slack-message-read-room-list "Select Room: " choices))
-         (room (cdr (cl-assoc room-name list :test #'string=))))
-    room))
-
-(defun slack-message-read-room-list (prompt choices)
-  (let ((completion-ignore-case t))
-    (funcall slack-completing-read-function (format "%s" prompt)
-             choices nil t nil nil choices)))
 
 (defun slack-message-room-list (team)
   (append (slack-group-names team)
