@@ -72,6 +72,11 @@
   "Face used to `>'"
   :group 'slack)
 
+(defcustom slack-mrkdwn-blockquote-sign "┃"
+  "Used to display > when blockquote"
+  :group 'slack
+  :type 'string)
+
 (defconst slack-mrkdwn-regex-list "^\\([[:blank:]]*\\)\\([0-9]+\\.\\|[-*]\\)\\([[:blank:]]\\)\\(.*\\)$")
 
 (defface slack-mrkdwn-list-face
@@ -244,7 +249,7 @@
                                    'slack-mrkdwn-blockquote-face)
                 (put-text-property markup-start-beg
                                    markup-start-end
-                                   'display "┃")))))))
+                                   'display slack-mrkdwn-blockquote-sign)))))))
 
 (defun slack-mrkdwn-add-list-face ()
   (goto-char (point-min))

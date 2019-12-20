@@ -40,6 +40,7 @@
 (declare-function slack-format-message "slack-message-formatter")
 (require 'slack-image)
 (require 'slack-usergroup)
+(require 'slack-mrkdwn)
 
 (defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap)
@@ -171,7 +172,9 @@
                           (oref this elements)
                           ""))
          (texts (split-string text "[\n\r]" nil nil))
-         (text-with-pad (mapconcat #'(lambda (text) (format "┃%s" text))
+         (text-with-pad (mapconcat #'(lambda (text) (format "%s%s"
+                                                            slack-mrkdwn-blockquote-sign
+                                                            text))
                                    texts
                                    "\n")))
 
@@ -194,14 +197,15 @@
         (texts (mapcar #'(lambda (element) (slack-block-to-string element option))
                        (oref this elements)))
         (texts-with-dot nil)
-        (dot "・")
+        (dot slack-mrkdwn-list-bullet)
         (i 1))
     (dolist (text texts)
       (push (format "%s%s %s"
                     indent
-                    (if (string= (oref this style) "ordered")
-                        (format "%s." i)
-                      dot)
+                    (propertize (if (string= (oref this style) "ordered")
+                                    (format "%s." i)
+                                  dot)
+                                'face 'slack-mrkdwn-list-face)
                     text)
             texts-with-dot)
       (setq i (+ i 1)))
@@ -224,20 +228,11 @@
    (code :initarg :code :type boolean)))
 
 (defmethod slack-block-to-string ((this slack-rich-text-element-style) text)
-  (let ((props '()))
-    (when (oref this bold)
-      (setq props
-            (plist-put props :weight 'bold)))
-    (when (oref this italic)
-      (setq props
-            (plist-put props :slant 'italic)))
-    (when (oref this strike)
-      (setq props
-            (plist-put props :strike-through t)))
-    (when (oref this code)
-      (setq props
-            (plist-put props :inherit 'slack-preview-face)))
-    (apply #'propertize text (list 'face props))))
+  (let ((face (progn (and (oref this bold) 'slack-mrkdwn-bold-face)
+                     (and (oref this italic) 'slack-mrkdwn-italic-face)
+                     (and (oref this strike) 'slack-mrkdwn-strike-face)
+                     (and (oref this code) 'slack-mrkdwn-code-face))))
+    (propertize text 'face face)))
 
 (defun slack-create-rich-text-element-style (payload)
   (when payload
