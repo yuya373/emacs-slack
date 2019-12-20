@@ -165,22 +165,14 @@
                                team message thread-ts)))
 
 (defun slack-thread-send-message (room team message thread-ts)
-  (let ((message (slack-message-prepare-links
-                  (slack-escape-message message)
-                  team))
-        (broadcast (if (eq slack-thread-also-send-to-room 'ask)
+  (let ((broadcast (if (eq slack-thread-also-send-to-room 'ask)
                        (y-or-n-p (format "Also send to %s ? "
                                          (slack-room-name room team)))
                      slack-thread-also-send-to-room)))
-    (with-slots (message-id self-id) team
-      (let* ((payload (list :id message-id
-                            :channel (oref room id)
-                            :reply_broadcast broadcast
-                            :thread_ts thread-ts
-                            :type "message"
-                            :user self-id
-                            :text message)))
-        (slack-team-send-message team payload)))))
+    (let* ((payload (list (cons "reply_broadcast" broadcast)
+                          (cons "thread_ts" thread-ts))))
+      (slack-message-send-internal message room team
+                                   :payload payload))))
 
 (defun slack-thread-message--send (message)
   (slack-if-let* ((buf slack-current-buffer))

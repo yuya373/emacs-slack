@@ -73,10 +73,11 @@
         :type "POST"
         :params (list (cons "channel" (oref room id))
                       (cons "timestamp" ts)
-                      (cons "text" (slack-message-prepare-links
-                                    (slack-escape-message msg)
-                                    team))
-                      (cons "share_channel" share-channel-id))
+                      (cons "share_channel" share-channel-id)
+                      (cons "blocks"
+                            (json-encode (cdr (car (with-temp-buffer
+                                                     (insert msg)
+                                                     (slack-create-blocks-from-buffer)))))))
         :success #'on-success)))))
 
 (cl-defmethod slack-message-get-user-id ((m slack-user-message))
@@ -104,11 +105,14 @@
       slack-message-edit-url
       team
       :type "POST"
-      :params (list (cons "channel" channel)
-                    (cons "ts" ts)
-                    (cons "text" (slack-message-prepare-links
-                                  (slack-escape-message text)
-                                  team)))
+      :headers (list (cons "Content-Type"
+                           "application/json;charset=utf-8"))
+      :data (json-encode (apply #'list
+                                (cons "channel" channel)
+                                (cons "ts" ts)
+                                (with-temp-buffer
+                                  (insert text)
+                                  (slack-create-blocks-from-buffer))))
       :success #'on-edit))))
 
 (provide 'slack-message-editor)

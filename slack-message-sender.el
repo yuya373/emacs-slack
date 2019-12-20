@@ -93,7 +93,7 @@
 (defun slack-message-prepare-links (message team)
   (slack-link-channels (slack-link-users message team) team))
 
-(defun slack-message-send-internal (message room team)
+(cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil))
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
       (slack-conversations-join
@@ -103,14 +103,34 @@
                                                       team)))
     (with-slots (message-id self-id) team
       (let* ((channel-id (oref room id))
-             (m (list :id message-id
-                      :channel channel-id
-                      :type "message"
-                      :user self-id
-                      :text (slack-message-prepare-links
-                             (slack-escape-message message)
-                             team))))
-        (slack-team-send-message team m)))))
+             (m (apply #'list
+                       (cons "type" "message")
+                       (cons "channel" channel-id)
+                       (with-temp-buffer
+                         (insert message)
+                         (slack-create-blocks-from-buffer)))))
+        (slack-chat-post-message team (append m payload)
+                                 :on-success on-success
+                                 :on-error on-error)))))
+
+(cl-defun slack-chat-post-message (team message &key (on-success nil) (on-error nil))
+  (cl-labels
+      ((success (&key data &allow-other-keys)
+                (if (eq t (plist-get data :ok))
+                    (and on-success (funcall on-success))
+                  (if on-error
+                      (funcall on-error data)
+                    (error "Failed to post message.  %s"
+                           (plist-get data :message))))))
+    (slack-request
+     (slack-request-create
+      "https://slack.com/api/chat.postMessage"
+      team
+      :type "POST"
+      :data (json-encode message)
+      :headers (list (cons "Content-Type"
+                           "application/json;charset=utf-8"))
+      :success #'success))))
 
 (defun slack-message-read-room (team)
   (let* ((list (slack-message-room-list team))

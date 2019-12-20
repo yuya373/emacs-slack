@@ -143,16 +143,13 @@ use `slack-change-current-team' to change `slack-current-team'"
   (with-slots (ws) this
     (oset ws url url)))
 
-(cl-defmethod slack-team-send-message ((this slack-team) message)
-  (unless (or (slack-ws-payload-ping-p message)
-              (slack-ws-payload-presence-sub-p message))
-    (puthash (oref this message-id)
-             (slack-message-create message this)
-             (oref this sent-message)))
-  (slack-team-inc-message-id this)
-  (with-slots (ws) this
-    (slack-ws-send ws message this)))
-
+(cl-defmethod slack-team-send-message ((this slack-team) message &key (on-success nil) (on-error nil))
+  (if (or (slack-ws-payload-ping-p message)
+          (slack-ws-payload-presence-sub-p message))
+      (progn
+        (slack-team-inc-message-id this)
+        (with-slots (ws) this
+          (slack-ws-send ws message this)))))
 
 (cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
   (with-slots (ws) this
