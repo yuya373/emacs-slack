@@ -86,8 +86,7 @@
   (slack-mrkdwn-add-strike-face)
   (slack-mrkdwn-add-code-face)
   (slack-mrkdwn-add-code-block-face)
-  (slack-mrkdwn-add-blockquote-face)
-  (slack-mrkdwn-add-list-face))
+  (slack-mrkdwn-add-blockquote-face))
 
 (defun slack-mrkdwn-inside-code-p (point)
   (or (slack-mrkdwn-inside-code-block-p point)
@@ -119,20 +118,9 @@
           (put-text-property beg end
                              'slack-code-block-type 'inline)))))
 
-(defun slack-mrkdwn-put-block-props (beg end value)
-  (put-text-property beg end 'slack-block-props value))
-
-(defun slack-mrkdwn-put-section-block-props (beg end value)
-  (put-text-property beg end 'slack-section-block-props value))
-
 (defun slack-mrkdwn-add-bold-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-bold (point-max) t)
-    (unless (slack-mrkdwn-inside-code-p (match-beginning 1))
-      (slack-mrkdwn-put-block-props (match-beginning 1)
-                                    (match-end 4)
-                                    (list :type 'bold
-                                          :text (match-string 3))))
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
         (unless (or (slack-mrkdwn-plain-text-p beg)
@@ -152,11 +140,6 @@
 (defun slack-mrkdwn-add-italic-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-italic (point-max) t)
-    (unless (slack-mrkdwn-inside-code-p (match-beginning 1))
-      (slack-mrkdwn-put-block-props (match-beginning 1)
-                                    (match-end 4)
-                                    (list :type 'italic
-                                          :text (match-string 3))))
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
         (unless (or (slack-mrkdwn-plain-text-p beg)
@@ -176,11 +159,6 @@
 (defun slack-mrkdwn-add-strike-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-strike (point-max) t)
-    (unless (slack-mrkdwn-inside-code-p (match-beginning 1))
-      (slack-mrkdwn-put-block-props (match-beginning 1)
-                                    (match-end 4)
-                                    (list :type 'strike
-                                          :text (match-string 3))))
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
         (unless (or (slack-mrkdwn-plain-text-p beg)
@@ -200,11 +178,6 @@
 (defun slack-mrkdwn-add-code-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-code (point-max) t)
-    (unless (slack-mrkdwn-inside-code-block-p (match-beginning 1))
-      (slack-mrkdwn-put-block-props (match-beginning 2)
-                                    (match-end 4)
-                                    (list :type 'code
-                                          :text (match-string 3))))
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
         (unless (or (slack-mrkdwn-plain-text-p beg)
@@ -225,12 +198,6 @@
 (defun slack-mrkdwn-add-code-block-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-code-block (point-max) t)
-    (slack-mrkdwn-put-section-block-props (match-beginning 0)
-                                          (match-end 0)
-                                          (list :section-type 'code-block
-                                                :end (+ 3 (match-end 0))
-                                                :element-beg (match-beginning 2)
-                                                :element-end (match-end 2)))
     (slack-if-let* ((beg (match-beginning 2))
                     (end (match-end 2)))
         (unless (slack-mrkdwn-plain-text-p beg)
@@ -251,12 +218,6 @@
 (defun slack-mrkdwn-add-blockquote-face ()
   (goto-char (point-min))
   (while (re-search-forward slack-mrkdwn-regex-blockquote (point-max) t)
-    (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
-      (slack-mrkdwn-put-section-block-props (match-beginning 0)
-                                            (match-end 0)
-                                            (list :section-type 'blockquote
-                                                  :element-beg (match-beginning 3)
-                                                  :element-end (match-end 3))))
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
         (unless (or (slack-mrkdwn-plain-text-p beg)
@@ -273,24 +234,6 @@
                 (put-text-property markup-start-beg
                                    markup-start-end
                                    'display "┃")))))))
-
-(defun slack-mrkdwn-add-list-face ()
-  (goto-char (point-min))
-  (while (re-search-forward slack-mrkdwn-regex-list (point-max) t)
-    (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
-      (let* ((list-sign (match-string 2))
-             (list-style (if (or (string= "-" list-sign)
-                                 (string= "*" list-sign))
-                             "bullet"
-                           "ordered"))
-             (list-indent (length (match-string 1))))
-        (slack-mrkdwn-put-section-block-props (match-beginning 0)
-                                              (match-end 0)
-                                              (list :section-type 'list
-                                                    :style list-style
-                                                    :indent list-indent
-                                                    :element-beg (match-beginning 4)
-                                                    :element-end (match-end 4)))))))
 
 (provide 'slack-mrkdwn)
 ;;; slack-mrkdwn.el ends here

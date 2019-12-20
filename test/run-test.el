@@ -691,7 +691,7 @@ code `code` code
                                         :text))))))))
   (let* ((str (string-trim "
 ```
-code
+*code*
 block
 ```
 "))
@@ -706,7 +706,7 @@ block
             (should (eq 1 (length elements)))
             (let ((element (car elements)))
               (should (string= "text" (plist-get element :type)))
-              (should (string= "code\nblock" (plist-get element :text)))))))))
+              (should (string= "*code*\nblock" (plist-get element :text)))))))))
 
   (let* ((str (string-trim "
 > bold *bold* bold

@@ -136,39 +136,119 @@
                                              'face 'slack-message-mention-face)
                                  " ")))))))))
 
+(defun slack-put-block-props (beg end value)
+  (put-text-property beg end 'slack-block-props value))
+
+(defun slack-put-section-block-props (beg end value)
+  (put-text-property beg end 'slack-section-block-props value))
+
+(defun slack-mark-bold ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-bold (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 4)
+                             (list :type 'bold
+                                   :text (match-string 3))))))
+
+(defun slack-mark-italic ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-italic (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 4)
+                             (list :type 'italic
+                                   :text (match-string 3))))))
+
+(defun slack-mark-strike ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-strike (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 4)
+                             (list :type 'strike
+                                   :text (match-string 3))))))
+
+(defun slack-mark-code ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 2)
+                             (match-end 4)
+                             (list :type 'code
+                                   :text (match-string 3))))))
+
+(defun slack-mark-code-block ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-code-block (point-max) t)
+    (slack-put-section-block-props (match-beginning 0)
+                                   (match-end 0)
+                                   (list :section-type 'code-block
+                                         :end (+ 3 (match-end 0))
+                                         :element-beg (match-beginning 2)
+                                         :element-end (match-end 2)))))
+
+(defun slack-mark-blockquote ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-blockquote (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 0))
+      (slack-put-section-block-props (match-beginning 0)
+                                     (match-end 0)
+                                     (list :section-type 'blockquote
+                                           :element-beg (match-beginning 3)
+                                           :element-end (match-end 3))))))
+
+(defun slack-mark-list ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-list (point-max) t)
+    (unless (slack-mark-inside-code-p (match-beginning 0))
+      (let* ((list-sign (match-string 2))
+             (list-style (if (or (string= "-" list-sign)
+                                 (string= "*" list-sign))
+                             "bullet"
+                           "ordered"))
+             (list-indent (length (match-string 1))))
+        (slack-put-section-block-props (match-beginning 0)
+                                       (match-end 0)
+                                       (list :section-type 'list
+                                             :style list-style
+                                             :indent list-indent
+                                             :element-beg (match-beginning 4)
+                                             :element-end (match-end 4)))))))
+
 (defun slack-mark-mentions ()
   (goto-char (point-min))
   (while (re-search-forward slack-user-mention-regex (point-max) t)
-    (slack-mrkdwn-put-block-props (match-beginning 1)
-                                  (match-end 1)
-                                  (list :type 'user
-                                        :user-id (match-string 2))))
+    (slack-put-block-props (match-beginning 1)
+                           (match-end 1)
+                           (list :type 'user
+                                 :user-id (match-string 2))))
   (goto-char (point-min))
   (while (re-search-forward slack-usergroup-mention-regex (point-max) t)
-    (slack-mrkdwn-put-block-props (match-beginning 1)
-                                  (match-end 1)
-                                  (list :type 'usergroup
-                                        :usergroup-id (match-string 2))))
+    (slack-put-block-props (match-beginning 1)
+                           (match-end 1)
+                           (list :type 'usergroup
+                                 :usergroup-id (match-string 2))))
   (goto-char (point-min))
   (while (re-search-forward slack-channel-mention-regex (point-max) t)
-    (slack-mrkdwn-put-block-props (match-beginning 1)
-                                  (match-end 1)
-                                  (list :type 'channel
-                                        :channel-id (match-string 2))))
+    (slack-put-block-props (match-beginning 1)
+                           (match-end 1)
+                           (list :type 'channel
+                                 :channel-id (match-string 2))))
   (goto-char (point-min))
   (while (re-search-forward slack-special-mention-regex (point-max) t)
-    (slack-mrkdwn-put-block-props (match-beginning 1)
-                                  (match-end 1)
-                                  (list :type 'broadcast
-                                        :range (match-string 2)))))
+    (slack-put-block-props (match-beginning 1)
+                           (match-end 1)
+                           (list :type 'broadcast
+                                 :range (match-string 2)))))
 
 (defun slack-mark-emojis ()
   (goto-char (point-min))
   (while (re-search-forward ":\\([a-z0-9_-]+\\):" (point-max) t)
-    (slack-mrkdwn-put-block-props (match-beginning 0)
-                                  (match-end 0)
-                                  (list :type 'emoji
-                                        :name (match-string 1)))))
+    (slack-put-block-props (match-beginning 0)
+                           (match-end 0)
+                           (list :type 'emoji
+                                 :name (match-string 1)))))
 
 (defun slack-mark-links ()
   (goto-char (point-min))
@@ -176,20 +256,35 @@
     (while (re-search-forward regex (point-max) t)
       (let ((bounds (bounds-of-thing-at-point 'url)))
         (when bounds
-          (slack-mrkdwn-put-block-props (car bounds)
-                                        (cdr bounds)
-                                        (list :type 'link
-                                              :url (buffer-substring-no-properties (car bounds)
-                                                                                   (cdr bounds)))))))))
+          (slack-put-block-props (car bounds)
+                                 (cdr bounds)
+                                 (list :type 'link
+                                       :url (buffer-substring-no-properties (car bounds)
+                                                                            (cdr bounds)))))))))
+
+(defun slack-mark-inside-code-p (point)
+  (slack-if-let* ((props (or (get-text-property point 'slack-block-props)
+                             (get-text-property point 'slack-section-block-props))))
+      (or (eq 'code (plist-get props :type))
+          (eq 'code-block (plist-get props :section-type)))))
+
+(defun slack-mark-rich-text-elements ()
+  (slack-mark-bold)
+  (slack-mark-italic)
+  (slack-mark-strike)
+  (slack-mark-code)
+  (slack-mark-mentions)
+  (slack-mark-emojis)
+  (slack-mark-links))
 
 (defun slack-create-blocks-from-buffer ()
   (interactive)
   (with-current-buffer (current-buffer)
-    (slack-mrkdwn-add-face)
-    (slack-mark-mentions)
-    (slack-mark-emojis)
-    (slack-mark-links)
-    (cl-labels ((with-ranges (ranges cb)
+    (slack-mark-rich-text-elements)
+    (slack-mark-code-block)
+    (slack-mark-blockquote)
+    (slack-mark-list)
+    (cl-labels ((with-ranges (ranges cb &optional before-mark)
                              (let ((str (mapconcat #'(lambda (range)
                                                        (buffer-substring-no-properties
                                                         (car range)
@@ -198,21 +293,22 @@
                                                    "\n")))
                                (with-temp-buffer
                                  (insert str)
-                                 (slack-mrkdwn-add-face)
+                                 (when before-mark
+                                   (funcall before-mark))
+                                 (slack-mark-rich-text-elements)
                                  (funcall cb))))
-                (create-elements-from-ranges (ranges)
-
+                (create-elements-from-ranges (ranges &optional before-mark)
                                              (when (< 0 (length ranges))
-                                               (with-ranges ranges #'(lambda ()
-                                                                       (create-elements
-                                                                        (point-min)
-                                                                        (point-max))))))
+                                               (with-ranges ranges
+                                                            #'(lambda () (create-elements (point-min)
+                                                                                          (point-max)))
+                                                            before-mark)))
                 (create-section-elements-from-ranges (ranges)
                                                      (when (< 0 (length ranges))
-                                                       (with-ranges ranges #'(lambda ()
-                                                                               (create-section-elements
-                                                                                (point-min)
-                                                                                (point-max))))))
+                                                       (with-ranges ranges
+                                                                    #'(lambda ()
+                                                                        (create-section-elements (point-min)
+                                                                                                 (point-max))))))
                 (create-section-elements (start end)
                                          (let* ((cur-point start)
                                                 (elements nil)
@@ -236,7 +332,10 @@
                                                        (commit-preformatted-block ()
                                                                                   (when (commit-block "rich_text_preformatted"
                                                                                                       (create-elements-from-ranges
-                                                                                                       preformatted-ranges))
+                                                                                                       preformatted-ranges
+                                                                                                       #'(lambda ()
+                                                                                                           (slack-put-section-block-props (point-min) (point-max)
+                                                                                                                                          (list :section-type 'code-block)))))
                                                                                     (setq preformatted-ranges nil)))
                                                        (commit-blockquote-block ()
 
