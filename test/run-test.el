@@ -4,6 +4,7 @@
 (require 'slack-usergroup)
 (require 'slack-message-formatter)
 (require 'slack-block)
+(require 'slack-mrkdwn)
 (require 'slack-message-sender)
 
 (defvar slack-channel-button-keymap nil)
@@ -536,11 +537,11 @@
                           :style "bullet"
                           :indent 0))
            (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
-      (should (string= (concat "・ foo"
+      (should (string= (concat (format "%s foo" slack-mrkdwn-list-bullet)
                                "\n"
-                               "・ bar"
+                               (format "%s bar" slack-mrkdwn-list-bullet)
                                "\n"
-                               "・ baz"
+                               (format "%s baz" slack-mrkdwn-list-bullet)
                                "\n")
                        text)))
 
@@ -549,11 +550,11 @@
                           :style "bullet"
                           :indent 1))
            (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
-      (should (string= (concat "  ・ foo"
+      (should (string= (concat (format "  %s foo" slack-mrkdwn-list-bullet)
                                "\n"
-                               "  ・ bar"
+                               (format "  %s bar" slack-mrkdwn-list-bullet)
                                "\n"
-                               "  ・ baz"
+                               (format "  %s baz" slack-mrkdwn-list-bullet)
                                "\n")
                        text)))
 
@@ -600,10 +601,10 @@
                                                       (slack-block-to-string
                                                        (slack-create-rich-text-element
                                                         (plist-put payload :style style))))))
-      (should (eq 'bold (plist-get (get-face-property bold) :weight)))
-      (should (eq 'italic (plist-get (get-face-property italic) :slant)))
-      (should (eq t (plist-get (get-face-property strike) :strike-through)))
-      (should (eq 'slack-preview-face (plist-get (get-face-property code) :inherit))))))
+      (should (eq 'slack-mrkdwn-bold-face (get-face-property bold)))
+      (should (eq 'slack-mrkdwn-italic-face (get-face-property italic)))
+      (should (eq 'slack-mrkdwn-strike-face (get-face-property strike)))
+      (should (eq 'slack-mrkdwn-code-face (get-face-property code))))))
 
 (ert-deftest slack-test-rich-text-channel-element ()
   (slack-test-setup

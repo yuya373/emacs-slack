@@ -228,10 +228,10 @@
    (code :initarg :code :type boolean)))
 
 (defmethod slack-block-to-string ((this slack-rich-text-element-style) text)
-  (let ((face (progn (and (oref this bold) 'slack-mrkdwn-bold-face)
-                     (and (oref this italic) 'slack-mrkdwn-italic-face)
-                     (and (oref this strike) 'slack-mrkdwn-strike-face)
-                     (and (oref this code) 'slack-mrkdwn-code-face))))
+  (let ((face (progn (or (and (oref this bold) 'slack-mrkdwn-bold-face)
+                         (and (oref this italic) 'slack-mrkdwn-italic-face)
+                         (and (oref this strike) 'slack-mrkdwn-strike-face)
+                         (and (oref this code) 'slack-mrkdwn-code-face)))))
     (propertize text 'face face)))
 
 (defun slack-create-rich-text-element-style (payload)
