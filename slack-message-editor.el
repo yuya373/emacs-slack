@@ -49,6 +49,7 @@
 
 (define-derived-mode slack-edit-message-mode fundamental-mode "Slack Edit Msg"
   ""
+  (slack-enable-wysiwyg)
   (slack-buffer-enable-emojify))
 
 (defun slack-message-share--send (team room ts msg)

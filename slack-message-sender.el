@@ -95,11 +95,35 @@
       (with-slots (team) buf
         (slack-select-from-list
             ((slack-channel-names team) "Select Channel: ")
-            (insert (concat (propertize (format "<#%s>" (oref selected id))
-                                        'rear-nonsticky t
-                                        'display (format "@%s" (slack-room-name selected team))
-                                        'face 'slack-message-mention-face)
-                            " "))))))
+            (slack-insert-channel-mention (oref selected id)
+                                          (format "@%s" (slack-room-name selected team)))))))
+
+(defmacro slack-insert-mention (face &rest body)
+  (declare (indent 2) (debug t))
+  `(let ((props (list 'rear-nonsticky t
+                      'display display
+                      'face ,face))
+         (beg (point)))
+     (insert (concat (apply #'propertize (progn ,@body) props) " "))
+     (put-text-property beg (1+ beg)
+                        'slack-mention-props
+                        (list :props props))))
+
+(defun slack-insert-channel-mention (channel-id display)
+  (slack-insert-mention 'slack-message-mention-face
+      (format "<#%s>" channel-id)))
+
+(defun slack-insert-user-mention (user-id display)
+  (slack-insert-mention 'slack-message-mention-face
+      (format "<@%s>" user-id)))
+
+(defun slack-insert-usergroup-mention (usergroup-id display)
+  (slack-insert-mention 'slack-message-mention-keyword-face
+      (format "<!subteam^%s>" usergroup-id)))
+
+(defun slack-insert-keyword-mention (keyword display)
+  (slack-insert-mention 'slack-message-mention-keyword-face
+      (format "<!%s>" keyword)))
 
 (defun slack-message-embed-mention ()
   (interactive)
@@ -118,23 +142,54 @@
               (alist "Select User: ")
               (cl-case (plist-get selected :type)
                 (keyword
-                 (insert (concat (propertize (format "<!%s>" (plist-get selected :name))
-                                             'rear-nonsticky t
-                                             'display (concat "@" (plist-get selected :name))
-                                             'face 'slack-message-mention-keyword-face)
-                                 " ")))
+                 (slack-insert-keyword-mention (plist-get selected :name)
+                                               (concat "@" (plist-get selected :name))))
                 (usergroup
-                 (insert (concat (propertize (format "<!subteam^%s>" (plist-get selected :id))
-                                             'rear-nonsticky t
-                                             'display (concat "@" (plist-get selected :name))
-                                             'face 'slack-message-mention-keyword-face)
-                                 " ")))
+                 (slack-insert-usergroup-mention (plist-get selected :id)
+                                                 (concat "@" (plist-get selected :name))))
                 (t
-                 (insert (concat (propertize (format "<@%s>" (plist-get selected :id))
-                                             'rear-nonsticky t
-                                             'display (concat "@" (slack-user--name selected team))
-                                             'face 'slack-message-mention-face)
-                                 " ")))))))))
+                 (slack-insert-user-mention (plist-get selected :id)
+                                            (concat "@" (slack-user--name selected team))))))))))
+
+(defvar slack-enable-wysiwyg)
+
+(defun slack-enable-wysiwyg ()
+  (when slack-enable-wysiwyg
+    (add-hook 'after-change-functions
+              'slack-wysiwyg-after-change nil t)))
+
+(defun slack-wysiwyg-enabled-p ()
+  (and slack-enable-wysiwyg
+       (or (eq 'slack-message-compose-buffer-mode
+               major-mode)
+           (eq 'slack-message-edit-buffer-mode
+               major-mode))))
+
+(defun slack-wysiwyg-after-change (beg end length)
+  (when (slack-wysiwyg-enabled-p)
+    (save-excursion
+      (save-restriction
+        (put-text-property (point-min) (point-max) 'face nil)
+        (put-text-property (point-min) (point-max) 'invisible nil)
+        (put-text-property (point-min) (point-max) 'slack-code-block-type nil)
+        (put-text-property (point-min) (point-max) 'display nil)
+        (slack-mrkdwn-add-face)
+        (mapc #'(lambda (regex)
+                  (goto-char (point-min))
+                  (while (re-search-forward regex (point-max) t)
+                    (let* ((beg (match-beginning 0))
+                           (end (match-end 0))
+                           (props (get-text-property beg 'slack-mention-props)))
+                      (when props
+                        (let ((properties (append (plist-get props :props) nil)))
+                          (while (< 0 (length properties))
+                            (put-text-property beg end
+                                               (pop properties)
+                                               (pop properties))))))))
+              (list slack-user-mention-regex
+                    slack-usergroup-mention-regex
+                    slack-channel-mention-regex
+                    slack-special-mention-regex))))))
 
 (defun slack-put-block-props (beg end value)
   (put-text-property beg end 'slack-block-props value))

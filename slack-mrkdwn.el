@@ -90,9 +90,10 @@
   :type 'string)
 
 (defun slack-mrkdwn-plain-text-p (point)
-  (let ((text-type (get-text-property point 'slack-text-type)))
-    (or (null text-type)
-        (eq 'plain text-type))))
+  (unless (slack-wysiwyg-enabled-p)
+    (let ((text-type (get-text-property point 'slack-text-type)))
+      (or (null text-type)
+          (eq 'plain text-type)))))
 
 (defun slack-mrkdwn-add-face ()
   (slack-mrkdwn-mark-code-block)

@@ -143,6 +143,10 @@ When `never', never display typing indicator."
   :type 'function
   :group 'slack)
 
+(defcustom slack-enable-wysiwyg nil
+  "If t, enable live markup in message compose or edit buffer."
+  :type 'boolean
+  :group 'slack)
 
 ;;;###autoload
 (defun slack-start (&optional team)
