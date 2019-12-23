@@ -98,32 +98,39 @@
             (slack-insert-channel-mention (oref selected id)
                                           (format "@%s" (slack-room-name selected team)))))))
 
-(defmacro slack-insert-mention (face &rest body)
-  (declare (indent 2) (debug t))
-  `(let ((props (list 'rear-nonsticky t
-                      'display display
-                      'face ,face))
-         (beg (point)))
-     (insert (concat (apply #'propertize (progn ,@body) props) " "))
-     (put-text-property beg (1+ beg)
-                        'slack-mention-props
-                        (list :props props))))
+(defun slack-propertize-mention-text (face display text)
+  (let ((props (list 'rear-nonsticky t
+                     'display display
+                     'face face))
+        (head (substring text 0 1))
+        (rest (substring text 1)))
+
+
+    (concat (apply #'propertize (format "%s%s"
+                                        (propertize head 'slack-mention-props (list :props props))
+                                        rest)
+                   props)
+            " ")))
 
 (defun slack-insert-channel-mention (channel-id display)
-  (slack-insert-mention 'slack-message-mention-face
-      (format "<#%s>" channel-id)))
+  (insert (slack-propertize-mention-text 'slack-message-mention-face
+                                         display
+                                         (format "<#%s>" channel-id))))
 
 (defun slack-insert-user-mention (user-id display)
-  (slack-insert-mention 'slack-message-mention-face
-      (format "<@%s>" user-id)))
+  (insert (slack-propertize-mention-text 'slack-message-mention-face
+                                         display
+                                         (format "<@%s>" user-id))))
 
 (defun slack-insert-usergroup-mention (usergroup-id display)
-  (slack-insert-mention 'slack-message-mention-keyword-face
-      (format "<!subteam^%s>" usergroup-id)))
+  (insert (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                         display
+                                         (format "<!subteam^%s>" usergroup-id))))
 
 (defun slack-insert-keyword-mention (keyword display)
-  (slack-insert-mention 'slack-message-mention-keyword-face
-      (format "<!%s>" keyword)))
+  (insert (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                         display
+                                         (format "<!%s>" keyword))))
 
 (defun slack-message-embed-mention ()
   (interactive)

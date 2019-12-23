@@ -296,8 +296,15 @@
                          users)))
         (slack-reaction-delete message reaction))))
 
-(cl-defmethod slack-message-get-text ((m slack-message))
-  (oref m text))
+(cl-defmethod slack-message-get-text ((m slack-message) team)
+  (or (mapconcat #'identity
+                 (cl-remove-if #'(lambda (block-message)
+                        (< (length block-message) 1))
+                    (mapcar #'(lambda (bl)
+                                (slack-block-to-mrkdwn bl (list :team team)))
+                            (oref m blocks)))
+                  "\n\n")
+      (slack-message-unescape-string (oref m text) team)))
 
 (cl-defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)

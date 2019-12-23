@@ -101,6 +101,11 @@
              (oref this elements)
              ""))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-block) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+             (oref this elements)
+             ""))
+
 (defun slack-create-rich-text-block (payload)
   (make-instance 'slack-rich-text-block
                  :type (plist-get payload :type)
@@ -115,6 +120,9 @@
 
 (cl-defmethod slack-block-to-string ((this slack-rich-text-block-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S\n" (oref this payload)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-block-element) &optional _option)
+  (format "Implement `slack-block-to-mrkdwn' for %S\n" (oref this payload)))
 
 (defun slack-create-rich-text-block-element (payload)
   (let* ((type (plist-get payload :type))
@@ -142,6 +150,11 @@
              (oref this elements)
              ""))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-section) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+             (oref this elements)
+             ""))
+
 (defun slack-create-rich-text-section (payload)
   (make-instance 'slack-rich-text-section
                  :type (plist-get payload :type)
@@ -157,6 +170,12 @@
                          "")))
     (propertize (concat text "\n")
                 'face 'slack-mrkdwn-code-block-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-preformatted) &optional option)
+  (let ((text (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+                         (oref this elements)
+                         "")))
+    (format "```%s```\n" text)))
 
 (defun slack-create-rich-text-preformatted (payload)
   (make-instance 'slack-rich-text-preformatted
@@ -180,6 +199,22 @@
 
     (propertize (concat text-with-pad "\n")
                 'face 'slack-mrkdwn-blockquote-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-quote) &optional option)
+  (let* ((text (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+                          (oref this elements)
+                          ""))
+         (texts (split-string text "[\n\r]" nil nil))
+         (text-with-pad (mapconcat #'(lambda (text) (format "%s%s"
+                                                            slack-mrkdwn-blockquote-sign
+                                                            text))
+                                   texts
+                                   "\n")))
+
+    (concat (mapconcat #'(lambda (text) (format "> %s" text))
+               texts
+               "\n")
+            "\n")))
 
 (defun slack-create-rich-text-quote (payload)
   (make-instance 'slack-rich-text-quote
@@ -212,6 +247,23 @@
     (concat (mapconcat #'identity (reverse texts-with-dot) "\n")
             "\n")))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-list) &optional option)
+  (let* ((indent (make-string (* 2 (oref this indent)) ? ))
+         (dot "-")
+         (i 1))
+    (concat (mapconcat #'(lambda (element)
+                   (let ((text (format "%s%s %s"
+                                       (if (string= (oref this style) "ordered")
+                                           (format "%s." i)
+                                         dot)
+                                       indent
+                                       (slack-block-to-mrkdwn element option))))
+                     (setq i (+ i 1))
+                     text))
+               (oref this elements)
+               "\n")
+            "\n")))
+
 (defun slack-create-rich-text-list (payload)
   (make-instance 'slack-rich-text-list
                  :type (plist-get payload :type)
@@ -234,6 +286,13 @@
                          (and (oref this code) 'slack-mrkdwn-code-face)))))
     (propertize text 'face face)))
 
+(defmethod slack-block-to-mrkdwn ((this slack-rich-text-element-style) text)
+  (or (and (oref this bold) (format "*%s*" text))
+      (and (oref this italic) (format "_%s_" text))
+      (and (oref this strike) (format "~%s~" text))
+      (and (oref this code) (format "`%s`" text))
+      text))
+
 (defun slack-create-rich-text-element-style (payload)
   (when payload
     (make-instance 'slack-rich-text-element-style
@@ -249,6 +308,9 @@
 
 (cl-defmethod slack-block-to-string ((this slack-rich-text-element) &optional _option)
   (format "Implement `slack-block-to-string' for %S\n" (oref this payload)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-element) &optional _option)
+  (format "Implement `slack-block-to-mrkdwn' for %S\n" (oref this payload)))
 
 (defun slack-create-rich-text-element (payload)
   (let* ((type (plist-get payload :type))
@@ -288,6 +350,12 @@
     (if style (slack-block-to-string style text)
       text)))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-text-element) &optional _option)
+  (let ((style (oref this style))
+        (text (oref this text)))
+    (if style (slack-block-to-mrkdwn style text)
+      text)))
+
 (defun slack-create-rich-text-text-element (payload)
   (make-instance 'slack-rich-text-text-element
                  :type (plist-get payload :type)
@@ -310,6 +378,16 @@
                 'keymap slack-channel-button-keymap
                 'face 'slack-channel-button-face)))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-channel-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this channel-id)))
+    (unless team
+      (error "`slack-rich-text-channel-element' need team as option"))
+
+    (slack-propertize-mention-text 'slack-message-mention-face
+                                   (format "#%s" (slack-room-name (slack-room-find id team) team))
+                                   (format "<#%s>" id))))
+
 (defun slack-create-rich-text-channel-element (payload)
   (make-instance 'slack-rich-text-channel-element
                  :type (plist-get payload :type)
@@ -328,6 +406,15 @@
     (propertize (format "@%s" (slack-user-name id team))
                 'face 'slack-message-mention-face)))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-user-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this user-id)))
+    (unless team
+      (error "`slack-rich-text-user-element' need team as option"))
+    (slack-propertize-mention-text 'slack-message-mention-face
+                                   (format "@%s" (slack-user-name id team))
+                                   (format "<@%s>" id))))
+
 (defun slack-create-rich-text-user-element (payload)
   (make-instance 'slack-rich-text-user-element
                  :type (plist-get payload :type)
@@ -342,6 +429,9 @@
   (let ((name (oref this name)))
     (format ":%s:" name)))
 
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-emoji-element) &optional option)
+  (slack-block-to-string this option))
+
 (defun slack-create-rich-text-emoji-element (payload)
   (make-instance 'slack-rich-text-emoji-element
                  :type (plist-get payload :type)
@@ -355,6 +445,10 @@
   (let ((text (oref this text))
         (url (oref this url)))
     (format "<%s|%s>" url (or text url))))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-link-element) &optional _option)
+  (let ((url (oref this url)))
+    url))
 
 (defun slack-create-rich-text-link-element (payload)
   (make-instance 'slack-rich-text-link-element
@@ -372,6 +466,9 @@
          (team (slack-team-find team-id)))
     (propertize (format "%s" (slack-team-name team))
                 'face 'slack-message-mention-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-team-element) &optional _option)
+  (slack-block-to-string this))
 
 (defun slack-create-rich-text-team-element (payload)
   (make-instance 'slack-rich-text-team-element
@@ -393,6 +490,18 @@
     (let ((usergroup (slack-usergroup-find id team)))
       (propertize (format "@%s" (oref usergroup handle))
                   'face 'slack-message-mention-keyword-face))))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-usergroup-element) &optional option)
+  (let ((team (plist-get option :team))
+        (id (oref this usergroup-id)))
+
+    (unless team
+      (error "`slack-rich-text-usergroup-element' need team as option"))
+
+    (let ((usergroup (slack-usergroup-find id team)))
+      (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                     (format "@%s" (oref usergroup handle))
+                                     (format "<!subteam^%s>" id)))))
 
 (defun slack-create-rich-text-usergroup-element (payload)
   (make-instance 'slack-rich-text-usergroup-element
@@ -419,6 +528,11 @@
 (cl-defmethod slack-block-to-string ((this slack-rich-text-broadcast-element) &optional _option)
   (propertize (format "@%s" (oref this range))
               'face 'slack-message-mention-keyword-face))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-broadcast-element) &optional _option)
+  (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                 (format "@%s" (oref this range))
+                                 (format "<!%s>" (oref this range))))
 
 (defun slack-create-rich-text-broadcast-element (payload)
   (make-instance 'slack-rich-text-broadcast-element
