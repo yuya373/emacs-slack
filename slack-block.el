@@ -253,10 +253,10 @@
          (i 1))
     (concat (mapconcat #'(lambda (element)
                    (let ((text (format "%s%s %s"
+                                       indent
                                        (if (string= (oref this style) "ordered")
                                            (format "%s." i)
                                          dot)
-                                       indent
                                        (slack-block-to-mrkdwn element option))))
                      (setq i (+ i 1))
                      text))

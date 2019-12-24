@@ -863,9 +863,87 @@ https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-a
           (should (string= "https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less"
                            (plist-get (cl-find-if #'(lambda (el) (string= "link" (plist-get el :type)))
                                                   elements)
-                                      :url))))
-        )))
-  )
+                                      :url))))))))
+
+(ert-deftest slack-test-block-to-mrkdwn ()
+  (let* ((payload (list :type "rich_text_preformatted"
+                        :elements (list (list :type "text" :text "code\nblock"))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "```code\nblock```\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_quote"
+                        :elements (list (list :type "text" :text "block\nquote"))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "> block\n> quote\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_list"
+                        :style "bullet"
+                        :indent 1
+                        :elements (list (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "list")))
+                                        (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "bullet"))))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "  - list\n  - bullet\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_list"
+                        :style "ordered"
+                        :indent 0
+                        :elements (list (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "list")))
+                                        (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "ordered"))))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "1. list\n2. ordered\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "text" :text "text")))
+    (dolist (s (list (cons (list :bold t) "*text*")
+                     (cons (list :italic t) "_text_")
+                     (cons (list :strike t) "~text~")
+                     (cons (list :code t) "`text`")))
+      (should (string= (cdr s)
+                       (slack-block-to-mrkdwn
+                        (slack-create-rich-text-element
+                         (plist-put payload :style (car s))))))))
+  (slack-test-setup
+    (let* ((payload (list :type "channel" :channel_id channel-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<#%s> " channel-id)
+                       mrkdwn))
+      (should (string= (format "#%s" channel-name)
+                       (get-text-property 0 'display mrkdwn)))
+      (should (eq 'slack-message-mention-face
+                  (get-text-property 0 'face mrkdwn)))
+      (should (not (null (get-text-property 0 'slack-mention-props mrkdwn))))
+      (should (null (get-text-property 1 'slack-mention-props mrkdwn))))
+    (let* ((payload (list :type "user" :user_id user-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<@%s> " user-id)
+                       mrkdwn))
+      (should (string= (format "@%s" display-name)
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "usergroup" :usergroup_id usergroup-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<!subteam^%s> " usergroup-id)
+                       mrkdwn))
+      (should (string= (format "@%s" usergroup-handle)
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "broadcast" :range "here"))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block)))
+      (should (string= "<!here> " mrkdwn))
+      (should (string= "@here"
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "emoji" :name "smile"))
+           (block (slack-create-rich-text-element payload)))
+      (should (string= ":smile:" (slack-block-to-mrkdwn block))))
+    (let* ((payload (list :type "link" :url "https://google.com"))
+           (block (slack-create-rich-text-element payload)))
+      (should (string= "https://google.com"
+                       (slack-block-to-mrkdwn block))))))
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)
