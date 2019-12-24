@@ -72,8 +72,15 @@
                     (and on-success (funcall on-success))
                   (if on-error
                       (funcall on-error data)
-                    (error "Failed to post message.  %s"
-                           (plist-get data :message))))))
+                    (slack-log (format "Failed to post message. Error: %s, meta: %s"
+                                       (plist-get data :error)
+                                       (when (plist-get data :response_metadata)
+                                         (mapconcat 'identity
+                                                    (plist-get (plist-get data :response_metadata)
+                                                               :messages)
+                                                    "\n")))
+                               team
+                               :level 'error)))))
     (slack-request
      (slack-request-create
       "https://slack.com/api/chat.postMessage"
