@@ -694,6 +694,9 @@ code `code` code
 ```
 *code*
 block
+:smile:
+<@USERID>
+https://google.com
 ```
 "))
          (blocks (slack-test-parse-blocks str)))
@@ -707,7 +710,7 @@ block
             (should (eq 1 (length elements)))
             (let ((element (car elements)))
               (should (string= "text" (plist-get element :type)))
-              (should (string= "*code*\nblock" (plist-get element :text)))))))))
+              (should (string= "*code*\nblock\n:smile:\n<@USERID>\nhttps://google.com" (plist-get element :text)))))))))
 
   (let* ((str (string-trim "
 > bold *bold* bold

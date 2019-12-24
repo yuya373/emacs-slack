@@ -187,19 +187,21 @@
         (put-text-property (point-min) (point-max) 'invisible nil)
         (put-text-property (point-min) (point-max) 'slack-code-block-type nil)
         (put-text-property (point-min) (point-max) 'display nil)
+        (remove-overlays (point-min) (point-max))
         (slack-mrkdwn-add-face)
         (mapc #'(lambda (regex)
                   (goto-char (point-min))
                   (while (re-search-forward regex (point-max) t)
-                    (let* ((beg (match-beginning 0))
-                           (end (match-end 0))
-                           (props (get-text-property beg 'slack-mention-props)))
-                      (when props
-                        (let ((properties (append (plist-get props :props) nil)))
-                          (while (< 0 (length properties))
-                            (put-text-property beg end
-                                               (pop properties)
-                                               (pop properties))))))))
+                    (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
+                      (let* ((beg (match-beginning 0))
+                             (end (match-end 0))
+                             (props (get-text-property beg 'slack-mention-props)))
+                        (when props
+                          (let ((properties (append (plist-get props :props) nil)))
+                            (while (< 0 (length properties))
+                              (put-text-property beg end
+                                                 (pop properties)
+                                                 (pop properties)))))))))
               (list slack-user-mention-regex
                     slack-usergroup-mention-regex
                     slack-channel-mention-regex
@@ -288,48 +290,54 @@
 (defun slack-mark-mentions ()
   (goto-char (point-min))
   (while (re-search-forward slack-user-mention-regex (point-max) t)
-    (slack-put-block-props (match-beginning 1)
-                           (match-end 1)
-                           (list :type 'user
-                                 :user-id (match-string 2))))
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 1)
+                             (list :type 'user
+                                   :user-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-usergroup-mention-regex (point-max) t)
-    (slack-put-block-props (match-beginning 1)
-                           (match-end 1)
-                           (list :type 'usergroup
-                                 :usergroup-id (match-string 2))))
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 1)
+                             (list :type 'usergroup
+                                   :usergroup-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-channel-mention-regex (point-max) t)
-    (slack-put-block-props (match-beginning 1)
-                           (match-end 1)
-                           (list :type 'channel
-                                 :channel-id (match-string 2))))
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 1)
+                             (list :type 'channel
+                                   :channel-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-special-mention-regex (point-max) t)
-    (slack-put-block-props (match-beginning 1)
-                           (match-end 1)
-                           (list :type 'broadcast
-                                 :range (match-string 2)))))
+    (unless (slack-mark-inside-code-p (match-beginning 1))
+      (slack-put-block-props (match-beginning 1)
+                             (match-end 1)
+                             (list :type 'broadcast
+                                   :range (match-string 2))))))
 
 (defun slack-mark-emojis ()
   (goto-char (point-min))
   (while (re-search-forward ":\\([a-z0-9_-]+\\):" (point-max) t)
-    (slack-put-block-props (match-beginning 0)
-                           (match-end 0)
-                           (list :type 'emoji
-                                 :name (match-string 1)))))
+    (unless (slack-mark-inside-code-p (match-beginning 0))
+      (slack-put-block-props (match-beginning 0)
+                             (match-end 0)
+                             (list :type 'emoji
+                                   :name (match-string 1))))))
 
 (defun slack-mark-links ()
   (goto-char (point-min))
   (let ((regex (regexp-opt thing-at-point-uri-schemes)))
     (while (re-search-forward regex (point-max) t)
-      (let ((bounds (bounds-of-thing-at-point 'url)))
-        (when bounds
-          (slack-put-block-props (car bounds)
-                                 (cdr bounds)
-                                 (list :type 'link
-                                       :url (buffer-substring-no-properties (car bounds)
-                                                                            (cdr bounds)))))))))
+      (unless (slack-mark-inside-code-p (match-beginning 0))
+        (let ((bounds (bounds-of-thing-at-point 'url)))
+          (when bounds
+            (slack-put-block-props (car bounds)
+                                   (cdr bounds)
+                                   (list :type 'link
+                                         :url (buffer-substring-no-properties (car bounds)
+                                                                              (cdr bounds))))))))))
 
 (defun slack-mark-inside-code-p (point)
   (slack-if-let* ((props (or (get-text-property point 'slack-block-props)
