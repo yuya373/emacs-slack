@@ -105,6 +105,10 @@
                                         type err)
                                 team
                                 :level 'error)))
+        (slack-log (format "Opening websocket connection. NOWAIT: %s"
+                           (oref ws websocket-nowait))
+                   team
+                   :level 'debug)
         (oset ws conn
               (condition-case error-var
                   (websocket-open (or ws-url (oref ws url))
@@ -112,7 +116,7 @@
                                   :on-open #'handle-on-open
                                   :on-close #'on-close
                                   :on-error #'on-error
-                                  :nowait (oref ws nowait))
+                                  :nowait (oref ws websocket-nowait))
                 (error
                  (slack-log (format "An Error occured while opening websocket connection: %s"
                                     error-var)
