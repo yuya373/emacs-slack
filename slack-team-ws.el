@@ -47,7 +47,7 @@
    (connect-timeout-timer :initform nil)
    (connect-timeout-sec :type number :initform 20) ;; websocket url is valid for 30 seconds.
    (inhibit-reconnection :initform nil)
-   (nowait :initarg :websocket-nowait :initform nil)
+   (websocket-nowait :initarg :websocket-nowait :initform nil)
    ))
 
 (cl-defmethod slack-ws-cancel-connect-timeout-timer ((ws slack-team-ws))

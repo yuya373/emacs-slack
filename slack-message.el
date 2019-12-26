@@ -296,8 +296,15 @@
                          users)))
         (slack-reaction-delete message reaction))))
 
-(cl-defmethod slack-message-get-text ((m slack-message))
-  (oref m text))
+(cl-defmethod slack-message-get-text ((m slack-message) team)
+  (or (mapconcat #'identity
+                 (cl-remove-if #'(lambda (block-message)
+                        (< (length block-message) 1))
+                    (mapcar #'(lambda (bl)
+                                (slack-block-to-mrkdwn bl (list :team team)))
+                            (oref m blocks)))
+                  "\n\n")
+      (slack-message-unescape-string (oref m text) team)))
 
 (cl-defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
@@ -354,6 +361,11 @@
 
 (cl-defmethod slack-message-ephemeral-p ((this slack-message))
   (oref this is-ephemeral))
+
+(cl-defmethod slack-message-subscribed-thread-message-p ((this slack-message) room)
+  (and (slack-thread-messagep this)
+       (slack-if-let* ((parent (slack-room-find-thread-parent room this)))
+           (oref parent subscribed))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

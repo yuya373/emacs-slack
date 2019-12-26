@@ -5,6 +5,7 @@
 (require 'slack-message-formatter)
 (require 'slack-block)
 (require 'slack-mrkdwn)
+(require 'slack-message-sender)
 
 (defvar slack-channel-button-keymap nil)
 
@@ -38,7 +39,7 @@
                                         (puthash (plist-get user :id)
                                                  user
                                                  h)
-                                       h)
+                                        h)
                                :usergroups (list usergroup))))
      ,@body))
 
@@ -50,53 +51,53 @@
 
 (ert-deftest slack-test-unescape-channel ()
   (slack-test-setup
-   (should (equal (format "#%s" channel-name)
-                  (slack-unescape-channel
-                   (format "<#%s>" channel-id)
-                   team)))
-   (should (equal "#Foo"
-                  (slack-unescape-channel
-                   (format "<#%s|Foo>" channel-id)
-                   team)))
-   (should (equal "#<Unknown CHANNEL>"
-                  (slack-unescape-channel
-                   "<#C9999999>" team)))))
+    (should (equal (format "#%s" channel-name)
+                   (slack-unescape-channel
+                    (format "<#%s>" channel-id)
+                    team)))
+    (should (equal "#Foo"
+                   (slack-unescape-channel
+                    (format "<#%s|Foo>" channel-id)
+                    team)))
+    (should (equal "#<Unknown CHANNEL>"
+                   (slack-unescape-channel
+                    "<#C9999999>" team)))))
 
 (ert-deftest slack-test-unescape-@ ()
   (slack-test-setup
-   (oset team full-and-display-names t)
-   (should (equal (format "@%s" real-name)
-                  (slack-unescape-@
-                   (format "<@%s>" user-id)
-                   team)))
-   (should (equal (format "@%s" real-name)
-                  (slack-unescape-@
-                   (format "<@%s|Foo>" user-id)
-                   team)))
-   (should (equal "@<Unknown USER>"
-                  (slack-unescape-@
-                   "<@U424242>" team)))
-   (oset team full-and-display-names nil)
-   (should (equal (format "@%s" display-name)
-                  (slack-unescape-@
-                   (format "<@%s>" user-id)
-                   team)))
-   (should (equal (format "@%s" display-name)
-                  (slack-unescape-@
-                   (format "<@%s|Foo>" user-id)
-                   team)))
-   (should (equal "@<Unknown USER>"
-                  (slack-unescape-@
-                   "<@U424242>" team)))
-   ))
+    (oset team full-and-display-names t)
+    (should (equal (format "@%s" real-name)
+                   (slack-unescape-@
+                    (format "<@%s>" user-id)
+                    team)))
+    (should (equal (format "@%s" real-name)
+                   (slack-unescape-@
+                    (format "<@%s|Foo>" user-id)
+                    team)))
+    (should (equal "@<Unknown USER>"
+                   (slack-unescape-@
+                    "<@U424242>" team)))
+    (oset team full-and-display-names nil)
+    (should (equal (format "@%s" display-name)
+                   (slack-unescape-@
+                    (format "<@%s>" user-id)
+                    team)))
+    (should (equal (format "@%s" display-name)
+                   (slack-unescape-@
+                    (format "<@%s|Foo>" user-id)
+                    team)))
+    (should (equal "@<Unknown USER>"
+                   (slack-unescape-@
+                    "<@U424242>" team)))
+    ))
 
 (ert-deftest slack-test-unescape-!subteam ()
   (slack-test-setup
-   (should (equal (slack-unescape-!subteam
-                   (format "<!subteam^%s|@%s>"
-                           usergroup-id
-                           usergroup-handle))
-                  (format "@%s" usergroup-handle)))))
+    (should (equal (slack-unescape-!subteam
+                    (format "<!subteam^%s|@%s>"
+                            usergroup-id
+                            usergroup-handle))
+                   (format "@%s" usergroup-handle)))))
 
 
 (ert-deftest slack-test-unescape-!date ()
@@ -455,10 +456,10 @@
     (should (eq 46 (match-beginning 4))))
   (let ((block "   ```\nThis is a code block\nAnd it's multi-line\n```   "))
     (string-match slack-mrkdwn-regex-code-block block)
-    (should (equal "This is a code block\nAnd it's multi-line\n"
+    (should (equal "This is a code block\nAnd it's multi-line"
                    (match-string 2 block)))
     (should (eq 3 (match-beginning 1)))
-    (should (eq 48 (match-beginning 4))))
+    (should (eq 47 (match-beginning 4))))
   (should (string-match-p slack-mrkdwn-regex-code-block "```\nbbb\naaa\n```\n"))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-code-block "aaa```bbb```")))
@@ -479,6 +480,470 @@
   (should (not (string-match-p slack-mrkdwn-regex-blockquote "a > a")))
   (should (not (string-match-p slack-mrkdwn-regex-blockquote "a >"))))
 
+(ert-deftest slack-test-mrkdwn-regex-list ()
+  (let ((str "- aaa\n- bbb"))
+    (string-match slack-mrkdwn-regex-list str)
+    (should (string= "-" (match-string 2 str)))
+    (should (string= "aaa" (match-string 4 str))))
+  (let ((str "* aaa\n* bbb"))
+    (string-match slack-mrkdwn-regex-list str)
+    (should (string= "*" (match-string 2 str)))
+    (should (string= "aaa" (match-string 4 str))))
+  (let ((str "  -  aaa"))
+    (string-match slack-mrkdwn-regex-list str)
+    (should (string= "-" (match-string 2 str)))
+    (should (string= "  " (match-string 1 str)))
+    (should (string= " aaa" (match-string 4 str))))
+  (let ((str "  1. aaa\n  2.bbb"))
+    (string-match slack-mrkdwn-regex-list str)
+    (should (string= "1." (match-string 2 str)))
+    (should (string= "  " (match-string 1 str)))
+    (should (string= "aaa" (match-string 4 str)))))
+
+(ert-deftest slack-test-rich-text-section ()
+  (let ((payload (list :type "rich_text_section"
+                       :elements (list (list :type "text" :text "Hello")
+                                       (list :type "text" :text " World")))))
+    (should (string= "Hello World" (slack-block-to-string
+                                    (slack-create-rich-text-block-element payload))))))
+
+(ert-deftest slack-test-rich-text-preformatted ()
+  (let* ((payload (list :type "rich_text_preformatted"
+                        :elements (list (list :type "text" :text "Hello")
+                                        (list :type "text" :text " World"))))
+         (text (slack-block-to-string
+                (slack-create-rich-text-block-element payload))))
+    (should (eq 'slack-mrkdwn-code-block-face
+                (get-text-property 0 'face text)))))
+
+(ert-deftest slack-test-rich-text-quote ()
+  (let* ((payload (list :type "rich_text_quote"
+                        :elements (list (list :type "text" :text "Hello\n")
+                                        (list :type "text" :text "\nWorld"))))
+         (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
+    (should (eq 'slack-mrkdwn-blockquote-face
+                (get-text-property 0 'face text)))))
+
+(ert-deftest slack-test-rich-text-list ()
+  (let ((elements (list (list :type "rich_text_section"
+                              :elements (list (list :type "text" :text "foo")))
+                        (list :type "rich_text_section"
+                              :elements (list (list :type "text" :text "bar")))
+                        (list :type "rich_text_section"
+                              :elements (list (list :type "text" :text "baz"))))))
+
+    (let* ((payload (list :type "rich_text_list"
+                          :elements elements
+                          :style "bullet"
+                          :indent 0))
+           (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
+      (should (string= (concat (format "%s foo" slack-mrkdwn-list-bullet)
+                               "\n"
+                               (format "%s bar" slack-mrkdwn-list-bullet)
+                               "\n"
+                               (format "%s baz" slack-mrkdwn-list-bullet)
+                               "\n")
+                       text)))
+
+    (let* ((payload (list :type "rich_text_list"
+                          :elements elements
+                          :style "bullet"
+                          :indent 1))
+           (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
+      (should (string= (concat (format "  %s foo" slack-mrkdwn-list-bullet)
+                               "\n"
+                               (format "  %s bar" slack-mrkdwn-list-bullet)
+                               "\n"
+                               (format "  %s baz" slack-mrkdwn-list-bullet)
+                               "\n")
+                       text)))
+
+    (let* ((payload (list :type "rich_text_list"
+                          :elements elements
+                          :style "ordered"
+                          :indent 0))
+           (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
+      (should (string= (concat "1. foo"
+                               "\n"
+                               "2. bar"
+                               "\n"
+                               "3. baz"
+                               "\n")
+                       text)))
+
+    (let* ((payload (list :type "rich_text_list"
+                          :elements elements
+                          :style "ordered"
+                          :indent 1))
+           (text (slack-block-to-string (slack-create-rich-text-block-element payload))))
+      (should (string= (concat "  1. foo"
+                               "\n"
+                               "  2. bar"
+                               "\n"
+                               "  3. baz"
+                               "\n")
+                       text)))))
+
+(ert-deftest slack-test-rich-text-text-element ()
+  (let ((payload '(:type "text" :text "Hello this is rich text")))
+    (should (string= "Hello this is rich text" (slack-block-to-string
+                                                (slack-create-rich-text-element payload))))))
+
+(ert-deftest slack-test-rich-text-element-style ()
+  (let* ((bold '(:bold t))
+         (italic '(:italic t))
+         (strike '(:strike t))
+         (code '(:code t))
+         (payload '(:type "text" :text "Hello this is rich text")))
+    (cl-labels ((get-face-property (style)
+                                   (get-text-property 0
+                                                      'face
+                                                      (slack-block-to-string
+                                                       (slack-create-rich-text-element
+                                                        (plist-put payload :style style))))))
+      (should (eq 'slack-mrkdwn-bold-face (get-face-property bold)))
+      (should (eq 'slack-mrkdwn-italic-face (get-face-property italic)))
+      (should (eq 'slack-mrkdwn-strike-face (get-face-property strike)))
+      (should (eq 'slack-mrkdwn-code-face (get-face-property code))))))
+
+(ert-deftest slack-test-rich-text-channel-element ()
+  (slack-test-setup
+    (let ((payload (list :type "channel" :channel_id channel-id)))
+      (should (string= (format "#%s" channel-name)
+                       (slack-block-to-string (slack-create-rich-text-element payload)
+                                              (list :team team)))))))
+
+(ert-deftest slack-test-rich-text-user-elemenmt ()
+  (slack-test-setup
+    (let ((payload (list :type "user" :user_id user-id)))
+      (should (string= (format "@%s" display-name)
+                       (slack-block-to-string (slack-create-rich-text-element payload)
+                                              (list :team team)))))))
+
+(ert-deftest slack-test-rich-text-emoji-element ()
+  (let ((payload (list :type "emoji" :name "smile")))
+    (should (string= ":smile:" (slack-block-to-string (slack-create-rich-text-element payload))))))
+
+(ert-deftest slack-test-rich-text-link-element ()
+  (let* ((url "https://www.gnu.org/software/emacs/")
+         (payload (list :type "link" :url url :text nil)))
+    (should (string= (format "<%s|%s>" url url)
+                     (slack-block-to-string (slack-create-rich-text-element payload)))))
+  (let* ((url "https://www.gnu.org/software/emacs/")
+         (text "GNU Emacs - GNU Project")
+         (payload (list :type "link" :url url :text text)))
+    (should (string= (format "<%s|%s>" url text)
+                     (slack-block-to-string (slack-create-rich-text-element payload))))))
+
+(ert-deftest slack-test-rich-text-usergroup-element ()
+  (slack-test-setup
+    (let ((payload (list :type "usergroup" :usergroup_id usergroup-id)))
+      (should (string= (format "@%s" usergroup-handle)
+                       (slack-block-to-string (slack-create-rich-text-element payload)
+                                              (list :team team)))))))
+
+(ert-deftest slack-test-rich-text-date-element ()
+  (let* ((time (current-time))
+         (payload (list :type "date" :timestamp (format-time-string "%s") time)))
+    (should (string= (format-time-string "%Y-%m-%d %H:%M:%S" time)
+                     (slack-block-to-string (slack-create-rich-text-element payload))))))
+
+(ert-deftest slack-test-rich-text-range-element ()
+  (let ((payload (list :type "broadcast" :range "here")))
+    (should (string= "@here" (slack-block-to-string (slack-create-rich-text-element payload))))))
+
+(defun slack-test-parse-blocks (str)
+  (let* ((json-object-type 'plist)
+         (json-array-type 'list))
+    (plist-get (json-read-from-string (json-encode
+                                       (with-temp-buffer
+                                         (insert str)
+                                         (slack-create-blocks-from-buffer))))
+               :blocks)))
+
+(ert-deftest slack-test-create-blocks-from-buffer ()
+  (let* ((str (string-trim "
+bold *bold* bold
+italic _italic_ italic
+strike ~strike~ strike
+code `code` code
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (dolist (style  '(("bold" . :bold)
+                            ("italic" . :italic)
+                            ("strike" . :strike)
+                            ("code" . :code)))
+            (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                   (not (plist-get (plist-get el :style)
+                                                                                   (cdr style)))))
+                                                elements))))
+            (should (string= (car style)
+                             (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                        (plist-get (plist-get el :style)
+                                                                                   (cdr style))))
+                                                    elements)
+                                        :text))))))))
+  (let* ((str (string-trim "
+```
+*code*
+block
+:smile:
+<@USERID>
+https://google.com
+```
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_preformatted" (plist-get section :type)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 1 (length elements)))
+            (let ((element (car elements)))
+              (should (string= "text" (plist-get element :type)))
+              (should (string= "*code*\nblock\n:smile:\n<@USERID>\nhttps://google.com" (plist-get element :text)))))))))
+
+  (let* ((str (string-trim "
+> bold *bold* bold
+> quote
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_quote" (plist-get section :type)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+            (dolist (style '(("bold" . :bold)))
+              (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                     (not (plist-get (plist-get el :style)
+                                                                                     (cdr style)))))
+                                                  elements))))
+              (should (string= (car style)
+                               (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                          (plist-get (plist-get el :style)
+                                                                                     (cdr style))))
+                                                      elements)
+                                          :text)))))))))
+
+  (let* ((str (string-trim "
+1. list
+2. *bold*
+3. ordered
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_list" (plist-get section :type)))
+          (should (string= "ordered" (plist-get section :style)))
+          (should (eq 0 (plist-get section :indent)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+
+            (let* ((bold-section (cadr elements))
+                   (elements (plist-get bold-section :elements)))
+              (dolist (style '(("bold" . :bold)))
+                (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                       (not (plist-get (plist-get el :style)
+                                                                                       (cdr style)))))
+                                                    elements))))
+                (should (string= (car style)
+                                 (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                            (plist-get (plist-get el :style)
+                                                                                       (cdr style))))
+                                                        elements)
+                                            :text))))))))))
+  (let* ((str (string-trim "
+ - list
+ - `code`
+ - bullet
+
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (should (string= "rich_text_list" (plist-get section :type)))
+          (should (string= "bullet" (plist-get section :style)))
+          (should (eq 1 (plist-get section :indent)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 3 (length elements)))
+
+            (let* ((bold-section (cadr elements))
+                   (elements (plist-get bold-section :elements)))
+              (dolist (style '(("code" . :code)))
+                (should (eq 1 (length (cl-remove-if #'(lambda (el) (or (null (plist-get el :style))
+                                                                       (not (plist-get (plist-get el :style)
+                                                                                       (cdr style)))))
+                                                    elements))))
+                (should (string= (car style)
+                                 (plist-get (cl-find-if #'(lambda (el) (and (plist-get el :style)
+                                                                            (plist-get (plist-get el :style)
+                                                                                       (cdr style))))
+                                                        elements)
+                                            :text))))))))))
+  (let* ((str (string-trim "
+<@U0G2XCVQV>
+<!channel>
+<#C0G31N06B>
+<!subteam^USLACKBOT>
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (dolist (mention  '(("U0G2XCVQV" . ("user" . :user_id))
+                              ("channel" . ("broadcast" . :range))
+                              ("C0G31N06B" . ("channel" . :channel_id))
+                              ("USLACKBOT" . ("usergroup" . :usergroup_id))))
+            (let ((type (cadr mention))
+                  (v (car mention))
+                  (key (cddr mention)))
+              (should (eq 1 (length (cl-remove-if #'(lambda (el) (not (string= (plist-get el :type)
+                                                                               type)))
+                                                  elements))))
+              (should (string= v
+                               (plist-get (cl-find-if #'(lambda (el) (string= (plist-get el :type)
+                                                                              type))
+                                                      elements)
+                                          key)))))))))
+  (let* ((str (string-trim "
+:dog2:
+:man-biking:
+:man_dancing:
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (not (null section)))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (should (equal '("dog2" "man-biking" "man_dancing")
+                         (mapcar #'(lambda (el) (plist-get el :name))
+                                 (cl-remove-if #'(lambda (el) (not (string= "emoji" (plist-get el :type))))
+                                               elements)))))
+        )))
+  (let* ((str (string-trim "
+https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less
+"))
+         (blocks (slack-test-parse-blocks str)))
+    (should (not (null blocks)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (should (eq 1 (length (plist-get block :elements))))
+      (let ((section (car (plist-get block :elements))))
+        (should (not (null section)))
+        (should (string= "rich_text_section" (plist-get section :type)))
+        (let ((elements (plist-get section :elements)))
+          (should (eq 1 (length (cl-remove-if #'(lambda (el) (not (string= "link" (plist-get el :type))))
+                                              elements))))
+          (should (string= "https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less"
+                           (plist-get (cl-find-if #'(lambda (el) (string= "link" (plist-get el :type)))
+                                                  elements)
+                                      :url))))))))
+
+(ert-deftest slack-test-block-to-mrkdwn ()
+  (let* ((payload (list :type "rich_text_preformatted"
+                        :elements (list (list :type "text" :text "code\nblock"))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "```code\nblock```\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_quote"
+                        :elements (list (list :type "text" :text "block\nquote"))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "> block\n> quote\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_list"
+                        :style "bullet"
+                        :indent 1
+                        :elements (list (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "list")))
+                                        (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "bullet"))))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "  - list\n  - bullet\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "rich_text_list"
+                        :style "ordered"
+                        :indent 0
+                        :elements (list (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "list")))
+                                        (list :type "rich_text_section"
+                                              :elements (list (list :type "text" :text "ordered"))))))
+         (block (slack-create-rich-text-block-element payload)))
+    (should (string= "1. list\n2. ordered\n"
+                     (slack-block-to-mrkdwn block))))
+  (let* ((payload (list :type "text" :text "text")))
+    (dolist (s (list (cons (list :bold t) "*text*")
+                     (cons (list :italic t) "_text_")
+                     (cons (list :strike t) "~text~")
+                     (cons (list :code t) "`text`")))
+      (should (string= (cdr s)
+                       (slack-block-to-mrkdwn
+                        (slack-create-rich-text-element
+                         (plist-put payload :style (car s))))))))
+  (slack-test-setup
+    (let* ((payload (list :type "channel" :channel_id channel-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<#%s> " channel-id)
+                       mrkdwn))
+      (should (string= (format "#%s" channel-name)
+                       (get-text-property 0 'display mrkdwn)))
+      (should (eq 'slack-message-mention-face
+                  (get-text-property 0 'face mrkdwn)))
+      (should (not (null (get-text-property 0 'slack-mention-props mrkdwn))))
+      (should (null (get-text-property 1 'slack-mention-props mrkdwn))))
+    (let* ((payload (list :type "user" :user_id user-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<@%s> " user-id)
+                       mrkdwn))
+      (should (string= (format "@%s" display-name)
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "usergroup" :usergroup_id usergroup-id))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block (list :team team))))
+      (should (string= (format "<!subteam^%s> " usergroup-id)
+                       mrkdwn))
+      (should (string= (format "@%s" usergroup-handle)
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "broadcast" :range "here"))
+           (block (slack-create-rich-text-element payload))
+           (mrkdwn (slack-block-to-mrkdwn block)))
+      (should (string= "<!here> " mrkdwn))
+      (should (string= "@here"
+                       (get-text-property 0 'display mrkdwn))))
+    (let* ((payload (list :type "emoji" :name "smile"))
+           (block (slack-create-rich-text-element payload)))
+      (should (string= ":smile:" (slack-block-to-mrkdwn block))))
+    (let* ((payload (list :type "link" :url "https://google.com"))
+           (block (slack-create-rich-text-element payload)))
+      (should (string= "https://google.com"
+                       (slack-block-to-mrkdwn block))))))
 
 (if noninteractive
     (ert-run-tests-batch-and-exit)

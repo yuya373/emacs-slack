@@ -143,16 +143,13 @@ use `slack-change-current-team' to change `slack-current-team'"
   (with-slots (ws) this
     (oset ws url url)))
 
-(cl-defmethod slack-team-send-message ((this slack-team) message)
-  (unless (or (slack-ws-payload-ping-p message)
-              (slack-ws-payload-presence-sub-p message))
-    (puthash (oref this message-id)
-             (slack-message-create message this)
-             (oref this sent-message)))
-  (slack-team-inc-message-id this)
-  (with-slots (ws) this
-    (slack-ws-send ws message this)))
-
+(cl-defmethod slack-team-send-message ((this slack-team) message &key (on-success nil) (on-error nil))
+  (if (or (slack-ws-payload-ping-p message)
+          (slack-ws-payload-presence-sub-p message))
+      (progn
+        (slack-team-inc-message-id this)
+        (with-slots (ws) this
+          (slack-ws-send ws message this)))))
 
 (cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
   (with-slots (ws) this
@@ -191,73 +188,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 (cl-defmethod slack-team-name ((team slack-team))
   (oref team name))
-
-;;;###autoload
-(defun slack-register-team (&rest plist)
-  "PLIST must contain :name and either :client-id and :client-secret or :token.
-Available options (property name, type, default value)
-:subscribed-channels [ list symbol ] '()
-  notified when new message arrived in these channels.
-:default [boolean] nil
-  if `slack-prefer-current-team' is t,
-  some functions use this team without asking.
-:display-profile-image [boolean] nil
-:full-and-display-names [boolean] nil
-  if t, use full name to display user name.
-:mark-as-read-immediately [boolean] these
-  if t, mark messages as read when open channel.
-  if nil, mark messages as read when cursor hovered.
-:modeline-enabled [boolean] nil
-  if t, display mention count and has unread in modeline.
-:modeline-name [or nil string] nil
-  use this value in modeline.
-  if nil, use team name.
-:visible-threads [boolean] nil
-  if t, thread replies are also displayed in channel buffer.
-:websocket-event-log-enabled [boolean] nil
-  if t, websocket event is logged.
-  use `slack-log-open-event-buffer' to open the buffer.
-:animate-image [boolean] nil
-  if t, animate gif images."
-  (interactive
-   (let ((name (read-from-minibuffer "Team Name: "))
-         (client-id (read-from-minibuffer "Client Id: "))
-         (client-secret (read-from-minibuffer "Client Secret: "))
-         (token nil))
-     (unless (and (and client-id (< 0 (length client-id)))
-                  (and client-secret (< 0 (length client-secret))))
-       (setq token (read-from-minibuffer "Token: ")))
-     (list :name name :client-id client-id :client-secret client-secret
-           :token token)))
-  (cl-labels ((has-client-id-and-client-secret-p
-               (plist)
-               (let ((id (plist-get plist :client-id))
-                     (secret (plist-get plist :client-secret)))
-                 (and id secret (< 0 (length id)) (< 0 (length secret)))))
-              (has-token-p (plist)
-                           (let ((token (plist-get plist :token)))
-                             (and token (< 0 (length token)))))
-              (register (team)
-                        (let ((same-team (cl-find-if
-                                          #'(lambda (o) (slack-team-equalp team o))
-                                          slack-teams)))
-                          (if same-team
-                              (progn
-                                (slack-team-disconnect same-team)
-                                (slack-team-connect team))))
-                        (setq slack-teams
-                              (cons team
-                                    (cl-remove-if #'(lambda (other)
-                                                      (slack-team-equalp team other))
-                                                  slack-teams)))
-                        (if (plist-get plist :default)
-                            (setq slack-current-team team))))
-
-    (if (or (has-client-id-and-client-secret-p plist)
-            (has-token-p plist))
-        (let ((team (slack-create-team plist)))
-          (register team))
-      (error ":client-id and :client-secret or :token is required"))))
 
 (defun slack-team-find-by-name (name)
   (if name

@@ -57,7 +57,7 @@
   "Face used to between ``'"
   :group 'slack)
 
-(defconst slack-mrkdwn-regex-code-block "\\(?:^\\|\\W\\)\\(```\\)\\(?:\n\\)?\\(\\(.\\|\n\\)*?\\)\\(```\\)\\W")
+(defconst slack-mrkdwn-regex-code-block "\\(?:^\\|[[:blank:]]\\)\\(```\\)\\(?:\n\\)?\\(\\(.\\|\n\\)*?\\)\\(\n?```\\)[[:blank:]]*$")
 
 (defface slack-mrkdwn-code-block-face
   '((t (:inherit slack-preview-face)))
@@ -72,10 +72,28 @@
   "Face used to `>'"
   :group 'slack)
 
+(defcustom slack-mrkdwn-blockquote-sign "┃"
+  "Used to display > when blockquote"
+  :group 'slack
+  :type 'string)
+
+(defconst slack-mrkdwn-regex-list "^\\([[:blank:]]*\\)\\([0-9]+\\.\\|[-*]\\)\\([[:blank:]]\\)\\(.*\\)$")
+
+(defface slack-mrkdwn-list-face
+  '((t (:foreground "#fdf6e3" :weight bold)))
+  "Face used to mrkdwn list"
+  :group 'slack)
+
+(defcustom slack-mrkdwn-list-bullet "•"
+  "Used to display unordered list bullet"
+  :group 'slack
+  :type 'string)
+
 (defun slack-mrkdwn-plain-text-p (point)
-  (let ((text-type (get-text-property point 'slack-text-type)))
-    (or (null text-type)
-        (eq 'plain text-type))))
+  (unless (slack-wysiwyg-enabled-p)
+    (let ((text-type (get-text-property point 'slack-text-type)))
+      (or (null text-type)
+          (eq 'plain text-type)))))
 
 (defun slack-mrkdwn-add-face ()
   (slack-mrkdwn-mark-code-block)
@@ -84,7 +102,8 @@
   (slack-mrkdwn-add-strike-face)
   (slack-mrkdwn-add-code-face)
   (slack-mrkdwn-add-code-block-face)
-  (slack-mrkdwn-add-blockquote-face))
+  (slack-mrkdwn-add-blockquote-face)
+  (slack-mrkdwn-add-list-face))
 
 (defun slack-mrkdwn-inside-code-p (point)
   (or (slack-mrkdwn-inside-code-block-p point)
@@ -140,7 +159,8 @@
   (while (re-search-forward slack-mrkdwn-regex-italic (point-max) t)
     (slack-if-let* ((beg (match-beginning 3))
                     (end (match-end 3)))
-        (unless (slack-mrkdwn-plain-text-p beg)
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
           (put-text-property beg end 'face 'slack-mrkdwn-italic-face)
           (slack-if-let* ((markup-start-beg (match-beginning 2))
                           (markup-start-end (match-end 2)))
@@ -230,7 +250,22 @@
                                    'slack-mrkdwn-blockquote-face)
                 (put-text-property markup-start-beg
                                    markup-start-end
-                                   'display "┃")))))))
+                                   'display slack-mrkdwn-blockquote-sign)))))))
+
+(defun slack-mrkdwn-add-list-face ()
+  (goto-char (point-min))
+  (while (re-search-forward slack-mrkdwn-regex-list (point-max) t)
+    (slack-if-let* ((beg (match-beginning 2))
+                    (end (match-end 2)))
+        (unless (or (slack-mrkdwn-plain-text-p beg)
+                    (slack-mrkdwn-inside-code-p beg))
+          (put-text-property beg end
+                             'face 'slack-mrkdwn-list-face)
+          (when (let ((list-sign (match-string 2)))
+                  (or (string= "-" list-sign)
+                      (string= "*" list-sign)))
+            (put-text-property beg end
+                               'display slack-mrkdwn-list-bullet))))))
 
 (provide 'slack-mrkdwn)
 ;;; slack-mrkdwn.el ends here

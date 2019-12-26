@@ -57,7 +57,8 @@
    (callback-id :initarg :callback_id :initform nil)
    (id :initarg :id :initform nil)
    (actions :initarg :actions :initform '())
-   (files :initarg :files :initform '())))
+   (files :initarg :files :initform '())
+   (mrkdwn-in :initarg :mrkdwn_in :type list :initform '())))
 
 (defclass slack-shared-message (slack-attachment)
   ((channel-id :initarg :channel_id :initform nil)

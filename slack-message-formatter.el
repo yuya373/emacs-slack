@@ -209,20 +209,28 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (cl-defmethod slack-message-blocks-to-string ((m slack-message) team)
   (unless (oref team disable-block-format)
     (when (oref m blocks)
-      (mapconcat #'(lambda (e) (let ((str (slack-message-unescape-string
-                                           (slack-block-to-string e)
-                                           team)))
-                                 (if (oref m deleted-at)
-                                     (slack-message-put-deleted-property str)
-                                   str)))
-                 (oref m blocks)
-                 "\n\n"))))
+      (let ((block-messages (cl-remove-if #'(lambda (block-message)
+                                              (< (length block-message) 1))
+                                          (mapcar #'(lambda (bl)
+                                                      (slack-block-to-string bl (list :team team)))
+                                                  (oref m blocks)))))
+        (when (< 0 (length block-messages))
+          (mapconcat #'(lambda (block-message)
+                         (if (oref m deleted-at)
+                               (slack-message-put-deleted-property block-message)
+                             block-message))
+                     block-messages
+                     "\n\n"))))))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header-to-string m team))
          (attachment-body (slack-message-attachment-body m team))
-         (body (or (slack-message-blocks-to-string m team)
-                   (slack-message-body-to-string m team)))
+         (body (format "%s%s"
+                       (if (slack-message-display-thread-sign-p m team)
+                           slack-visible-thread-sign
+                         "")
+                       (or (slack-message-blocks-to-string m team)
+                           (slack-message-body-to-string m team))))
          (files (mapconcat #'(lambda (file)
                                (format "%s\n"
                                        (slack-message-to-string file
@@ -247,19 +255,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
   (with-slots (text) m
     (let ((body (slack-message-unescape-string text team)))
       (when body
-        (format "%s%s"
-                (if (slack-message-display-thread-sign-p m team)
-                    slack-visible-thread-sign
-                  "")
-                (propertize body 'slack-text-type 'mrkdwn))))))
+        (propertize body 'slack-text-type 'mrkdwn)))))
 
 (cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
   (format "%s%s"
-          (if (slack-message-display-thread-sign-p m team)
-              slack-visible-thread-sign
-            (if (eq major-mode 'slack-thread-message-buffer-mode)
-                ""
-              "Replied to a thread: \n"))
+          (if (eq major-mode 'slack-thread-message-buffer-mode)
+              ""
+            "Replied to a thread: \n")
           (let ((body (slack-message-unescape-string (oref m text) team)))
             (when body
               (propertize body 'slack-text-type 'mrkdwn)))))
@@ -534,6 +536,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
            (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
                     pad-raw))
+           (mrkdwn-in (oref attachment mrkdwn-in))
            (header-raw (slack-attachment-header attachment))
            (header (and (not (slack-string-blankp header-raw))
                         (format "%s\t%s" pad
@@ -591,8 +594,16 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
       (slack-message-unescape-string
        (slack-format-message
         (or (and header (format "\t%s" header)) "")
-        (or (and pretext (format "\t%s" pretext)) "")
-        (or (and body (format "\t%s" body)) "")
+        (or (and pretext (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "pretext" e))
+                                                        mrkdwn-in)
+                                            (propertize pretext 'slack-text-type 'mrkdwn)
+                                          pretext)))
+            "")
+        (or (and body (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "text" e))
+                                                     mrkdwn-in)
+                                         (propertize body 'slack-text-type 'mrkdwn)
+                                       body)))
+            "")
         (or (and fields fields) "")
         (or (and actions (format "\t%s" actions)) "")
         (or (and files (format "\t%s" files)) "")

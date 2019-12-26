@@ -39,20 +39,24 @@
 ;; (require 'slack-message-formatter)
 (declare-function slack-format-message "slack-message-formatter")
 (require 'slack-image)
+(require 'slack-usergroup)
+(require 'slack-mrkdwn)
 
 (defvar slack-completing-read-function)
+(defvar slack-channel-button-keymap)
 
 ;; Layout Blocks
 ;; [Reference: Message layout blocks | Slack](https://api.slack.com/reference/messaging/blocks)
 (defclass slack-layout-block ()
   ((type :initarg :type :type string)
-   (block-id :initarg :block_id :type (or string null) :initform nil)))
+   (block-id :initarg :block_id :type (or string null) :initform nil)
+   (payload :initarg :payload :initform nil)))
 
 (cl-defmethod slack-block-find-action ((_this slack-layout-block) _action-id)
   nil)
 
 (cl-defmethod slack-block-to-string ((this slack-layout-block) &optional _option)
-  (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
+  (format "Implement `slack-block-to-string' for %S" (oref this payload)))
 
 (defun slack-create-layout-block (payload)
   (let ((type (plist-get payload :type)))
@@ -67,7 +71,473 @@
       (slack-create-actions-layout-block payload))
      ((string= "context" type)
       (slack-create-context-layout-block payload))
+     ((string= "rich_text" type)
+      (slack-create-rich-text-block payload))
+     (t (make-instance 'slack-layout-block
+                       :type type
+                       :payload payload))
+     ;; ;; TODO https://api.slack.com/reference/block-kit/blocks#file
+     ;; ((string= "file" type)
+     ;;  (message "TODO: %S" payload)
+     ;;  nil
+     ;;  )
+     ;; ;; TODO https://api.slack.com/reference/block-kit/blocks#input
+     ;; ((string= "input" type)
+     ;;  (message "TODO: %S" payload)
+     ;;  nil
+     ;;  )
      )))
+
+;; Rich Text Blocks
+;; [Changes to message objects on the way to support WYSIWYG | Slack](https://api.slack.com/changelog/2019-09-what-they-see-is-what-you-get-and-more-and-less)
+(defclass slack-rich-text-block ()
+  ((type :initarg :type :type string)
+   (block-id :initarg :block_id :type string)
+   (elements :initarg :elements :type list) ;; list of slack-rich-text-section
+   ))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-block) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-string element option))
+             (oref this elements)
+             ""))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-block) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+             (oref this elements)
+             ""))
+
+(defun slack-create-rich-text-block (payload)
+  (make-instance 'slack-rich-text-block
+                 :type (plist-get payload :type)
+                 :block_id (plist-get payload :block_id)
+                 :elements (mapcar #'slack-create-rich-text-block-element
+                                   (plist-get payload :elements))))
+
+(defclass slack-rich-text-block-element ()
+  ((type :initarg :type :type string)
+   (elements :initarg :elements :type list) ;; list of slack-rich-text-element
+   (payload :initarg :payload :type (or null list) :initform nil)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-block-element) &optional _option)
+  (format "Implement `slack-block-to-string' for %S\n" (oref this payload)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-block-element) &optional _option)
+  (format "Implement `slack-block-to-mrkdwn' for %S\n" (oref this payload)))
+
+(defun slack-create-rich-text-block-element (payload)
+  (let* ((type (plist-get payload :type))
+         (element (cond
+                   ((string= "rich_text_section" type)
+                    (slack-create-rich-text-section payload))
+                   ((string= "rich_text_preformatted" type)
+                    (slack-create-rich-text-preformatted payload))
+                   ((string= "rich_text_quote" type)
+                    (slack-create-rich-text-quote payload))
+                   ((string= "rich_text_list" type)
+                    (slack-create-rich-text-list payload))
+                   (t
+                    (make-instance 'slack-rich-text-block-element
+                                   :type (plist-get payload :type)
+                                   :elements (mapcar #'slack-create-rich-text-element
+                                                     (plist-get payload :elements)))))))
+    (oset element payload payload)
+    element))
+
+(defclass slack-rich-text-section (slack-rich-text-block-element) ())
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-section) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-string element option))
+             (oref this elements)
+             ""))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-section) &optional option)
+  (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+             (oref this elements)
+             ""))
+
+(defun slack-create-rich-text-section (payload)
+  (make-instance 'slack-rich-text-section
+                 :type (plist-get payload :type)
+                 :elements (mapcar #'slack-create-rich-text-element
+                                   (plist-get payload :elements))))
+
+;; Code block does not use `style' in `slack-rich-text-element'
+(defclass slack-rich-text-preformatted (slack-rich-text-block-element) ())
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-preformatted) &optional option)
+  (let ((text (mapconcat #'(lambda (element) (slack-block-to-string element option))
+                         (oref this elements)
+                         "")))
+    (propertize (concat text "\n")
+                'face 'slack-mrkdwn-code-block-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-preformatted) &optional option)
+  (let ((text (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+                         (oref this elements)
+                         "")))
+    (format "```%s```\n" text)))
+
+(defun slack-create-rich-text-preformatted (payload)
+  (make-instance 'slack-rich-text-preformatted
+                 :type (plist-get payload :type)
+                 :elements (mapcar #'slack-create-rich-text-element
+                                   (plist-get payload :elements))
+                 ))
+
+(defclass slack-rich-text-quote (slack-rich-text-block-element) ())
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-quote) &optional option)
+  (let* ((text (mapconcat #'(lambda (element) (slack-block-to-string element option))
+                          (oref this elements)
+                          ""))
+         (texts (split-string text "[\n\r]" nil nil))
+         (text-with-pad (mapconcat #'(lambda (text) (format "%s%s"
+                                                            slack-mrkdwn-blockquote-sign
+                                                            text))
+                                   texts
+                                   "\n")))
+
+    (propertize (concat text-with-pad "\n")
+                'face 'slack-mrkdwn-blockquote-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-quote) &optional option)
+  (let* ((text (mapconcat #'(lambda (element) (slack-block-to-mrkdwn element option))
+                          (oref this elements)
+                          ""))
+         (texts (split-string text "[\n\r]" nil nil))
+         (text-with-pad (mapconcat #'(lambda (text) (format "%s%s"
+                                                            slack-mrkdwn-blockquote-sign
+                                                            text))
+                                   texts
+                                   "\n")))
+
+    (concat (mapconcat #'(lambda (text) (format "> %s" text))
+               texts
+               "\n")
+            "\n")))
+
+(defun slack-create-rich-text-quote (payload)
+  (make-instance 'slack-rich-text-quote
+                 :type (plist-get payload :type)
+                 :elements (mapcar #'slack-create-rich-text-element
+                                   (plist-get payload :elements))))
+
+(defclass slack-rich-text-list (slack-rich-text-block-element)
+  ((indent :initarg :indent :type number)
+   (style :initarg :style :type string) ;; bullet or ordered
+   ))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-list) &optional option)
+  (let ((indent (make-string (* 2 (oref this indent)) ? ))
+        (texts (mapcar #'(lambda (element) (slack-block-to-string element option))
+                       (oref this elements)))
+        (texts-with-dot nil)
+        (dot slack-mrkdwn-list-bullet)
+        (i 1))
+    (dolist (text texts)
+      (push (format "%s%s %s"
+                    indent
+                    (propertize (if (string= (oref this style) "ordered")
+                                    (format "%s." i)
+                                  dot)
+                                'face 'slack-mrkdwn-list-face)
+                    text)
+            texts-with-dot)
+      (setq i (+ i 1)))
+    (concat (mapconcat #'identity (reverse texts-with-dot) "\n")
+            "\n")))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-list) &optional option)
+  (let* ((indent (make-string (* 2 (oref this indent)) ? ))
+         (dot "-")
+         (i 1))
+    (concat (mapconcat #'(lambda (element)
+                   (let ((text (format "%s%s %s"
+                                       indent
+                                       (if (string= (oref this style) "ordered")
+                                           (format "%s." i)
+                                         dot)
+                                       (slack-block-to-mrkdwn element option))))
+                     (setq i (+ i 1))
+                     text))
+               (oref this elements)
+               "\n")
+            "\n")))
+
+(defun slack-create-rich-text-list (payload)
+  (make-instance 'slack-rich-text-list
+                 :type (plist-get payload :type)
+                 :elements (mapcar #'slack-create-rich-text-block-element
+                                   (plist-get payload :elements))
+                 :indent (plist-get payload :indent)
+                 :style (plist-get payload :style)))
+
+
+(defclass slack-rich-text-element-style ()
+  ((bold :initarg :bold :type boolean)
+   (italic :initarg :italic :type boolean)
+   (strike :initarg :strike :type boolean)
+   (code :initarg :code :type boolean)))
+
+(defmethod slack-block-to-string ((this slack-rich-text-element-style) text)
+  (let ((face (progn (or (and (oref this bold) 'slack-mrkdwn-bold-face)
+                         (and (oref this italic) 'slack-mrkdwn-italic-face)
+                         (and (oref this strike) 'slack-mrkdwn-strike-face)
+                         (and (oref this code) 'slack-mrkdwn-code-face)))))
+    (propertize text 'face face)))
+
+(defmethod slack-block-to-mrkdwn ((this slack-rich-text-element-style) text)
+  (or (and (oref this bold) (format "*%s*" text))
+      (and (oref this italic) (format "_%s_" text))
+      (and (oref this strike) (format "~%s~" text))
+      (and (oref this code) (format "`%s`" text))
+      text))
+
+(defun slack-create-rich-text-element-style (payload)
+  (when payload
+    (make-instance 'slack-rich-text-element-style
+                   :bold (eq t (plist-get payload :bold))
+                   :italic (eq t (plist-get payload :italic))
+                   :strike (eq t (plist-get payload :strike))
+                   :code (eq t (plist-get payload :code)))))
+
+(defclass slack-rich-text-element ()
+  ((type :initarg :type :type string)
+   (style :initarg :style :type (or null slack-rich-text-element-style))
+   (payload :initarg :payload :type (or null list) :initform nil)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-element) &optional _option)
+  (format "Implement `slack-block-to-string' for %S\n" (oref this payload)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-element) &optional _option)
+  (format "Implement `slack-block-to-mrkdwn' for %S\n" (oref this payload)))
+
+(defun slack-create-rich-text-element (payload)
+  (let* ((type (plist-get payload :type))
+         (element (cond
+                   ((string= "text" type)
+                    (slack-create-rich-text-text-element payload))
+                   ((string= "channel" type)
+                    (slack-create-rich-text-channel-element payload))
+                   ((string= "user" type)
+                    (slack-create-rich-text-user-element payload))
+                   ((string= "emoji" type)
+                    (slack-create-rich-text-emoji-element payload))
+                   ((string= "link" type)
+                    (slack-create-rich-text-link-element payload))
+                   ((string= "team" type)
+                    (slack-create-rich-text-team-element payload))
+                   ((string= "usergroup" type)
+                    (slack-create-rich-text-usergroup-element payload))
+                   ((string= "date" type)
+                    (slack-create-rich-text-date-element payload))
+                   ((string= "broadcast" type)
+                    (slack-create-rich-text-broadcast-element payload))
+                   (t
+                    (make-instance 'slack-rich-text-element
+                                   :type (plist-get payload :type)
+                                   :style (slack-create-rich-text-element-style
+                                           (plist-get payload :style)))))))
+    (oset element payload payload)
+    element))
+
+(defclass slack-rich-text-text-element (slack-rich-text-element)
+  ((text :initarg :text :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-text-element) &optional _option)
+  (let ((style (oref this style))
+        (text (oref this text)))
+    (if style (slack-block-to-string style text)
+      text)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-text-element) &optional _option)
+  (let ((style (oref this style))
+        (text (oref this text)))
+    (if style (slack-block-to-mrkdwn style text)
+      text)))
+
+(defun slack-create-rich-text-text-element (payload)
+  (make-instance 'slack-rich-text-text-element
+                 :type (plist-get payload :type)
+                 :text (plist-get payload :text)
+                 :style (slack-create-rich-text-element-style
+                         (plist-get payload :style))))
+
+;; (:type "channel" :channel_id "CE096203E")
+(defclass slack-rich-text-channel-element (slack-rich-text-element)
+  ((channel-id :initarg :channel_id :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-channel-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this channel-id)))
+    (unless team
+      (error "`slack-rich-text-channel-element' need team as option"))
+
+    (propertize (format "#%s" (slack-room-name (slack-room-find id team) team))
+                'room-id id
+                'keymap slack-channel-button-keymap
+                'face 'slack-channel-button-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-channel-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this channel-id)))
+    (unless team
+      (error "`slack-rich-text-channel-element' need team as option"))
+
+    (slack-propertize-mention-text 'slack-message-mention-face
+                                   (format "#%s" (slack-room-name (slack-room-find id team) team))
+                                   (format "<#%s>" id))))
+
+(defun slack-create-rich-text-channel-element (payload)
+  (make-instance 'slack-rich-text-channel-element
+                 :type (plist-get payload :type)
+                 :channel_id (plist-get payload :channel_id)
+                 :style (slack-create-rich-text-element-style
+                         (plist-get payload :style))))
+
+(defclass slack-rich-text-user-element (slack-rich-text-element)
+  ((user-id :initarg :user_id :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-user-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this user-id)))
+    (unless team
+      (error "`slack-rich-text-user-element' need team as option"))
+    (propertize (format "@%s" (slack-user-name id team))
+                'face 'slack-message-mention-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-user-element) option)
+  (let ((team (plist-get option :team))
+        (id (oref this user-id)))
+    (unless team
+      (error "`slack-rich-text-user-element' need team as option"))
+    (slack-propertize-mention-text 'slack-message-mention-face
+                                   (format "@%s" (slack-user-name id team))
+                                   (format "<@%s>" id))))
+
+(defun slack-create-rich-text-user-element (payload)
+  (make-instance 'slack-rich-text-user-element
+                 :type (plist-get payload :type)
+                 :user_id (plist-get payload :user_id)
+                 :style (slack-create-rich-text-element-style
+                         (plist-get payload :style))))
+
+(defclass slack-rich-text-emoji-element (slack-rich-text-element)
+  ((name :initarg :name :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-emoji-element) &optional _option)
+  (let ((name (oref this name)))
+    (format ":%s:" name)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-emoji-element) &optional option)
+  (slack-block-to-string this option))
+
+(defun slack-create-rich-text-emoji-element (payload)
+  (make-instance 'slack-rich-text-emoji-element
+                 :type (plist-get payload :type)
+                 :name (plist-get payload :name)))
+
+(defclass slack-rich-text-link-element (slack-rich-text-element)
+  ((url :initarg :url :type string)
+   (text :initarg :text :type (or null string) :initform nil)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-link-element) &optional _option)
+  (let ((text (oref this text))
+        (url (oref this url)))
+    (format "<%s|%s>" url (or text url))))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-link-element) &optional _option)
+  (let ((url (oref this url)))
+    url))
+
+(defun slack-create-rich-text-link-element (payload)
+  (make-instance 'slack-rich-text-link-element
+                 :type (plist-get payload :type)
+                 :url (plist-get payload :url)
+                 :text (plist-get payload :text)
+                 :style (slack-create-rich-text-element-style
+                         (plist-get payload :style))))
+
+(defclass slack-rich-text-team-element (slack-rich-text-element)
+  ((team-id :initarg :team_id :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-team-element) &optional _option)
+  (let* ((team-id (oref this team-id))
+         (team (slack-team-find team-id)))
+    (propertize (format "%s" (slack-team-name team))
+                'face 'slack-message-mention-face)))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-team-element) &optional _option)
+  (slack-block-to-string this))
+
+(defun slack-create-rich-text-team-element (payload)
+  (make-instance 'slack-rich-text-team-element
+                 :type (plist-get payload :type)
+                 :team_id (plist-get payload :team_id)
+                 :style (slack-create-rich-text-element-style
+                         (plist-get payload :style))))
+
+(defclass slack-rich-text-usergroup-element (slack-rich-text-element)
+  ((usergroup-id :initarg :usergroup_id :type string)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-usergroup-element) &optional option)
+  (let ((team (plist-get option :team))
+        (id (oref this usergroup-id)))
+
+    (unless team
+      (error "`slack-rich-text-usergroup-element' need team as option"))
+
+    (let ((usergroup (slack-usergroup-find id team)))
+      (propertize (format "@%s" (oref usergroup handle))
+                  'face 'slack-message-mention-keyword-face))))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-usergroup-element) &optional option)
+  (let ((team (plist-get option :team))
+        (id (oref this usergroup-id)))
+
+    (unless team
+      (error "`slack-rich-text-usergroup-element' need team as option"))
+
+    (let ((usergroup (slack-usergroup-find id team)))
+      (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                     (format "@%s" (oref usergroup handle))
+                                     (format "<!subteam^%s>" id)))))
+
+(defun slack-create-rich-text-usergroup-element (payload)
+  (make-instance 'slack-rich-text-usergroup-element
+                 :type (plist-get payload :type)
+                 :usergroup_id (plist-get payload :usergroup_id)))
+
+(defclass slack-rich-text-date-element (slack-rich-text-element)
+  ((timestamp :initarg :timestamp :type number)))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-date-element) &optional _option)
+  (slack-message-time-to-string (oref this timestamp)))
+
+(defun slack-create-rich-text-date-element (payload)
+  (make-instance 'slack-rich-text-date-element
+                 :type (plist-get payload :type)
+                 :timestamp (if (stringp (plist-get payload :timestamp))
+                                (string-to-number (plist-get payload :timestamp))
+                              (plist-get payload :timestamp))))
+
+(defclass slack-rich-text-broadcast-element (slack-rich-text-element)
+  ((range :initarg :range :type string) ;; channel or everyone or here
+   ))
+
+(cl-defmethod slack-block-to-string ((this slack-rich-text-broadcast-element) &optional _option)
+  (propertize (format "@%s" (oref this range))
+              'face 'slack-message-mention-keyword-face))
+
+(cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-broadcast-element) &optional _option)
+  (slack-propertize-mention-text 'slack-message-mention-keyword-face
+                                 (format "@%s" (oref this range))
+                                 (format "<!%s>" (oref this range))))
+
+(defun slack-create-rich-text-broadcast-element (payload)
+  (make-instance 'slack-rich-text-broadcast-element
+                 :type (plist-get payload :type)
+                 :range (plist-get payload :range)))
 
 (defclass slack-section-layout-block (slack-layout-block)
   ((type :initarg :type :type string :initform "section")
@@ -178,10 +648,9 @@
   (make-instance 'slack-context-layout-block
                  :elements (mapcar #'(lambda (e)
                                        (or
-                                        (slack-create-block-element
-                                         e (plist-get payload :block_id))
-                                        (slack-create-text-message-composition-object  e)))
-
+                                        (if (string= "image" (plist-get e :type))
+                                            (slack-create-block-element e (plist-get payload :block_id))
+                                          (slack-create-text-message-composition-object  e))))
                                    (plist-get payload :elements))
                  :block_id (plist-get payload :block_id)))
 
@@ -200,9 +669,10 @@
 
 ;; Block Elements
 ;; [Reference: Block elements | Slack](https://api.slack.com/reference/messaging/block-elements)
-(defclass slack-block-element () ((type :initarg :type :type string)))
+(defclass slack-block-element () ((type :initarg :type :type string)
+                                  (payload :initarg :payload :initform nil)))
 (cl-defmethod slack-block-to-string ((this slack-block-element) &optional _option)
-  (format "Implement `slack-block-to-string' for %S" (eieio-object-class-name this)))
+  (format "Implement `slack-block-to-string' for %S" (oref this payload)))
 
 (cl-defmethod slack-block-handle-confirm ((this slack-block-element))
   (if (slot-boundp this 'confirm)
@@ -220,27 +690,30 @@
     (slack-select-from-list (alist "Select Option: "))))
 
 (defun slack-create-block-element (payload block-id)
-  (let ((type (plist-get payload :type)))
-    (cond
-     ((string= "image" type)
-      (slack-create-image-block-element payload))
-     ((string= "button" type)
-      (slack-create-button-block-element payload block-id))
-     ((string= "static_select" type)
-      (slack-create-static-select-block-element payload block-id))
-     ((string= "external_select" type)
-      (slack-create-external-select-block-element payload block-id))
-     ((string= "users_select" type)
-      (slack-create-user-select-block-element payload block-id))
-     ((string= "conversations_select" type)
-      (slack-create-conversation-select-block-element payload block-id))
-     ((string= "channels_select" type)
-      (slack-create-channel-select-block-element payload block-id))
-     ((string= "overflow" type)
-      (slack-create-overflow-block-element payload block-id))
-     ((string= "datepicker" type)
-      (slack-create-datepicker-block-element payload block-id))
-     )))
+  (when payload
+    (let ((type (plist-get payload :type)))
+      (cond
+       ((string= "image" type)
+        (slack-create-image-block-element payload))
+       ((string= "button" type)
+        (slack-create-button-block-element payload block-id))
+       ((string= "static_select" type)
+        (slack-create-static-select-block-element payload block-id))
+       ((string= "external_select" type)
+        (slack-create-external-select-block-element payload block-id))
+       ((string= "users_select" type)
+        (slack-create-user-select-block-element payload block-id))
+       ((string= "conversations_select" type)
+        (slack-create-conversation-select-block-element payload block-id))
+       ((string= "channels_select" type)
+        (slack-create-channel-select-block-element payload block-id))
+       ((string= "overflow" type)
+        (slack-create-overflow-block-element payload block-id))
+       ((string= "datepicker" type)
+        (slack-create-datepicker-block-element payload block-id))
+       (t (make-instance 'slack-block-element
+                         :type type
+                         :payload payload))))))
 
 (defclass slack-image-block-element (slack-block-element)
   ((type :initarg :type :type string :initform "image")
@@ -332,7 +805,7 @@
    (confirm :initarg :confirm :initform nil :type (or null slack-confirmation-dialog-message-composition-object))))
 
 (cl-defmethod slack-block-to-string ((this slack-select-block-element) &optional _option)
-  (format "Implement `slack-block-to-string' for %S" (oref this type)))
+  (format "Implement `slack-block-to-string' for %S" (oref this payload)))
 
 (cl-defmethod slack-block-select-from-option-groups ((_this slack-select-block-element) option-groups)
   (slack-if-let*
@@ -633,7 +1106,8 @@
 (cl-defmethod slack-block-to-string ((this slack-date-picker-block-element) &optional _option)
   (with-slots (placeholder initial-date) this
     (let ((text (or initial-date
-                    (slack-block-to-string placeholder))))
+                    (slack-block-to-string placeholder)
+                    "Pick a date")))
       (propertize text
                   'face 'slack-date-picker-block-element-face
                   'slack-action-payload (slack-block-action-payload this)
