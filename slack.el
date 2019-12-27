@@ -5,7 +5,7 @@
 ;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords: tools
 ;; Version: 0.0.2
-;; Package-Requires: ((websocket "1.8") (request "0.2.0") (oauth2 "0.10") (circe "2.3") (alert "1.2") (emojify "0.4") (emacs "24.4"))
+;; Package-Requires: ((websocket "1.8") (request "0.2.0") (circe "2.3") (alert "1.2") (emojify "0.4") (emacs "24.4"))
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -69,7 +69,6 @@
 (require 'slack-unread)
 (require 'slack-modeline)
 
-(require 'slack-oauth2)
 (require 'slack-authorize)
 
 (when (featurep 'helm)
@@ -156,11 +155,6 @@ When `never', never display typing indicator."
                (slack-team-kill-buffers team)
                (when (slot-boundp team 'ws)
                  (slack-ws--close (oref team ws) team))
-               (when (slack-team-need-token-p team)
-                 (let ((token (slack-oauth2-get-token team)))
-                   (oset team token token)
-                   (kill-new token))
-                 (message "Your Token is added to kill ring."))
                (slack-authorize team)))
     (if team
         (start team)

@@ -260,10 +260,6 @@ use `slack-change-current-team' to change `slack-current-team'"
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
 
-(cl-defmethod slack-team-need-token-p ((team slack-team))
-  (with-slots (token) team
-    (or (not token) (< (length token) 1))))
-
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
