@@ -26,7 +26,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 
 ## Configuration
 
-[How to get token](#how-to-get-token-the-easy-way)
+[How to get token](#how-to-get-token)
 
 ```elisp
 ;; I'm using use-package and el-get and evil
@@ -84,14 +84,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
   (setq alert-default-style 'notifier))
 
 ```
-## How to get client ID
-
- 1. Log into the Slack team you're interested in with a web browser
- 2. Open DevTools
- 3. Open Network tab
- 4. Take the _x_id from Query String Parameters
-
-## How to get token (the easy way)
+## How to get token
 
 ### 1. From Request Payload
 
@@ -99,41 +92,9 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
  2. Open DevTools
  3. Open Network tab
  4. Search for (Ctrl-F) "xoxs-" and copy token from Request Payload
-
-### 2. With a legacy token
-
-1. Go to "https://api.slack.com/custom-integrations/legacy-tokens".
-2. Create token for the teams you want to have integrate with.
-
-## How to get token (the harder yet officially sanctioned way)
-
-### 1. Get client-id and client-secret
-
-1. Go to "https://api.slack.com/apps".
-2. Click "Create New App".
-3. Fill "App Name" and "Development Slack Team" and click "Create App".
-4. "Client ID" and "Client Secret" are listed in the "App Credentials" section.
-
-### 2. Configure Redirect URL
-
-1. Click "Permissions" in the "Add features and functionality" of "Building Apps for Slack" section.
-2. Fill in the "Redirect URLs" section (slack-emacs defaults to: "http://localhost:8080").
-3. click "Save URLs".
-
-### 3. Get token
-
-1. Call `slack-register-team` with above "Client ID" and "Client Secret" (ignore the "Token" prompt [i.e., just hit enter.]).
-2. Emacs' prompt will display: "Enter the code your browser displayed: ".
-3. Code appears in the browser's address bar like "http://localhost:8080?code=181818181818.1819919191&state=", enter this code in the previous Emacs' prompt.
-4. Once you activate `emacs-slack`, token appears in the URL like: "https://api.slack.com/apps/{APPID}/oauth".
-5. Save your token and pass it to the `slack-register-team` function along with the "Client ID" and "Client Secret".
-
-#### Note
-
-emacs-slack uses websocket to communicate with Slack, and need request to [rtm.start method](https://api.slack.com/methods/rtm.start) (you can also test your settings in that page's "Tester" tab to make sure things have been configured correctly).
-this request needs "client" scope when authorize and Slack does not yet have "client" scope in new OAuth scope.
-make sure `slack-oauth2-auth` requesting with "client" scope and prevent token migration.
-![token_migration](https://github.com/yuya373/emacs-slack/wiki/images/token_migration.png)
+ 
+### 2. From customize page
+https://github.com/jackellenberger/emojme#slack-for-web
 
 
 ## How to use
