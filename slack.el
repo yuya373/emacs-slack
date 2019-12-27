@@ -172,7 +172,7 @@ When `never', never display typing indicator."
 
 ;;;###autoload
 (defun slack-register-team (&rest plist)
-  "PLIST must contain :name and either :client-id and :client-secret or :token.
+  "PLIST must contain :name and :token.
 Available options (property name, type, default value)
 :subscribed-channels [ list symbol ] '()
   notified when new message arrived in these channels.
@@ -199,20 +199,9 @@ Available options (property name, type, default value)
   if t, animate gif images."
   (interactive
    (let ((name (read-from-minibuffer "Team Name: "))
-         (client-id (read-from-minibuffer "Client Id: "))
-         (client-secret (read-from-minibuffer "Client Secret: "))
-         (token nil))
-     (unless (and (and client-id (< 0 (length client-id)))
-                  (and client-secret (< 0 (length client-secret))))
-       (setq token (read-from-minibuffer "Token: ")))
-     (list :name name :client-id client-id :client-secret client-secret
-           :token token)))
-  (cl-labels ((has-client-id-and-client-secret-p
-               (plist)
-               (let ((id (plist-get plist :client-id))
-                     (secret (plist-get plist :client-secret)))
-                 (and id secret (< 0 (length id)) (< 0 (length secret)))))
-              (has-token-p (plist)
+         (token (read-from-minibuffer "Token: ")))
+     (list :name name :token token)))
+  (cl-labels ((has-token-p (plist)
                            (let ((token (plist-get plist :token)))
                              (and token (< 0 (length token)))))
               (register (team)
@@ -231,11 +220,10 @@ Available options (property name, type, default value)
                         (if (plist-get plist :default)
                             (setq slack-current-team team))))
 
-    (if (or (has-client-id-and-client-secret-p plist)
-            (has-token-p plist))
+    (if (has-token-p plist)
         (let ((team (slack-create-team plist)))
           (register team))
-      (error ":client-id and :client-secret or :token is required"))))
+      (error ":token is required"))))
 
 (provide 'slack)
 ;;; slack.el ends here
