@@ -64,8 +64,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defclass slack-team ()
   ((id :initarg :id)
    (token :initarg :token :initform nil)
-   (client-id :initarg :client-id)
-   (client-secret :initarg :client-secret)
    (name :initarg :name :initform nil)
    (domain :initarg :domain)
    (self :initarg :self)

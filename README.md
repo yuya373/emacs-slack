@@ -41,16 +41,12 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
   (slack-register-team
    :name "emacs-slack"
    :default t
-   :client-id "aaaaaaaaaaa.00000000000"
-   :client-secret "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
    :token "xoxs-sssssssssss-88888888888-hhhhhhhhhhh-jjjjjjjjjj"
    :subscribed-channels '(test-rename rrrrr)
    :full-and-display-names t)
 
   (slack-register-team
    :name "test"
-   :client-id "3333333333.77777777777"
-   :client-secret "cccccccccccccccccccccccccccccccc"
    :token "xoxs-yyyyyyyyyy-zzzzzzzzzzz-hhhhhhhhhhh-llllllllll"
    :subscribed-channels '(hoge fuga))
 
@@ -108,7 +104,7 @@ Some terminology in the `slack-` functions:
 
 - `slack-register-team`
   - set team configuration and create team.
-  - :name, :client-id, and :client-secret are needed for arguments
+  - :name and :token are required
 - `slack-change-current-team`
   - change `slack-current-team` var
 - `slack-start`
