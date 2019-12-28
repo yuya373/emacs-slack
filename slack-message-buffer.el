@@ -375,18 +375,23 @@
                                 (next-single-property-change beg 'ts))))
                  (when (and beg end
                             (<= end (point-max)))
-                   (if (oref this marker-overlay)
-                       (move-overlay (oref this marker-overlay)
-                                     beg end)
-                     (progn
-                       (oset this marker-overlay (make-overlay beg end))
-                       (let ((after-string
-                              (propertize "New Message"
-                                          'face
-                                          'slack-new-message-marker-face)))
-                         (overlay-put (oref this marker-overlay)
-                                      'after-string
-                                      (format "%s\n" after-string)))))))))))
+                   (let ((overlays (overlay-lists))
+                         (overlay-props 'slack-new-message-marker-overlay)
+                         (after-string (propertize "New Message"
+                                                   'face
+                                                   'slack-new-message-marker-face)))
+                     (dolist (ov (append (car overlays)
+                                         (cdr overlays)))
+                       (when (overlay-get ov overlay-props)
+                         (delete-overlay ov)))
+
+                     (oset this marker-overlay (make-overlay beg end))
+                     (overlay-put (oref this marker-overlay)
+                                  overlay-props
+                                  t)
+                     (overlay-put (oref this marker-overlay)
+                                  'after-string
+                                  (format "%s\n" after-string)))))))))
 
 (cl-defmethod slack-file-upload-params ((this slack-message-buffer))
   (with-slots (team) this
