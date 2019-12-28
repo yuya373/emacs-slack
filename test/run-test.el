@@ -8,6 +8,7 @@
 (require 'slack-message-sender)
 
 (defvar slack-channel-button-keymap nil)
+(setq slack-render-image-p t)
 
 (defmacro slack-test-setup (&rest body)
   (declare (indent 0) (debug t))

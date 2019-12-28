@@ -41,6 +41,11 @@
   :type 'integer
   :group 'slack)
 
+(defcustom slack-render-image-p (display-graphic-p)
+  "If t, images in messages are rendered"
+  :type 'boolean
+  :group 'slack)
+
 (defun slack-image-path (image-url)
   (and image-url
        (expand-file-name
@@ -125,7 +130,7 @@
 
 (defun slack-image-string (spec &optional pad no-token)
   "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
-  (if (and (display-graphic-p) spec)
+  (if (and slack-render-image-p spec)
       (slack-if-let* ((path (slack-image-path (car spec))))
           (if (file-exists-p path)
               (slack-mapconcat-images
