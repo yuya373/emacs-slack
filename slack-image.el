@@ -125,7 +125,7 @@
 
 (defun slack-image-string (spec &optional pad no-token)
   "SPEC: (list URL WIDTH HEIGHT MAX-HEIGHT MAX-WIDTH)"
-  (if spec
+  (if (and (display-graphic-p) spec)
       (slack-if-let* ((path (slack-image-path (car spec))))
           (if (file-exists-p path)
               (slack-mapconcat-images
