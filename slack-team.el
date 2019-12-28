@@ -64,8 +64,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defclass slack-team ()
   ((id :initarg :id)
    (token :initarg :token :initform nil)
-   (client-id :initarg :client-id)
-   (client-secret :initarg :client-secret)
    (name :initarg :name :initform nil)
    (domain :initarg :domain)
    (self :initarg :self)
@@ -259,10 +257,6 @@ use `slack-change-current-team' to change `slack-current-team'"
                               slack-teams))
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
-
-(cl-defmethod slack-team-need-token-p ((team slack-team))
-  (with-slots (token) team
-    (or (not token) (< (length token) 1))))
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
