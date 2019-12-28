@@ -870,6 +870,7 @@
     (let ((buf (slack-create-thread-message-buffer (slack-buffer-room this)
                                                    team
                                                    ts)))
+      (tracking-add-buffer (slack-buffer-buffer buf))
       (slack-buffer-display buf))))
 
 (cl-defmethod slack-thread-show-messages ((this slack-message) room team)
@@ -877,6 +878,7 @@
       ((after-success (_next-cursor has-more)
                       (let ((buf (slack-create-thread-message-buffer
                                   room team (slack-thread-ts this) has-more)))
+                        (tracking-add-buffer (slack-buffer-buffer buf))
                         (slack-buffer-display buf))))
     (slack-thread-replies this room team
                           :after-success #'after-success)))
