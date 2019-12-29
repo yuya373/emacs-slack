@@ -721,7 +721,14 @@
                                           room
                                           (slack-thread-ts message)
                                           team)))
-      (slack-buffer-update buf message :replace replace)))
+      (slack-buffer-update buf message :replace replace)
+    (and slack-buffer-create-on-notify
+         (cl-labels ((after-success (_next-cursor has-more)
+                                    (tracking-add-buffer (slack-buffer-buffer
+                                                          (slack-create-thread-message-buffer
+                                                           room team (slack-thread-ts message) has-more)))))
+           (slack-thread-replies message room team
+                                 :after-success #'after-success)))))
 
 (cl-defmethod slack-message-update-buffer ((this slack-message) team)
   (slack-if-let* ((room (slack-room-find this team)))
