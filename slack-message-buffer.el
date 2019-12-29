@@ -172,7 +172,7 @@
     (slack-message-visible-p message team)))
 
 (cl-defmethod slack-buffer-insert-messages ((this slack-message-buffer) messages
-                                            &optional filter-by-oldest)
+                                            &optional filter-by-oldest not-tracked-p)
   (with-slots (team latest oldest) this
     (let* ((latest-message (car (last messages)))
            (oldest-message (car messages)))
@@ -184,7 +184,7 @@
                                (or (null latest)
                                    (string< latest (slack-ts m))))
                              (slack-buffer-visible-message-p this m))
-                    (slack-buffer-insert this m nil prev-message)
+                    (slack-buffer-insert this m not-tracked-p prev-message)
                     (setq prev-message m)))
       (when latest-message
         (slack-buffer-update-lastest this (slack-ts latest-message)))
@@ -202,7 +202,7 @@
 
       (let* ((room (slack-buffer-room this))
              (messages (slack-room-sorted-messages room)))
-        (slack-buffer-insert-messages this messages)))
+        (slack-buffer-insert-messages this messages nil t)))
 
     (with-slots (team) this
       (let* ((room (slack-buffer-room this))
@@ -269,7 +269,7 @@
                              (with-current-buffer (slack-buffer-buffer this)
                                (let ((inhibit-read-only t))
                                  (slack-buffer-delete-overlay this))
-                               (slack-buffer-insert-messages this messages)
+                               (slack-buffer-insert-messages this messages nil t)
                                (slack-buffer-goto (slack-buffer-last-read this))
                                (slack-buffer-update-marker-overlay this)))))
         (slack-conversations-view room team
@@ -304,7 +304,7 @@
                    (let ((lui-time-stamp-position nil))
                      (lui-insert "(no more messages)" t)))
 
-                 (slack-buffer-insert-messages this messages t)
+                 (slack-buffer-insert-messages this messages t t)
                  (lui-recover-output-marker)
                  (slack-buffer-update-marker-overlay this)
                  ))

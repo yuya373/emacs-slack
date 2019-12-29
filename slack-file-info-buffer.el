@@ -84,7 +84,7 @@
       (progn
         (with-current-buffer buf
           (let ((inhibit-read-only t))
-            (slack-buffer-insert this)))
+            (slack-buffer-insert this t)))
         buf)
     (slack-buffer-init-buffer this)))
 
@@ -93,7 +93,7 @@
     (with-current-buffer buf
       (slack-file-info-buffer-mode)
       (slack-buffer-set-current-buffer this)
-      (slack-buffer-insert this))
+      (slack-buffer-insert this t))
     buf))
 
 (cl-defmethod slack-buffer-download-file ((this slack-file-info-buffer) file-id)
@@ -152,7 +152,7 @@
                                         comments)
                   'file-id (oref file id)))))
 
-(cl-defmethod slack-buffer-insert ((this slack-file-info-buffer))
+(cl-defmethod slack-buffer-insert ((this slack-file-info-buffer) &optional not-tracked-p)
   (delete-region (point-min) lui-output-marker)
   (with-slots (file team) this
     (let ((lui-time-stamp-position nil))
@@ -160,7 +160,8 @@
        (slack-buffer-file-to-string this)
        ;; saved-text-properties not working??
        'file-id (oref file id)
-       'ts (slack-ts file))))
+       'ts (slack-ts file)
+       'not-tracked-p not-tracked-p)))
   (slack-if-let* ((html-beg (cl-loop for i from (point-min) to lui-output-marker
                                      if (get-text-property i 'slack-file-html-content)
                                      return i))

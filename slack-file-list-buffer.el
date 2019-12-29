@@ -110,7 +110,7 @@
       (let* ((inhibit-read-only t)
              (files (slack-team-files (oref this team))))
         (cl-loop for file in files
-                 do (slack-buffer-insert this file))
+                 do (slack-buffer-insert this file t))
         (slack-buffer-set-oldest this (car files)))
       (goto-char (point-max)))
     (unless (oref (oref this team) slack-file-list-buffer)
