@@ -174,19 +174,33 @@
     (slack-if-let* ((file-id (get-text-property (point) 'id)))
         (slack-buffer-toggle-email-expand buffer file-id))))
 
+(defun slack-pins-request (url room team ts)
+  (cl-labels ((on-pins-add
+               (&key data &allow-other-keys)
+               (slack-request-handle-error
+                (data "slack-message-pins-request"))))
+    (slack-request
+     (slack-request-create
+      url
+      team
+      :params (list (cons "channel" (oref room id))
+                    (cons "timestamp" ts))
+      :success #'on-pins-add
+      ))))
+
 (cl-defmethod slack-buffer-pins-remove ((this slack-room-buffer) ts)
   (with-slots (team) this
-    (slack-message-pins-request slack-message-pins-remove-url
-                                (slack-buffer-room this)
-                                team
-                                ts)))
+    (slack-pins-request slack-message-pins-remove-url
+                        (slack-buffer-room this)
+                        team
+                        ts)))
 
 (cl-defmethod slack-buffer-pins-add ((this slack-room-buffer) ts)
   (with-slots (team) this
-    (slack-message-pins-request slack-message-pins-add-url
-                                (slack-buffer-room this)
-                                team
-                                ts)))
+    (slack-pins-request slack-message-pins-add-url
+                        (slack-buffer-room this)
+                        team
+                        ts)))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-room-buffer) ts)
   (with-slots (team) this

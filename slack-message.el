@@ -205,20 +205,6 @@
 (cl-defmethod slack-message-sender-id ((m slack-user-message))
   (oref m user))
 
-(defun slack-message-pins-request (url room team ts)
-  (cl-labels ((on-pins-add
-               (&key data &allow-other-keys)
-               (slack-request-handle-error
-                (data "slack-message-pins-request"))))
-    (slack-request
-     (slack-request-create
-      url
-      team
-      :params (list (cons "channel" (oref room id))
-                    (cons "timestamp" ts))
-      :success #'on-pins-add
-      ))))
-
 (cl-defmethod slack-ts ((ts string))
   ts)
 
