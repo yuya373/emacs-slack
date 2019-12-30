@@ -89,18 +89,6 @@
 (defclass slack-reply-broadcast-message (slack-user-message)
   ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
 
-(defclass slack-file-comment-message (slack-message)
-  ((file :initarg :file :initform nil)
-   (comment :initarg :comment :initform nil)))
-
-(cl-defmethod slack-message-sender-name ((m slack-file-comment-message) team)
-  (with-slots (comment) m
-    (slack-user-name (plist-get comment :user) team)))
-
-(cl-defmethod slack-message-sender-id ((m slack-file-comment-message))
-  (with-slots (comment) m
-    (plist-get comment :user)))
-
 (cl-defgeneric slack-message-sender-name  (slack-message team))
 (cl-defgeneric slack-message-to-string (slack-message))
 (cl-defgeneric slack-message-to-alert (slack-message))
@@ -174,9 +162,6 @@
                   (and (plist-member payload :bot_id) (plist-get payload :bot_id)))
               (apply #'slack-bot-message "bot-msg"
                      (slack-collect-slots 'slack-bot-message payload)))
-             ((and subtype (string= "file_comment" subtype))
-              (apply #'slack-file-comment-message "file_comment"
-                     (slack-collect-slots 'slack-file-comment-message payload)))
              (t (progn
                   (slack-log (format "Unknown Message Type: %s" payload)
                              team :level 'debug)
@@ -322,13 +307,6 @@
   (let* ((thread-ts (slack-thread-ts m)))
     (when thread-ts
       (string= (slack-ts m) thread-ts))))
-
-(cl-defmethod slack-message--inspect ((this slack-file-comment-message) _room _team)
-  (let ((super (cl-call-next-method)))
-    (with-slots (file comment) this
-      (format "%s\nFILE:%s\nCOMMENT:%s"
-              super
-              file comment))))
 
 (cl-defmethod slack-message-pinned-to-room-p ((this slack-message) room)
   (cl-find (oref room id)

@@ -266,28 +266,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
             (when body
               (propertize body 'slack-text-type 'mrkdwn)))))
 
-(cl-defmethod slack-message-body-to-string ((m slack-file-comment-message) team)
-  (with-slots (file comment deleted-at) m
-    (let ((commented-user (slack-user-name (plist-get comment :user)
-                                           team))
-          (comment-body (plist-get comment :comment))
-          (file-id (plist-get file :id))
-          (file-user (slack-user-name (plist-get file :user)
-                                      team))
-          (file-title (plist-get file :title))
-          (text-propertize (or
-                            (and deleted-at
-                                 #'slack-message-put-deleted-property)
-                            #'slack-message-put-text-property)))
-      (format "%s %s: %s"
-              (funcall text-propertize
-                       (format "@%s commented on @%s's file"
-                               commented-user
-                               file-user))
-              (slack-file-link-info file-id file-title)
-              (funcall text-propertize
-                       comment-body)))))
-
 (cl-defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
 
