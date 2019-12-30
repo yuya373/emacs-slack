@@ -179,7 +179,7 @@
                      (slack-collect-slots 'slack-file-comment-message payload)))
              (t (progn
                   (slack-log (format "Unknown Message Type: %s" payload)
-                             team :level 'warn)
+                             team :level 'debug)
                   (apply #'slack-message "unknown message"
                          (slack-collect-slots 'slack-message payload))))))))
 
@@ -215,6 +215,9 @@
   (slack-user-name (oref m user) team))
 
 (cl-defmethod slack-message-sender-id ((m slack-message))
+  "")
+
+(cl-defmethod slack-message-sender-id ((m slack-user-message))
   (oref m user))
 
 (defun slack-message-pins-request (url room team ts)
@@ -244,7 +247,9 @@
   (slack-ts-to-time (slack-ts message)))
 
 (cl-defmethod slack-user-find ((m slack-message) team)
-  (slack-user--find (slack-message-sender-id m) team))
+  (let ((user-id (slack-message-sender-id m)))
+    (unless (slack-string-blankp user-id)
+      (slack-user--find user-id team))))
 
 (cl-defmethod slack-message-star-added ((m slack-message))
   (oset m is-starred t))
@@ -331,8 +336,10 @@
            :test #'string=))
 
 (cl-defmethod slack-message-user-ids ((this slack-message))
-  (let ((result (append (oref this reply-users) nil)))
-    (push (slack-message-sender-id this) result)
+  (let ((result (append (oref this reply-users) nil))
+        (sender-id (slack-message-sender-id this)))
+    (unless (slack-string-blankp sender-id)
+      (push sender-id result))
     (with-slots (text) this
       (when text
         (let ((start 0))
