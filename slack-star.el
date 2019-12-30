@@ -198,10 +198,22 @@
   (append (list (cons "channel" (oref this channel)))
           (cl-call-next-method)))
 
+(defun slack-star-api-request (url params team)
+  (cl-labels
+      ((on-success (&key data &allow-other-keys)
+                   (slack-request-handle-error
+                    (data url))))
+    (slack-request
+     (slack-request-create
+      url
+      team
+      :params params
+      :success #'on-success))))
+
 (cl-defmethod slack-star-remove-star ((this slack-star) ts team)
   (slack-if-let* ((item (cl-find-if #'(lambda (e) (string= (oref e date-create) ts))
                                     (oref this items))))
-      (slack-message-star-api-request slack-message-stars-remove-url
+      (slack-star-api-request slack-message-stars-remove-url
                                       (slack-message-star-api-params item)
                                       team)))
 

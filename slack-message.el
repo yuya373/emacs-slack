@@ -242,18 +242,6 @@
 (cl-defmethod slack-message-star-removed ((m slack-message))
   (oset m is-starred nil))
 
-(defun slack-message-star-api-request (url params team)
-  (cl-labels
-      ((on-success (&key data &allow-other-keys)
-                   (slack-request-handle-error
-                    (data url))))
-    (slack-request
-     (slack-request-create
-      url
-      team
-      :params params
-      :success #'on-success))))
-
 (cl-defmethod slack-message-star-api-params ((m slack-message))
   (cons "timestamp" (slack-ts m)))
 

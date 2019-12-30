@@ -198,7 +198,7 @@
   (with-slots (team) this
     (slack-if-let* ((room (slack-buffer-room this))
                     (message (slack-room-find-message room ts)))
-        (slack-message-star-api-request slack-message-stars-add-url
+        (slack-star-api-request slack-message-stars-add-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
                                         team))))
@@ -207,7 +207,7 @@
   (with-slots (team) this
     (slack-if-let* ((room (slack-buffer-room this))
                     (message (slack-room-find-message room ts)))
-        (slack-message-star-api-request slack-message-stars-remove-url
+        (slack-star-api-request slack-message-stars-remove-url
                                         (list (cons "channel" (oref room id))
                                               (slack-message-star-api-params message))
                                         team))))

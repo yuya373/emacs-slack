@@ -221,16 +221,16 @@
 (cl-defmethod slack-buffer-add-star ((this slack-file-list-buffer) ts)
   (with-slots (team) this
     (slack-if-let* ((file (slack-file-find ts team)))
-        (slack-message-star-api-request slack-message-stars-add-url
-                                        (list (slack-message-star-api-params file))
-                                        team))))
+        (slack-star-api-request slack-message-stars-add-url
+                                (list (slack-message-star-api-params file))
+                                team))))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-file-list-buffer) ts)
   (with-slots (team) this
     (slack-if-let* ((file (slack-file-find ts team)))
-        (slack-message-star-api-request slack-message-stars-remove-url
-                                        (list (slack-message-star-api-params file))
-                                        team))))
+        (slack-star-api-request slack-message-stars-remove-url
+                                (list (slack-message-star-api-params file))
+                                team))))
 
 (provide 'slack-file-list-buffer)
 ;;; slack-file-list-buffer.el ends here

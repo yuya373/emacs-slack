@@ -179,17 +179,17 @@
 (cl-defmethod slack-buffer-add-star ((this slack-file-info-buffer) _ts)
   (let ((url slack-message-stars-add-url))
     (with-slots (file team) this
-      (slack-message-star-api-request url
-                                      (list (slack-message-star-api-params file))
-                                      team))))
+      (slack-star-api-request url
+                              (list (slack-message-star-api-params file))
+                              team))))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-file-info-buffer) _ts)
   (let ((url slack-message-stars-remove-url))
     (with-slots (file team) this
-      (slack-message-star-api-request url
-                                      (list (slack-message-star-api-params
-                                             file))
-                                      team))))
+      (slack-star-api-request url
+                              (list (slack-message-star-api-params
+                                     file))
+                              team))))
 
 (cl-defmethod slack-buffer--replace ((this slack-file-info-buffer) _ts)
   (slack-if-let* ((buffer (get-buffer (slack-buffer-name this))))
