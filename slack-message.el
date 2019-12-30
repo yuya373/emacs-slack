@@ -233,7 +233,7 @@
 
 (cl-defmethod slack-reaction-delete ((this slack-message) reaction)
   (with-slots (reactions) this
-    (setq reactions (slack-reaction--delete reactions reaction))))
+    (setq reactions (slack-reaction-delete reaction reactions))))
 
 (cl-defmethod slack-reaction-push ((this slack-message) reaction)
   (push reaction (oref this reactions)))
@@ -246,19 +246,6 @@
 
 (cl-defmethod slack-message-get-param-for-reaction ((m slack-message))
   (cons "timestamp" (slack-ts m)))
-
-(defun slack-message--pop-reaction (message reaction)
-  (slack-if-let* ((old-reaction (slack-reaction-find message reaction)))
-      (if (< 1 (oref old-reaction count))
-          (with-slots (count users) old-reaction
-            (cl-decf count)
-            (setq users (cl-remove-if
-                         #'(lambda (old-user)
-                             (cl-find old-user
-                                      (oref reaction users)
-                                      :test #'string=))
-                         users)))
-        (slack-reaction-delete message reaction))))
 
 (cl-defmethod slack-message-get-text ((m slack-message) team)
   (or (mapconcat #'identity

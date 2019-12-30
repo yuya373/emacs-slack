@@ -111,9 +111,15 @@
   (cl-find-if #'(lambda (e) (slack-reaction-equalp e reaction))
               reactions))
 
-(defun slack-reaction--delete (reactions reaction)
-  (cl-delete-if #'(lambda (e) (slack-reaction-equalp e reaction))
+(cl-defmethod slack-reaction-delete ((this slack-reaction) reactions)
+  (cl-delete-if #'(lambda (e) (slack-reaction-equalp e this))
                 reactions))
+
+(cl-defmethod slack-reaction-remove-user ((this slack-reaction) user-id)
+  (with-slots (count users) this
+    (setq users (cl-remove-if #'(lambda (old-user) (string= old-user user-id))
+                              users))
+    (setq count (length users))))
 
 (cl-defmethod slack-merge ((old slack-reaction) new)
   (with-slots (count users) old

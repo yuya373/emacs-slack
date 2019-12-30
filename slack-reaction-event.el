@@ -62,10 +62,14 @@
 
 (cl-defmethod slack-event-save-message ((this slack-message-reaction-removed-event) message _team)
   (let* ((payload (oref this payload))
+         (user-id (plist-get payload :user))
          (reaction (slack-reaction :name (plist-get payload :reaction)
                                    :count 1
-                                   :users (list (plist-get payload :user)))))
-    (slack-message--pop-reaction message reaction)))
+                                   :users (list user-id))))
+    (slack-if-let* ((old-reaction (slack-reaction-find message reaction)))
+        (if (< 1 (oref old-reaction count))
+            (slack-reaction-remove-user old-reaction user-id)
+          (slack-reaction-delete message reaction)))))
 
 (cl-defmethod slack-event-save-message ((this slack-message-reaction-added-event) message _team)
   (let* ((payload (oref this payload))
