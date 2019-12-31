@@ -710,6 +710,32 @@
                         (text (slack-message--inspect message room team)))
             (message "%s" text)))))
 
+(cl-defmethod slack-message--inspect ((this slack-message) room team)
+  (format "RAW: %s\nROOM: %s\nUSER: %s\nBOT: %S\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+          (oref this text)
+          (oref room id)
+          (oref this user)
+          (and (slot-exists-p this 'bot-id)
+               (slot-boundp this 'bot-id)
+               (oref this bot-id))
+          (eieio-object-class this)
+          (length (oref this attachments))
+          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s\nIMAGE: %s\nTHUMBNAIL: %s\nFILES:%s)"
+                                      (eieio-object-class e)
+                                      (slack-unescape-channel
+                                       (or (oref e title) "")
+                                       team)
+                                      (oref e pretext)
+                                      (oref e text)
+                                      (oref e image-url)
+                                      (oref e thumb-url)
+                                      (length (oref e files))))
+                  (oref this attachments))
+          (length (oref this files))
+          (mapcar (lambda (e) (format "(TITLE: %s)"
+                                      (oref e title)))
+                  (oref this files))))
+
 (defun slack-message-update-mark ()
   "Update Channel's last-read marker to this message."
   (interactive)
