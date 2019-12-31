@@ -359,9 +359,6 @@
 (cl-defmethod slack-file-gdoc-p ((this slack-file))
   (string= (oref this filetype) "gdoc"))
 
-(cl-defmethod slack-team-display-image-inlinep ((_file slack-file) team)
-  (slack-team-display-file-image-inlinep team))
-
 (cl-defmethod slack-message-image-to-string ((file slack-file))
   (slack-image-string (slack-file-thumb-image-spec file)))
 

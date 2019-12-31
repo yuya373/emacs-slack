@@ -87,9 +87,6 @@ use `slack-change-current-team' to change `slack-current-team'"
    (modeline-enabled :initarg :modeline-enabled :initform nil)
    (modeline-name :initarg :modeline-name :initform nil)
    (websocket-event-log-enabled :initarg :websocket-event-log-enabled :initform nil)
-   (display-profile-image :initarg :display-profile-image :initform nil)
-   (display-attachment-image-inline :initarg :display-attachment-image-inline :initform nil)
-   (display-file-image-inline :initarg :display-file-image-inline :initform nil)
    (waiting-requests :initform nil)
    (authorize-request :initform nil)
    (emoji-download-watch-timer :initform nil)
@@ -263,15 +260,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 (cl-defmethod slack-team-event-log-enabledp ((team slack-team))
   (oref team websocket-event-log-enabled))
-
-(cl-defmethod slack-team-display-profile-imagep ((team slack-team))
-  (oref team display-profile-image))
-
-(cl-defmethod slack-team-display-attachment-image-inlinep ((team slack-team))
-  (oref team display-attachment-image-inline))
-
-(cl-defmethod slack-team-display-file-image-inlinep ((team slack-team))
-  (oref team display-file-image-inline))
 
 (cl-defmethod slack-team-mark-as-read-immediatelyp ((team slack-team))
   (oref team mark-as-read-immediately))

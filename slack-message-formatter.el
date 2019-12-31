@@ -197,9 +197,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                           reactions
                           thread)))
 
-(cl-defmethod slack-team-display-image-inlinep ((_m slack-message) team)
-  (slack-team-display-attachment-image-inlinep team))
-
 (cl-defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text attachments files) m
     (let ((alert-text
