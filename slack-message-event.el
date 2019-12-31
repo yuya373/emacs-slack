@@ -120,7 +120,8 @@
 (cl-defmethod slack-event-update-buffer ((_this slack-message-deleted-event) message team)
   (when (slack-thread-message-p message)
     (slack-if-let* ((room (slack-room-find message team))
-                    (parent (slack-room-find-thread-parent room message))
+                    (parent (slack-room-find-message room
+                                                     (slack-thread-ts message)))
                     (buffer (slack-buffer-find 'slack-thread-message-buffer
                                                room
                                                (slack-thread-ts parent)

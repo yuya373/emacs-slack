@@ -26,7 +26,6 @@
 
 (require 'eieio)
 (require 'slack-message)
-(require 'slack-message-formatter)
 (require 'slack-util)
 (require 'slack-bot)
 (require 'slack-image)

@@ -26,13 +26,16 @@
 
 (require 'subr-x)
 (require 'eieio)
+(require 'cl-lib)
 (require 'timer)
 (require 'diary-lib)
 (require 'websocket)
+(declare-function slack-buffer-room "slack-buffer")
 
 (defvar slack-completing-read-function)
 (defvar slack-buffer-function)
 (defvar slack-next-page-token "[Next page]")
+(defvar slack-current-buffer)
 
 (defalias 'slack-if-let*
   (if (fboundp 'if-let*)
@@ -77,7 +80,7 @@
 
 (defmacro slack-if-let-room-and-team (var-list then &rest else)
   (declare (indent 2) (debug t))
-  `(destructuring-bind ,var-list (slack-current-room-and-team)
+  `(cl-destructuring-bind ,var-list (slack-current-room-and-team)
      (if (and ,@var-list)
          ,then
        ,@else)))
@@ -213,6 +216,9 @@ ones and overrule settings in the other lists."
               v (pop ls))
         (setq rtn (plist-put rtn p v))))
     rtn))
+
+(cl-defmethod slack-ts ((ts string))
+  ts)
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

@@ -36,9 +36,9 @@
 ;; (require 'slack-thread)
 (declare-function slack-thread-create "slack-thread")
 (require 'slack-block)
+(require 'slack-unescape)
 
 (defvar slack-current-buffer)
-(defvar slack-message-user-regexp "<@\\([WU].*?\\)\\(|.*?\\)?>")
 
 (defcustom slack-message-custom-delete-notifier nil
   "Custom notification function for deleted message.\ntake 3 Arguments.\n(lambda (MESSAGE ROOM TEAM) ...)."
@@ -189,9 +189,6 @@
 (cl-defmethod slack-message-sender-id ((m slack-message))
   "")
 
-(cl-defmethod slack-ts ((ts string))
-  ts)
-
 (cl-defmethod slack-ts ((this slack-message))
   (oref this ts))
 
@@ -237,7 +234,7 @@
                                            (slack-block-to-mrkdwn bl (list :team team)))
                                        (oref m blocks)))
                  "\n\n")
-      (slack-message-unescape-string (oref m text) team)))
+      (slack-unescape (oref m text) team)))
 
 (cl-defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
@@ -289,7 +286,7 @@
 
 (cl-defmethod slack-message-subscribed-thread-message-p ((this slack-message) room)
   (and (slack-thread-messagep this)
-       (slack-if-let* ((parent (slack-room-find-thread-parent room this)))
+       (slack-if-let* ((parent (slack-room-find-message room (slack-thread-ts this))))
            (oref parent subscribed))))
 
 (cl-defmethod slack-message-profile-image ((m slack-message) team)
@@ -341,10 +338,19 @@
                    (oref m blocks)
                    "\n\n")
       (if (oref m text)
-          (propertize (slack-message-unescape-string (oref m text) team)
+          (propertize (slack-unescape (oref m text) team)
                       'face 'slack-message-output-text
                       'slack-text-type 'mrkdwn)
         ""))))
+
+(cl-defmethod slack-room-find ((this slack-message) team)
+  (slack-room-find (oref this channel) team))
+
+(cl-defmethod slack-message-replies ((this slack-message) room)
+  (slack-if-let* ((replies (oref this replies))
+                  (ids (mapcar #'(lambda (e) (plist-get e :ts))
+                               replies)))
+      (slack-room-sorted-messages room ids)))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

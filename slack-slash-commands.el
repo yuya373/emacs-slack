@@ -30,6 +30,7 @@
 (require 'slack-user)
 (require 'slack-message-formatter)
 (require 'slack-event)
+(require 'slack-unescape)
 (declare-function slack-create-message-event "slack-message-event")
 
 (defclass slack-command ()
@@ -150,8 +151,7 @@
                                                      (time-to-seconds))))
                                  (event (slack-create-message-event payload)))
                                 (slack-event-update event team)
-                              (message "%s" (slack-message-unescape-string response
-                                                                           team)))))))
+                              (message "%s" (slack-unescape response team)))))))
         (slack-request
          (slack-request-create
           "https://slack.com/api/chat.command"

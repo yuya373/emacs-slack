@@ -29,6 +29,7 @@
 (require 'slack-request)
 (require 'slack-buffer)
 (require 'slack-image)
+(require 'slack-unescape)
 
 (defcustom slack-file-dir (let ((dir (format "%s/var/slack-files/" user-emacs-directory)))
                             (unless (file-exists-p dir)
@@ -714,7 +715,7 @@
       (format "%s\n%s\n"
               (propertize (format "%s %s" name status)
                           'face 'slack-message-output-header)
-              (slack-message-unescape-string comment team)))))
+              (slack-unescape comment team)))))
 
 (cl-defmethod slack-file-summary ((file slack-file) _ts team)
   (with-slots (mode permalink) file
@@ -725,15 +726,14 @@
         (format "uploaded this %s: %s <%s|open in browser>"
                 type
                 (slack-file-link-info (oref file id)
-                                      (slack-message-unescape-string title
-                                                                     team))
+                                      (slack-unescape title team))
                 permalink)))))
 
 (cl-defmethod slack-file-summary ((this slack-file-email) ts team)
   (with-slots (preview-plain-text plain-text is-expanded) this
     (let* ((has-more (< (length preview-plain-text)
                         (length plain-text)))
-           (body (slack-message-unescape-string
+           (body (slack-unescape
                   (or (and is-expanded plain-text)
                       (or (and has-more (format "%s…" preview-plain-text))
                           preview-plain-text))

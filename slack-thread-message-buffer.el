@@ -84,7 +84,7 @@
               (slack-buffer-insert this message t)
               (let ((lui-time-stamp-position nil))
                 (lui-insert (format "%s\n" (make-string lui-fill-column ?=)) t))
-              (slack-if-let* ((messages (slack-room-replies room message))
+              (slack-if-let* ((messages (slack-message-replies message room))
                               (latest-message (car (last messages))))
                   (progn
                     (cl-loop for m in messages
@@ -149,7 +149,7 @@
   (with-slots (team thread-ts last-read) this
     (slack-if-let* ((room (slack-buffer-room this))
                     (message (slack-room-find-message room thread-ts))
-                    (messages (slack-room-replies room message))
+                    (messages (slack-message-replies message room))
                     (latest-message (car (last messages))))
         (progn
           (cl-loop for m in messages
@@ -199,18 +199,18 @@
     (slack-if-let* ((room (slack-buffer-room this))
                     (message (slack-room-find-message room ts)))
         (slack-star-api-request slack-message-stars-add-url
-                                        (list (cons "channel" (oref room id))
-                                              (slack-message-star-api-params message))
-                                        team))))
+                                (list (cons "channel" (oref room id))
+                                      (slack-message-star-api-params message))
+                                team))))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-thread-message-buffer) ts)
   (with-slots (team) this
     (slack-if-let* ((room (slack-buffer-room this))
                     (message (slack-room-find-message room ts)))
         (slack-star-api-request slack-message-stars-remove-url
-                                        (list (cons "channel" (oref room id))
-                                              (slack-message-star-api-params message))
-                                        team))))
+                                (list (cons "channel" (oref room id))
+                                      (slack-message-star-api-params message))
+                                team))))
 
 (cl-defmethod slack-buffer-update ((this slack-thread-message-buffer) message &key replace)
   (if replace (slack-buffer-replace this message)

@@ -30,6 +30,7 @@
 (require 'slack-team)
 (require 'slack-room)
 (require 'slack-image)
+(require 'slack-unescape)
 
 (defvar slack-attachment-action-keymap)
 (defvar slack-completing-read-function)
@@ -488,7 +489,7 @@
                                                            'slack-attachment-footer)))))
                                files
                                "\n"))))
-      (slack-message-unescape-string
+      (slack-unescape
        (slack-format-message (or header "")
                              (or (and pretext (if (cl-find-if #'(lambda (e) (string= "pretext" e))
                                                               mrkdwn-in)

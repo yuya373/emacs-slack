@@ -28,7 +28,6 @@
 (require 'lui)
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-message)
 (require 'slack-user)
 (require 'slack-counts)
 ;; (require 'slack-team)
@@ -113,9 +112,6 @@
   (with-slots (messages) room
     (gethash ts messages)))
 
-(defun slack-room-find-thread-parent (room thread-message)
-  (slack-room-find-message room (oref thread-message thread-ts)))
-
 (cl-defmethod slack-room-display-name ((room slack-room) team)
   (let ((room-name (slack-room-name room team)))
     (if slack-display-team-name
@@ -161,12 +157,6 @@
 
 (defun slack-room-sort-messages (messages)
   (cl-sort messages #'string< :key #'slack-ts))
-
-(cl-defmethod slack-room-replies ((room slack-room) message)
-  (slack-if-let* ((replies (oref message replies))
-                  (ids (mapcar #'(lambda (e) (plist-get e :ts))
-                               replies)))
-      (slack-room-sorted-messages room ids)))
 
 (cl-defmethod slack-room-sorted-messages ((room slack-room) &optional message-ids)
   (with-slots (messages) room
@@ -256,9 +246,6 @@
 
 (cl-defmethod slack-room-member-p ((_this slack-room))
   t)
-
-(defmethod slack-room-find ((this slack-message) team)
-  (slack-room-find (oref this channel) team))
 
 (defmethod slack-room-find ((id string) team)
   (if (and id team)
