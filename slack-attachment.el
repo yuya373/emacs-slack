@@ -403,10 +403,15 @@
 
 (cl-defmethod slack-attachment-header ((attachment slack-attachment))
   (with-slots (title title-link author-name author-subname) attachment
-    (concat (or (and title title-link (slack-linkfy title title-link))
-                title
-                "")
-            (or author-name author-subname ""))))
+    (if (or title author-name author-subname)
+        (concat (propertize (or (and title title-link (slack-linkfy title title-link))
+                                title
+                                "")
+                            'face 'slack-attachment-header)
+                " "
+                (propertize (or author-name author-subname "")
+                            'face 'slack-attachment-header))
+      "")))
 
 (cl-defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
   (unless pad (setq pad ""))

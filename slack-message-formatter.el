@@ -193,7 +193,10 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header m team))
-         (attachment-body (slack-message-attachment-body m team))
+         (attachment (mapconcat #'(lambda (attachment)
+                                    (slack-message-to-string attachment team))
+                                (oref m attachments)
+                                "\n"))
          (body (format "%s%s"
                        (if (slack-message-display-thread-sign-p m team)
                            slack-visible-thread-sign
@@ -212,7 +215,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                       'slack-message-header t)
                           body
                           files
-                          attachment-body reactions thread)))
+                          attachment
+                          reactions
+                          thread)))
 
 (cl-defmethod slack-message-display-thread-sign-p ((this slack-message) team)
   (and (slack-team-visible-threads-p team)
@@ -237,14 +242,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 
 (cl-defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))
-
-(cl-defmethod slack-message-attachment-body ((m slack-message) team)
-  (with-slots (attachments) m
-    (let ((body (mapconcat #'(lambda (attachment)
-                               (slack-message-to-string attachment team))
-                           attachments "\n\t-\n")))
-      (if (< 0 (length body))
-          (slack-message-unescape-string (format "\n%s" body) team)))))
 
 (cl-defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text attachments files) m
@@ -408,13 +405,15 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (oref this bot-id))
           (eieio-object-class this)
           (length (oref this attachments))
-          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s)"
+          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s\nIMAGE: %s\nTHUMBNAIL: %s)"
                                       (eieio-object-class e)
                                       (slack-unescape-channel
                                        (or (oref e title) "")
                                        team)
                                       (oref e pretext)
-                                      (oref e text)))
+                                      (oref e text)
+                                      (oref e image-url)
+                                      (oref e thumb-url)))
                   (oref this attachments))
           (length (oref this files))
           (mapcar (lambda (e) (format "(TITLE: %s)"
@@ -484,11 +483,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
            (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
                     pad-raw))
            (mrkdwn-in (oref attachment mrkdwn-in))
-           (header-raw (slack-attachment-header attachment))
-           (header (and (not (slack-string-blankp header-raw))
-                        (format "%s\t%s" pad
-                                (propertize header-raw
-                                            'face 'slack-attachment-header))))
+           (header (let ((h (slack-attachment-header attachment)))
+                     (unless (slack-string-blankp h)
+                       (format "%s\t%s" pad h))))
            (pretext (and pretext (format "%s\t%s" pad pretext)))
            (body (and text (format "%s\t%s" pad (mapconcat #'identity
                                                            (split-string text "\n")
