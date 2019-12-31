@@ -47,7 +47,7 @@
   :group 'slack)
 
 (defface slack-message-output-text
-  '((t (:weight normal :height 0.9)))
+  '((t (:weight normal)))
   "Face used to text message."
   :group 'slack)
 
@@ -161,35 +161,12 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                              messages)
                "\n")))
 
-(cl-defmethod slack-message-body-to-string ((m slack-message) team)
-  (let ((raw-body (slack-message-body m team)))
-    (if (oref m deleted-at)
-        (slack-message-put-deleted-property raw-body)
-      (slack-message-put-text-property raw-body))))
-
-
 (cl-defmethod slack-message-reaction-to-string ((m slack-message))
   (let ((reactions (slack-message-reactions m)))
     (when reactions
       (mapconcat #'slack-reaction-to-string
                  reactions
                  " "))))
-
-(cl-defmethod slack-message-blocks-to-string ((m slack-message) team)
-  (unless (oref team disable-block-format)
-    (when (oref m blocks)
-      (let ((block-messages (cl-remove-if #'(lambda (block-message)
-                                              (< (length block-message) 1))
-                                          (mapcar #'(lambda (bl)
-                                                      (slack-block-to-string bl (list :team team)))
-                                                  (oref m blocks)))))
-        (when (< 0 (length block-messages))
-          (mapconcat #'(lambda (block-message)
-                         (if (oref m deleted-at)
-                             (slack-message-put-deleted-property block-message)
-                           block-message))
-                     block-messages
-                     "\n\n"))))))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header m team))
@@ -201,8 +178,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                        (if (slack-message-display-thread-sign-p m team)
                            slack-visible-thread-sign
                          "")
-                       (or (slack-message-blocks-to-string m team)
-                           (slack-message-body-to-string m team))))
+                       (slack-message-body m team)))
          (files (mapconcat #'(lambda (file)
                                (format "%s\n"
                                        (slack-message-to-string file
@@ -213,32 +189,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
          (thread (slack-thread-to-string m team)))
     (slack-format-message (propertize header
                                       'slack-message-header t)
-                          body
+                          (if (oref m deleted-at)
+                              (slack-message-put-deleted-property body)
+                            body)
                           files
                           attachment
                           reactions
                           thread)))
-
-(cl-defmethod slack-message-display-thread-sign-p ((this slack-message) team)
-  (and (slack-team-visible-threads-p team)
-       (not (null (oref this thread-ts)))
-       (not (string= (oref this thread-ts) (slack-ts this)))
-       (not (eq major-mode 'slack-thread-message-buffer-mode))))
-
-(cl-defmethod slack-message-body ((m slack-message) team)
-  (with-slots (text) m
-    (let ((body (slack-message-unescape-string text team)))
-      (when body
-        (propertize body 'slack-text-type 'mrkdwn)))))
-
-(cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
-  (format "%s%s"
-          (if (eq major-mode 'slack-thread-message-buffer-mode)
-              ""
-            "Replied to a thread: \n")
-          (let ((body (slack-message-unescape-string (oref m text) team)))
-            (when body
-              (propertize body 'slack-text-type 'mrkdwn)))))
 
 (cl-defmethod slack-team-display-image-inlinep ((_m slack-message) team)
   (slack-team-display-attachment-image-inlinep team))

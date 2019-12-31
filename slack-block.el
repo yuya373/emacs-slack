@@ -348,7 +348,7 @@
   (let ((style (oref this style))
         (text (oref this text)))
     (if style (slack-block-to-string style text)
-      text)))
+      (propertize text 'face 'slack-message-output-text))))
 
 (cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-text-element) &optional _option)
   (let ((style (oref this style))

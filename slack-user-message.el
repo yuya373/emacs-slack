@@ -40,5 +40,17 @@
 (cl-defmethod slack-message-profile-image ((m slack-user-message) team)
   (slack-user-image (slack-user-find m team) team))
 
+(cl-defmethod slack-message-display-thread-sign-p ((this slack-reply-broadcast-message) team)
+  nil)
+
+(cl-defmethod slack-message-body ((m slack-reply-broadcast-message) team)
+  (let ((s (cl-call-next-method)))
+    (unless (slack-string-blankp s)
+      (format "%s%s"
+              (if (eq major-mode 'slack-thread-message-buffer-mode)
+                  ""
+                "Replied to a thread: \n")
+              s))))
+
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

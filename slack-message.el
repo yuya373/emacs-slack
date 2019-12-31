@@ -328,5 +328,25 @@
 (cl-defmethod slack-message-starred-p ((m slack-message))
   (oref m is-starred))
 
+(cl-defmethod slack-message-display-thread-sign-p ((this slack-message) team)
+  (and (slack-team-visible-threads-p team)
+       (not (null (oref this thread-ts)))
+       (not (string= (oref this thread-ts) (slack-ts this)))
+       (not (eq major-mode 'slack-thread-message-buffer-mode))))
+
+(cl-defmethod slack-message-body ((m slack-message) team)
+  (let ((use-blocks-p (and (not (oref team disable-block-format))
+                           (oref m blocks))))
+    (if use-blocks-p
+        (mapconcat #'(lambda (bl)
+                       (slack-block-to-string bl (list :team team)))
+                   (oref m blocks)
+                   "\n\n")
+      (if (oref m text)
+          (propertize (slack-message-unescape-string (oref m text) team)
+                      'face 'slack-message-output-text
+                      'slack-text-type 'mrkdwn)
+        ""))))
+
 (provide 'slack-message)
 ;;; slack-message.el ends here
