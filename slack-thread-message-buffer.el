@@ -49,11 +49,11 @@
   "Create thread message buffer according to ROOM, TEAM, THREAD-TS."
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
                                           room thread-ts team)))
-      buf
-    (slack-thread-message-buffer :room-id (oref room id)
-                                 :team team
-                                 :has-more has-more
-                                 :thread-ts thread-ts)))
+      (kill-buffer (slack-buffer-buffer buf)))
+  (slack-thread-message-buffer :room-id (oref room id)
+                               :team team
+                               :has-more has-more
+                               :thread-ts thread-ts))
 
 (cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-buffer)) room ts team)
   (format "*Slack - %s : %s Thread - %s"
