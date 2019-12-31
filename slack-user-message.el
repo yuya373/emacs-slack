@@ -5,7 +5,22 @@
 
 (require 'eieio)
 (require 'slack-util)
+(require 'slack-message)
 (require 'slack-message-editor)
+
+(defclass slack-user-message (slack-message)
+  ((user :initarg :user :type string)
+   (id :initarg :id)
+   (inviter :initarg :inviter)))
+
+(defclass slack-reply-broadcast-message (slack-user-message)
+  ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
+
+(cl-defmethod slack-message-sender-id ((m slack-user-message))
+  (oref m user))
+
+(cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
+  t)
 
 (defvar slack-user-message-keymap
   (let ((keymap (make-sparse-keymap)))

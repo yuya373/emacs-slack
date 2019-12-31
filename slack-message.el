@@ -81,19 +81,6 @@
   ((user :initarg :user :type string)
    (ts :initarg :ts :type string)))
 
-(defclass slack-user-message (slack-message)
-  ((user :initarg :user :type string)
-   (id :initarg :id)
-   (inviter :initarg :inviter)))
-
-(defclass slack-reply-broadcast-message (slack-user-message)
-  ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
-
-(cl-defgeneric slack-message-sender-name  (slack-message team))
-(cl-defgeneric slack-message-to-string (slack-message))
-(cl-defgeneric slack-message-to-alert (slack-message))
-(cl-defmethod slack-message-bot-id ((_this slack-message)) nil)
-
 (defun slack-reaction-create (payload)
   (apply #'slack-reaction "reaction"
          (slack-collect-slots 'slack-reaction payload)))
@@ -202,9 +189,6 @@
 (cl-defmethod slack-message-sender-id ((m slack-message))
   "")
 
-(cl-defmethod slack-message-sender-id ((m slack-user-message))
-  (oref m user))
-
 (cl-defmethod slack-ts ((ts string))
   ts)
 
@@ -260,9 +244,6 @@
 (cl-defmethod slack-thread-message-p ((this slack-message))
   (and (oref this thread-ts)
        (not (string= (slack-ts this) (oref this thread-ts)))))
-
-(cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
-  t)
 
 (cl-defmethod slack-message-thread-parentp ((m slack-message))
   (let* ((thread-ts (slack-thread-ts m)))

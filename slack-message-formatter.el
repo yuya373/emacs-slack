@@ -29,6 +29,7 @@
 (require 'slack-user)
 (require 'slack-room)
 (require 'slack-message)
+(require 'slack-user-message)
 (require 'slack-usergroup)
 (require 'slack-thread)
 (require 'slack-file)

@@ -81,9 +81,6 @@
                                                      (slack-create-blocks-from-buffer)))))))
         :success #'on-success)))))
 
-(cl-defmethod slack-message-get-user-id ((m slack-user-message))
-  (oref m user))
-
 (defun slack-message-cancel-edit ()
   (interactive)
   (let ((buffer (slack-buffer-buffer slack-current-buffer)))
