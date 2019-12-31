@@ -72,21 +72,24 @@ Any other non-nil value: send to the room."
 ;; TODO: format is [[profile-image...], N replies, Last reply n (hours|days) ago]
 (cl-defmethod slack-thread-to-string ((m slack-message) team)
   (if (slack-message-thread-parentp m)
-    (let* ((usernames (mapconcat #'identity
-                                 (cl-remove-duplicates
-                                  (mapcar #'(lambda (reply)
-                                              (slack-user-name
-                                               (plist-get reply :user)
-                                               team))
-                                          (oref m replies))
-                                  :test #'string=)
-                                 " "))
-           (text (format "%s reply from %s"
-                         (oref m reply-count)
-                         usernames)))
-      (propertize text
-                  'face '(:underline t)
-                  'keymap slack-message-thread-status-keymap))
+      (let* ((usernames (let ((ht (make-hash-table :test 'equal)))
+                          (dolist (reply (oref m replies))
+                            (puthash (slack-user-name (plist-get reply :user)
+                                                      team)
+                                     t
+                                     ht))
+                          (mapconcat #'identity
+                                     (hash-table-keys ht)
+                                     " ")))
+             (count (oref m reply-count))
+             (text (concat (number-to-string (oref m reply-count))
+                           " "
+                           (if (<= 2 count) "replies" "reply")
+                           " from "
+                           usernames)))
+        (propertize text
+                    'face '(:underline t)
+                    'keymap slack-message-thread-status-keymap))
     ""))
 
 (cl-defmethod slack-thread-create ((m slack-message) &optional payload)
