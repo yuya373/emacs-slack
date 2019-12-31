@@ -153,17 +153,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
     (format-time-string "%Y-%m-%d %H:%M:%S"
                         (seconds-to-time ts))))
 
-(cl-defmethod slack-message-header ((m slack-message) team)
-  (slack-message-sender-name m team))
-
-(cl-defmethod slack-message-starred-p ((m slack-message))
-  (oref m is-starred))
-
-(cl-defmethod slack-message-starred-str ((m slack-message))
-  (if (slack-message-starred-p m)
-      ":star:"
-    ""))
-
 (defun slack-format-message (&rest args)
   (let ((messages args))
     (mapconcat #'identity
@@ -171,27 +160,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                                (< (length e) 1)))
                              messages)
                "\n")))
-
-(cl-defmethod slack-message-profile-image ((m slack-message) team)
-  (slack-user-image (slack-user-find m team) team))
-
-(cl-defmethod slack-message-header-with-image ((m slack-message) header team)
-  (let ((image (slack-message-profile-image m team)))
-    (if image
-        (format "%s %s" (propertize "image"
-                                    'display image
-                                    'face 'slack-profile-image-face)
-                header)
-      header)))
-
-(defun slack-message-header-to-string (m team)
-  (let ((header (format "%s %s"
-                        (slack-message-put-header-property
-                         (slack-message-header m team))
-                        (slack-message-starred-str m))))
-    (if (slack-team-display-profile-imagep team)
-        (slack-message-header-with-image m header team)
-      header)))
 
 (cl-defmethod slack-message-body-to-string ((m slack-message) team)
   (let ((raw-body (slack-message-body m team)))
@@ -218,13 +186,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
         (when (< 0 (length block-messages))
           (mapconcat #'(lambda (block-message)
                          (if (oref m deleted-at)
-                               (slack-message-put-deleted-property block-message)
-                             block-message))
+                             (slack-message-put-deleted-property block-message)
+                           block-message))
                      block-messages
                      "\n\n"))))))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
-  (let* ((header (slack-message-header-to-string m team))
+  (let* ((header (slack-message-header m team))
          (attachment-body (slack-message-attachment-body m team))
          (body (format "%s%s"
                        (if (slack-message-display-thread-sign-p m team)

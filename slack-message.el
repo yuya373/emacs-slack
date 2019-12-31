@@ -202,9 +202,7 @@
   (slack-ts-to-time (slack-ts message)))
 
 (cl-defmethod slack-user-find ((m slack-message) team)
-  (let ((user-id (slack-message-sender-id m)))
-    (unless (slack-string-blankp user-id)
-      (slack-user--find user-id team))))
+  nil)
 
 (cl-defmethod slack-message-star-added ((m slack-message))
   (oset m is-starred t))
@@ -293,6 +291,42 @@
   (and (slack-thread-messagep this)
        (slack-if-let* ((parent (slack-room-find-thread-parent room this)))
            (oref parent subscribed))))
+
+(cl-defmethod slack-message-profile-image ((m slack-message) team)
+  nil)
+
+(cl-defmethod slack-message-user-status ((this slack-message) team)
+  "")
+
+(cl-defmethod slack-message-header ((this slack-message) team)
+  (let* ((deleted-at (oref this deleted-at))
+         (name (slack-message-sender-name this team))
+         (status (slack-message-user-status this team))
+         (time (slack-message-time-to-string (oref this ts)))
+         (edited-at (slack-message-time-to-string (slack-message-edited-at this)))
+         (deleted-at (slack-message-time-to-string (oref this deleted-at))))
+    (concat (if (slack-team-display-profile-imagep team)
+                (slack-if-let* ((image (slack-message-profile-image this team)))
+                    (concat (propertize "image" 'display image 'face 'slack-profile-image-face)
+                            " ")
+                  "")
+              "")
+            (slack-message-put-header-property (concat name
+                                                       (if (slack-string-blankp status)
+                                                           ""
+                                                         (concat " " status))
+                                                       (if deleted-at
+                                                           (concat " deleted_at: " deleted-at)
+                                                         "")
+                                                       (if edited-at
+                                                           (concat " edited_at: " edited-at)
+                                                         "")))
+            (if (slack-message-starred-p this)
+                " :star:"
+              ""))))
+
+(cl-defmethod slack-message-starred-p ((m slack-message))
+  (oref m is-starred))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
