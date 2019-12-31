@@ -97,13 +97,14 @@
                         (cl-sort images compare :key
                                  #'(lambda (image) (caddr (car image))))))
          (propertize-image (image)
-                           (propertize "image"
-                                       'slack-image-display image
-                                       'display image
-                                       'face 'slack-profile-image-face)))
+                           (concat (or pad "")
+                                   (propertize "image"
+                                               'slack-image-display image
+                                               'display image
+                                               'face 'slack-profile-image-face))))
       (mapconcat #'propertize-image
                  (sort-images images)
-                 (format "\n%s" (or pad ""))))))
+                 "\n"))))
 
 (defun slack-profile-image-path (image-url team)
   (expand-file-name

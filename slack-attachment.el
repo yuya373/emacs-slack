@@ -48,7 +48,7 @@
    (image-url :initarg :image_url :initform nil)
    (image-width :initarg :image_width :initform nil)
    (image-height :initarg :image_height :initform nil)
-   (thumb-url :initarg :thumb_url)
+   (thumb-url :initarg :thumb_url :initform nil)
    (is-share :initarg :is_share :initform nil)
    (footer :initarg :footer :initform nil)
    (color :initarg :color :initform nil)
@@ -416,10 +416,12 @@
 (cl-defmethod slack-attachment-field-to-string ((field slack-attachment-field) &optional pad)
   (unless pad (setq pad ""))
   (let ((title (propertize (or (oref field title) "") 'face 'slack-attachment-field-title))
-        (value (mapconcat #'(lambda (e) (format "\t%s" e))
+        (value (mapconcat #'(lambda (e) (concat pad "    " e))
                           (split-string (or (oref field value) "") "\n")
-                          (format "\n%s\t" pad))))
-    (format "%s\t%s\n%s\t%s" pad title pad value)))
+                          "\n")))
+    (concat pad "  " title
+            "\n"
+            value)))
 
 (cl-defmethod slack-attachment-to-alert ((a slack-attachment))
   (with-slots (title fallback pretext) a
@@ -431,6 +433,79 @@
 
 (cl-defmethod slack-selectable-prompt ((this slack-attachment-select-action))
   (format "%s :" (oref this text)))
+
+(cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
+  (with-slots
+      (fallback text ts color from-url footer fields pretext actions files) attachment
+    (let* ((pad-raw (propertize "  | " 'face 'slack-attachment-pad))
+           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
+                    pad-raw))
+           (mrkdwn-in (oref attachment mrkdwn-in))
+           (header (let ((h (slack-attachment-header attachment)))
+                     (unless (slack-string-blankp h)
+                       (concat pad h))))
+           (pretext (and pretext (concat pad pretext)))
+           (body (and text (mapconcat #'(lambda (e) (concat pad e))
+                                      (split-string text "\n")
+                                      "\n")))
+           (fields (if fields (mapconcat #'(lambda (field)
+                                             (slack-attachment-field-to-string field
+                                                                               pad))
+                                         fields
+                                         "\n")))
+           (actions (if actions
+                        (concat pad
+                                (mapconcat #'(lambda (action)
+                                               (slack-attachment-action-to-string
+                                                action
+                                                attachment
+                                                team))
+                                           actions
+                                           " "))))
+           (footer (if footer
+                       (concat pad
+                               (propertize (concat footer
+                                                   (if ts (concat " | " (slack-message-time-to-string ts)) ""))
+                                           'face 'slack-attachment-footer))))
+           (image (slack-image-string (slack-image-spec attachment)
+                                      pad))
+           (files (when files
+                    (mapconcat #'(lambda (file)
+                                   (if (slack-file-hidden-by-limit-p file)
+                                       (slack-file-hidden-by-limit-message file)
+                                     (let* ((title (slack-file-title file))
+                                            (type (slack-file-type file))
+                                            (id (oref file id))
+                                            (footer (format "%s %s"
+                                                            (slack-file-size file)
+                                                            type)))
+                                       (concat pad
+                                               (slack-file-link-info id title)
+                                               "\n"
+                                               pad
+                                               (propertize footer
+                                                           'face
+                                                           'slack-attachment-footer)))))
+                               files
+                               "\n"))))
+      (slack-message-unescape-string
+       (slack-format-message (or header "")
+                             (or (and pretext (if (cl-find-if #'(lambda (e) (string= "pretext" e))
+                                                              mrkdwn-in)
+                                                  (propertize pretext 'slack-text-type 'mrkdwn)
+                                                pretext))
+                                 "")
+                             (or (and body (if (cl-find-if #'(lambda (e) (string= "text" e))
+                                                           mrkdwn-in)
+                                               (propertize body 'slack-text-type 'mrkdwn)
+                                             body))
+                                 "")
+                             (or fields "")
+                             (or actions "")
+                             (or files "")
+                             (or footer "")
+                             (if (slack-string-blankp image) "" (concat "\n" image)))
+       team))))
 
 (provide 'slack-attachment)
 ;;; slack-attachment.el ends here

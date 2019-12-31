@@ -357,7 +357,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                (oref this bot-id))
           (eieio-object-class this)
           (length (oref this attachments))
-          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s\nIMAGE: %s\nTHUMBNAIL: %s)"
+          (mapcar (lambda (e) (format "\n(CLASS: %s\nTITLE: %s\nPRETEXT: %s\nTEXT: %s\nIMAGE: %s\nTHUMBNAIL: %s\nFILES:%s)"
                                       (eieio-object-class e)
                                       (slack-unescape-channel
                                        (or (oref e title) "")
@@ -365,92 +365,13 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                       (oref e pretext)
                                       (oref e text)
                                       (oref e image-url)
-                                      (oref e thumb-url)))
+                                      (oref e thumb-url)
+                                      (length (oref e files))))
                   (oref this attachments))
           (length (oref this files))
           (mapcar (lambda (e) (format "(TITLE: %s)"
                                       (oref e title)))
                   (oref this files))))
-
-(cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
-  (with-slots
-      (fallback text ts color from-url footer fields pretext actions files) attachment
-    (let* ((pad-raw (propertize "|" 'face 'slack-attachment-pad))
-           (pad (or (and color (propertize pad-raw 'face (list :foreground (concat "#" color))))
-                    pad-raw))
-           (mrkdwn-in (oref attachment mrkdwn-in))
-           (header (let ((h (slack-attachment-header attachment)))
-                     (unless (slack-string-blankp h)
-                       (format "%s\t%s" pad h))))
-           (pretext (and pretext (format "%s\t%s" pad pretext)))
-           (body (and text (format "%s\t%s" pad (mapconcat #'identity
-                                                           (split-string text "\n")
-                                                           (format "\n\t%s\t" pad)))))
-           (fields (if fields (mapconcat #'(lambda (field)
-                                             (slack-attachment-field-to-string field
-                                                                               (format "\t%s" pad)))
-                                         fields
-                                         (format "\n\t%s\n" pad))))
-           (actions (if actions
-                        (format "%s\t%s"
-                                pad
-                                (mapconcat #'(lambda (action)
-                                               (slack-attachment-action-to-string
-                                                action
-                                                attachment
-                                                team))
-                                           actions
-                                           " "))))
-           (footer (if footer
-                       (format "%s\t%s"
-                               pad
-                               (propertize
-                                (format "%s%s" footer
-                                        (or (and ts (format "|%s" (slack-message-time-to-string ts)))
-                                            ""))
-                                'face 'slack-attachment-footer))))
-           (image (slack-image-string (slack-image-spec attachment)
-                                      (format "\t%s\t" pad)))
-           (files (when files
-                    (format "%s\t%s"
-                            pad
-                            (mapconcat #'(lambda (file)
-                                           (if (slack-file-hidden-by-limit-p file)
-                                               (slack-file-hidden-by-limit-message file)
-                                             (let* ((title (slack-file-title file))
-                                                    (type (slack-file-type file))
-                                                    (id (oref file id))
-                                                    (footer (format "%s %s"
-                                                                    (slack-file-size file)
-                                                                    type)))
-                                               (format "%s\n\t%s\t%s"
-                                                       (slack-file-link-info id title)
-                                                       pad
-                                                       (propertize footer
-                                                                   'face
-                                                                   'slack-attachment-footer)))))
-                                       files
-                                       (format "\n\t%s\n" pad))))))
-      (slack-message-unescape-string
-       (slack-format-message
-        (or (and header (format "\t%s" header)) "")
-        (or (and pretext (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "pretext" e))
-                                                        mrkdwn-in)
-                                            (propertize pretext 'slack-text-type 'mrkdwn)
-                                          pretext)))
-            "")
-        (or (and body (format "\t%s" (if (cl-find-if #'(lambda (e) (string= "text" e))
-                                                     mrkdwn-in)
-                                         (propertize body 'slack-text-type 'mrkdwn)
-                                       body)))
-            "")
-        (or (and fields fields) "")
-        (or (and actions (format "\t%s" actions)) "")
-        (or (and files (format "\t%s" files)) "")
-        (or (and footer (format "\t%s" footer)) "")
-        (or (and image (< 0 (length image))
-                 (format "\n\t%s\t%s" pad image)) ""))
-       team))))
 
 (provide 'slack-message-formatter)
 ;;; slack-message-formatter.el ends here
