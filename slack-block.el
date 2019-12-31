@@ -169,6 +169,9 @@
                          (oref this elements)
                          "")))
     (propertize (concat text "\n")
+                'slack-defer-face #'(lambda (beg end)
+                                      (overlay-put (make-overlay beg end)
+                                                   'face 'slack-mrkdwn-code-block-face))
                 'face 'slack-mrkdwn-code-block-face)))
 
 (cl-defmethod slack-block-to-mrkdwn ((this slack-rich-text-preformatted) &optional option)
