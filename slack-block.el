@@ -215,8 +215,8 @@
                                    "\n")))
 
     (concat (mapconcat #'(lambda (text) (format "> %s" text))
-               texts
-               "\n")
+                       texts
+                       "\n")
             "\n")))
 
 (defun slack-create-rich-text-quote (payload)
@@ -255,16 +255,16 @@
          (dot "-")
          (i 1))
     (concat (mapconcat #'(lambda (element)
-                   (let ((text (format "%s%s %s"
-                                       indent
-                                       (if (string= (oref this style) "ordered")
-                                           (format "%s." i)
-                                         dot)
-                                       (slack-block-to-mrkdwn element option))))
-                     (setq i (+ i 1))
-                     text))
-               (oref this elements)
-               "\n")
+                           (let ((text (format "%s%s %s"
+                                               indent
+                                               (if (string= (oref this style) "ordered")
+                                                   (format "%s." i)
+                                                 dot)
+                                               (slack-block-to-mrkdwn element option))))
+                             (setq i (+ i 1))
+                             text))
+                       (oref this elements)
+                       "\n")
             "\n")))
 
 (defun slack-create-rich-text-list (payload)
