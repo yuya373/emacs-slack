@@ -39,7 +39,6 @@
 
 (defvar slack-current-buffer)
 (defvar slack-channel-button-keymap)
-(defvar slack-expand-email-keymap)
 
 (defface slack-profile-image-face
   '((t ()))
@@ -179,12 +178,11 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                            slack-visible-thread-sign
                          "")
                        (slack-message-body m team)))
-         (files (mapconcat #'(lambda (file)
-                               (format "%s\n"
-                                       (slack-message-to-string file
-                                                                (slack-ts m)
-                                                                team)))
-                           (oref m files) "\n"))
+         (files (let ((ts (slack-ts m)))
+                  (mapconcat #'(lambda (file)
+                                 (slack-message-to-string file ts team))
+                             (oref m files)
+                             "\n\n")))
          (reactions (slack-message-reaction-to-string m))
          (thread (slack-thread-to-string m team)))
     (slack-format-message (propertize header
@@ -373,62 +371,6 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (mapcar (lambda (e) (format "(TITLE: %s)"
                                       (oref e title)))
                   (oref this files))))
-
-(cl-defmethod slack-message-to-string ((this slack-file-email) ts team)
-  (if (slack-file-hidden-by-limit-p this)
-      (slack-file-hidden-by-limit-message this)
-    (let ((body (slack-file-summary this ts team))
-          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-      (slack-format-message body thumb))))
-
-(cl-defmethod slack-message-to-string ((this slack-file) ts team)
-  (if (slack-file-hidden-by-limit-p this)
-      (slack-file-hidden-by-limit-message this)
-    (let ((body (slack-file-summary this ts team))
-          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
-      (slack-format-message body thumb))))
-
-(cl-defmethod slack-message-to-string ((this slack-file-comment) team)
-  (with-slots (user comment) this
-    (let ((name (slack-user-name user team))
-          (status (slack-user-status user team)))
-      (format "%s\n%s\n"
-              (propertize (format "%s %s" name status)
-                          'face 'slack-message-output-header)
-              (slack-message-unescape-string comment team)))))
-
-(cl-defmethod slack-file-summary ((file slack-file) _ts team)
-  (with-slots (mode permalink) file
-    (if (string= mode "tombstone")
-        "This file was deleted."
-      (let ((type (slack-file-type file))
-            (title (slack-file-title file)))
-        (format "uploaded this %s: %s <%s|open in browser>"
-                type
-                (slack-file-link-info (oref file id)
-                                      (slack-message-unescape-string title
-                                                                     team))
-                permalink)))))
-
-(cl-defmethod slack-file-summary ((this slack-file-email) ts team)
-  (with-slots (preview-plain-text plain-text is-expanded) this
-    (let* ((has-more (< (length preview-plain-text)
-                        (length plain-text)))
-           (body (slack-message-unescape-string
-                  (or (and is-expanded plain-text)
-                      (or (and has-more (format "%s…" preview-plain-text))
-                          preview-plain-text))
-                  team)))
-      (format "%s\n\n%s\n\n%s"
-              (cl-call-next-method)
-              (propertize body
-                          'slack-defer-face #'slack-put-preview-overlay)
-              (propertize (or (and is-expanded "Collapse ↑")
-                              "+ Click to expand inline")
-                          'ts ts
-                          'id (oref this id)
-                          'face '(:underline t)
-                          'keymap slack-expand-email-keymap)))))
 
 (cl-defmethod slack-message-to-string ((attachment slack-attachment) team)
   (with-slots

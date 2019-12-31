@@ -43,6 +43,7 @@
 (defvar slack-default-directory)
 (defvar slack-completing-read-function)
 (defvar slack-current-buffer)
+(defvar slack-expand-email-keymap)
 (defconst slack-file-history-url "https://slack.com/api/files.list")
 (defconst slack-file-list-url "https://slack.com/api/files.list")
 (defconst slack-file-upload-url "https://slack.com/api/files.upload")
@@ -699,5 +700,53 @@
 (cl-defmethod slack-file-hidden-by-limit-message ((_file slack-file))
   "This file can’t be shown because your workspace has passed the free plan’s storage limit.")
 
+(cl-defmethod slack-message-to-string ((this slack-file) ts team)
+  (if (slack-file-hidden-by-limit-p this)
+      (slack-file-hidden-by-limit-message this)
+    (let ((body (slack-file-summary this ts team))
+          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
+      (slack-format-message body thumb))))
+
+(cl-defmethod slack-message-to-string ((this slack-file-comment) team)
+  (with-slots (user comment) this
+    (let ((name (slack-user-name user team))
+          (status (slack-user-status user team)))
+      (format "%s\n%s\n"
+              (propertize (format "%s %s" name status)
+                          'face 'slack-message-output-header)
+              (slack-message-unescape-string comment team)))))
+
+(cl-defmethod slack-file-summary ((file slack-file) _ts team)
+  (with-slots (mode permalink) file
+    (if (string= mode "tombstone")
+        "This file was deleted."
+      (let ((type (slack-file-type file))
+            (title (slack-file-title file)))
+        (format "uploaded this %s: %s <%s|open in browser>"
+                type
+                (slack-file-link-info (oref file id)
+                                      (slack-message-unescape-string title
+                                                                     team))
+                permalink)))))
+
+(cl-defmethod slack-file-summary ((this slack-file-email) ts team)
+  (with-slots (preview-plain-text plain-text is-expanded) this
+    (let* ((has-more (< (length preview-plain-text)
+                        (length plain-text)))
+           (body (slack-message-unescape-string
+                  (or (and is-expanded plain-text)
+                      (or (and has-more (format "%s…" preview-plain-text))
+                          preview-plain-text))
+                  team)))
+      (format "%s\n\n%s\n\n%s"
+              (cl-call-next-method)
+              (propertize body
+                          'slack-defer-face #'slack-put-preview-overlay)
+              (propertize (or (and is-expanded "Collapse ↑")
+                              "+ Click to expand inline")
+                          'ts ts
+                          'id (oref this id)
+                          'face '(:underline t)
+                          'keymap slack-expand-email-keymap)))))
 (provide 'slack-file)
 ;;; slack-file.el ends here
