@@ -43,8 +43,8 @@
 (cl-defmethod slack-user-find ((this slack-bot-message) team)
   (with-slots (bot-id user) this
     (if (slack-string-blankp bot-id)
-        (slack-find-bot bot-id team)
-      (slack-user--find user team))))
+        (slack-user--find user team)
+      (slack-find-bot bot-id team))))
 
 (cl-defmethod slack-bot-name ((m slack-bot-message) team)
   (or (unless (slack-string-blankp (oref m username))
