@@ -297,10 +297,8 @@
   "")
 
 (cl-defmethod slack-message-header ((this slack-message) team)
-  (let* ((deleted-at (oref this deleted-at))
-         (name (slack-message-sender-name this team))
+  (let* ((name (slack-message-sender-name this team))
          (status (slack-message-user-status this team))
-         (time (slack-message-time-to-string (oref this ts)))
          (edited-at (slack-message-time-to-string (slack-message-edited-at this)))
          (deleted-at (slack-message-time-to-string (oref this deleted-at))))
     (concat (slack-if-let* ((image (slack-message-profile-image this team)))
