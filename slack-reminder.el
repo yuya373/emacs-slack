@@ -30,6 +30,7 @@
 (require 'slack-team)
 (require 'slack-request)
 (require 'slack-message-formatter)
+(require 'slack-message-faces)
 
 (defconst slack-reminder-list-url "https://slack.com/api/reminders.list")
 (defconst slack-reminder-delete-url "https://slack.com/api/reminders.delete")

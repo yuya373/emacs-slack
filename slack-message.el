@@ -37,6 +37,7 @@
 (declare-function slack-thread-create "slack-thread")
 (require 'slack-block)
 (require 'slack-unescape)
+(require 'slack-message-faces)
 
 (defvar slack-current-buffer)
 

@@ -38,112 +38,14 @@
 (require 'slack-block)
 (require 'slack-unescape)
 (require 'slack-bot-message)
+(require 'slack-message-faces)
 
 (defvar slack-current-buffer)
-(defface slack-profile-image-face
-  '((t ()))
-  "Face used to profile image."
-  :group 'slack)
-
-(defface slack-message-output-text
-  '((t (:weight normal)))
-  "Face used to text message."
-  :group 'slack)
-
-(defface slack-message-output-header
-  '((t (:foreground "#FFA000"
-                    :weight bold
-                    :height 1.0
-                    :underline t)))
-  "Face used to text message."
-  :group 'slack)
-
-(defface slack-message-output-reaction
-  '((t (:box (:line-width 1 :style released-button))))
-  "Face used to reactions."
-  :group 'slack)
-
-(defface slack-message-deleted-face
-  '((t (:strike-through t)))
-  "Face used to deleted message."
-  :group 'slack)
-
-(defface slack-attachment-header
-  '((t (:inherit slack-message-output-header)))
-  "Face used to shared message header."
-  :group 'slack)
-
-(defface slack-attachment-footer
-  '((t (:height 0.8)))
-  "Face used to shared message footer."
-  :group 'slack)
-
-(defface slack-attachment-pad
-  '((t (:weight ultra-bold)))
-  "Face used to shared message pad."
-  :group 'slack)
-
-(defface slack-attachment-field-title
-  '((t (:weight bold :height 1.0)))
-  "Face used to attachment field title."
-  :group 'slack)
-
-(defface slack-channel-button-face
-  '((t (:underline t :foreground "cyan")))
-  "Face used to channel button."
-  :group 'slack)
-
-(defface slack-message-mention-face
-  '((t (:background "#073642" :foreground "#2aa198")))
-  "Face used to mention."
-  :group 'slack)
-
-(defface slack-message-mention-me-face
-  '((t (:background "#073642" :foreground "#b58900")))
-  "Face used to mention."
-  :group 'slack)
-
-(defface slack-message-mention-keyword-face
-  '((t (:background "#073642" :foreground "#859900")))
-  "Face used to @here, @channel, @everyone mention."
-  :group 'slack)
-
-(defcustom slack-date-formats
-  '((date_num . "%Y-%m-%d")
-    (date . "%B %d, %Y")
-    (date_short . "%b %d, %Y")
-    (date_long . "%A %B %d, %Y")
-    (date_pretty . "%B %d, %Y")
-    (date_short_pretty . "%b %d, %Y")
-    (date_long_pretty . "%A %B %d, %Y")
-    (time . "%H:%M")
-    (time_secs . "%H:%M:%S"))
-  "Date formats for Slack's date token.
-this format string passed to `format-time-string' function.
-see \"Formatting dates\" section in https://api.slack.com/docs/message-formatting"
-  :type '(repeat (cons symbol string))
-  :group 'slack)
 
 (defcustom slack-visible-thread-sign ":left_speech_bubble: "
   "Used to thread message sign if visible-threads mode."
   :type 'string
   :group 'slack)
-
-(defun slack-message-put-header-property (header)
-  (if header
-      (propertize header 'face 'slack-message-output-header)))
-
-(defun slack-message-put-text-property (text)
-  (if text
-      (propertize text 'face 'slack-message-output-text)))
-
-(defun slack-message-put-hard (text)
-  (if text
-      (propertize text 'hard t)))
-
-(defun slack-message-put-deleted-property (text)
-  (if text
-      (propertize text 'face 'slack-message-deleted-face)))
 
 (defun slack-message-time-to-string (ts)
   (when ts
