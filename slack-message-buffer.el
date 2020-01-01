@@ -434,7 +434,9 @@
               (null (oref prev thread-ts))
               (let ((prev-user (slack-user-find prev team))
                     (current-user (slack-user-find message team)))
-                (equal prev-user current-user))
+                (and (not (null prev-user))
+                     (not (null current-user))
+                     (equal prev-user current-user)))
               (let ((prev-day (time-to-day-in-year (slack-message-time-stamp
                                                     prev)))
                     (current-day (time-to-day-in-year (slack-message-time-stamp
