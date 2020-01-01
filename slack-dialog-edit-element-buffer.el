@@ -79,18 +79,6 @@
     (slack-buffer-name 'slack-dialog-edit-element-buffer
                        dialog-buffer element team)))
 
-(defun slack-create-dialog-element-edit-buffer (dialog-buffer element team)
-  (slack-if-let*
-      ((buf (slack-buffer-find 'slack-dialog-edit-element-buffer
-                               dialog-buffer
-                               element
-                               team)))
-      buf
-    (make-instance 'slack-dialog-edit-element-buffer
-                   :dialog-buffer dialog-buffer
-                   :element element
-                   :team team)))
-
 (cl-defmethod slack-buffer-init-buffer ((this slack-dialog-edit-element-buffer))
   (let* ((buf (generate-new-buffer (slack-buffer-name this)))
          (element (oref this element)))
@@ -106,16 +94,6 @@
                              (oref this dialog-buffer)
                              element
                              (oref this team))))
-
-(defun slack-dialog-buffer-open-edit-element-buffer ()
-  (interactive)
-  (slack-if-let*
-      ((element (get-text-property (point) 'slack-dialog-element))
-       (buffer slack-current-buffer)
-       (team (oref buffer team))
-       (edit-buffer (slack-create-dialog-element-edit-buffer
-                     buffer element team)))
-      (slack-buffer-display edit-buffer)))
 
 (provide 'slack-dialog-edit-element-buffer)
 ;;; slack-dialog-edit-element-buffer.el ends here

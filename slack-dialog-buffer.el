@@ -28,8 +28,6 @@
 (require 'slack-request)
 (require 'slack-buffer)
 (require 'slack-dialog)
-(declare-function slack-dialog-buffer-open-edit-element-buffer
-                  "slack-dialog-edit-element-buffer")
 
 (define-derived-mode slack-dialog-buffer-mode fundamental-mode "Slack Dialog Buffer"
   (setq-local default-directory slack-default-directory)
@@ -135,6 +133,28 @@
     (define-key map (kbd "RET") #'slack-dialog-buffer-open-edit-element-buffer)
     (define-key map [mouse-1] #'slack-dialog-buffer-open-edit-element-buffer)
     map))
+
+(defun slack-dialog-buffer-open-edit-element-buffer ()
+  (interactive)
+  (slack-if-let*
+      ((element (get-text-property (point) 'slack-dialog-element))
+       (buffer slack-current-buffer)
+       (team (oref buffer team))
+       (edit-buffer (slack-create-dialog-element-edit-buffer
+                     buffer element team)))
+      (slack-buffer-display edit-buffer)))
+
+(defun slack-create-dialog-element-edit-buffer (dialog-buffer element team)
+  (slack-if-let*
+      ((buf (slack-buffer-find 'slack-dialog-edit-element-buffer
+                               dialog-buffer
+                               element
+                               team)))
+      buf
+    (make-instance 'slack-dialog-edit-element-buffer
+                   :dialog-buffer dialog-buffer
+                   :element element
+                   :team team)))
 
 (cl-defmethod slack-buffer-insert-edit-button ((this slack-dialog-text-element))
   (insert (propertize " Edit "

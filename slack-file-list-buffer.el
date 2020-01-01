@@ -28,6 +28,8 @@
 (require 'slack-util)
 (require 'slack-buffer)
 (require 'slack-message-buffer)
+(require 'slack-file-info-buffer)
+(require 'slack-star)
 
 (defvar slack-file-download-button-keymap
   (let ((map (make-sparse-keymap)))

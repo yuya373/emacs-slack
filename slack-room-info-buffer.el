@@ -110,7 +110,7 @@
       (insert (propertize "Created"
                           'face 'slack-room-info-section-label-face))
       (insert ":  ")
-      (insert (slack-message-time-to-string
+      (insert (slack-format-ts
                (number-to-string created))))))
 
 (cl-defmethod slack-buffer-insert-created ((room slack-group) team)

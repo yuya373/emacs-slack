@@ -26,8 +26,7 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-buffer)
-(require 'slack-message)
-(require 'slack-thread)
+(require 'slack-create-message)
 (require 'slack-message-buffer)
 
 (defconst slack-subscriptions-thread-get-view-url "https://slack.com/api/subscriptions.thread.getView")

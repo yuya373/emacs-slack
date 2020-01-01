@@ -27,7 +27,6 @@
 (require 'slack-room)
 (require 'slack-util)
 (require 'slack-request)
-(require 'slack-buffer)
 (require 'slack-conversations)
 
 (defconst slack-group-update-mark-url "https://slack.com/api/groups.mark")
@@ -119,72 +118,8 @@
   (let ((team (slack-team-select)))
     (slack-conversations-create team "true")))
 
-(defun slack-group-rename ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-rename room team)
-    (let* ((team (slack-team-select))
-           (room (slack-select-from-list
-                     ((slack-group-names team #'(lambda (groups)
-                                                  (cl-remove-if #'slack-room-archived-p
-                                                                groups)))
-                      "Select Channel: "))))
-      (slack-conversations-rename room team))))
-
-(defun slack-group-invite ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-invite room team)
-    (let* ((team (slack-team-select))
-           (room (slack-select-from-list
-                     ((slack-group-names team
-                                         #'(lambda (rooms)
-                                             (cl-remove-if #'slack-room-archived-p
-                                                           rooms)))
-                      "Select Channel: "))))
-      (slack-conversations-invite room team))))
-
-(defun slack-group-leave ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-leave room team)
-    (let* ((team (slack-team-select))
-           (group (slack-select-from-list
-                      ((slack-group-names team)
-                       "Select Channel: "))))
-      (slack-conversations-leave group team))))
-
 (cl-defmethod slack-room-archived-p ((room slack-group))
   (oref room is-archived))
-
-(defun slack-group-archive ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-archive room team)
-    (let* ((team (slack-team-select))
-           (group (slack-select-from-list
-                      ((slack-group-names
-                        team
-                        #'(lambda (groups)
-                            (cl-remove-if #'slack-room-archived-p
-                                          groups)))
-                       "Select Channel: "))))
-      (slack-conversations-archive group team))))
-
-(defun slack-group-unarchive ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-unarchive room team)
-    (let* ((team (slack-team-select))
-           (group (slack-select-from-list
-                      ((slack-group-names
-                        team
-                        #'(lambda (groups)
-                            (cl-remove-if-not #'slack-room-archived-p
-                                              groups)))
-                       "Select Channel: "))))
-      (slack-conversations-unarchive group team))))
-
 
 (defun slack-group-members-s (group team)
   (with-slots (members) group
@@ -207,34 +142,6 @@
                            (slack-select-multiple #'prompt users))))
       (slack-conversations-open team
                                 :user-ids (user-ids)))))
-
-(defun slack-group-mpim-close ()
-  "Close mpim."
-  (interactive)
-  (cl-labels
-      ((on-success (room team)
-                   #'(lambda (data)
-                       (when (and (eq t (plist-get data :no_op)))
-                         (oset room is-member nil)
-                         (slack-team-set-room team room)
-                         (slack-log (format "%s closed"
-                                            (slack-room-name room team))
-                                    team :level 'info)))))
-    (slack-if-let-room-and-team (room team)
-        (slack-conversations-close room
-                                   team
-                                   (on-success room team))
-      (let* ((team (slack-team-select))
-             (mpim (slack-select-from-list
-                       ((slack-group-names
-                         team
-                         #'(lambda (groups)
-                             (cl-remove-if-not #'(lambda (e) (and (slack-mpim-p e)
-                                                                  (oref e is-member)))
-                                               groups)))
-                        "Select Channel: "))))
-        (slack-conversations-close mpim team (on-success mpim team))))))
-
 
 (cl-defmethod slack-mpim-p ((room slack-group))
   (oref room is-mpim))

@@ -23,7 +23,7 @@
 ;;
 
 ;;; Code:
-
+(require 'color)
 
 (defface slack-profile-image-face
   '((t ()))
@@ -93,6 +93,20 @@
   "Face used to @here, @channel, @everyone mention."
   :group 'slack)
 
+(defface slack-preview-face
+  (let* ((default-bg (or (face-background 'default) "unspecified-bg"))
+         (light-bg (if (equal default-bg "unspecified-bg")
+                       "unspecified-bg"
+                     (color-darken-name default-bg 3)))
+         (dark-bg (if (equal default-bg "unspecified-bg")
+                      "unspecified-bg"
+                    (color-lighten-name default-bg 3))))
+    `((default :inherit (fixed-pitch shadow) :slant normal :weight normal)
+      (((type graphic) (class color) (background dark)) (:background ,dark-bg))
+      (((type graphic) (class color) (background light)) (:background ,light-bg))))
+  "Used preview text and code blocks"
+  :group 'slack)
+
 (defun slack-message-put-header-property (header)
   (if header
       (propertize header 'face 'slack-message-output-header)))
@@ -104,6 +118,13 @@
 (defun slack-message-put-deleted-property (text)
   (if text
       (propertize text 'face 'slack-message-deleted-face)))
+
+(defun slack-put-preview-overlay (start end)
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face 'slack-preview-face)))
+
+(defalias 'slack-put-email-body-overlay 'slack-put-preview-overlay)
+(defalias 'slack-put-code-block-overlay 'slack-put-preview-overlay)
 
 (provide 'slack-message-faces)
 ;;; slack-message-faces.el ends here

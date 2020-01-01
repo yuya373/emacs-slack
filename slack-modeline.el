@@ -54,8 +54,7 @@
   :group 'slack)
 
 (defun slack-default-modeline-formatter (alist)
-  "Element in ALIST is  '((team-name . ((thread . (has-unreads . mention-count))
-                                        (channel . (has-unreads . mention-count)))))"
+  "Element in ALIST is  '((team-name . ((thread . (has-unreads . mention-count)) (channel . (has-unreads . mention-count)))))"
   (mapconcat #'(lambda (e)
                  (let* ((team-name (car e))
                         (summary (cdr e))
@@ -119,6 +118,12 @@
                 (cons 'channel (cons unreads count))))
       (list (cons 'thread (cons nil 0))
             (cons 'channel (cons nil 0))))))
+
+(cl-defmethod slack-counts-update ((team slack-team))
+  (slack-client-counts team
+                       #'(lambda (counts)
+                           (oset team counts counts)
+                           (slack-update-modeline))))
 
 (provide 'slack-modeline)
 ;;; slack-modeline.el ends here

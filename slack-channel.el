@@ -1,4 +1,4 @@
-;;; slack-channel.el ---slack channel implement      -*- lexical-binding: t; -*-
+;;; slack-channel.el --- slack channel implement      -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
@@ -27,7 +27,6 @@
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-group)
-(require 'slack-buffer)
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-conversations)
@@ -63,93 +62,6 @@
   (interactive)
   (let ((team (slack-team-select)))
     (slack-conversations-create team "false")))
-
-(defun slack-channel-rename ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-rename room team)
-    (let* ((team (slack-team-select))
-           (room (slack-select-from-list
-                     ((slack-channel-names team #'(lambda (channels)
-                                                    (cl-remove-if #'slack-room-member-p
-                                                                  channels)))
-                      "Select Channel: "))))
-      (slack-conversations-rename room team))))
-
-(defun slack-channel-invite ()
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-invite room team)
-    (let* ((team (slack-team-select))
-           (room (slack-select-from-list
-                     ((slack-channel-names team
-                                           #'(lambda (rooms)
-                                               (cl-remove-if #'slack-room-archived-p
-                                                             rooms)))
-                      "Select Channel: "))))
-      (slack-conversations-invite room team))))
-
-(defun slack-channel-leave (&optional team)
-  (interactive)
-  (slack-if-let-room-and-team (cur-room cur-team)
-      (slack-conversations-leave cur-room cur-team)
-    (let* ((team (or team (slack-team-select)))
-           (channel (slack-select-from-list ((slack-channel-names
-                                              team
-                                              #'(lambda (channels)
-                                                  (cl-remove-if-not
-                                                   #'slack-room-member-p
-                                                   channels)))
-                                             "Select Channel: "))))
-      (slack-conversations-leave channel team))))
-
-(defun slack-channel-join (&optional team)
-  (interactive)
-  (slack-if-let-room-and-team (cur-room cur-team)
-      (slack-conversations-join cur-room cur-team)
-    (cl-labels
-        ((filter-channel (channels)
-                         (cl-remove-if
-                          #'(lambda (c)
-                              (or (slack-room-member-p c)
-                                  (slack-room-archived-p c)))
-                          channels)))
-      (let* ((team (or team (slack-team-select)))
-             (channel (slack-select-from-list
-                          ((slack-channel-names team
-                                                #'filter-channel)
-                           "Select Channel: "))))
-        (slack-conversations-join channel team)))))
-
-(defun slack-channel-archive ()
-  "Archive selected channel."
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-archive room team)
-    (let* ((team (slack-team-select))
-           (channel (slack-select-from-list
-                        ((slack-channel-names
-                          team
-                          #'(lambda (channels)
-                              (cl-remove-if #'slack-room-archived-p
-                                            channels)))
-                         "Select Channel: "))))
-      (slack-conversations-archive channel team))))
-
-(defun slack-channel-unarchive ()
-  "Unarchive selected channel."
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-unarchive room team)
-    (let* ((team (slack-team-select))
-           (channel (slack-select-from-list
-                        ((slack-channel-names
-                          team
-                          #'(lambda (channels)
-                              (cl-remove-if-not #'slack-room-archived-p
-                                                channels)))
-                         "Select Channel: "))))
-      (slack-conversations-unarchive channel team))))
 
 (cl-defmethod slack-room-subscribedp ((room slack-channel) team)
   (with-slots (subscribed-channels) team

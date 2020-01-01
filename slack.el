@@ -1,7 +1,8 @@
-;;; slack.el --- slack client for emacs              -*- lexical-binding: t; -*-
+;;; slack.el --- slack client              -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  yuya.minami
 
+;; URL: https://github.com/yuya373/emacs-slack
 ;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords: tools
 ;; Version: 0.0.2
@@ -20,6 +21,8 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; Slack client in Emacs.
 
 ;;
 
@@ -69,8 +72,8 @@
 (require 'slack-usergroup)
 (require 'slack-unread)
 (require 'slack-modeline)
-
-(require 'slack-authorize)
+(require 'slack-stringify)
+(require 'slack-create-message)
 
 (when (featurep 'helm)
   (require 'helm-slack))
@@ -219,6 +222,28 @@ Available options (property name, type, default value)
         (let ((team (slack-create-team plist)))
           (register team))
       (error ":token is required"))))
+
+(cl-defmethod slack-team-connect ((team slack-team))
+  (unless (slack-team-connectedp team)
+    (slack-start team)))
+
+(defun slack-change-current-team ()
+  (interactive)
+  (let ((team (slack-team-find-by-name
+               (funcall slack-completing-read-function
+                        "Select Team: "
+                        (mapcar #'(lambda (team) (oref team name))
+                                slack-teams)))))
+    (setq slack-current-team team)
+    (message "Set slack-current-team to %s" (or (and team (oref team name))
+                                                "nil"))
+    (setq slack-teams
+          (cons team (cl-remove-if #'(lambda (e)
+                                       (string= (oref e id)
+                                                (oref slack-current-team id)))
+                                   slack-teams)))
+    (if team
+        (slack-team-connect team))))
 
 (provide 'slack)
 ;;; slack.el ends here

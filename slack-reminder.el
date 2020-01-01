@@ -76,12 +76,12 @@
 (cl-defmethod slack-reminder-to-body ((r slack-reminder))
   (with-slots (text time complete-ts) r
     (let ((time-str (format "Remind At: %s"
-                            (slack-message-time-to-string
+                            (slack-format-ts
                              (number-to-string time))))
           (completed (format "Completed: %s"
                              (if (eq complete-ts 0)
                                  "Not Yet"
-                               (slack-message-time-to-string
+                               (slack-format-ts
                                 (number-to-string complete-ts))))))
       (format "%s\n%s\n\n%s" time-str completed text))))
 

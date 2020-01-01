@@ -31,7 +31,6 @@
 (require 'slack-im)
 (require 'alert)
 (require 'slack-group)
-(require 'slack-thread)
 
 (defvar alert-default-style)
 
@@ -112,9 +111,9 @@
                :icon slack-alert-icon
                :title (if (slack-im-p room)
                           (funcall slack-message-im-notification-title-format-function
-                                   team-name room-name (slack-thread-messagep message))
+                                   team-name room-name (slack-thread-message-p message))
                         (funcall slack-message-notification-title-format-function
-                                 team-name room-name (slack-thread-messagep message)))
+                                 team-name room-name (slack-thread-message-p message)))
                :category 'slack))))
 
 (cl-defmethod slack-message-sender-equalp ((_m slack-message) _sender-id)

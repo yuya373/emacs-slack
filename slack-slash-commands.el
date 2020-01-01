@@ -29,9 +29,8 @@
 (require 'slack-channel)
 (require 'slack-user)
 (require 'slack-message-formatter)
-(require 'slack-event)
+(require 'slack-message-event)
 (require 'slack-unescape)
-(declare-function slack-create-message-event "slack-message-event")
 
 (defclass slack-command ()
   ((name :initarg :name :type string)
@@ -139,17 +138,15 @@
                        (slack-request-handle-error
                         (data "slack-command-run")
                         (slack-if-let* ((response (plist-get data :response)))
-                            (slack-if-let*
-                                ((user (slack-user--find "USLACKBOT" team))
-                                 (payload (list :text response
-                                                :is_ephemeral t
-                                                :user (plist-get user :id)
-                                                :id (plist-get user :id)
-                                                :type "message"
-                                                :channel channel
-                                                :ts (number-to-string
-                                                     (time-to-seconds))))
-                                 (event (slack-create-message-event payload)))
+                            (slack-if-let* ((user (slack-user--find "USLACKBOT" team))
+                                            (payload (list :text response
+                                                           :is_ephemeral t
+                                                           :user (plist-get user :id)
+                                                           :id (plist-get user :id)
+                                                           :type "message"
+                                                           :channel channel
+                                                           :ts (number-to-string (time-to-seconds))))
+                                            (event (slack-create-message-event payload)))
                                 (slack-event-update event team)
                               (message "%s" (slack-unescape response team)))))))
         (slack-request
@@ -163,6 +160,20 @@
                         (when text
                           (cons "text" text)))
           :success #'on-success)))))))
+
+(defun slack-message--send (message)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (oref buf team))
+                  (room (slack-buffer-room buf)))
+      (if (string-prefix-p "/" message)
+          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
+              (slack-command-run (car command-and-arg)
+                                 team
+                                 (oref room id)
+                                 :text (cdr command-and-arg))
+            (error "Unknown slash command: %s"
+                   (car (split-string message))))
+        (slack-buffer-send-message buf message))))
 
 (provide 'slack-slash-commands)
 ;;; slack-slash-commands.el ends here

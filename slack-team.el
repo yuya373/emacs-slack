@@ -25,19 +25,7 @@
 ;;; Code:
 (require 'eieio)
 (require 'slack-util)
-;; (require 'slack-message)
-(declare-function slack-message-create "slack-message")
 (require 'slack-team-ws)
-;; (require 'slack-websocket)
-(declare-function slack-ws-send "slack-websocket")
-(declare-function slack-ws-open "slack-websocket")
-(declare-function slack-ws--close "slack-websocket")
-(declare-function slack-ws-payload-ping-p "slack-websocket")
-(declare-function slack-ws-payload-presence-sub-p "slack-websocket")
-;; (require 'slack)
-(declare-function slack-start "slack")
-;; (require 'slack-room)
-(declare-function slack-room-open-p "slack-room")
 
 (declare-function emojify-create-emojify-emojis "emojify")
 
@@ -138,20 +126,6 @@ use `slack-change-current-team' to change `slack-current-team'"
   (with-slots (ws) this
     (oset ws url url)))
 
-(cl-defmethod slack-team-send-message ((this slack-team) message &key (on-success nil) (on-error nil))
-  (if (or (slack-ws-payload-ping-p message)
-          (slack-ws-payload-presence-sub-p message))
-      (progn
-        (slack-team-inc-message-id this)
-        (with-slots (ws) this
-          (slack-ws-send ws message this)))))
-
-(cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
-  (with-slots (ws) this
-    (slack-ws-open ws this
-                   :on-open on-open
-                   :ws-url ws-url)))
-
 (cl-defmethod slack-team-kill-buffers ((this slack-team) &key (except nil))
   (let* ((l (list 'slack-message-buffer
                   'slack-file-info-buffer
@@ -173,9 +147,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defun slack-team-find (id)
   (cl-find-if #'(lambda (team) (string= id (oref team id)))
               slack-teams))
-
-(cl-defmethod slack-team-disconnect ((team slack-team))
-  (slack-ws--close (oref team ws) team))
 
 (cl-defmethod slack-team-equalp ((team slack-team) other)
   (with-slots (token) team
@@ -220,41 +191,6 @@ use `slack-change-current-team' to change `slack-current-team'"
                             (if (slack-team-connectedp team) team))
                         slack-teams)))
 
-(defun slack-change-current-team ()
-  (interactive)
-  (let ((team (slack-team-find-by-name
-               (funcall slack-completing-read-function
-                        "Select Team: "
-                        (mapcar #'(lambda (team) (oref team name))
-                                slack-teams)))))
-    (setq slack-current-team team)
-    (message "Set slack-current-team to %s" (or (and team (oref team name))
-                                                "nil"))
-    (setq slack-teams
-          (cons team (cl-remove-if #'(lambda (e)
-                                       (string= (oref e id)
-                                                (oref slack-current-team id)))
-                                   slack-teams)))
-    (if team
-        (slack-team-connect team))))
-
-(cl-defmethod slack-team-connect ((team slack-team))
-  (unless (slack-team-connectedp team)
-    (slack-start team)))
-
-(defun slack-team-delete ()
-  (interactive)
-  (let ((selected (slack-team-select t t)))
-    (if (yes-or-no-p (format "Delete %s from `slack-teams'?"
-                             (oref selected name)))
-        (progn
-          (setq slack-teams
-                (cl-remove-if #'(lambda (team)
-                                  (slack-team-equalp selected team))
-                              slack-teams))
-          (slack-team-disconnect selected)
-          (message "Delete %s from `slack-teams'" (oref selected name))))))
-
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))
 
@@ -297,18 +233,6 @@ use `slack-change-current-team' to change `slack-current-team'"
     (cl-remove-if #'(lambda (e) (cl-find e exists-user-ids :test #'string=))
                   (cl-remove-duplicates user-ids :test #'string=))))
 
-(cl-defmethod slack-team-send-presence-sub ((this slack-team))
-  (let ((type "presence_sub")
-        (ids (let ((result))
-               (cl-loop for im in (slack-team-ims this)
-                        do (when (slack-room-open-p im)
-                             (push (oref im user) result)))
-               result)))
-    (slack-team-send-message this
-                             (list :id (oref this message-id)
-                                   :type type
-                                   :ids ids))))
-
 (cl-defmethod slack-team-visible-threads-p ((this slack-team))
   (oref this visible-threads))
 
@@ -323,33 +247,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 (cl-defmethod slack-team-ims ((this slack-team))
   (hash-table-values (oref this ims)))
-
-(cl-defmethod slack-team-set-channels ((this slack-team) channels)
-  (let ((table (oref this channels)))
-    (cl-loop for channel in channels
-             do (slack-if-let* ((old (gethash (oref channel id) table)))
-                    (slack-merge old channel)
-                  (puthash (oref channel id) channel table)))))
-
-(cl-defmethod slack-team-set-groups ((this slack-team) groups)
-  (let ((table (oref this groups)))
-    (cl-loop for group in groups
-             do (slack-if-let* ((old (gethash (oref group id) table)))
-                    (slack-merge old group)
-                  (puthash (oref group id) group table)))))
-
-(cl-defmethod slack-team-set-ims ((this slack-team) ims)
-  (let ((table (oref this ims)))
-    (cl-loop for im in ims
-             do (slack-if-let* ((old (gethash (oref im id) table)))
-                    (slack-merge old im)
-                  (puthash (oref im id) im table)))))
-
-(cl-defmethod slack-team-set-room ((this slack-team) room)
-  (cl-case (eieio-object-class-name room)
-    (slack-channel (slack-team-set-channels this (list room)))
-    (slack-group (slack-team-set-groups this (list room)))
-    (slack-im (slack-team-set-ims this (list room)))))
 
 (cl-defmethod slack-team-users ((this slack-team))
   (hash-table-values (oref this users)))
@@ -368,21 +265,6 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 (cl-defmethod slack-team-bots ((this slack-team))
   (hash-table-values (oref this bots)))
-
-(cl-defmethod slack-team-set-files ((this slack-team) files)
-  (let ((table (oref this files)))
-    (cl-loop for file in files
-             do (slack-if-let* ((old (gethash (oref file id) table)))
-                    (slack-merge old file)
-                  (let ((id (oref file id)))
-                    (push id (oref this file-ids))
-                    (puthash id file table)))))
-  (oset this
-        file-ids
-        (cl-sort (oref this file-ids)
-                 #'>
-                 :key #'(lambda (id) (let ((file (gethash id (oref this files))))
-                                       (oref file created))))))
 
 (cl-defmethod slack-team-files ((this slack-team))
   (let ((ret))

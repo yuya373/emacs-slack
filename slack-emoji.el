@@ -30,6 +30,7 @@
 (declare-function emojify-image-dir "emojify")
 (declare-function emojify-create-emojify-emojis "emojify")
 (defvar emojify-user-emojis)
+(defvar slack-current-buffer)
 
 (defconst slack-emoji-list "https://slack.com/api/emoji.list")
 
@@ -101,7 +102,7 @@
              (cl-labels
                  ((select ()
                           (emojify-completing-read "Select Emoji: "
-                                                   #'(lambda (emoji data)
+                                                   #'(lambda (_emoji data)
                                                        (or (gethash (gethash "emoji" data)
                                                                     slack-emoji-master
                                                                     nil)

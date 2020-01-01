@@ -31,6 +31,7 @@
 (require 'slack-room)
 (require 'slack-image)
 (require 'slack-unescape)
+(require 'slack-file)
 
 (defvar slack-attachment-action-keymap)
 (defvar slack-completing-read-function)
@@ -466,7 +467,7 @@
            (footer (if footer
                        (concat pad
                                (propertize (concat footer
-                                                   (if ts (concat " | " (slack-message-time-to-string ts)) ""))
+                                                   (if ts (concat " | " (slack-format-ts ts)) ""))
                                            'face 'slack-attachment-footer))))
            (image (slack-image-string (slack-image-spec attachment)
                                       pad))

@@ -52,11 +52,6 @@ Any other non-nil value: send to the room."
                  (const :tag "Always send message to the room." t))
   :group 'slack)
 
-(cl-defmethod slack-thread-messagep ((m slack-message))
-  (if (and (oref m thread-ts) (not (slack-message-thread-parentp m)))
-      t
-    nil))
-
 (cl-defmethod slack-thread-replies ((this slack-message) room team &key after-success (cursor nil) (oldest nil))
   (let* ((ts (slack-thread-ts this))
          (oldest (or oldest ts)))

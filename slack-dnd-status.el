@@ -44,7 +44,7 @@
                  :next_dnd_end_ts (plist-get payload :next_dnd_end_ts)))
 
 
-(defmethod slack-dnd-in-range-p ((this slack-dnd-status))
+(cl-defmethod slack-dnd-in-range-p ((this slack-dnd-status))
   (with-slots (dnd-enabled next-dnd-start-ts next-dnd-end-ts) this
     (when dnd-enabled
       (let ((current (time-to-seconds)))

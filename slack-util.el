@@ -30,7 +30,6 @@
 (require 'timer)
 (require 'diary-lib)
 (require 'websocket)
-(declare-function slack-buffer-room "slack-buffer")
 
 (defvar slack-completing-read-function)
 (defvar slack-buffer-function)
@@ -67,23 +66,6 @@
             (key  (pop ,dup))
             (value (pop ,dup)))
        ,@body)))
-
-(defun slack-current-room-and-team ()
-  (if (and (bound-and-true-p slack-current-buffer)
-           (slot-exists-p slack-current-buffer 'room-id)
-           (slot-boundp slack-current-buffer 'room-id)
-           (slot-exists-p slack-current-buffer 'team)
-           (slot-boundp slack-current-buffer 'team))
-      (list (slack-buffer-room slack-current-buffer)
-            (oref slack-current-buffer team))
-    (list nil nil)))
-
-(defmacro slack-if-let-room-and-team (var-list then &rest else)
-  (declare (indent 2) (debug t))
-  `(cl-destructuring-bind ,var-list (slack-current-room-and-team)
-     (if (and ,@var-list)
-         ,then
-       ,@else)))
 
 (defun slack-seq-to-list (seq)
   (if (listp seq) seq (append seq nil)))
@@ -219,6 +201,32 @@ ones and overrule settings in the other lists."
 
 (cl-defmethod slack-ts ((ts string))
   ts)
+
+(defun slack-propertize-mention-text (face display text)
+  (let ((props (list 'rear-nonsticky t
+                     'display display
+                     'face face))
+        (head (substring text 0 1))
+        (rest (substring text 1)))
+    (concat (apply #'propertize (format "%s%s"
+                                        (propertize head 'slack-mention-props (list :props props))
+                                        rest)
+                   props)
+            " ")))
+
+(cl-defun slack-format-ts (ts &optional (format "%Y-%m-%d %H:%M:%S"))
+  (when ts
+    (when (stringp ts)
+      (setq ts (string-to-number ts)))
+    (format-time-string format (seconds-to-time ts))))
+
+(defun slack-format-message (&rest args)
+  (let ((messages args))
+    (mapconcat #'identity
+               (cl-remove-if #'(lambda (e) (or (null e)
+                                               (< (length e) 1)))
+                             messages)
+               "\n")))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

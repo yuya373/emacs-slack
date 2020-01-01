@@ -40,10 +40,7 @@
 (require 'slack-slash-commands)
 (require 'slack-star)
 (require 'slack-message-notification)
-;; (require 'slack-message-buffer)
-(declare-function slack-buffer-load-missing-messages "slack-message-buffer")
 (require 'slack-room-buffer)
-(require 'slack-authorize)
 (require 'slack-typing)
 (require 'slack-stars-buffer)
 (require 'slack-conversations)
@@ -56,6 +53,7 @@
 (require 'slack-thread-event)
 
 (defconst slack-api-test-url "https://slack.com/api/api.test")
+(defconst slack-rtm-connect-url "https://slack.com/api/rtm.connect")
 
 (defun slack-ws-on-timeout (team-id)
   (let* ((team (slack-team-find team-id))
@@ -811,6 +809,143 @@ TEAM is one of `slack-teams'"
                                                   (string= (oref e id)
                                                            (oref usergroup id)))
                                               (oref team usergroups))))))
+
+(cl-defmethod slack-team-send-message ((this slack-team) message)
+  (if (or (slack-ws-payload-ping-p message)
+          (slack-ws-payload-presence-sub-p message))
+      (progn
+        (slack-team-inc-message-id this)
+        (with-slots (ws) this
+          (slack-ws-send ws message this)))))
+
+(cl-defmethod slack-team-open-ws ((this slack-team) &key on-open ws-url)
+  (with-slots (ws) this
+    (slack-ws-open ws this
+                   :on-open on-open
+                   :ws-url ws-url)))
+
+(cl-defmethod slack-team-disconnect ((team slack-team))
+  (slack-ws--close (oref team ws) team))
+
+(defun slack-team-delete ()
+  (interactive)
+  (let ((selected (slack-team-select t t)))
+    (if (yes-or-no-p (format "Delete %s from `slack-teams'?"
+                             (oref selected name)))
+        (progn
+          (setq slack-teams
+                (cl-remove-if #'(lambda (team)
+                                  (slack-team-equalp selected team))
+                              slack-teams))
+          (slack-team-disconnect selected)
+          (message "Delete %s from `slack-teams'" (oref selected name))))))
+
+(cl-defmethod slack-team-send-presence-sub ((this slack-team))
+  (let ((type "presence_sub")
+        (ids (let ((result))
+               (cl-loop for im in (slack-team-ims this)
+                        do (when (slack-room-open-p im)
+                             (push (oref im user) result)))
+               result)))
+    (slack-team-send-message this
+                             (list :id (oref this message-id)
+                                   :type type
+                                   :ids ids))))
+
+(defun slack-authorize (team &optional error-callback success-callback)
+  (let ((authorize-request (oref team authorize-request)))
+    (if (and authorize-request (not (request-response-done-p authorize-request)))
+        (slack-log "Authorize Already Requested" team)
+      (cl-labels
+          ((on-error (&key error-thrown symbol-status response data)
+                     (oset team authorize-request nil)
+                     (slack-log (format "Authorize Failed: %s" error-thrown)
+                                team)
+                     (when (functionp error-callback)
+                       (funcall error-callback
+                                :error-thrown error-thrown
+                                :symbol-status symbol-status
+                                :response response
+                                :data data)))
+           (on-success (&key data &allow-other-keys)
+                       (oset team authorize-request nil)
+                       (slack-request-handle-error
+                        (data "slack-authorize")
+                        (slack-log "Authorization Finished" team)
+                        (if success-callback
+                            (funcall success-callback data)
+                          (cl-labels
+                              ((on-emoji-download (paths)
+                                                  (oset team
+                                                        emoji-download-watch-timer
+                                                        (run-with-idle-timer 5 t
+                                                                             #'slack-team-watch-emoji-download-complete
+                                                                             team paths)))
+                               (on-open ()
+                                        (slack-conversations-list-update team)
+                                        ;; (slack-user-list-update team)
+                                        (slack-dnd-status-team-info team)
+                                        (slack-download-emoji team #'on-emoji-download)
+                                        (slack-command-list-update team)
+                                        (slack-usergroup-list-update team)
+                                        (slack-update-modeline)))
+                            (let ((self (plist-get data :self))
+                                  (team-data (plist-get data :team)))
+                              (oset team id (plist-get team-data :id))
+                              (oset team name (plist-get team-data :name))
+                              (oset team self self)
+                              (oset team self-id (plist-get self :id))
+                              (oset team self-name (plist-get self :name))
+                              (slack-team-set-ws-url team (plist-get data :url))
+                              (oset team domain (plist-get team-data :domain)))
+                            (slack-team-open-ws team :on-open #'on-open))))))
+        (let ((request (slack-request
+                        (slack-request-create
+                         slack-rtm-connect-url
+                         team
+                         :params (list (cons "mpim_aware" "1")
+                                       (cons "presence_sub" "true"))
+                         :success #'on-success
+                         :error #'on-error))))
+          (oset team authorize-request request))))))
+
+(defalias 'slack-room-list-update 'slack-conversations-list-update)
+(defun slack-conversations-list-update (&optional team after-success)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((success (channels groups ims)
+                  (slack-team-set-channels team channels)
+                  (slack-team-set-groups team groups)
+                  (slack-team-set-ims team ims)
+                  (slack-counts-update team)
+                  (slack-user-info-request
+                   (mapcar #'(lambda (im) (oref im user))
+                           (slack-team-ims team))
+                   team)
+                  (slack-team-send-presence-sub team)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (slack-log "Slack Channel List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Group List Updated"
+                             team :level 'info)
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)))
+      (slack-conversations-list team #'success))))
+
+(defun slack-im-list-update (&optional team after-success)
+  (interactive)
+  (let ((team (or team (slack-team-select))))
+    (cl-labels
+        ((success (_channels _groups ims)
+                  (slack-team-set-ims team ims)
+                  (when (functionp after-success)
+                    (funcall after-success team))
+                  (slack-log "Slack Im List Updated"
+                             team :level 'info)
+                  (slack-team-send-presence-sub team)))
+      (slack-conversations-list team #'success (list "im")))))
 
 (provide 'slack-websocket)
 ;;; slack-websocket.el ends here

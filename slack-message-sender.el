@@ -33,12 +33,12 @@
 (require 'slack-message)
 (require 'slack-channel)
 (require 'slack-conversations)
-(require 'slack-buffer)
 (require 'slack-usergroup)
 (require 'slack-mrkdwn)
 
 (defvar slack-completing-read-function)
 (defvar slack-buffer-function)
+(defvar slack-current-buffer)
 
 (defconst slack-channel-mention-regex "\\(<#\\([A-Za-z0-9]+\\)>\\)")
 (defconst slack-user-mention-regex "\\(<@\\([A-Za-z0-9]+\\)>\\)")
@@ -105,20 +105,6 @@
             (slack-insert-channel-mention (oref selected id)
                                           (format "@%s" (slack-room-name selected team)))))))
 
-(defun slack-propertize-mention-text (face display text)
-  (let ((props (list 'rear-nonsticky t
-                     'display display
-                     'face face))
-        (head (substring text 0 1))
-        (rest (substring text 1)))
-
-
-    (concat (apply #'propertize (format "%s%s"
-                                        (propertize head 'slack-mention-props (list :props props))
-                                        rest)
-                   props)
-            " ")))
-
 (defun slack-insert-channel-mention (channel-id display)
   (insert (slack-propertize-mention-text 'slack-message-mention-face
                                          display
@@ -179,7 +165,7 @@
            (eq 'slack-message-edit-buffer-mode
                major-mode))))
 
-(defun slack-wysiwyg-after-change (beg end length)
+(defun slack-wysiwyg-after-change (_beg _end _length)
   (when (slack-wysiwyg-enabled-p)
     (save-excursion
       (save-restriction

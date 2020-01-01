@@ -30,11 +30,6 @@
 (require 'slack-request)
 (require 'slack-user)
 (require 'slack-counts)
-;; (require 'slack-team)
-(declare-function slack-team-select "slack-team")
-(declare-function slack-team-name "slack-team")
-;; (require 'slack-buffer)
-(declare-function slack-buffer-room "slack-buffer")
 
 (defface slack-room-unread-face
   '((t (:weight bold)))
@@ -247,7 +242,7 @@
 (cl-defmethod slack-room-member-p ((_this slack-room))
   t)
 
-(defmethod slack-room-find ((id string) team)
+(cl-defmethod slack-room-find ((id string) team)
   (if (and id team)
       (cl-labels ((find-room (room)
                              (string= id (oref room id))))
@@ -278,6 +273,33 @@
   nil)
 
 (cl-defmethod slack-room-members-loaded ((_this slack-room)))
+
+(cl-defmethod slack-team-set-room ((this slack-team) room)
+  (cl-case (eieio-object-class-name room)
+    (slack-channel (slack-team-set-channels this (list room)))
+    (slack-group (slack-team-set-groups this (list room)))
+    (slack-im (slack-team-set-ims this (list room)))))
+
+(cl-defmethod slack-team-set-channels ((this slack-team) channels)
+  (let ((table (oref this channels)))
+    (cl-loop for channel in channels
+             do (slack-if-let* ((old (gethash (oref channel id) table)))
+                    (slack-merge old channel)
+                  (puthash (oref channel id) channel table)))))
+
+(cl-defmethod slack-team-set-groups ((this slack-team) groups)
+  (let ((table (oref this groups)))
+    (cl-loop for group in groups
+             do (slack-if-let* ((old (gethash (oref group id) table)))
+                    (slack-merge old group)
+                  (puthash (oref group id) group table)))))
+
+(cl-defmethod slack-team-set-ims ((this slack-team) ims)
+  (let ((table (oref this ims)))
+    (cl-loop for im in ims
+             do (slack-if-let* ((old (gethash (oref im id) table)))
+                    (slack-merge old im)
+                  (puthash (oref im id) im table)))))
 
 (provide 'slack-room)
 ;;; slack-room.el ends here

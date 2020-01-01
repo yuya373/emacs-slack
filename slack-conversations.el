@@ -27,6 +27,9 @@
 (require 'slack-request)
 (require 'slack-room)
 (require 'slack-counts)
+(require 'slack-modeline)
+(require 'slack-message)
+(require 'slack-create-message)
 
 (defvar slack-completing-read-function)
 
@@ -317,31 +320,6 @@
                                   (and cursor (cons "cursor" cursor)))
                     :success #'on-success))))
       (request))))
-
-(defalias 'slack-room-list-update 'slack-conversations-list-update)
-(defun slack-conversations-list-update (&optional team after-success)
-  (interactive)
-  (let ((team (or team (slack-team-select))))
-    (cl-labels
-        ((success (channels groups ims)
-                  (slack-team-set-channels team channels)
-                  (slack-team-set-groups team groups)
-                  (slack-team-set-ims team ims)
-                  (slack-counts-update team)
-                  (slack-user-info-request
-                   (mapcar #'(lambda (im) (oref im user))
-                           (slack-team-ims team))
-                   team)
-                  (slack-team-send-presence-sub team)
-                  (when (functionp after-success)
-                    (funcall after-success team))
-                  (slack-log "Slack Channel List Updated"
-                             team :level 'info)
-                  (slack-log "Slack Group List Updated"
-                             team :level 'info)
-                  (slack-log "Slack Im List Updated"
-                             team :level 'info)))
-      (slack-conversations-list team #'success))))
 
 (defun slack-conversations-info (room team &optional after-success)
   (slack-request

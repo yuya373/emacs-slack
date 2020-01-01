@@ -47,21 +47,6 @@
   :type 'string
   :group 'slack)
 
-(defun slack-message-time-to-string (ts)
-  (when ts
-    (when (stringp ts)
-      (setf ts (string-to-number ts)))
-    (format-time-string "%Y-%m-%d %H:%M:%S"
-                        (seconds-to-time ts))))
-
-(defun slack-format-message (&rest args)
-  (let ((messages args))
-    (mapconcat #'identity
-               (cl-remove-if #'(lambda (e) (or (null e)
-                                               (< (length e) 1)))
-                             messages)
-               "\n")))
-
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header m team))
          (attachment (mapconcat #'(lambda (attachment)

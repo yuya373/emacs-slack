@@ -27,7 +27,6 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-room)
-(require 'slack-buffer)
 (require 'slack-user)
 (require 'slack-request)
 (require 'slack-conversations)
@@ -95,32 +94,8 @@
                       team
                       #'filter)))
 
-(defun slack-im-list-update (&optional team after-success)
-  (interactive)
-  (let ((team (or team (slack-team-select))))
-    (cl-labels
-        ((success (_channels _groups ims)
-                  (slack-team-set-ims team ims)
-                  (when (functionp after-success)
-                    (funcall after-success team))
-                  (slack-log "Slack Im List Updated"
-                             team :level 'info)
-                  (slack-team-send-presence-sub team)))
-      (slack-conversations-list team #'success (list "im")))))
-
 (cl-defmethod slack-room-update-mark-url ((_room slack-im))
   slack-im-update-mark-url)
-
-(defun slack-im-close ()
-  "Close direct message."
-  (interactive)
-  (slack-if-let-room-and-team (room team)
-      (slack-conversations-close room team)
-    (let* ((team (slack-team-select))
-           (im (slack-select-from-list
-                   ((slack-im-names team)
-                    "Select Channel: "))))
-      (slack-conversations-close im team))))
 
 (defun slack-im-open ()
   (interactive)

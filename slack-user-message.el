@@ -6,15 +6,13 @@
 (require 'eieio)
 (require 'slack-util)
 (require 'slack-message)
-(require 'slack-message-editor)
 
 (defclass slack-user-message (slack-message)
   ((user :initarg :user :type string)
    (id :initarg :id)
    (inviter :initarg :inviter)))
 
-(defclass slack-reply-broadcast-message (slack-user-message)
-  ((broadcast-thread-ts :initarg :broadcast_thread_ts :initform nil)))
+(defclass slack-reply-broadcast-message (slack-user-message) ())
 
 (cl-defmethod slack-message-sender-id ((m slack-user-message))
   (oref m user))
@@ -51,6 +49,9 @@
                   ""
                 "Replied to a thread: \n")
               s))))
+
+(cl-defmethod slack-message-visible-p ((this slack-reply-broadcast-message) team)
+  t)
 
 (provide 'slack-user-message)
 ;;; slack-user-message.el ends here

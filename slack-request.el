@@ -27,9 +27,9 @@
 (require 'subr-x)
 (require 'eieio)
 (require 'json)
+(require 'mm-util)
 (require 'request)
 (require 'slack-util)
-(declare-function slack-team-token "slack-team")
 (require 'slack-log)
 
 (defconst slack-request-max-retry 3

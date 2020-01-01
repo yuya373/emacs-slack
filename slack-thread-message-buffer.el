@@ -30,6 +30,7 @@
 (require 'slack-message-reaction)
 (require 'slack-message-edit-buffer)
 (require 'slack-message-share-buffer)
+(require 'slack-star)
 
 (define-derived-mode slack-thread-message-buffer-mode
   slack-buffer-mode

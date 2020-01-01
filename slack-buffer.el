@@ -30,9 +30,11 @@
 (require 'slack-util)
 (require 'slack-room)
 (require 'slack-image)
+(require 'slack-message-formatter)
 (declare-function emojify-mode "emojify")
 
 (defvar slack-buffer-function)
+(defvar slack-completing-read-function)
 (defvar-local slack-current-buffer nil)
 (defvar lui-prompt-string "> ")
 (defvar slack-typing-visibility)
@@ -92,6 +94,23 @@
 
 (defclass slack-buffer ()
   ((team :initarg :team :type slack-team)))
+
+(defun slack-current-room-and-team ()
+  (if (and (bound-and-true-p slack-current-buffer)
+           (slot-exists-p slack-current-buffer 'room-id)
+           (slot-boundp slack-current-buffer 'room-id)
+           (slot-exists-p slack-current-buffer 'team)
+           (slot-boundp slack-current-buffer 'team))
+      (list (slack-buffer-room slack-current-buffer)
+            (oref slack-current-buffer team))
+    (list nil nil)))
+
+(defmacro slack-if-let-room-and-team (var-list then &rest else)
+  (declare (indent 2) (debug t))
+  `(cl-destructuring-bind ,var-list (slack-current-room-and-team)
+     (if (and ,@var-list)
+         ,then
+       ,@else)))
 
 (defun slack-buffer-push-new-3 (class a team)
   (let ((buf (get-buffer (slack-buffer-name class a team))))
@@ -346,27 +365,6 @@
     (when point
       (goto-char point))))
 
-(defface slack-preview-face
-  (let* ((default-bg (or (face-background 'default) "unspecified-bg"))
-         (light-bg (if (equal default-bg "unspecified-bg")
-                       "unspecified-bg"
-                     (color-darken-name default-bg 3)))
-         (dark-bg (if (equal default-bg "unspecified-bg")
-                      "unspecified-bg"
-                    (color-lighten-name default-bg 3))))
-    `((default :inherit (fixed-pitch shadow) :slant normal :weight normal)
-      (((type graphic) (class color) (background dark)) (:background ,dark-bg))
-      (((type graphic) (class color) (background light)) (:background ,light-bg))))
-  "Used preview text and code blocks"
-  :group 'slack)
-
-(defun slack-put-preview-overlay (start end)
-  (let ((overlay (make-overlay start end)))
-    (overlay-put overlay 'face 'slack-preview-face)))
-
-(defalias 'slack-put-email-body-overlay 'slack-put-preview-overlay)
-(defalias 'slack-put-code-block-overlay 'slack-put-preview-overlay)
-
 (defun slack-buffer-get-props-range (cur-point prop-name)
   (let* ((start (or (and (get-text-property cur-point prop-name) cur-point)
                     (next-single-property-change cur-point prop-name)))
@@ -567,6 +565,225 @@
   (interactive)
   (slack-if-let* ((buf slack-current-buffer))
       (slack-buffer-execute-datepicker-block-action buf)))
+
+(defun slack-group-rename ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-rename room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-group-names team #'(lambda (groups)
+                                                  (cl-remove-if #'slack-room-archived-p
+                                                                groups)))
+                      "Select Channel: "))))
+      (slack-conversations-rename room team))))
+
+(defun slack-group-invite ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-invite room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-group-names team
+                                         #'(lambda (rooms)
+                                             (cl-remove-if #'slack-room-archived-p
+                                                           rooms)))
+                      "Select Channel: "))))
+      (slack-conversations-invite room team))))
+
+(defun slack-group-leave ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-leave room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names team)
+                       "Select Channel: "))))
+      (slack-conversations-leave group team))))
+
+(defun slack-group-archive ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-archive room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names
+                        team
+                        #'(lambda (groups)
+                            (cl-remove-if #'slack-room-archived-p
+                                          groups)))
+                       "Select Channel: "))))
+      (slack-conversations-archive group team))))
+
+(defun slack-group-unarchive ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-unarchive room team)
+    (let* ((team (slack-team-select))
+           (group (slack-select-from-list
+                      ((slack-group-names
+                        team
+                        #'(lambda (groups)
+                            (cl-remove-if-not #'slack-room-archived-p
+                                              groups)))
+                       "Select Channel: "))))
+      (slack-conversations-unarchive group team))))
+
+(defun slack-group-mpim-close ()
+  "Close mpim."
+  (interactive)
+  (cl-labels
+      ((on-success (room team)
+                   #'(lambda (data)
+                       (when (and (eq t (plist-get data :no_op)))
+                         (oset room is-member nil)
+                         (slack-team-set-room team room)
+                         (slack-log (format "%s closed"
+                                            (slack-room-name room team))
+                                    team :level 'info)))))
+    (slack-if-let-room-and-team (room team)
+        (slack-conversations-close room
+                                   team
+                                   (on-success room team))
+      (let* ((team (slack-team-select))
+             (mpim (slack-select-from-list
+                       ((slack-group-names
+                         team
+                         #'(lambda (groups)
+                             (cl-remove-if-not #'(lambda (e) (and (slack-mpim-p e)
+                                                                  (oref e is-member)))
+                                               groups)))
+                        "Select Channel: "))))
+        (slack-conversations-close mpim team (on-success mpim team))))))
+
+(defun slack-im-close ()
+  "Close direct message."
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-close room team)
+    (let* ((team (slack-team-select))
+           (im (slack-select-from-list
+                   ((slack-im-names team)
+                    "Select Channel: "))))
+      (slack-conversations-close im team))))
+
+(defun slack-channel-rename ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-rename room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-channel-names team #'(lambda (channels)
+                                                    (cl-remove-if #'slack-room-member-p
+                                                                  channels)))
+                      "Select Channel: "))))
+      (slack-conversations-rename room team))))
+
+(defun slack-channel-invite ()
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-invite room team)
+    (let* ((team (slack-team-select))
+           (room (slack-select-from-list
+                     ((slack-channel-names team
+                                           #'(lambda (rooms)
+                                               (cl-remove-if #'slack-room-archived-p
+                                                             rooms)))
+                      "Select Channel: "))))
+      (slack-conversations-invite room team))))
+
+(defun slack-channel-leave (&optional team)
+  (interactive)
+  (slack-if-let-room-and-team (cur-room cur-team)
+      (slack-conversations-leave cur-room cur-team)
+    (let* ((team (or team (slack-team-select)))
+           (channel (slack-select-from-list ((slack-channel-names
+                                              team
+                                              #'(lambda (channels)
+                                                  (cl-remove-if-not
+                                                   #'slack-room-member-p
+                                                   channels)))
+                                             "Select Channel: "))))
+      (slack-conversations-leave channel team))))
+
+(defun slack-channel-join (&optional team)
+  (interactive)
+  (slack-if-let-room-and-team (cur-room cur-team)
+      (slack-conversations-join cur-room cur-team)
+    (cl-labels
+        ((filter-channel (channels)
+                         (cl-remove-if
+                          #'(lambda (c)
+                              (or (slack-room-member-p c)
+                                  (slack-room-archived-p c)))
+                          channels)))
+      (let* ((team (or team (slack-team-select)))
+             (channel (slack-select-from-list
+                          ((slack-channel-names team
+                                                #'filter-channel)
+                           "Select Channel: "))))
+        (slack-conversations-join channel team)))))
+
+(defun slack-channel-archive ()
+  "Archive selected channel."
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-archive room team)
+    (let* ((team (slack-team-select))
+           (channel (slack-select-from-list
+                        ((slack-channel-names
+                          team
+                          #'(lambda (channels)
+                              (cl-remove-if #'slack-room-archived-p
+                                            channels)))
+                         "Select Channel: "))))
+      (slack-conversations-archive channel team))))
+
+(defun slack-channel-unarchive ()
+  "Unarchive selected channel."
+  (interactive)
+  (slack-if-let-room-and-team (room team)
+      (slack-conversations-unarchive room team)
+    (let* ((team (slack-team-select))
+           (channel (slack-select-from-list
+                        ((slack-channel-names
+                          team
+                          #'(lambda (channels)
+                              (cl-remove-if-not #'slack-room-archived-p
+                                                channels)))
+                         "Select Channel: "))))
+      (slack-conversations-unarchive channel team))))
+
+(defun slack-file-upload ()
+  (interactive)
+  (slack-if-let*
+      ((buffer slack-current-buffer)
+       (team (oref buffer team))
+       (file (expand-file-name (car (find-file-read-args "Select File: " t))))
+       (filename (read-from-minibuffer "Filename: "
+                                       (file-name-nondirectory file)))
+       (filetype (slack-file-select-filetype (file-name-extension file)))
+       (initial-comment (read-from-minibuffer "Message: ")))
+      (cl-labels
+          ((on-file-upload (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-file-upload"))))
+
+        (slack-request
+         (slack-request-create
+          slack-file-upload-url
+          team
+          :type "POST"
+          :params (append (slack-file-upload-params buffer)
+                          (list
+                           (cons "filename" filename)
+                           (cons "filetype" filetype)
+                           (if initial-comment
+                               (cons "initial_comment" initial-comment))))
+          :files (list (cons "file" file))
+          :headers (list (cons "Content-Type" "multipart/form-data"))
+          :success #'on-file-upload)))
+    (error "Call from message buffer or thread buffer")))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here

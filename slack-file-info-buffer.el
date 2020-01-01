@@ -31,6 +31,8 @@
 (require 'slack-file)
 (require 'slack-message-formatter)
 (require 'slack-message-reaction)
+(require 'slack-stringify)
+(require 'slack-star)
 
 (defvar slack-file-link-keymap
   (let ((map (make-sparse-keymap)))
@@ -221,6 +223,36 @@
   (slack-if-let* ((id (get-text-property (point) 'file))
                   (buf slack-current-buffer))
       (slack-buffer-display-file buf id)))
+(cl-defmethod slack-file-run-action ((file slack-file) buf)
+  (let* ((actions (list (and (not (slack-file-info-buffer-p buf))
+                             (cons "View details"
+                                   #'(lambda ()
+                                       (slack-buffer-display-file
+                                        buf
+                                        (slack-file-id file)))))
+                        (cons "Copy link to file"
+                              #'(lambda ()
+                                  (kill-new (oref file permalink))))
+                        (if (oref file is-starred)
+                            (cons "Unstar file"
+                                  #'(lambda ()
+                                      (slack-buffer-remove-star
+                                       buf
+                                       (slack-file-id file))))
+                          (cons "Star file"
+                                #'(lambda ()
+                                    (slack-buffer-add-star
+                                     buf
+                                     (slack-file-id file)))))
+                        (cons "Open original"
+                              #'(lambda ()
+                                  (browse-url (oref file url-private))))))
+         (selected (completing-read "Action: "
+                                    (cl-remove-if #'null actions)
+                                    nil t))
+         (action (cdr-safe (assoc-string selected actions))))
+    (when action
+      (funcall action))))
 
 (provide 'slack-file-info-buffer)
 ;;; slack-file-info-buffer.el ends here

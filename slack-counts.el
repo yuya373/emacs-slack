@@ -27,7 +27,6 @@
 (require 'slack-util)
 (require 'slack-team)
 (require 'slack-request)
-(declare-function slack-update-modeline "slack-modeline")
 
 (defconst slack-client-counts-url "https://slack.com/api/client.counts")
 
@@ -106,12 +105,6 @@
       :type "POST"
       :params (list (cons "thread_counts_by_channel" "true"))
       :success #'success))))
-
-(cl-defmethod slack-counts-update ((team slack-team))
-  (slack-client-counts team
-                       #'(lambda (counts)
-                           (oset team counts counts)
-                           (slack-update-modeline))))
 
 (defun slack-counts-find (conversation-counts id)
   (cl-find-if #'(lambda (count)

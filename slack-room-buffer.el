@@ -35,11 +35,11 @@
 (require 'slack-message-reaction)
 (require 'slack-thread)
 (require 'slack-message-notification)
-(require 'slack-slash-commands)
 (require 'slack-action)
 (require 'slack-message-share-buffer)
 (require 'slack-reminder)
 (require 'slack-bot-message)
+(require 'slack-star)
 
 (defvar slack-completing-read-function)
 (defvar slack-alert-icon)
@@ -491,24 +491,6 @@ Execute this function when cursor is on some message."
             :params params
             :success #'on-success))))))
 
-(defun slack-message--send (message)
-  (slack-if-let* ((buf slack-current-buffer)
-                  (team (oref buf team))
-                  (room (slack-buffer-room buf)))
-      (if (string-prefix-p "/" message)
-          (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))
-              (slack-command-run (car command-and-arg)
-                                 team
-                                 (oref room id)
-                                 :text (cdr command-and-arg))
-            (error "Unknown slash command: %s"
-                   (car (split-string message))))
-        (slack-buffer-send-message buf message))))
-
-(defun slack-message-send ()
-  (interactive)
-  (slack-message--send (slack-message-read-from-minibuffer)))
-
 (defun slack-message-setup-minibuffer-keymap ()
   (unless slack-message-minibuffer-local-map
     (setq slack-message-minibuffer-local-map
@@ -754,6 +736,18 @@ Execute this function when cursor is on some message."
          (list (append action (list (cons "selected_date" selected-date))))
          (slack-buffer-block-action-container this message)
          team))))
+
+(defun slack-reaction-toggle ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction)))
+      (slack-buffer-toggle-reaction buffer reaction)))
+
+(defun slack-reaction-help-echo (_window _string pos)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property pos 'reaction)))
+      (slack-buffer-reaction-help-text buffer reaction)))
+
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here
