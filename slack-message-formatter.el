@@ -74,8 +74,10 @@
                             body)
                           files
                           attachment
-                          reactions
-                          thread)))
+                          (if (slack-string-blankp reactions) reactions
+                            (concat "\n" reactions))
+                          (if (slack-string-blankp thread) thread
+                            (concat "\n" thread)))))
 
 (cl-defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text attachments files) m
