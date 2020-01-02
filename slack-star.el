@@ -62,6 +62,17 @@
 (defclass slack-star-im (slack-star-item) ;; Dh ??
   ((channel :initarg :channel :type string))) ;; ID
 
+(cl-defmethod slack-star-item-file ((_this slack-star-item) &rest _args)
+  nil)
+
+(cl-defmethod slack-star-item-file ((this slack-star-message) file-id)
+  (let ((message (oref this message)))
+    (cl-find-if #'(lambda (e) (string= file-id (slack-file-id e)))
+                (oref message files))))
+
+(cl-defmethod slack-star-item-file ((this slack-star-file) &rest _args)
+  (oref this file))
+
 (cl-defmethod slack-star-item-message ((this slack-star-message))
   (oref this message))
 

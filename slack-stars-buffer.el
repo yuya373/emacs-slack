@@ -53,10 +53,10 @@
     (slack-if-let* ((ts (get-text-property (point) 'ts))
                     (items (slack-star-items (oref team star)))
                     (item (cl-find-if #'(lambda (e) (string= ts (slack-ts e)))
-                                      items)))
-        (when (slot-boundp item 'file)
-          (with-slots (file) item
-            (oset file is-expanded (not (oref file is-expanded))))
+                                      items))
+                    (file (slack-star-item-file item file-id)))
+        (progn
+          (oset file is-expanded (not (oref file is-expanded)))
           (slack-buffer--replace this ts)))))
 
 (cl-defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
