@@ -69,12 +69,13 @@
                                do (when (slack-room-open-p im)
                                     (push (oref im user) result)))
                       result)))
-      (slack-request
-       (slack-request-create
-        slack-dnd-team-info-url
-        team
-        :params (list (cons "users" (mapconcat #'identity user-ids ",")))
-        :success #'on-success)))))
+      (when (< 0 (length user-ids))
+        (slack-request
+         (slack-request-create
+          slack-dnd-team-info-url
+          team
+          :params (list (cons "users" (mapconcat #'identity user-ids ",")))
+          :success #'on-success))))))
 
 (provide 'slack-dnd-status)
 ;;; slack-dnd-status.el ends here
