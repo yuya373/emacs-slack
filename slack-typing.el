@@ -86,7 +86,7 @@ If USER-NAMES provided, also create `slack-typing-user' instances."
               (message ""))
           (with-slots (users room-id) typing
             (slack-if-let* ((room (slack-room-find room-id team))
-                            (buf (slack-buffer-find 'slack-message-buffer room team))
+                            (buf (slack-buffer-find 'slack-message-buffer team room))
                             (show-typing-p (slack-buffer-show-typing-p
                                             (get-buffer (slack-buffer-name buf)))))
                 (let ((visible-users (cl-remove-if

@@ -32,32 +32,32 @@
 (defclass slack-room-message-compose-buffer (slack-message-compose-buffer) ())
 
 (defun slack-create-room-message-compose-buffer (room team)
-  (slack-if-let* ((buf (slack-buffer-find 'slack-room-message-compose-buffer
-                                          room team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-room-message-compose-buffer team room)))
       buf
     (slack-room-message-compose-buffer :room-id (oref room id) :team team)))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-room-message-compose-buffer)) room team)
-  (format "*Slack - %s : %s Compose Message"
-          (oref team name)
-          (slack-room-name room team)))
-
 (cl-defmethod slack-buffer-name ((this slack-room-message-compose-buffer))
-  (with-slots (team) this
-    (slack-buffer-name (eieio-object-class-name this)
-                       (slack-buffer-room this)
-                       team)))
+  (let ((team (slack-buffer-team this))
+        (room (slack-buffer-room this)))
+    (format "*Slack - %s : %s Compose Message"
+            (slack-team-name team)
+            (slack-room-name room team))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-room-message-compose-buffer)) room)
+  (oref room id))
+
+(cl-defmethod slack-buffer-key ((this slack-room-message-compose-buffer))
+  (slack-buffer-key 'slack-room-message-compose-buffer (slack-buffer-room this)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-room-message-compose-buffer)))
+  'slack-room-message-compose-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (setq buffer-read-only nil)
       (erase-buffer)
-      (message "C-c C-c to send edited msg"))
-    (with-slots (team) this
-      (slack-buffer-push-new-3 'slack-room-message-compose-buffer
-                               (slack-buffer-room this)
-                               team))
+      (message "C-c C-c to send message"))
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)

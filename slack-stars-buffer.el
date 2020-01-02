@@ -35,19 +35,20 @@
 (defclass slack-stars-buffer (slack-buffer)
   ((oldest :type string :initform "")))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-stars-buffer)) team)
-  (format "*Slack - %s : Stars*" (oref team name)))
-
 (cl-defmethod slack-buffer-name ((this slack-stars-buffer))
-  (slack-buffer-name 'slack-stars-buffer (oref this team)))
+  (let ((team (oref this team)))
+    (format "*Slack - %s : Stars*" (oref team name))))
 
-(cl-defmethod slack-buffer-find ((class (subclass slack-stars-buffer)) team)
-  (slack-if-let* ((buf (cl-find-if #'(lambda (e) (string= (buffer-name e)
-                                                          (slack-buffer-name class team)))
-                                   (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
+(cl-defmethod slack-buffer-key ((_class (subclass slack-stars-buffer)) &rest _args)
+  'slack-stars-buffer)
 
-(cl-defmethod slack-buffer-toggle-email-expand ((this slack-stars-buffer) _file-id)
+(cl-defmethod slack-buffer-key ((_this slack-stars-buffer))
+  (slack-buffer-key 'slack-stars-buffer))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-stars-buffer)))
+  'slack-stars-buffer)
+
+(cl-defmethod slack-buffer-toggle-email-expand ((this slack-stars-buffer) file-id)
   (with-slots (team) this
     (slack-if-let* ((ts (get-text-property (point) 'ts))
                     (items (slack-star-items (oref team star)))
@@ -99,7 +100,7 @@
     (oset this oldest (slack-ts item))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-stars-buffer))
-  (let* ((buf (generate-new-buffer (slack-buffer-name this)))
+  (let* ((buf (cl-call-next-method))
          (star (oref (oref this team) star))
          (items (slack-star-items star))
          (oldest-message (car items)))
@@ -113,8 +114,6 @@
         (cl-loop for m in (oref star items)
                  do (slack-buffer-insert this m)))
       (goto-char (point-max)))
-    (unless (oref (oref this team) slack-stars-buffer)
-      (push buf (oref (oref this team) slack-stars-buffer)))
     buf))
 
 (defun slack-create-stars-buffer (team)

@@ -32,21 +32,25 @@
 (defclass slack-thread-message-compose-buffer (slack-message-compose-buffer)
   ((thread-ts :initarg :thread-ts :type string)))
 
-(cl-defmethod slack-buffer-find ((class (subclass slack-thread-message-compose-buffer)) room ts team)
-  (slack-buffer-find-4 class room ts team))
-
-(cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-compose-buffer)) room ts team)
-  (format "*Slack - %s : %s Compose Thread Message - %s*"
-          (oref team name)
-          (slack-room-name room team)
-          ts))
-
 (cl-defmethod slack-buffer-name ((this slack-thread-message-compose-buffer))
-  (with-slots (thread-ts team) this
-    (slack-buffer-name 'slack-thread-message-compose-buffer
-                       (slack-buffer-room this)
-                       thread-ts
-                       team)))
+  (let ((team (slack-buffer-team this))
+        (room (slack-buffer-room this))
+        (ts (oref this thread-ts)))
+    (format "*Slack - %s : %s Compose Thread Message - %s*"
+            (slack-team-name team)
+            (slack-room-name room team)
+            ts)))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-thread-message-compose-buffer)) _room ts)
+  ts)
+
+(cl-defmethod slack-buffer-key ((this slack-thread-message-compose-buffer))
+  (slack-buffer-key 'slack-thread-message-compose-buffer
+                    (slack-buffer-room this)
+                    (oref this thread-ts)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-thread-message-compose-buffer)))
+  'slack-thread-message-compose-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-thread-message-compose-buffer))
   (let ((buf (cl-call-next-method)))
@@ -55,17 +59,11 @@
       (slack-buffer-set-current-buffer this)
       (setq buffer-read-only nil)
       (erase-buffer))
-    (with-slots (thread-ts team) this
-      (slack-buffer-push-new-4 'slack-thread-message-compose-buffer
-                               (slack-buffer-room this)
-                               thread-ts
-                               team))
     buf))
 
 (defun slack-create-thread-message-compose-buffer (room ts team)
   "Create thread message compose buffer, according to ROOM, TS, TEAM."
-  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-compose-buffer
-                                          room ts team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-compose-buffer team room ts)))
       buf
     (slack-thread-message-compose-buffer :room-id (oref room id)
                                          :team team

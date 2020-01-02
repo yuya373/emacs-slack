@@ -34,54 +34,48 @@
 (defclass slack-pinned-items-buffer (slack-room-buffer)
   ((items :initarg :items :type list)))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-pinned-items-buffer)) _room _team)
-  (format "%s %s" (cl-call-next-method) "Pinned Items"))
-
 (cl-defmethod slack-buffer-name ((this slack-pinned-items-buffer))
-  (with-slots (team) this
-    (slack-buffer-name 'slack-pinned-items-buffer
-                       (slack-buffer-room this)
-                       team)))
+  (let ((team (slack-buffer-team this))
+        (room (slack-buffer-room this)))
+    (concat "*Slack - "
+            (slack-team-name team)
+            " : "
+            (slack-room-name room team)
+            " Pinned Items")))
 
-(cl-defmethod slack-buffer-buffer ((this slack-pinned-items-buffer))
-  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
-      (progn
-        (slack-pinned-items-buffer-insert-items this)
-        buf)
-    (slack-buffer-init-buffer this)))
+(cl-defmethod slack-buffer-key ((_class (subclass slack-pinned-items-buffer)) room)
+  (oref room id))
+
+(cl-defmethod slack-buffer-key ((this slack-pinned-items-buffer))
+  (slack-buffer-key 'slack-pinned-items-buffer (slack-buffer-room this)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-pinned-items-buffer)))
+  'slack-pinned-items-buffer)
 
 (cl-defmethod slack-pinned-items-buffer-insert-items ((this slack-pinned-items-buffer))
-  (let* ((buf (get-buffer (slack-buffer-name this)))
-         (header-face '(:underline t :weight bold))
+  (let* ((header-face '(:underline t :weight bold))
          (buf-header (propertize "Pinned Items\n" 'face header-face)))
-    (with-current-buffer buf
-      (let ((inhibit-read-only t))
-        (delete-region (point-min) lui-output-marker))
-      (let ((lui-time-stamp-position nil))
-        (lui-insert buf-header t))
-      (with-slots (team items) this
-        (if (< 0 (length items))
-            (cl-loop for m in items
-                     do (slack-buffer-insert this m t))
-          (let ((inhibit-read-only t))
-            (lui-insert "No Pinned Items" t)))))))
+    (let ((inhibit-read-only t))
+      (delete-region (point-min) lui-output-marker))
+    (let ((lui-time-stamp-position nil))
+      (lui-insert buf-header t))
+    (with-slots (team items) this
+      (if (< 0 (length items))
+          (cl-loop for m in items
+                   do (slack-buffer-insert this m t))
+        (let ((inhibit-read-only t))
+          (lui-insert "No Pinned Items" t))))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-pinned-items-buffer))
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-pinned-items-buffer-mode)
-      (slack-buffer-set-current-buffer this))
-    (slack-pinned-items-buffer-insert-items this)
-    (with-slots (team) this
-      (slack-buffer-push-new-3 'slack-pinned-items-buffer
-                               (slack-buffer-room this)
-                               team))
+      (slack-buffer-set-current-buffer this)
+      (slack-pinned-items-buffer-insert-items this))
     buf))
 
 (defun slack-create-pinned-items-buffer (room team items)
-  (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer
-                                          room
-                                          team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-pinned-items-buffer team room)))
       (progn
         (oset buf items items)
         buf)

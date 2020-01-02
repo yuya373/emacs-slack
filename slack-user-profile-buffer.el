@@ -40,56 +40,52 @@
 
 (defun slack-create-user-profile-buffer (team user-id)
   "Create User Profile Buffer of USER-ID in TEAM."
-  (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer
-                                          user-id team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer team user-id)))
       buf
     (slack-user-profile-buffer :team team
                                :user-id user-id)))
 
-(cl-defmethod slack-buffer-buffer ((this slack-user-profile-buffer))
-  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
-      (progn
-        (slack-buffer--insert this)
-        buf)
-    (slack-buffer-init-buffer this)))
-
-(cl-defmethod slack-buffer-name ((_class (subclass slack-user-profile-buffer)) user-id team)
-  (format "*Slack - %s : Profile - %s*" (oref team name) (slack-user-name user-id team)))
-
 (cl-defmethod slack-buffer-name ((this slack-user-profile-buffer))
-  (with-slots (user-id team) this
-    (slack-buffer-name 'slack-user-profile-buffer
-                       user-id
-                       team)))
+  (let ((user-id (oref this user-id))
+        (team (slack-buffer-team this)))
+    (format "*Slack - %s : Profile - %s*"
+            (slack-team-name team)
+            (slack-user-name user-id team))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-user-profile-buffer)) user-id)
+  user-id)
+
+(cl-defmethod slack-buffer-key ((this slack-user-profile-buffer))
+  (let ((user-id (oref this user-id)))
+    (slack-buffer-key 'slack-user-profile-buffer user-id)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-user-profile-buffer)))
+  'slack-user-profile-buffer)
 
 (cl-defmethod slack-buffer--insert ((this slack-user-profile-buffer))
-  (let ((buf (get-buffer (slack-buffer-name this))))
-    (with-current-buffer buf
-      (let ((inhibit-read-only t))
-        (setq buffer-read-only nil)
-        (erase-buffer)
-        (goto-char (point-min))
-        (with-slots (user-id team) this
-          (insert (propertize (slack-user-profile-to-string user-id team)
-                              'ts 'dummy)))
-        (setq buffer-read-only t)
-        (slack-buffer-enable-emojify)
-        (goto-char (point-min))
-        (slack-display-image)))))
+  (let ((inhibit-read-only t))
+    (setq buffer-read-only nil)
+    (erase-buffer)
+    (goto-char (point-min))
+    (with-slots (user-id team) this
+      (insert (propertize (slack-user-profile-to-string user-id team)
+                          'ts 'dummy)))
+    (setq buffer-read-only t)
+    (slack-buffer-enable-emojify)
+    (goto-char (point-min))
+    (slack-display-image)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-user-profile-buffer))
   (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-user-profile-buffer-mode)
-      (slack-buffer-set-current-buffer this))
-    (slack-buffer--insert this)
+      (slack-buffer-set-current-buffer this)
+      (slack-buffer--insert this))
     buf))
 
 (cl-defmethod slack-buffer--replace ((this slack-user-profile-buffer) _ts)
   (with-current-buffer (current-buffer)
-    (let ((inhibit-read-only t))
-      (delete-region (point-min) (point-max))
-      (slack-buffer--insert this))))
+    (slack-buffer--insert this)))
 
 (defun slack-user--profile-to-string (user team)
   (let* ((profile (slack-user-profile user))

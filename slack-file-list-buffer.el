@@ -46,23 +46,20 @@
    (oldest :type integer)
    (oldest-id :type string)))
 
-(cl-defmethod slack-buffer-find ((_class (subclass slack-file-list-buffer)) team)
-  (slack-if-let* ((buf (car (oref team slack-file-list-buffer))))
-      (with-current-buffer buf slack-current-buffer)))
-
-(cl-defmethod slack-buffer-name ((_class (subclass slack-file-list-buffer)) team)
-  (format "*Slack - %s : Files"
-          (slack-team-name team)))
-
 (cl-defmethod slack-buffer-name ((this slack-file-list-buffer))
-  (slack-buffer-name 'slack-file-list-buffer (oref this team)))
+  (format "*Slack - %s : Files" (slack-team-name (oref this team))))
 
-(cl-defmethod slack-buffer-major-mode ((_this slack-file-list-buffer))
-  'slack-file-list-buffer-mode)
+(cl-defmethod slack-buffer-key ((_class (subclass slack-file-list-buffer)))
+  'slack-file-list-buffer)
+
+(cl-defmethod slack-buffer-key ((_this slack-file-list-buffer))
+  (slack-buffer-key 'slack-file-list-buffer))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-file-list-buffer)))
+  'slack-file-list-buffer)
 
 (defun slack-create-file-list-buffer (page pages team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer
-                                             team)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-file-list-buffer team)))
       buffer
     (slack-file-list-buffer :team team :page page :pages pages)))
 
@@ -104,7 +101,7 @@
                                :after-success #'success))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-file-list-buffer))
-  (let ((buf (generate-new-buffer (slack-buffer-name this))))
+  (let ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-file-list-buffer-mode)
       (slack-buffer-set-current-buffer this)
@@ -115,13 +112,11 @@
                  do (slack-buffer-insert this file t))
         (slack-buffer-set-oldest this (car files)))
       (goto-char (point-max)))
-    (unless (oref (oref this team) slack-file-list-buffer)
-      (push buf (oref (oref this team) slack-file-list-buffer)))
     buf))
 
 (cl-defmethod slack-buffer-update ((this slack-file-list-buffer) message &key replace)
   (with-slots (room team) this
-    (let ((buffer (get-buffer (slack-buffer-name this))))
+    (let ((buffer (slack-buffer-buffer this)))
       (if replace (slack-buffer-replace this message)
         (with-current-buffer buffer
           (slack-buffer-insert this message))))))
@@ -209,8 +204,7 @@
       ((open-buffer (buf)
                     (slack-buffer-display buf)))
     (slack-if-let* ((team (slack-team-select))
-                    (buffer (slack-buffer-find 'slack-file-list-buffer
-                                               team)))
+                    (buffer (slack-buffer-find 'slack-file-list-buffer team)))
         (open-buffer buffer)
       (slack-file-list-request
        team

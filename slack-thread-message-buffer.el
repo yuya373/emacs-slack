@@ -43,37 +43,40 @@
    (has-more :initarg :has-more :type boolean)
    (last-read :initform nil :type (or null string))))
 
-(cl-defmethod slack-buffer-find ((class (subclass slack-thread-message-buffer)) room ts team)
-  (slack-buffer-find-4 class room ts team))
-
 (defun slack-create-thread-message-buffer (room team thread-ts &optional has-more)
   "Create thread message buffer according to ROOM, TEAM, THREAD-TS."
-  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer
-                                          room thread-ts team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-buffer team room thread-ts)))
       (kill-buffer (slack-buffer-buffer buf)))
   (slack-thread-message-buffer :room-id (oref room id)
                                :team team
                                :has-more has-more
                                :thread-ts thread-ts))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-thread-message-buffer)) room ts team)
-  (format "*Slack - %s : %s Thread - %s"
-          (oref team name)
-          (slack-room-name room team)
-          ts))
-
 (cl-defmethod slack-buffer-name ((this slack-thread-message-buffer))
   (with-slots (thread-ts team) this
     (let ((room (slack-buffer-room this)))
-      (slack-buffer-name 'slack-thread-message-buffer
-                         room thread-ts team))))
+      (format "*Slack - %s : %s Thread - %s"
+              (oref team name)
+              (slack-room-name room team)
+              thread-ts))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-thread-message-buffer)) _room ts)
+  ts)
+
+(cl-defmethod slack-buffer-key ((this  slack-thread-message-buffer))
+  (slack-buffer-key 'slack-thread-message-buffer
+                    (slack-buffer-room this)
+                    (oref this thread-ts)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-thread-message-buffer)))
+  'slack-thread-message-buffer)
 
 (cl-defmethod slack-buffer-update-last-read ((this slack-thread-message-buffer) message)
   (when message
     (oset this last-read (slack-ts message))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-thread-message-buffer))
-  (let* ((buf (generate-new-buffer (slack-buffer-name this))))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-thread-message-buffer-mode)
       (slack-buffer-set-current-buffer this)
@@ -94,17 +97,6 @@
                     (slack-buffer-update-mark this)))
               (when (slack-buffer-has-next-page-p this)
                 (slack-buffer-insert-load-more this))))))
-
-    (with-slots (thread-ts team) this
-      (slack-buffer-push-new-4 (eieio-object-class-name this)
-                               (slack-buffer-room this)
-                               thread-ts
-                               team))
-
-    buf))
-
-(cl-defmethod slack-buffer-buffer ((_this slack-thread-message-buffer))
-  (let ((buf (cl-call-next-method)))
     buf))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-thread-message-buffer))

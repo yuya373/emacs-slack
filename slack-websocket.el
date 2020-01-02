@@ -502,7 +502,7 @@ TEAM is one of `slack-teams'"
   (slack-if-let*
       ((user-id (plist-get payload :user))
        (room (slack-room-find (plist-get payload :channel) team))
-       (buf (slack-buffer-find 'slack-message-buffer room team))
+       (buf (slack-buffer-find 'slack-message-buffer team room))
        (show-typing-p (slack-buffer-show-typing-p (get-buffer
                                                    (slack-buffer-name buf)))))
       (cl-labels
@@ -630,8 +630,7 @@ TEAM is one of `slack-teams'"
 
 (defun slack-ws-handle-file-created (payload team)
   (slack-if-let* ((file-id (plist-get (plist-get payload :file) :id))
-                  (buffer (slack-buffer-find 'slack-file-list-buffer
-                                             team)))
+                  (buffer (slack-buffer-find 'slack-file-list-buffer team)))
       (slack-file-request-info file-id 1 team
                                #'(lambda (file &rest _args)
                                    (slack-buffer-update buffer file)))))

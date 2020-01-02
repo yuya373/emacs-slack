@@ -64,23 +64,32 @@
     (when (< 1 (count-windows))
       (delete-window win))))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-dialog-edit-element-buffer)) dialog-buffer element team)
-  (with-slots (dialog dialog-id) dialog-buffer
-    (with-slots (name) element
-      (with-slots (title) dialog
-        (format "* Slack Dialog Edit Element - %s [%s] edit %s : %s"
-                title dialog-id name (slack-team-name team))))))
-
-(cl-defmethod slack-buffer-find ((class (subclass slack-dialog-edit-element-buffer)) dialog-buffer element team)
-  (slack-buffer-find-4 class dialog-buffer element team))
-
 (cl-defmethod slack-buffer-name ((this slack-dialog-edit-element-buffer))
-  (with-slots (dialog-buffer element team) this
-    (slack-buffer-name 'slack-dialog-edit-element-buffer
-                       dialog-buffer element team)))
+  (with-slots (dialog-buffer element) this
+    (with-slots (dialog dialog-id) dialog-buffer
+      (with-slots (name) element
+        (with-slots (title) dialog
+          (format "* Slack Dialog Edit Element - %s [%s] edit %s : %s"
+                  title dialog-id name (slack-team-name (slack-buffer-team this))))))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-dialog-edit-element-buffer)) dialog-buffer element)
+  (with-slots (dialog-id) dialog-buffer
+    (with-slots (name) element
+      (concat dialog-id
+              ":"
+              name))))
+
+(cl-defmethod slack-buffer-key ((this slack-dialog-edit-element-buffer))
+  (with-slots (dialog-buffer element) this
+    (slack-buffer-key 'slack-dialog-edit-element-buffer
+                      dialog-buffer
+                      element)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-dialog-edit-element-buffer)))
+  'slack-dialog-edit-element-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-dialog-edit-element-buffer))
-  (let* ((buf (generate-new-buffer (slack-buffer-name this)))
+  (let* ((buf (cl-call-next-method))
          (element (oref this element)))
     (with-current-buffer buf
       (slack-dialog-edit-element-buffer-mode)
@@ -89,11 +98,7 @@
       (with-slots (value label) element
         (setq-local header-line-format
                     (format "%s: C-c to save content" label))
-        (insert (or value ""))))
-    (slack-buffer-push-new-4 'slack-dialog-edit-element-buffer
-                             (oref this dialog-buffer)
-                             element
-                             (oref this team))))
+        (insert (or value ""))))))
 
 (provide 'slack-dialog-edit-element-buffer)
 ;;; slack-dialog-edit-element-buffer.el ends here

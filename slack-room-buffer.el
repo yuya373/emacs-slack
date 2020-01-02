@@ -67,7 +67,8 @@
 (defconst slack-get-permalink-url "https://slack.com/api/chat.getPermalink")
 
 (defclass slack-room-buffer (slack-buffer)
-  ((room-id :initarg :room-id :type string)))
+  ((room-id :initarg :room-id :type string))
+  :abstract t)
 
 (cl-defmethod slack-buffer-room ((this slack-room-buffer))
   (slack-room-find (oref this room-id)
@@ -91,18 +92,6 @@
 (cl-defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
   (with-slots (team) this
     (slack-reaction-help-text reaction team)))
-
-(cl-defmethod slack-buffer-name ((_class (subclass slack-room-buffer)) room team)
-  (slack-if-let* ((room-name (slack-room-name room team)))
-      (format  "*Slack - %s : %s"
-               (oref team name)
-               room-name)))
-
-(cl-defmethod slack-buffer-name ((this slack-room-buffer))
-  (with-slots (team) this
-    (slack-buffer-name (eieio-object-class-name this)
-                       (slack-buffer-room this)
-                       team)))
 
 (cl-defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
   (with-slots (team) this

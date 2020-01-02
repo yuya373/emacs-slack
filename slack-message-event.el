@@ -121,18 +121,13 @@
 (cl-defmethod slack-event-update-buffer ((_this slack-message-deleted-event) message team)
   (when (slack-thread-message-p message)
     (slack-if-let* ((room (slack-room-find message team))
-                    (parent (slack-room-find-message room
-                                                     (slack-thread-ts message)))
-                    (buffer (slack-buffer-find 'slack-thread-message-buffer
-                                               room
-                                               (slack-thread-ts parent)
-                                               team)))
+                    (parent (slack-room-find-message room (slack-thread-ts message)))
+                    (thread-ts (slack-thread-ts parent))
+                    (buffer (slack-buffer-find 'slack-thread-message-buffer team room thread-ts)))
         (slack-buffer-message-delete buffer (slack-ts message))))
   (when (slack-message-visible-p message team)
     (slack-if-let* ((room (slack-room-find message team))
-                    (buf (slack-buffer-find 'slack-message-buffer
-                                            room
-                                            team)))
+                    (buf (slack-buffer-find 'slack-message-buffer team room)))
         (slack-buffer-message-delete buf (slack-ts message)))))
 
 (cl-defmethod slack-event-update-buffer ((_this slack-message-replied-event) message team)

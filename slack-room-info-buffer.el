@@ -38,31 +38,30 @@
   (setq-local default-directory slack-default-directory)
   (setq-local buffer-read-only t))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-room-info-buffer)) room team)
-  (slack-if-let* ((room-name (slack-room-name room team)))
+(cl-defmethod slack-buffer-name ((this slack-room-info-buffer))
+  (slack-if-let* ((team (oref this team))
+                  (room (slack-buffer-room this))
+                  (room-name (slack-room-name room team)))
       (format "*Slack Room Info - %s : %s"
               (slack-team-name team)
               room-name)))
 
-(cl-defmethod slack-buffer-name ((this slack-room-info-buffer))
-  (with-slots (team) this
-    (slack-buffer-name (eieio-object-class-name this)
-                       (slack-buffer-room this)
-                       team)))
+(cl-defmethod slack-buffer-key ((_class (subclass slack-room-info-buffer)) room)
+  (oref room id))
+
+(cl-defmethod slack-buffer-key ((this slack-room-info-buffer))
+  (slack-buffer-key 'slack-room-info-buffer (slack-buffer-room this)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-room-info-buffer)))
+  'slack-room-info-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-room-info-buffer))
-  (let* ((bufname (slack-buffer-name this))
-         (buf (generate-new-buffer bufname)))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-room-info-buffer-mode)
       (slack-buffer-set-current-buffer this)
       (slack-buffer-insert this)
       (goto-char (point-min)))
-    (with-slots (team) this
-      (let ((class (eieio-object-class-name this)))
-        (slack-buffer-push-new-3 class
-                                 (slack-buffer-room this)
-                                 team)))
     buf))
 
 (defface slack-room-info-title-face
@@ -162,20 +161,9 @@
 (cl-defmethod slack-buffer-insert-topic ((_room slack-room)))
 
 (cl-defmethod slack-create-room-info-buffer ((room slack-room) team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-room-info-buffer
-                                             room team)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-room-info-buffer team room)))
       buffer
     (slack-room-info-buffer :room-id (oref room id) :team team)))
-
-(cl-defmethod slack-buffer-buffer ((this slack-room-info-buffer))
-  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
-      (with-current-buffer buf
-        (let ((inhibit-read-only t))
-          (delete-region (point-min) (point-max))
-          (slack-buffer-insert this))
-        buf)
-    (slack-buffer-init-buffer this)))
-
 
 (provide 'slack-room-info-buffer)
 ;;; slack-room-info-buffer.el ends here

@@ -263,7 +263,7 @@
 (cl-defmethod slack-event-update-buffer ((_this slack-room-marked-event) room team)
   (slack-update-modeline)
   (slack-if-let*
-      ((buffer (slack-buffer-find 'slack-message-buffer room team)))
+      ((buffer (slack-buffer-find 'slack-message-buffer team room)))
       (slack-buffer-update-marker-overlay buffer)))
 
 (defclass slack-im-open-event (slack-room-event slack-room-async-event) ())

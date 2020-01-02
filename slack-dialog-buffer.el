@@ -98,20 +98,22 @@
   ((dialog-id :initarg :dialog-id :type string)
    (dialog :initarg :dialog :type slack-dialog)))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-dialog-buffer)) dialog-id dialog team)
-  (with-slots (title) dialog
-    (format "*Slack Dialog - %s [%s] : %s*"
-            title
-            dialog-id
-            (slack-team-name team))))
-
 (cl-defmethod slack-buffer-name ((this slack-dialog-buffer))
   (with-slots (dialog-id dialog team) this
-    (slack-buffer-name 'slack-dialog-buffer
-                       dialog-id dialog team)))
+    (with-slots (title) dialog
+      (format "*Slack Dialog - %s [%s] : %s*"
+              title
+              dialog-id
+              (slack-team-name team)))))
 
-(cl-defmethod slack-buffer-find ((class (subclass slack-dialog-buffer)) dialog-id dialog team)
-  (slack-buffer-find-4 class dialog-id dialog team))
+(cl-defmethod slack-buffer-key ((_class (subclass slack-dialog-buffer)) dialog-id &rest _args)
+  dialog-id)
+
+(cl-defmethod slack-buffer-key ((this slack-dialog-buffer))
+  (slack-buffer-key 'slack-dialog-buffer (oref this dialog-id)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-dialog-buffer)))
+  'slack-dialog-buffer)
 
 (cl-defmethod slack-buffer-insert-label ((this slack-dialog-element))
   (with-slots (label optional) this
@@ -146,10 +148,7 @@
 
 (defun slack-create-dialog-element-edit-buffer (dialog-buffer element team)
   (slack-if-let*
-      ((buf (slack-buffer-find 'slack-dialog-edit-element-buffer
-                               dialog-buffer
-                               element
-                               team)))
+      ((buf (slack-buffer-find 'slack-dialog-edit-element-buffer team dialog-buffer element)))
       buf
     (make-instance 'slack-dialog-edit-element-buffer
                    :dialog-buffer dialog-buffer
@@ -341,32 +340,22 @@
         (goto-char (point-min))))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-dialog-buffer))
-  (let* ((buf (generate-new-buffer (slack-buffer-name this)))
-         (dialog (oref this dialog))
-         (dialog-id (oref this dialog-id))
-         (team (oref this team)))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-dialog-buffer-mode)
       (slack-buffer-set-current-buffer this)
-      (slack-buffer-insert this))
-    (slack-buffer-push-new-4 'slack-dialog-buffer
-                             dialog-id dialog team)))
+      (slack-buffer-insert this))))
 
 (defun slack-create-dialog-buffer (dialog-id dialog team)
   (slack-if-let*
-      ((buf (slack-buffer-find 'slack-dialog-buffer
-                               dialog-id
-                               dialog
-                               team)))
+      ((buf (slack-buffer-find 'slack-dialog-buffer team dialog-id dialog)))
       buf
     (make-instance 'slack-dialog-buffer
                    :dialog-id dialog-id
                    :dialog dialog
                    :team team)))
 
-(cl-defmethod slack-dialog-buffer-save-element-value ((this slack-dialog-buffer)
-                                                   name
-                                                   value)
+(cl-defmethod slack-dialog-buffer-save-element-value ((this slack-dialog-buffer) name value)
   (with-slots (dialog) this
     (with-slots (elements) dialog
       (let ((element (cl-find-if #'(lambda (el)
@@ -402,8 +391,7 @@
                           (slack-buffer-display
                            (slack-create-dialog-buffer id
                                                        dialog
-                                                       team))
-                        ))))
+                                                       team))))))
       (slack-request
        (slack-request-create
         url

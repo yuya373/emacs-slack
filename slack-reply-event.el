@@ -45,7 +45,7 @@
 (cl-defmethod slack-event-update-buffer ((_this slack-reply-event) message team)
   (slack-message-update-buffer message team)
   (slack-if-let* ((room (slack-room-find message team))
-                  (buffer (slack-buffer-find 'slack-message-buffer room team))
+                  (buffer (slack-buffer-find 'slack-message-buffer team room))
                   (ts (slack-ts message))
                   (last-read (slack-buffer-last-read buffer)))
       (progn

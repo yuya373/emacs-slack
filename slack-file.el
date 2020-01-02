@@ -40,7 +40,12 @@
   :type 'string
   :group 'slack)
 
-(defvar slack-file-link-keymap)
+(defvar slack-file-link-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-file-display)
+    (define-key map [mouse-1] #'slack-file-display)
+    map))
+
 (defvar slack-file-download-button-keymap)
 (defconst slack-file-history-url "https://slack.com/api/files.list")
 (defconst slack-file-list-url "https://slack.com/api/files.list")

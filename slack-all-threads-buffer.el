@@ -48,6 +48,19 @@
    (new-threads-count :initarg :new-threads-count :type integer)
    (threads :initarg :threads :type list '())))
 
+(cl-defmethod slack-buffer-name ((this slack-all-threads-buffer))
+  (format "*Slack - %s : All Threads"
+          (slack-team-name (slack-buffer-team this))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-all-threads-buffer)))
+  'slack-all-threads-buffer)
+
+(cl-defmethod slack-buffer-key ((_this slack-all-threads-buffer))
+  (slack-buffer-key 'slack-all-threads-buffer))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-all-threads-buffer)))
+  'slack-all-threads-buffer)
+
 (defclass slack-thread-view ()
   ((root-msg :initarg :root_msg :type slack-message)
    (latest-replies :initarg :latest_replies :type list :initform '())
@@ -76,21 +89,8 @@
                    :unread_replies (mapcar #'(lambda (e) (slack-message-create e team room))
                                            (plist-get payload :unread_replies)))))
 
-
-(cl-defmethod slack-buffer-find ((_class (subclass slack-all-threads-buffer)) team)
-  (slack-if-let* ((buf (car (oref team slack-all-threads-buffer))))
-      (with-current-buffer buf slack-current-buffer)))
-
-(cl-defmethod slack-buffer-name ((_class (subclass slack-all-threads-buffer)) team)
-  (format "*Slack - %s : All Threads"
-          (slack-team-name team)))
-
-(cl-defmethod slack-buffer-name ((this slack-all-threads-buffer))
-  (slack-buffer-name 'slack-all-threads-buffer (oref this team)))
-
 (defun slack-create-all-threads-buffer (team total-unread-replies new-threads-count threads has-more)
-  (slack-if-let* ((buf (slack-buffer-find 'slack-all-threads-buffer
-                                          team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-all-threads-buffer team)))
       buf
     (slack-all-threads-buffer :team team
                               :total-unread-replies total-unread-replies
@@ -99,7 +99,7 @@
                               :has-more has-more)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-all-threads-buffer))
-  (let* ((buf (get-buffer-create (slack-buffer-name this))))
+  (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (delete-region (point-min) (point-max)))
@@ -116,9 +116,6 @@
       (when (slack-buffer-has-next-page-p this)
         (slack-buffer-insert-load-more this))
       (goto-char (point-min)))
-    (unless (oref (oref this team) slack-all-threads-buffer)
-      (oset (oref this team) slack-all-threads-buffer
-            (list buf)))
     (with-slots (team) this
       (slack-subscriptions-thread-clear-all team))
     buf))
@@ -228,8 +225,7 @@
                                                         threads
                                                         has-more)))
          (success (&rest args)
-                  (slack-if-let* ((buf (slack-buffer-find 'slack-all-threads-buffer
-                                                          team)))
+                  (slack-if-let* ((buf (slack-buffer-find 'slack-all-threads-buffer team)))
                       (progn
                         (kill-buffer (slack-buffer-buffer buf))
                         (apply #'open-buffer args))

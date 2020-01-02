@@ -93,157 +93,92 @@
   (lui-set-prompt " "))
 
 (defclass slack-buffer ()
-  ((team :initarg :team :type slack-team)))
-
-(defun slack-current-room-and-team ()
-  (if (and (bound-and-true-p slack-current-buffer)
-           (slot-exists-p slack-current-buffer 'room-id)
-           (slot-boundp slack-current-buffer 'room-id)
-           (slot-exists-p slack-current-buffer 'team)
-           (slot-boundp slack-current-buffer 'team))
-      (list (slack-buffer-room slack-current-buffer)
-            (oref slack-current-buffer team))
-    (list nil nil)))
-
-(defmacro slack-if-let-room-and-team (var-list then &rest else)
-  (declare (indent 2) (debug t))
-  `(cl-destructuring-bind ,var-list (slack-current-room-and-team)
-     (if (and ,@var-list)
-         ,then
-       ,@else)))
-
-(defun slack-buffer-push-new-3 (class a team)
-  (let ((buf (get-buffer (slack-buffer-name class a team))))
-    (unless (slack-buffer-find class a team)
-      (push buf
-            (slot-value team class)))
-    buf))
-
-(defun slack-buffer-push-new-4 (class a b team)
-  (let ((buf (get-buffer (slack-buffer-name class a b team))))
-    (unless (slack-buffer-find class a b team)
-      (push buf (slot-value team class)))
-    buf))
-
-(cl-defmethod slack-buffer-find ((class (subclass slack-buffer)) room team)
-  (slack-if-let* ((buf (cl-find-if
-                        #'(lambda (buf)
-                            (string= (buffer-name buf)
-                                     (slack-buffer-name class room team)))
-                        (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
-
-(cl-defmethod slack-buffer-buffer ((this slack-buffer))
-  (or (get-buffer (slack-buffer-name this))
-      (slack-buffer-init-buffer this)))
-
-(cl-defmethod slack-buffer-display ((this slack-buffer))
-  (condition-case err
-      (funcall slack-buffer-function (slack-buffer-buffer this))
-    (error (progn
-             (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
-                 (kill-buffer buf))
-             (ignore-errors
-               (slack-log (format "Backtrace: %S" (with-output-to-string (backtrace)))
-                          (oref this team)
-                          :level 'error))
-             (signal (car err) (cdr err))))))
+  ((team :initarg :team :type slack-team)
+   (buf :initarg :buf :initform nil))
+  :abstract t)
 
 (cl-defmethod slack-buffer-name ((_this slack-buffer))
-  "*Slack*")
+  (error "Implement this"))
 
-(defun slack-message-buffer-on-killed ()
-  (slack-if-let* ((buf slack-current-buffer)
-                  (class (eieio-object-class-name buf))
-                  (cb (current-buffer)))
-      (setf (slot-value (oref buf team) class)
-            (cl-remove-if #'(lambda (e) (equal e cb))
-                          (slot-value (oref buf team) class)))))
+(cl-defmethod slack-buffer-key ((_class (subclass slack-buffer)) &rest _args)
+  (error "Implement this"))
 
-(defun slack-buffer-replace-image (buffer ts)
-  (and (buffer-live-p buffer)
-       (with-current-buffer buffer
-         (slack-buffer--replace slack-current-buffer ts))))
+(cl-defmethod slack-buffer-key ((_this slack-buffer))
+  (error "Implement this"))
 
-(defun slack-display-image ()
-  (goto-char (point-min))
-  (while (re-search-forward "\\[Image\\]" (point-max) t)
-    (slack-if-let* ((spec (get-text-property (1- (point)) 'slack-image-spec))
-                    (end (point))
-                    (beg (previous-single-property-change end 'slack-image-spec))
-                    (cur-buffer (current-buffer))
-                    (url (car spec))
-                    (ts (get-text-property beg 'ts))
-                    (path (slack-image-path url)))
-        (let* ((no-token-p (get-text-property (1- (point)) 'no-token))
-               (token (and (not no-token-p)
-                           (oref (oref slack-current-buffer team)
-                                 token))))
-          (cl-labels
-              ((on-success ()
-                           (slack-buffer-replace-image cur-buffer ts)))
-            (unless (file-exists-p path)
-              (slack-url-copy-file url
-                                   path
-                                   :success #'on-success
-                                   :token token)))))))
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-buffer)))
+  (error "Implement this"))
 
-(cl-defmethod slack-buffer-init-buffer :after (this)
-  (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
-      (progn
-        (with-current-buffer buf
-          (slack-buffer-enable-emojify)
-          (add-hook 'kill-buffer-hook 'slack-message-buffer-on-killed nil t))
-        buf)))
+(cl-defmethod slack-team-buffer-key ((this slack-buffer))
+  (slack-team-buffer-key (eieio-object-class-name this)))
+
+(cl-defmethod slack-buffer-find ((class (subclass slack-buffer)) team &rest args)
+  (let* ((key (apply #'slack-buffer-key class args))
+         (ht (or (slot-value team (slack-team-buffer-key class))
+                 (make-hash-table :test #'equal))))
+    (gethash key ht)))
+
+(cl-defmethod slack-buffer-team ((this slack-buffer))
+  (oref this team))
+
+(cl-defmethod slack-team-set-buffer ((this slack-buffer))
+  (let* ((key (slack-buffer-key this))
+         (team (slack-buffer-team this))
+         (ht (or (let ((ht (slot-value team (slack-team-buffer-key this))))
+                   (and (hash-table-p ht) ht))
+                 (make-hash-table :test #'equal))))
+    (puthash key this ht)
+    (setf (slot-value team (slack-team-buffer-key this))
+          ht)))
+
+(cl-defmethod slack-buffer-buffer ((this slack-buffer))
+  (or (let ((buf (and (slot-boundp this 'buf)
+                      (oref this buf))))
+        (and (buffer-live-p buf) buf))
+      (slack-buffer-init-buffer this)))
 
 (cl-defmethod slack-buffer-set-current-buffer ((this slack-buffer))
   (setq-local slack-current-buffer this))
 
+(cl-defmethod slack-buffer-init-buffer :before ((this slack-buffer))
+  (slack-team-set-buffer this)
+  (let ((buf (generate-new-buffer (slack-buffer-name this))))
+    (oset this buf buf)
+    buf))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-buffer))
-  (generate-new-buffer (slack-buffer-name this)))
+  (oref this buf))
 
-(cl-defmethod slack-buffer-replace ((this slack-buffer) message)
-  (with-slots (team) this
-    (with-current-buffer (slack-buffer-buffer this)
-      (lui-replace (slack-message-to-string message team)
-                   (lambda ()
-                     (equal (get-text-property (point) 'ts)
-                            (slack-ts message)))))))
-
-(cl-defmethod slack-buffer--subscribe-cursor-event ((_this slack-buffer)
-                                                    _window
-                                                    _prev-point
-                                                    _type))
-
-(defun slack-reaction-echo-description ()
-  (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property (point) 'reaction))
-                  (team (oref buffer team)))
-      (slack-reaction-help-text reaction
-                                team
-                                #'(lambda (text) (message text)))))
-
-(defun slack-buffer-subscribe-cursor-event (window prev-point type)
-  (slack-if-let* ((buffer slack-current-buffer))
+(cl-defmethod slack-buffer-init-buffer :after ((this slack-buffer))
+  (slack-if-let* ((buf (slack-buffer-buffer this)))
       (progn
-        (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
-                           (buffer-name (window-buffer window))
-                           prev-point
-                           (point)
-                           type)
-                   (oref buffer team)
-                   :level 'trace)
+        (with-current-buffer buf
+          (slack-buffer-enable-emojify)
+          (add-hook 'kill-buffer-hook (slack-buffer-create-kill-hook this) nil t))
+        buf)))
 
-        (slack-buffer--subscribe-cursor-event buffer
-                                              window
-                                              prev-point
-                                              type)
+(cl-defmethod slack-buffer-create-kill-hook ((this slack-buffer))
+  #'(lambda ()
+      (let* ((key (slack-buffer-key this))
+             (team (slack-buffer-team this))
+             (ht (slot-value team (slack-team-buffer-key this))))
+        (puthash key nil ht))))
 
-        (when (eq type 'entered)
-          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
-        (when (eq type 'left)
-          (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
+(defvar slack-debug nil)
+
+(cl-defmethod slack-buffer-display ((this slack-buffer))
+  (if slack-debug
+      (funcall slack-buffer-function (slack-buffer-buffer this))
+    (condition-case err
+        (funcall slack-buffer-function (slack-buffer-buffer this))
+      (error (progn
+               (slack-if-let* ((buf (get-buffer (slack-buffer-name this))))
+                   (kill-buffer buf))
+               (ignore-errors
+                 (slack-log (format "Backtrace: %S" (with-output-to-string (backtrace)))
+                            (oref this team)
+                            :level 'error))
+               (signal (car err) (cdr err)))))))
 
 (cl-defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
@@ -304,13 +239,6 @@
           (slack-buffer-request-history this #'after-success))
       (message "No more items."))))
 
-(defun slack-buffer-find-4 (class a b team)
-  (slack-if-let* ((buf (cl-find-if #'(lambda (buf)
-                                       (string= (buffer-name buf)
-                                                (slack-buffer-name class a b team)))
-                                   (slot-value team class))))
-      (with-current-buffer buf slack-current-buffer)))
-
 (cl-defmethod slack-buffer-cant-execute ((this slack-buffer))
   (error "Can't execute this command from %s" (eieio-object-class-name this)))
 
@@ -352,6 +280,101 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-execute-datepicker-block-action ((this slack-buffer))
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer--replace ((this slack-buffer) _ts)
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-has-next-page-p ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-insert-history ((this slack-buffer))
+  (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
+  (slack-buffer-cant-execute this))
+
+(defun slack-current-room-and-team ()
+  (if (and (bound-and-true-p slack-current-buffer)
+           (slot-exists-p slack-current-buffer 'room-id)
+           (slot-boundp slack-current-buffer 'room-id)
+           (slot-exists-p slack-current-buffer 'team)
+           (slot-boundp slack-current-buffer 'team))
+      (list (slack-buffer-room slack-current-buffer)
+            (oref slack-current-buffer team))
+    (list nil nil)))
+
+(defmacro slack-if-let-room-and-team (var-list then &rest else)
+  (declare (indent 2) (debug t))
+  `(cl-destructuring-bind ,var-list (slack-current-room-and-team)
+     (if (and ,@var-list)
+         ,then
+       ,@else)))
+
+(defun slack-buffer-replace-image (buffer ts)
+  (and (buffer-live-p buffer)
+       (with-current-buffer buffer
+         (slack-buffer--replace slack-current-buffer ts))))
+
+(defun slack-display-image ()
+  (goto-char (point-min))
+  (while (re-search-forward "\\[Image\\]" (point-max) t)
+    (slack-if-let* ((spec (get-text-property (1- (point)) 'slack-image-spec))
+                    (end (point))
+                    (beg (previous-single-property-change end 'slack-image-spec))
+                    (cur-buffer (current-buffer))
+                    (url (car spec))
+                    (ts (get-text-property beg 'ts))
+                    (path (slack-image-path url)))
+        (let* ((no-token-p (get-text-property (1- (point)) 'no-token))
+               (token (and (not no-token-p)
+                           (oref (oref slack-current-buffer team)
+                                 token))))
+          (cl-labels
+              ((on-success ()
+                           (slack-buffer-replace-image cur-buffer ts)))
+            (unless (file-exists-p path)
+              (slack-url-copy-file url
+                                   path
+                                   :success #'on-success
+                                   :token token)))))))
+
+(cl-defmethod slack-buffer-replace ((this slack-buffer) message)
+  (with-slots (team) this
+    (with-current-buffer (slack-buffer-buffer this)
+      (lui-replace (slack-message-to-string message team)
+                   (lambda ()
+                     (equal (get-text-property (point) 'ts)
+                            (slack-ts message)))))))
+
+(cl-defmethod slack-buffer--subscribe-cursor-event ((_this slack-buffer)
+                                                    _window
+                                                    _prev-point
+                                                    _type))
+
+(defun slack-reaction-echo-description ()
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction))
+                  (team (oref buffer team)))
+      (slack-reaction-help-text reaction
+                                team
+                                #'(lambda (text) (message text)))))
+
+(defun slack-buffer-subscribe-cursor-event (window prev-point type)
+  (slack-if-let* ((buffer slack-current-buffer))
+      (progn
+        (slack-log (format "CURSOR-EVENT: BUFFER: %s, PREV-POINT: %s, POINT: %s, TYPE: %s"
+                           (buffer-name (window-buffer window))
+                           prev-point
+                           (point)
+                           type)
+                   (oref buffer team)
+                   :level 'trace)
+
+        (slack-buffer--subscribe-cursor-event buffer
+                                              window
+                                              prev-point
+                                              type)
+
+        (when (eq type 'entered)
+          (add-hook 'post-command-hook 'slack-reaction-echo-description t t))
+        (when (eq type 'left)
+          (remove-hook 'post-command-hook 'slack-reaction-echo-description t)))))
 
 (defun slack-buffer-enable-emojify ()
   (if slack-buffer-emojify
@@ -516,15 +539,6 @@
                if (string= (get-text-property i 'ts)
                            ts)
                return i))))
-
-(cl-defmethod slack-buffer--replace ((this slack-buffer) _ts)
-  (slack-buffer-cant-execute this))
-(cl-defmethod slack-buffer-has-next-page-p ((this slack-buffer))
-  (slack-buffer-cant-execute this))
-(cl-defmethod slack-buffer-insert-history ((this slack-buffer))
-  (slack-buffer-cant-execute this))
-(cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
-  (slack-buffer-cant-execute this))
 
 (defun slack-execute-button-block-action ()
   (interactive)

@@ -33,7 +33,8 @@
   "Slack Compose Message")
 
 (defclass slack-message-compose-buffer (slack-buffer)
-  ((room-id :initarg :room-id type string)))
+  ((room-id :initarg :room-id type string))
+  :abstract t)
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
   (with-slots (room-id team) this

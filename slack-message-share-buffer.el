@@ -38,37 +38,37 @@
   ((ts :initarg :ts :type string)))
 
 (defun slack-create-message-share-buffer (room team ts)
-  (slack-if-let* ((buf (slack-buffer-find 'slack-message-share-buffer
-                                          room ts team)))
+  (slack-if-let* ((buf (slack-buffer-find 'slack-message-share-buffer team room ts)))
       buf
     (slack-message-share-buffer :room-id (oref room id) :team team :ts ts)))
 
-(cl-defmethod slack-buffer-find ((class (subclass slack-message-share-buffer)) room ts team)
-  (slack-buffer-find-4 class room ts team))
+(cl-defmethod slack-buffer-name ((this slack-message-share-buffer))
+  (let ((ts (oref this ts))
+        (team (slack-buffer-team this))
+        (room (slack-buffer-room this)))
+    (format "*Slack - %s : %s  Share Message - %s"
+            (slack-team-name team)
+            (slack-room-name room team)
+            ts)))
 
-(cl-defmethod slack-buffer-name ((_class (subclass slack-message-share-buffer)) room ts team)
-  (format "*Slack - %s : %s  Share Message - %s"
-          (oref team name)
-          (slack-room-name room team)
+(cl-defmethod slack-buffer-key ((_class (subclass slack-message-share-buffer)) room ts)
+  (concat (oref room id)
+          ":"
           ts))
 
-(cl-defmethod slack-buffer-name ((this slack-message-share-buffer))
-  (with-slots (ts team) this
-    (slack-buffer-name 'slack-message-share-buffer
-                       (slack-buffer-room this)
-                       ts
-                       team)))
+(cl-defmethod slack-buffer-key ((this slack-message-share-buffer))
+  (let ((room (slack-buffer-room this))
+        (ts (oref this ts)))
+    (slack-buffer-key 'slack-message-share-buffer room ts)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-message-share-buffer)))
+  'slack-message-share-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-share-buffer))
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (slack-message-share-buffer-mode)
       (slack-buffer-set-current-buffer this))
-    (with-slots (ts team) this
-      (slack-buffer-push-new-4 'slack-message-share-buffer
-                               (slack-buffer-room this)
-                               ts
-                               team))
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)

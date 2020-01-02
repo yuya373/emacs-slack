@@ -47,13 +47,37 @@
             (upcase sort-dir))))
 
 (cl-defmethod slack-buffer-name ((this slack-search-result-buffer))
-  (with-slots (search-result team) this
-    (slack-buffer-name (eieio-object-class-name this) search-result team)))
+  (with-slots (search-result) this
+    (with-slots (query sort sort-dir) search-result
+      (format "*Slack - %s : %s Search Result - QUERY: %s, ORDER BY: %s %s"
+              (slack-team-name (slack-buffer-team this))
+              (if (slack-file-search-result-p search-result)
+                  "File"
+                "Message")
+              query
+              sort
+              (upcase sort-dir)))))
+
+(cl-defmethod slack-buffer-key ((_class (subclass slack-search-result-buffer)) search-result)
+  (with-slots (query sort sort-dir) search-result
+    (concat query
+            ":"
+            (if (slack-file-search-result-p search-result)
+                "File"
+              "Message")
+            ":"
+            sort
+            ":"
+            sort-dir)))
+
+(cl-defmethod slack-buffer-key ((this slack-search-result-buffer))
+  (slack-buffer-key 'slack-search-result-buffer (oref this search-result)))
+
+(cl-defmethod slack-team-buffer-key ((_class (subclass slack-search-result-buffer)))
+  'slack-search-result-buffer)
 
 (defun slack-create-search-result-buffer (search-result team)
-  (slack-if-let* ((buffer (slack-buffer-find 'slack-search-result-buffer
-                                             search-result
-                                             team)))
+  (slack-if-let* ((buffer (slack-buffer-find 'slack-search-result-buffer team search-result)))
       buffer
     (make-instance 'slack-search-result-buffer
                    :team team
@@ -101,7 +125,7 @@
                            (oref search-result paging)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-search-result-buffer))
-  (let ((buffer (generate-new-buffer (slack-buffer-name this))))
+  (let ((buffer (cl-call-next-method)))
     (with-current-buffer buffer
       (slack-search-result-buffer-mode)
       (slack-buffer-set-current-buffer this)
@@ -112,11 +136,6 @@
         (let ((lui-time-stamp-position nil))
           (if (slack-search-has-next-page-p search-result)
               (slack-buffer-insert-load-more this)))))
-
-    (with-slots (search-result team) this
-      (slack-buffer-push-new-3 'slack-search-result-buffer
-                               search-result
-                               team))
     buffer))
 
 (cl-defmethod slack-buffer-loading-message-end-point ((_this slack-search-result-buffer))
