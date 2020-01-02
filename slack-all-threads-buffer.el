@@ -78,6 +78,20 @@
                          do (cl-pushnew id ret :test #'string=)))
     ret))
 
+(cl-defmethod slack-buffer-find-message ((this slack-all-threads-buffer) ts)
+  (block outer
+    (cl-loop for thread in (reverse (oref this threads))
+             do (cl-loop for message in (append (list (oref thread root-msg))
+                                                (oref thread latest-replies)
+                                                (oref thread unread-replies))
+                         when (string= ts (slack-ts message))
+                         do (cl-return-from outer message)))))
+
+(cl-defmethod slack-buffer--replace ((this slack-all-threads-buffer) ts)
+  (let ((message (slack-buffer-find-message this ts)))
+    (when message
+      (slack-buffer-replace this message))))
+
 (defun slack-create-thread-view (payload team)
   (let ((room (slack-room-find (plist-get (plist-get payload :root_msg)
                                           :channel)
