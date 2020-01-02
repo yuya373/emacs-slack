@@ -93,9 +93,9 @@
           (&key data &allow-other-keys)
           (slack-request-handle-error
            (data "slack-commands-list-request")
-           (let ((commands (mapcar #'(lambda (command) (slack-command-create command))
-                                   (cl-remove-if-not #'listp
-                                                     (plist-get data :commands)))))
+           (let ((commands (cl-loop for command in (plist-get data :commands)
+                                    when (listp command)
+                                    collect (slack-command-create command))))
              (oset team commands commands)
              (slack-log "Slack Command List Updated" team :level 'info)))))
       (slack-request

@@ -66,28 +66,23 @@
              (data "slack-download-emoji")
              (emojify-create-emojify-emojis)
              (let* ((emojis (plist-get data :emoji))
-                    (names (cl-remove-if
-                            #'(lambda (key) (not (plist-member emojis key)))
-                            emojis))
-                    (paths
-                     (mapcar
-                      #'(lambda (name)
-                          (let* ((url (handle-alias name emojis))
-                                 (path (if (file-exists-p url) url
-                                         (slack-image-path url)))
-                                 (emoji (cons (format "%s:" name)
-                                              (list (cons "name" (substring (symbol-name name) 1))
-                                                    (cons "image" path)
-                                                    (cons "style" "github")))))
-                            (if (file-exists-p path)
-                                (push-new-emoji emoji)
-                              (slack-url-copy-file
-                               url
-                               path
-                               :success #'(lambda () (push-new-emoji emoji))))
+                    (paths nil))
+               (cl-loop for (name _) on emojis by #'cddr
+                        do (let* ((url (handle-alias name emojis))
+                                  (path (if (file-exists-p url) url
+                                          (slack-image-path url)))
+                                  (emoji (cons (format "%s:" name)
+                                               (list (cons "name" (substring (symbol-name name) 1))
+                                                     (cons "image" path)
+                                                     (cons "style" "github")))))
+                             (if (file-exists-p path)
+                                 (push-new-emoji emoji)
+                               (slack-url-copy-file
+                                url
+                                path
+                                :success #'(lambda () (push-new-emoji emoji))))
 
-                            path))
-                      names)))
+                             (push path paths)))
                (funcall after-success paths)))))
         (slack-request
          (slack-request-create
