@@ -43,11 +43,13 @@
   ""
   :group 'slack)
 
-(defclass slack-search-paging ()
-  ((count :initarg :count :type number)
-   (total :initarg :total :type number)
+(defclass slack-search-pagination ()
+  ((total-count :initarg :total_count :type number)
    (page :initarg :page :type number)
-   (pages :initarg :pages :type number)))
+   (per-page :initarg :per_page :type number)
+   (page-count :initarg :page_count :type number)
+   (first :initarg :first :type number)
+   (last :initarg :last :type number)))
 
 (defclass slack-search-result (slack-room)
   ((query :initarg :query :type string)
@@ -55,7 +57,7 @@
    (sort-dir :initarg :sort-dir :type string)
    (total :initarg :total :type number)
    (matches :initarg :matches :initform nil :type (or null list))
-   (paging :initarg :paging :type slack-search-paging)))
+   (pagination :initarg :pagination :type slack-search-pagination)))
 
 (defclass slack-file-search-result (slack-search-result) ())
 
@@ -77,7 +79,7 @@
    (name :initarg :name :type string)))
 
 (defclass slack-search-message-around-message ()
-  ((user :initarg :user :type string)
+  ((user :initarg :user :type (or null string))
    (username :initarg :username :type string)
    (text :initarg :text :type string)
    (ts :initarg :ts :type string)
@@ -89,7 +91,7 @@
   (oset this sort-dir (oref other sort-dir))
   (oset this total (oref other total))
   (oset this matches (append (oref this matches) (oref other matches)))
-  (oset this paging (oref other paging)))
+  (oset this pagination (oref other pagination)))
 
 (cl-defmethod slack-message-to-string ((this slack-search-message) team)
   (with-slots (channel username) this
@@ -108,12 +110,11 @@
   (slack-ts (oref this message)))
 
 (cl-defmethod slack-search-has-next-page-p ((this slack-search-result))
-  (slack-search-paging-next-page (oref this paging)))
+  (slack-search-paging-next-page (oref this pagination)))
 
-(cl-defmethod slack-search-paging-next-page ((this slack-search-paging))
-  (with-slots (pages page) this
-    (unless (< pages (1+ page))
-      (1+ page))))
+(cl-defmethod slack-search-paging-next-page ((this slack-search-pagination))
+  (with-slots (page-count page) this
+    (min (1+ page) page-count)))
 
 (defun slack-search-create-message-channel (payload)
   (and payload
@@ -156,24 +157,25 @@
                    :next next
                    :next-2 next-2)))
 
-(defun slack-search-create-paging (payload)
+(defun slack-search-create-pagination (payload)
   (and payload
-       (make-instance 'slack-search-paging
-                      :count (plist-get payload :count)
-                      :total (plist-get payload :total)
+       (make-instance 'slack-search-pagination
+                      :total_count (plist-get payload :total_count)
                       :page (plist-get payload :page)
-                      :pages (plist-get payload :pages))))
+                      :per_page (plist-get payload :per_page)
+                      :page_count (plist-get payload :page_count)
+                      :first (plist-get payload :first)
+                      :last (plist-get payload :last))))
 
 (defun slack-search-create-result (payload sort sort-dir team)
   (let* ((messages (plist-get payload :messages))
          (matches (mapcar #'(lambda (e) (slack-search-create-message e team))
                           (plist-get messages :matches)))
-         (paging (slack-search-create-paging
-                  (plist-get messages :paging))))
+         (pagination (slack-search-create-pagination (plist-get messages :pagination))))
     (make-instance 'slack-search-result
                    :query (plist-get payload :query)
                    :total (plist-get messages :total)
-                   :paging paging
+                   :pagination pagination
                    :matches matches
                    :sort sort
                    :sort-dir sort-dir)))
@@ -182,12 +184,11 @@
   (let* ((files (plist-get payload :files))
          (matches (mapcar #'slack-file-create
                           (plist-get files :matches)))
-         (paging (slack-search-create-paging
-                  (plist-get files :paging))))
+         (pagination (slack-search-create-pagination (plist-get files :pagination))))
     (make-instance 'slack-search-result
                    :query (plist-get payload :query)
                    :total (plist-get files :total)
-                   :paging paging
+                   :pagination pagination
                    :matches matches
                    :sort sort
                    :sort-dir sort-dir)))

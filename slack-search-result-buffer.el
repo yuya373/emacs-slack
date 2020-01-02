@@ -110,9 +110,10 @@
 
 (cl-defmethod slack-buffer-insert-history ((this slack-search-result-buffer))
   (with-slots (team search-result) this
-    (let* ((paging (oref search-result paging))
-           (per-page (oref paging count))
-           (matches (last (oref search-result matches) per-page))
+    (let* ((pagination (oref search-result pagination))
+           (first (oref pagination first))
+           (last (oref pagination last))
+           (matches (last (oref search-result matches) (1+ (- last first))))
            (cur-point (point)))
       (cl-loop for match in matches
                do (slack-buffer-insert this match))
@@ -122,7 +123,7 @@
   (with-slots (team search-result) this
     (slack-search-request search-result after-success team
                           (slack-search-paging-next-page
-                           (oref search-result paging)))))
+                           (oref search-result pagination)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-search-result-buffer))
   (let ((buffer (cl-call-next-method)))

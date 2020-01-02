@@ -33,7 +33,7 @@
 (defclass slack-bot-message (slack-message)
   ((bot-id :initarg :bot_id :type string :initform "")
    (username :initarg :username :type string :initform "")
-   (user :initarg :user :type string :initform "")
+   (user :initarg :user :type (or null string) :initform "")
    (icons :initarg :icons)))
 
 (cl-defmethod slack-message-bot-id ((this slack-bot-message))
