@@ -29,7 +29,6 @@
 
 (declare-function emojify-create-emojify-emojis "emojify")
 
-(defvar slack-teams nil)
 (defvar slack-current-team nil)
 (defvar slack-completing-read-function)
 (defcustom slack-prefer-current-team nil
@@ -147,9 +146,19 @@ use `slack-change-current-team' to change `slack-current-team'"
                              do (when buffer
                                   (kill-buffer (slack-buffer-buffer buffer)))))))))
 
+(defvar slack-tokens-by-id (make-hash-table :test 'equal))
+(defvar slack-teams-by-token (make-hash-table :test 'equal))
+(defun slack-team-find-by-token (token)
+  (gethash token slack-teams-by-token))
+
 (defun slack-team-find (id)
-  (cl-find-if #'(lambda (team) (string= id (oref team id)))
-              slack-teams))
+  (let ((token (gethash id slack-tokens-by-id)))
+    (when token
+      (slack-team-find-by-token token))))
+
+(cl-defmethod slack-team--delete ((this slack-team))
+  (remhash (oref this id) slack-tokens-by-id)
+  (remhash (oref this token) slack-teams-by-token))
 
 (cl-defmethod slack-team-equalp ((team slack-team) other)
   (with-slots (token) team
@@ -158,20 +167,16 @@ use `slack-change-current-team' to change `slack-current-team'"
 (cl-defmethod slack-team-name ((team slack-team))
   (oref team name))
 
-(defun slack-team-find-by-name (name)
-  (if name
-      (cl-find-if #'(lambda (team) (string= name (oref team name)))
-                  slack-teams)))
-
 (cl-defun slack-team-select (&optional no-default include-not-connected)
   (cl-labels ((select-team ()
-                           (slack-team-find-by-name
-                            (funcall slack-completing-read-function
-                                     "Select Team: "
-                                     (mapcar #'(lambda (team) (oref team name))
-                                             (if include-not-connected
-                                                 slack-teams
-                                               (slack-team-connected-list)))))))
+                           (let* ((teams (if include-not-connected
+                                             (hash-table-values slack-teams-by-token)
+                                           (slack-team-connected-list)))
+                                  (alist (mapcar #'(lambda (team) (cons (slack-team-name team)
+                                                                        (oref team token)))
+                                                 teams))
+                                  (selected (funcall slack-completing-read-function "Select Team: " alist)))
+                             (slack-team-find-by-token (cdr (cl-assoc selected alist :test #'string=))))))
     (let ((team (if (and slack-prefer-current-team
                          slack-current-team
                          (not no-default))
@@ -192,7 +197,7 @@ use `slack-change-current-team' to change `slack-current-team'"
   (cl-remove-if #'null
                 (mapcar #'(lambda (team)
                             (if (slack-team-connectedp team) team))
-                        slack-teams)))
+                        (hash-table-values slack-teams-by-token))))
 
 (defun slack-team-modeline-enabledp (team)
   (oref team modeline-enabled))

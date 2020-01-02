@@ -106,7 +106,7 @@
                                                                     nil))))))
                (if (< 0 (hash-table-count slack-emoji-master))
                    (select)
-                 (slack-emoji-fetch-master-data (car slack-teams))
+                 (slack-emoji-fetch-master-data (car (hash-table-values slack-teams-by-token)))
                  (select))))
     (read-from-minibuffer "Emoji: ")))
 

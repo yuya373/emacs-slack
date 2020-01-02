@@ -101,17 +101,13 @@ pre defined sources are `helm-slack-channels-source', `helm-slack-groups-source'
                          (cl-destructuring-bind (_label room team) label-room-team
                            (slack-room-latest room team))))
 
-    (sort (cl-loop for team in slack-teams
+    (sort (cl-loop for team in (hash-table-values slack-teams-by-token)
                    as rooms = (funcall rooms-selector team)
-                   nconc (cl-labels
-                             ((filter (rooms) (cl-remove-if #'slack-room-hidden-p
-                                                            rooms))
-                              (collector (label room) (list label room team)))
-                           (let ((slack-display-team-name
-                                  (< 1 (length slack-teams))))
-                             (cl-loop for room in (filter rooms)
-                                      collect (collector (slack-room-label room team)
-                                                         room))))))))
+                   nconc (cl-labels ((filter (rooms) (cl-remove-if #'slack-room-hidden-p rooms))
+                                     (collector (label room) (list label room team)))
+                           (cl-loop for room in (filter rooms)
+                                    collect (collector (slack-room-label room team)
+                                                       room)))))))
 
 (defmacro helm-slack-bind-room-and-team (candidate &rest body)
   (declare (indent 2) (debug t))
@@ -288,7 +284,7 @@ use `slack-select-unread-rooms' instead."
                                             (error (when (timerp timer)
                                                      (cancel-timer timer)))))
                                       :on-error #'on-error))
-            slack-teams))
+            (hash-table-values slack-teams-by-token)))
 
     (setq timer
           (run-at-time t 0.5 #'(lambda ()

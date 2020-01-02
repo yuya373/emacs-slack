@@ -88,7 +88,7 @@
 (defun slack-update-modeline ()
   (interactive)
   (let ((teams (cl-remove-if-not #'slack-team-modeline-enabledp
-                                 slack-teams)))
+                                 (hash-table-values slack-teams-by-token))))
     (when (< 0 (length teams))
       (setq slack-modeline
             (funcall slack-modeline-formatter

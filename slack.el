@@ -162,10 +162,10 @@ When `never', never display typing indicator."
                (slack-authorize team)))
     (if team
         (start team)
-      (if slack-teams
-          (cl-loop for team in slack-teams
-                   do (start team))
-        (slack-start (call-interactively #'slack-register-team))))
+      (if (hash-table-empty-p slack-teams-by-token)
+          (slack-start (call-interactively #'slack-register-team))
+        (cl-loop for team in (hash-table-values slack-teams-by-token)
+                 do (start team))))
     (slack-enable-modeline)))
 
 ;;;###autoload
@@ -203,18 +203,12 @@ Available options (property name, type, default value)
                            (let ((token (plist-get plist :token)))
                              (and token (< 0 (length token)))))
               (register (team)
-                        (let ((same-team (cl-find-if
-                                          #'(lambda (o) (slack-team-equalp team o))
-                                          slack-teams)))
+                        (let ((same-team (slack-team-find-by-token (oref team token))))
                           (if same-team
                               (progn
                                 (slack-team-disconnect same-team)
                                 (slack-team-connect team))))
-                        (setq slack-teams
-                              (cons team
-                                    (cl-remove-if #'(lambda (other)
-                                                      (slack-team-equalp team other))
-                                                  slack-teams)))
+                        (puthash (oref team token) team slack-teams-by-token)
                         (if (plist-get plist :default)
                             (setq slack-current-team team))))
 
@@ -229,19 +223,15 @@ Available options (property name, type, default value)
 
 (defun slack-change-current-team ()
   (interactive)
-  (let ((team (slack-team-find-by-name
-               (funcall slack-completing-read-function
-                        "Select Team: "
-                        (mapcar #'(lambda (team) (oref team name))
-                                slack-teams)))))
+  (let* ((alist (mapcar #'(lambda (team) (cons (slack-team-name team)
+                                               (oref team token)))
+                        (hash-table-values slack-teams-by-token)))
+         (selected (funcall slack-completing-read-function "Select Team: " alist))
+         (team (slack-team-find-by-token
+                (cdr-safe (cl-assoc selected alist :test #'string=)))))
     (setq slack-current-team team)
     (message "Set slack-current-team to %s" (or (and team (oref team name))
                                                 "nil"))
-    (setq slack-teams
-          (cons team (cl-remove-if #'(lambda (e)
-                                       (string= (oref e id)
-                                                (oref slack-current-team id)))
-                                   slack-teams)))
     (if team
         (slack-team-connect team))))
 

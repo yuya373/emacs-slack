@@ -125,7 +125,7 @@
 (defun slack-ws-close ()
   (interactive)
   (mapc #'(lambda (team) (slack-ws--close (oref team ws) team t))
-        slack-teams)
+        (hash-table-values slack-teams-by-token))
   (slack-request-worker-quit))
 
 (cl-defun slack-ws--close (ws team &optional (close-reconnection nil))
@@ -832,10 +832,7 @@ TEAM is one of `slack-teams'"
     (if (yes-or-no-p (format "Delete %s from `slack-teams'?"
                              (oref selected name)))
         (progn
-          (setq slack-teams
-                (cl-remove-if #'(lambda (team)
-                                  (slack-team-equalp selected team))
-                              slack-teams))
+          (slack-team--delete selected)
           (slack-team-disconnect selected)
           (message "Delete %s from `slack-teams'" (oref selected name))))))
 
@@ -850,7 +847,6 @@ TEAM is one of `slack-teams'"
                              (list :id (oref this message-id)
                                    :type type
                                    :ids ids))))
-
 (defun slack-authorize (team &optional error-callback success-callback)
   (let ((authorize-request (oref team authorize-request)))
     (if (and authorize-request (not (request-response-done-p authorize-request)))
@@ -897,6 +893,7 @@ TEAM is one of `slack-teams'"
                               (oset team self-name (plist-get self :name))
                               (slack-team-set-ws-url team (plist-get data :url))
                               (oset team domain (plist-get team-data :domain)))
+                            (puthash (oref team id) (oref team token) slack-tokens-by-id)
                             (slack-team-open-ws team :on-open #'on-open))))))
         (let ((request (slack-request
                         (slack-request-create
