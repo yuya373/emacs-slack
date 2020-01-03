@@ -163,7 +163,7 @@
 
 (defun slack-message--send (message)
   (slack-if-let* ((buf slack-current-buffer)
-                  (team (oref buf team))
+                  (team (slack-buffer-team buf))
                   (room (slack-buffer-room buf)))
       (if (string-prefix-p "/" message)
           (slack-if-let* ((command-and-arg (slack-slash-commands-parse message team)))

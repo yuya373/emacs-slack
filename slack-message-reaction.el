@@ -61,15 +61,15 @@
 
 (defun slack-message-show-reaction-users ()
   (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (with-slots (team) buf
-        (slack-if-let* ((reaction (ignore-errors
-                                    (get-text-property (point)
-                                                       'reaction))))
-            (slack-reaction-help-text reaction
-                                      team
-                                      #'(lambda (message) (message message)))
-          (message "Can't get reaction:")))))
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (slack-buffer-team buf)))
+      (slack-if-let* ((reaction (ignore-errors
+                                  (get-text-property (point)
+                                                     'reaction))))
+          (slack-reaction-help-text reaction
+                                    team
+                                    #'(lambda (message) (message message)))
+        (message "Can't get reaction:"))))
 
 (defun slack-message-reaction-select (reactions)
   (let ((list (mapcar #'(lambda (r)

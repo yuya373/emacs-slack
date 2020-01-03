@@ -42,11 +42,12 @@
   (slack-if-let* ((buffer (slack-buffer-find 'slack-message-edit-buffer team room ts)))
       buffer
     (slack-message-edit-buffer :room-id (oref room id)
-                               :team team
+                               :team-id (oref team id)
                                :ts ts)))
 
 (cl-defmethod slack-buffer-name ((this slack-message-edit-buffer))
-  (with-slots (team ts) this
+  (let ((team (slack-buffer-team this))
+        (ts (oref this ts)))
     (format "*Slack - %s : %s Edit Message %s"
             (oref team name)
             (slack-room-name (slack-buffer-room this) team)
@@ -66,23 +67,25 @@
   'slack-message-edit-buffer)
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-edit-buffer))
-  (with-slots (team ts) this
-    (let* ((room (slack-buffer-room this))
-           (buf (cl-call-next-method))
-           (message (slack-room-find-message room ts)))
-      (with-current-buffer buf
-        (slack-message-edit-buffer-mode)
-        (slack-buffer-set-current-buffer this)
-        (insert (slack-message-get-text message team)))
-      buf)))
+  (let* ((ts (oref this ts))
+         (team (slack-buffer-team this))
+         (room (slack-buffer-room this))
+         (buf (cl-call-next-method))
+         (message (slack-room-find-message room ts)))
+    (with-current-buffer buf
+      (slack-message-edit-buffer-mode)
+      (slack-buffer-set-current-buffer this)
+      (insert (slack-message-get-text message team)))
+    buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-edit-buffer) message)
-  (with-slots (team ts) this
-    (slack-if-let* ((room (slack-buffer-room this))
-                    (m (slack-room-find-message room ts)))
-        (progn
-          (slack-message--edit (oref room id) team ts message)
-          (cl-call-next-method)))))
+  (slack-if-let* ((ts (oref this ts))
+                  (team (slack-buffer-team this))
+                  (room (slack-buffer-room this))
+                  (m (slack-room-find-message room ts)))
+      (progn
+        (slack-message--edit (oref room id) team ts message)
+        (cl-call-next-method))))
 
 (provide 'slack-message-edit-buffer)
 ;;; slack-message-edit-buffer.el ends here

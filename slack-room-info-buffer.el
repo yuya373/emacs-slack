@@ -39,7 +39,7 @@
   (setq-local buffer-read-only t))
 
 (cl-defmethod slack-buffer-name ((this slack-room-info-buffer))
-  (slack-if-let* ((team (oref this team))
+  (slack-if-let* ((team (slack-buffer-team this))
                   (room (slack-buffer-room this))
                   (room-name (slack-room-name room team)))
       (format "*Slack Room Info - %s : %s"
@@ -85,23 +85,22 @@
   :group 'slack)
 
 (cl-defmethod slack-buffer-insert ((this slack-room-info-buffer))
-  (with-slots (team) this
-    (let ((room (slack-buffer-room this))
-          (inhibit-read-only t))
-      (insert (propertize "About "
-                          'face 'slack-room-info-title-face))
-      (insert (propertize (slack-room-name room team)
-                          'face 'slack-room-info-title-room-name-face))
-      (insert "\n")
-      (insert "\n")
-      (insert (propertize "Channel Details"
-                          'face 'slack-room-info-section-title-face))
-      (insert "\n")
+  (let ((team (slack-buffer-team this))
+        (room (slack-buffer-room this))
+        (inhibit-read-only t))
+    (insert (propertize "About "
+                        'face 'slack-room-info-title-face))
+    (insert (propertize (slack-room-name room team)
+                        'face 'slack-room-info-title-room-name-face))
+    (insert "\n")
+    (insert "\n")
+    (insert (propertize "Channel Details"
+                        'face 'slack-room-info-section-title-face))
+    (insert "\n")
 
-      (slack-buffer-insert-purpose room)
-      (slack-buffer-insert-topic room)
-      (slack-buffer-insert-created room team)
-      )))
+    (slack-buffer-insert-purpose room)
+    (slack-buffer-insert-topic room)
+    (slack-buffer-insert-created room team)))
 
 (cl-defmethod slack-buffer-insert-created ((room slack-room) _team)
   (with-slots (created) room
@@ -163,7 +162,7 @@
 (cl-defmethod slack-create-room-info-buffer ((room slack-room) team)
   (slack-if-let* ((buffer (slack-buffer-find 'slack-room-info-buffer team room)))
       buffer
-    (slack-room-info-buffer :room-id (oref room id) :team team)))
+    (slack-room-info-buffer :room-id (oref room id) :team-id (oref team id))))
 
 (provide 'slack-room-info-buffer)
 ;;; slack-room-info-buffer.el ends here

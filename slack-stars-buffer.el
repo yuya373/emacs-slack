@@ -36,7 +36,7 @@
   ((oldest :type string :initform "")))
 
 (cl-defmethod slack-buffer-name ((this slack-stars-buffer))
-  (let ((team (oref this team)))
+  (let ((team (slack-buffer-team this)))
     (format "*Slack - %s : Stars*" (oref team name))))
 
 (cl-defmethod slack-buffer-key ((_class (subclass slack-stars-buffer)) &rest _args)
@@ -49,15 +49,15 @@
   'slack-stars-buffer)
 
 (cl-defmethod slack-buffer-toggle-email-expand ((this slack-stars-buffer) file-id)
-  (with-slots (team) this
-    (slack-if-let* ((ts (get-text-property (point) 'ts))
-                    (items (slack-star-items (oref team star)))
-                    (item (cl-find-if #'(lambda (e) (string= ts (slack-ts e)))
-                                      items))
-                    (file (slack-star-item-file item file-id)))
-        (progn
-          (oset file is-expanded (not (oref file is-expanded)))
-          (slack-buffer--replace this ts)))))
+  (slack-if-let* ((team (slack-buffer-team this))
+                  (ts (get-text-property (point) 'ts))
+                  (items (slack-star-items (oref team star)))
+                  (item (cl-find-if #'(lambda (e) (string= ts (slack-ts e)))
+                                    items))
+                  (file (slack-star-item-file item file-id)))
+      (progn
+        (oset file is-expanded (not (oref file is-expanded)))
+        (slack-buffer--replace this ts))))
 
 (cl-defmethod slack-buffer-insert ((this slack-stars-buffer) item &optional not-tracked-p)
   (let ((lui-time-stamp-time (seconds-to-time
@@ -65,35 +65,34 @@
                                (slack-ts
                                 (slack-star-item-message item))))))
     (lui-insert-with-text-properties
-     (slack-to-string item (oref this team))
+     (slack-to-string item (slack-buffer-team this))
      'ts (slack-ts item)
      'not-tracked-p not-tracked-p)
     (lui-insert "" t)))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-stars-buffer))
-  (with-slots (team) this
+  (let ((team (slack-buffer-team this)))
     (slack-star-has-next-page-p (oref team star))))
 
 (cl-defmethod slack-buffer-insert-history ((this slack-stars-buffer))
-  (with-slots (team) this
-    (let ((items (slack-star-items (oref team star)))
-          (before-oldest (oref this oldest)))
-      (oset this oldest (slack-ts (car items)))
-      (cl-loop for item in items
-               do (and (string< (slack-ts item) before-oldest)
-                       (slack-buffer-insert this item t)))
+  (let* ((team (slack-buffer-team this))
+         (items (slack-star-items (oref team star)))
+         (before-oldest (oref this oldest)))
+    (oset this oldest (slack-ts (car items)))
+    (cl-loop for item in items
+             do (and (string< (slack-ts item) before-oldest)
+                     (slack-buffer-insert this item t)))
 
-      (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
-                                                 (point-max)
-                                                 before-oldest)))
-          (goto-char point)))))
+    (slack-if-let* ((point (slack-buffer-ts-eq (point-min)
+                                               (point-max)
+                                               before-oldest)))
+        (goto-char point))))
 
 (cl-defmethod slack-buffer-request-history ((this slack-stars-buffer) after-success)
-  (with-slots (team) this
+  (let ((team (slack-buffer-team this)))
     (slack-stars-list-request team
                               (slack-next-page (oref (oref team star) paging))
                               after-success)))
-
 
 (cl-defmethod slack-buffer-update-oldest ((this slack-stars-buffer) item)
   (when (string< (oref this oldest) (slack-ts item))
@@ -101,7 +100,8 @@
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-stars-buffer))
   (let* ((buf (cl-call-next-method))
-         (star (oref (oref this team) star))
+         (team (slack-buffer-team this))
+         (star (oref team star))
          (items (slack-star-items star))
          (oldest-message (car items)))
     (when oldest-message
@@ -110,20 +110,18 @@
       (slack-stars-buffer-mode)
       (slack-buffer-set-current-buffer this)
       (slack-buffer-insert-load-more this)
-      (with-slots (star) (oref this team)
-        (cl-loop for m in (oref star items)
-                 do (slack-buffer-insert this m)))
+      (cl-loop for m in items
+               do (slack-buffer-insert this m))
       (goto-char (point-max)))
     buf))
 
 (defun slack-create-stars-buffer (team)
   (slack-if-let* ((buf (slack-buffer-find 'slack-stars-buffer team)))
       buf
-    (make-instance 'slack-stars-buffer
-                   :team team)))
+    (make-instance 'slack-stars-buffer :team-id (oref team id))))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-stars-buffer) ts)
-  (with-slots (team) this
+  (let ((team (slack-buffer-team this)))
     (with-slots (star) team
       (slack-star-remove-star star ts team))))
 
@@ -136,7 +134,7 @@
           (delete-region beg end)))))
 
 (cl-defmethod slack-buffer--replace ((this slack-stars-buffer) ts)
-  (with-slots (team) this
+  (let ((team (slack-buffer-team this)))
     (with-slots (star) team
       (let* ((items (slack-star-items star))
              (item (cl-find-if #'(lambda (e) (string= (slack-ts e)

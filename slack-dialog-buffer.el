@@ -99,12 +99,13 @@
    (dialog :initarg :dialog :type slack-dialog)))
 
 (cl-defmethod slack-buffer-name ((this slack-dialog-buffer))
-  (with-slots (dialog-id dialog team) this
-    (with-slots (title) dialog
-      (format "*Slack Dialog - %s [%s] : %s*"
-              title
-              dialog-id
-              (slack-team-name team)))))
+  (let ((team (slack-buffer-team this)))
+    (with-slots (dialog-id dialog) this
+      (with-slots (title) dialog
+        (format "*Slack Dialog - %s [%s] : %s*"
+                title
+                dialog-id
+                (slack-team-name team))))))
 
 (cl-defmethod slack-buffer-key ((_class (subclass slack-dialog-buffer)) dialog-id &rest _args)
   dialog-id)
@@ -138,12 +139,10 @@
 
 (defun slack-dialog-buffer-open-edit-element-buffer ()
   (interactive)
-  (slack-if-let*
-      ((element (get-text-property (point) 'slack-dialog-element))
-       (buffer slack-current-buffer)
-       (team (oref buffer team))
-       (edit-buffer (slack-create-dialog-element-edit-buffer
-                     buffer element team)))
+  (slack-if-let* ((element (get-text-property (point) 'slack-dialog-element))
+                  (buffer slack-current-buffer)
+                  (team (slack-buffer-team buffer))
+                  (edit-buffer (slack-create-dialog-element-edit-buffer buffer element team)))
       (slack-buffer-display edit-buffer)))
 
 (defun slack-create-dialog-element-edit-buffer (dialog-buffer element team)
@@ -153,7 +152,7 @@
     (make-instance 'slack-dialog-edit-element-buffer
                    :dialog-buffer dialog-buffer
                    :element element
-                   :team team)))
+                   :team-id (oref team id))))
 
 (cl-defmethod slack-buffer-insert-edit-button ((this slack-dialog-text-element))
   (insert (propertize " Edit "
@@ -206,23 +205,22 @@
 
 (defun slack-dialog-buffer-select ()
   (interactive)
-  (slack-if-let*
-      ((buffer slack-current-buffer)
-       (team (oref buffer team))
-       (dialog (oref buffer dialog))
-       (dialog-id (oref buffer dialog-id))
-       (element-name (get-text-property (point) 'slack-dialog-element-name))
-       (dialog-element (cl-find-if #'(lambda (el) (string= element-name
-                                                           (oref el name)))
-                                   (oref dialog elements)))
-       (selected (slack-dialog--execute dialog-element
-                                        dialog-id
-                                        team))
-       (label (car selected))
-       (value (cdr selected))
-       (option (make-instance 'slack-dialog-select-option
-                              :label label
-                              :value value)))
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (slack-buffer-team buffer))
+                  (dialog (oref buffer dialog))
+                  (dialog-id (oref buffer dialog-id))
+                  (element-name (get-text-property (point) 'slack-dialog-element-name))
+                  (dialog-element (cl-find-if #'(lambda (el) (string= element-name
+                                                                      (oref el name)))
+                                              (oref dialog elements)))
+                  (selected (slack-dialog--execute dialog-element
+                                                   dialog-id
+                                                   team))
+                  (label (car selected))
+                  (value (cdr selected))
+                  (option (make-instance 'slack-dialog-select-option
+                                         :label label
+                                         :value value)))
       (progn
         (oset dialog-element selected-options (list option))
         (oset dialog-element value value)
@@ -255,7 +253,7 @@
 (cl-defmethod slack-dialog-buffer--submit ((this slack-dialog-buffer))
   (let* ((dialog (oref this dialog))
          (dialog-id (oref this dialog-id))
-         (team (oref this team))
+         (team (slack-buffer-team this))
          (elements (oref dialog elements)))
     (dolist (element elements)
       (let ((value (slack-dialog-element-value element)))
@@ -300,8 +298,9 @@
 
 (defun slack-dialog-buffer-cancel ()
   (interactive)
-  (slack-if-let* ((buffer slack-current-buffer))
-      (with-slots (dialog dialog-id team) buffer
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (team (slack-buffer-team buffer)))
+      (with-slots (dialog dialog-id) buffer
         (slack-dialog-notify-cancel dialog dialog-id team)
         (slack-dialog-buffer-kill-buffer buffer))))
 
@@ -353,7 +352,7 @@
     (make-instance 'slack-dialog-buffer
                    :dialog-id dialog-id
                    :dialog dialog
-                   :team team)))
+                   :team-id (oref team id))))
 
 (cl-defmethod slack-dialog-buffer-save-element-value ((this slack-dialog-buffer) name value)
   (with-slots (dialog) this

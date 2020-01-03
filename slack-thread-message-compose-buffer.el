@@ -66,23 +66,23 @@
   (slack-if-let* ((buf (slack-buffer-find 'slack-thread-message-compose-buffer team room ts)))
       buf
     (slack-thread-message-compose-buffer :room-id (oref room id)
-                                         :team team
+                                         :team-id (oref team id)
                                          :thread-ts ts)))
 
 (cl-defmethod slack-buffer-send-message ((this slack-thread-message-compose-buffer) message)
-  (with-slots (team thread-ts) this
+  (with-slots (thread-ts) this
     (slack-thread-send-message (slack-buffer-room this)
-                               team
+                               (slack-buffer-team this)
                                message
                                thread-ts))
   (cl-call-next-method))
 
 (cl-defmethod slack-buffer-display-message-compose-buffer ((this slack-thread-message-buffer))
-  (with-slots (team thread-ts) this
+  (with-slots (thread-ts) this
     (let ((buf (slack-create-thread-message-compose-buffer
                 (slack-buffer-room this)
                 thread-ts
-                team)))
+                (slack-buffer-team this))))
       (slack-buffer-display buf))))
 
 (provide 'slack-thread-message-compose-buffer)

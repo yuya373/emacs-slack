@@ -40,7 +40,7 @@
 (defun slack-create-message-share-buffer (room team ts)
   (slack-if-let* ((buf (slack-buffer-find 'slack-message-share-buffer team room ts)))
       buf
-    (slack-message-share-buffer :room-id (oref room id) :team team :ts ts)))
+    (slack-message-share-buffer :room-id (oref room id) :team-id (oref team id) :ts ts)))
 
 (cl-defmethod slack-buffer-name ((this slack-message-share-buffer))
   (let ((ts (oref this ts))
@@ -72,8 +72,8 @@
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-share-buffer) message)
-  (with-slots (team ts) this
-    (slack-message-share--send team
+  (with-slots (ts) this
+    (slack-message-share--send (slack-buffer-team this)
                                (slack-buffer-room this)
                                ts
                                message)

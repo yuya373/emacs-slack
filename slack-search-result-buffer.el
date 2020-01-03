@@ -80,14 +80,13 @@
   (slack-if-let* ((buffer (slack-buffer-find 'slack-search-result-buffer team search-result)))
       buffer
     (make-instance 'slack-search-result-buffer
-                   :team team
+                   :team-id (oref team id)
                    :search-result search-result)))
-
 (cl-defmethod slack-buffer-file-search-result-to-string ((this slack-search-result-buffer) file)
   (let ((title (slack-file-title file))
         (type (slack-file-type file))
         (user-name (slack-user-name (oref file user)
-                                    (oref this team)))
+                                    (slack-buffer-team this)))
         (id (oref file id)))
     (format "%s\n%s"
             (slack-file-link-info id title)
@@ -95,33 +94,34 @@
                         'face 'slack-attachment-footer))))
 
 (cl-defmethod slack-buffer-insert ((this slack-search-result-buffer) match)
-  (with-slots (team) this
-    (let* ((time (slack-ts-to-time (slack-ts match)))
-           (lui-time-stamp-time time)
-           (lui-time-stamp-format "[%Y-%m-%d %H:%M] "))
-      (if (slack-file-p match)
-          (lui-insert (slack-buffer-file-search-result-to-string this match) t)
-        (lui-insert (slack-message-to-string match team) t))
-      (lui-insert "" t))))
+  (let* ((team (slack-buffer-team this))
+         (time (slack-ts-to-time (slack-ts match)))
+         (lui-time-stamp-time time)
+         (lui-time-stamp-format "[%Y-%m-%d %H:%M] "))
+    (if (slack-file-p match)
+        (lui-insert (slack-buffer-file-search-result-to-string this match) t)
+      (lui-insert (slack-message-to-string match team) t))
+    (lui-insert "" t)))
 
 (cl-defmethod slack-buffer-has-next-page-p ((this slack-search-result-buffer))
   (with-slots (search-result) this
     (slack-search-has-next-page-p search-result)))
 
 (cl-defmethod slack-buffer-insert-history ((this slack-search-result-buffer))
-  (with-slots (team search-result) this
-    (let* ((pagination (oref search-result pagination))
-           (first (oref pagination first))
-           (last (oref pagination last))
-           (matches (last (oref search-result matches) (1+ (- last first))))
-           (cur-point (point)))
-      (cl-loop for match in matches
-               do (slack-buffer-insert this match))
-      (goto-char cur-point))))
+  (let* ((team (slack-buffer-team this))
+         (search-result (oref this search-result))
+         (pagination (oref search-result pagination))
+         (first (oref pagination first))
+         (last (oref pagination last))
+         (matches (last (oref search-result matches) (1+ (- last first))))
+         (cur-point (point)))
+    (cl-loop for match in matches
+             do (slack-buffer-insert this match))
+    (goto-char cur-point)))
 
 (cl-defmethod slack-buffer-request-history ((this slack-search-result-buffer) after-success)
-  (with-slots (team search-result) this
-    (slack-search-request search-result after-success team
+  (with-slots (search-result) this
+    (slack-search-request search-result after-success (slack-buffer-team this)
                           (slack-search-paging-next-page
                            (oref search-result pagination)))))
 

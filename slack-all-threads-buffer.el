@@ -106,7 +106,7 @@
 (defun slack-create-all-threads-buffer (team total-unread-replies new-threads-count threads has-more)
   (slack-if-let* ((buf (slack-buffer-find 'slack-all-threads-buffer team)))
       buf
-    (slack-all-threads-buffer :team team
+    (slack-all-threads-buffer :team-id (oref team id)
                               :total-unread-replies total-unread-replies
                               :new-threads-count new-threads-count
                               :threads threads
@@ -130,15 +130,14 @@
       (when (slack-buffer-has-next-page-p this)
         (slack-buffer-insert-load-more this))
       (goto-char (point-min)))
-    (with-slots (team) this
-      (slack-subscriptions-thread-clear-all team))
+    (slack-subscriptions-thread-clear-all (slack-buffer-team this))
     buf))
 
 (cl-defmethod slack-buffer-insert-thread ((this slack-all-threads-buffer) thread)
   (with-slots (root-msg latest-replies unread-replies) thread
     (oset this current-ts (oref root-msg last-read))
     (let* ((lui-time-stamp-position nil)
-           (team (oref this team))
+           (team (slack-buffer-team this))
            (channel (oref root-msg channel))
            (room (slack-room-find channel team))
            (prefix (or (and (slack-im-p room) "@") "#")))
@@ -172,7 +171,7 @@
 (cl-defmethod slack-buffer-prepare-marker-for-history ((_this slack-all-threads-buffer)))
 
 (cl-defmethod slack-buffer-insert-history ((this slack-all-threads-buffer))
-  (with-slots (team threads current-ts) this
+  (with-slots (threads current-ts) this
     (cl-loop for thread in (cl-remove-if #'(lambda (e)
                                              (not (string< (oref (oref e root-msg)
                                                                  last-read)
@@ -187,7 +186,7 @@
 
 (cl-defmethod slack-buffer-request-history ((this slack-all-threads-buffer) after-success)
   (let ((cur-point (point)))
-    (with-slots (team current-ts) this
+    (with-slots (current-ts) this
       (cl-labels
           ((success (total-unread-replies new-threads-count threads has-more)
                     (oset this total-unread-replies total-unread-replies)
@@ -198,15 +197,16 @@
                     (when (and (< (point-min) cur-point)
                                (< cur-point (point-max)))
                       (goto-char cur-point))))
-        (slack-subscriptions-thread-get-view team current-ts #'success)))))
+        (slack-subscriptions-thread-get-view (slack-buffer-team this) current-ts #'success)))))
 
 
 (cl-defmethod slack-buffer-display-thread ((this slack-all-threads-buffer) ts)
-  (with-slots (team threads) this
+  (with-slots (threads) this
     (slack-if-let* ((thread (cl-find-if #'(lambda (e) (string= ts (slack-ts (oref e root-msg))))
                                         threads))
                     (root (oref thread root-msg))
                     (room-id (oref root channel))
+                    (team (slack-buffer-team this))
                     (room (slack-room-find room-id team)))
         (cl-labels
             ((display-thread (message)

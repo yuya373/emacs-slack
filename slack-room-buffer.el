@@ -1,4 +1,4 @@
-;;; slack-room-buffer.el ---                         -*- lexical-binding: t; -*-
+:;;; slack-room-buffer.el ---                         -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017
 
@@ -72,12 +72,12 @@
 
 (cl-defmethod slack-buffer-room ((this slack-room-buffer))
   (slack-room-find (oref this room-id)
-                   (oref this team)))
+                   (slack-buffer-team this)))
 
 (cl-defmethod slack-buffer-toggle-reaction ((this slack-room-buffer) reaction)
   (let* ((reaction-users (oref reaction users))
          (reaction-name (oref reaction name))
-         (team (oref this team))
+         (team (slack-buffer-team this))
          (room (slack-buffer-room this))
          (self-id (oref team self-id)))
     (if (cl-find-if #'(lambda (id) (string= id self-id)) reaction-users)
@@ -90,28 +90,27 @@
                                             (slack-get-ts)))))
 
 (cl-defmethod slack-buffer-reaction-help-text ((this slack-room-buffer) reaction)
-  (with-slots (team) this
-    (slack-reaction-help-text reaction team)))
+  (slack-reaction-help-text reaction (slack-buffer-team this)))
 
 (cl-defmethod slack-buffer-delete-message ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-if-let* ((room (slack-buffer-room this))
-                    (message (slack-room-find-message room ts)))
-        (cl-labels
-            ((on-delete
-              (&key data &allow-other-keys)
-              (slack-request-handle-error
-               (data "slack-message-delete"))))
-          (if (yes-or-no-p "Are you sure you want to delete this message?")
-              (slack-request
-               (slack-request-create
-                slack-message-delete-url
-                team
-                :type "POST"
-                :params (list (cons "ts" (slack-ts message))
-                              (cons "channel" (oref room id)))
-                :success #'on-delete))
-            (message "Canceled"))))))
+  (slack-if-let* ((team (slack-buffer-team this))
+                  (room (slack-buffer-room this))
+                  (message (slack-room-find-message room ts)))
+      (cl-labels
+          ((on-delete
+            (&key data &allow-other-keys)
+            (slack-request-handle-error
+             (data "slack-message-delete"))))
+        (if (yes-or-no-p "Are you sure you want to delete this message?")
+            (slack-request
+             (slack-request-create
+              slack-message-delete-url
+              team
+              :type "POST"
+              :params (list (cons "ts" (slack-ts message))
+                            (cons "channel" (oref room id)))
+              :success #'on-delete))
+          (message "Canceled")))))
 
 (cl-defmethod slack-buffer-message-delete ((this slack-room-buffer) ts)
   (let ((buffer (slack-buffer-buffer this)))
@@ -120,25 +119,25 @@
                                       ts))))))
 
 (cl-defmethod slack-buffer-copy-link ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-if-let* ((room (slack-buffer-room this))
-                    (message (slack-room-find-message room ts))
-                    (template "https://%s.slack.com/archives/%s/p%s%s"))
-        (cl-labels
-            ((on-success (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-get-permalink")
-                          (let ((permalink (plist-get data :permalink)))
-                            (kill-new permalink)
-                            (message "Link Copied to Clipboard")))))
-          (slack-request
-           (slack-request-create
-            slack-get-permalink-url
-            team
-            :type "POST"
-            :params (list (cons "channel" (oref room id))
-                          (cons "message_ts" ts))
-            :success #'on-success))))))
+  (slack-if-let* ((team (slack-buffer-team this))
+                  (room (slack-buffer-room this))
+                  (message (slack-room-find-message room ts))
+                  (template "https://%s.slack.com/archives/%s/p%s%s"))
+      (cl-labels
+          ((on-success (&key data &allow-other-keys)
+                       (slack-request-handle-error
+                        (data "slack-get-permalink")
+                        (let ((permalink (plist-get data :permalink)))
+                          (kill-new permalink)
+                          (message "Link Copied to Clipboard")))))
+        (slack-request
+         (slack-request-create
+          slack-get-permalink-url
+          team
+          :type "POST"
+          :params (list (cons "channel" (oref room id))
+                        (cons "message_ts" ts))
+          :success #'on-success)))))
 
 (cl-defmethod slack-buffer--replace ((this slack-room-buffer) ts)
   (slack-if-let* ((room (slack-buffer-room this))
@@ -178,189 +177,186 @@
       ))))
 
 (cl-defmethod slack-buffer-pins-remove ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-pins-request slack-message-pins-remove-url
-                        (slack-buffer-room this)
-                        team
-                        ts)))
+  (slack-pins-request slack-message-pins-remove-url
+                      (slack-buffer-room this)
+                      (slack-buffer-team this)
+                      ts))
 
 (cl-defmethod slack-buffer-pins-add ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-pins-request slack-message-pins-add-url
-                        (slack-buffer-room this)
-                        team
-                        ts)))
+  (slack-pins-request slack-message-pins-add-url
+                      (slack-buffer-room this)
+                      (slack-buffer-team this)
+                      ts))
 
 (cl-defmethod slack-buffer-remove-star ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-if-let* ((room (slack-buffer-room this))
-                    (message (slack-room-find-message room ts)))
-        (slack-star-api-request slack-message-stars-remove-url
-                                (list (cons "channel" (oref room id))
-                                      (slack-message-star-api-params message))
-                                team))))
+  (slack-if-let* ((team (slack-buffer-team this))
+                  (room (slack-buffer-room this))
+                  (message (slack-room-find-message room ts)))
+      (slack-star-api-request slack-message-stars-remove-url
+                              (list (cons "channel" (oref room id))
+                                    (slack-message-star-api-params message))
+                              team)))
 
 (cl-defmethod slack-buffer-add-star ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (slack-if-let* ((room (slack-buffer-room this))
-                    (message (slack-room-find-message room ts)))
-        (slack-star-api-request slack-message-stars-add-url
-                                (list (cons "channel" (oref room id))
-                                      (slack-message-star-api-params message))
-                                team))))
+  (slack-if-let* ((team (slack-buffer-team this))
+                  (room (slack-buffer-room this))
+                  (message (slack-room-find-message room ts)))
+      (slack-star-api-request slack-message-stars-add-url
+                              (list (cons "channel" (oref room id))
+                                    (slack-message-star-api-params message))
+                              team)))
 
 (cl-defmethod slack-buffer-add-reaction-to-message ((this slack-room-buffer) reaction ts)
-  (with-slots (team) this
-    (slack-message-reaction-add reaction
-                                ts
-                                (slack-buffer-room this)
-                                team)))
+  (slack-message-reaction-add reaction
+                              ts
+                              (slack-buffer-room this)
+                              (slack-buffer-team this)))
 
 (cl-defmethod slack-buffer-remove-reaction-from-message ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (let* ((room (slack-buffer-room this))
-           (message (slack-room-find-message room ts))
-           (reactions (slack-message-reactions message))
-           (reaction (slack-message-reaction-select reactions)))
-      (slack-message-reaction-remove reaction ts room team))))
+  (let* ((team (slack-buffer-team this))
+         (room (slack-buffer-room this))
+         (message (slack-room-find-message room ts))
+         (reactions (slack-message-reactions message))
+         (reaction (slack-message-reaction-select reactions)))
+    (slack-message-reaction-remove reaction ts room team)))
 
 (cl-defmethod slack-buffer-share-message ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (let* ((room (slack-buffer-room this))
-           (buf (slack-create-message-share-buffer room team ts)))
-      (slack-buffer-display buf))))
+  (let* ((team (slack-buffer-team this))
+         (room (slack-buffer-room this))
+         (buf (slack-create-message-share-buffer room team ts)))
+    (slack-buffer-display buf)))
 
 (cl-defmethod slack-buffer-display-edit-message-buffer ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (let* ((room (slack-buffer-room this))
-           (buf (slack-create-edit-message-buffer room team ts)))
-      (slack-buffer-display buf))))
+  (let* ((team (slack-buffer-team this))
+         (room (slack-buffer-room this))
+         (buf (slack-create-edit-message-buffer room team ts)))
+    (slack-buffer-display buf)))
 
 (cl-defmethod slack-buffer-update-mark ((_this slack-room-buffer) &key (_force nil)))
 
 (cl-defmethod slack-buffer-builtin-actions ((this slack-room-buffer) ts handler)
   (let ((display-follow nil))
-    (with-slots (team) this
-      (let ((room (slack-buffer-room this)))
-        (cl-labels
-            ((get-message () (slack-room-find-message room ts))
-             (handle-follow-message () (slack-subscriptions-thread-add room ts team))
-             (handle-unfollow-message () (slack-subscriptions-thread-remove room ts team))
-             (handle-copy-link () (slack-buffer-copy-link this ts))
-             (handle-mark-unread () (slack-buffer-update-mark this :force t))
-             (handle-pin () (slack-buffer-pins-add this ts))
-             (handle-un-pin () (slack-buffer-pins-remove this ts))
-             (handle-delete-message () (slack-buffer-delete-message this ts))
-             (handle-star-message () (slack-buffer-add-star this ts))
-             (handle-unstar-message () (slack-buffer-remove-star this ts))
-             (handle-add-reaction () (let ((reaction
-                                            (slack-message-reaction-input team)))
-                                       (slack-buffer-add-reaction-to-message
-                                        this reaction ts)))
-             (handle-remove-reaction () (slack-buffer-remove-reaction-from-message
-                                         this ts))
-             (handle-share () (slack-buffer-share-message this ts))
-             (handle-edit () (slack-buffer-display-edit-message-buffer this
-                                                                       ts))
-             (handle-remind () (slack-if-let* ((message (get-message)))
-                                   (slack-reminder-add-from-message room
-                                                                    message
-                                                                    team)))
-             (display-pin-p ()
-                            (slack-if-let* ((message (get-message)))
-                                (not (slack-message-pinned-to-room-p message room))))
-             (display-un-pin-p ()
-                               (slack-if-let* ((message (get-message)))
-                                   (slack-message-pinned-to-room-p message room)))
-             (display-follow-p () display-follow)
-             (display-unfollow-p () (not display-follow))
-             (display-star-p () (slack-if-let* ((message (get-message)))
-                                    (not (slack-message-starred-p message))))
-             (display-unstar-p () (slack-if-let* ((message (get-message)))
-                                      (slack-message-starred-p message)))
-             (message-buffer-p () (eq (eieio-object-class this)
-                                      'slack-message-buffer)))
-          (let ((builtins `(:app_name
-                            "Slack"
-                            :actions
-                            ((:name "Follow message"
-                                    :handler ,#'handle-follow-message
-                                    :display-p ,#'display-follow-p)
-                             (:name "Unfollow message"
-                                    :handler ,#'handle-unfollow-message
-                                    :display-p ,#'display-unfollow-p)
-                             (:name "Star message"
-                                    :handler ,#'handle-star-message
-                                    :display-p ,#'display-star-p)
-                             (:name "Unstar message"
-                                    :handler ,#'handle-unstar-message
-                                    :display-p ,#'display-unstar-p)
-                             (:name "Add reaction to message"
-                                    :handler ,#'handle-add-reaction)
-                             (:name "Remove reaction from message"
-                                    :handler ,#'handle-remove-reaction)
-                             (:name "Edit message"
-                                    :handler ,#'handle-edit)
-                             (:name "Share message"
-                                    :handler ,#'handle-share)
-                             (:name "Copy link"
-                                    :handler ,#'handle-copy-link)
-                             (:name "Mark unread"
-                                    :display-p ,#'message-buffer-p
-                                    :handler ,#'handle-mark-unread)
-                             (:name "Remind me about this"
-                                    :handler ,#'handle-remind)
-                             (:name ,(format "Pin to %s%s"
-                                             (if (slack-im-p room) "@" "#")
-                                             (slack-room-name room team))
-                                    :display-p ,#'display-pin-p
-                                    :handler ,#'handle-pin)
-                             (:name ,(format "Un-pin from %s%s"
-                                             (if (slack-im-p room) "@" "#")
-                                             (slack-room-name room team))
-                                    :display-p ,#'display-un-pin-p
-                                    :handler ,#'handle-un-pin)
-                             (:name "Delete message"
-                                    :handler ,#'handle-delete-message)))))
-            (cl-labels
-                ((on-success (subscriptions)
-                             (if (cl-find ts subscriptions :test #'string=)
-                                 (setq display-follow nil)
-                               (setq display-follow t))
-                             (funcall handler builtins))
-                 (on-error (_err) (funcall handler builtins)))
-              (slack-subscriptions-thread-get room ts team #'on-success #'on-error))))))))
+    (let ((team (slack-buffer-team this))
+          (room (slack-buffer-room this)))
+      (cl-labels
+          ((get-message () (slack-room-find-message room ts))
+           (handle-follow-message () (slack-subscriptions-thread-add room ts team))
+           (handle-unfollow-message () (slack-subscriptions-thread-remove room ts team))
+           (handle-copy-link () (slack-buffer-copy-link this ts))
+           (handle-mark-unread () (slack-buffer-update-mark this :force t))
+           (handle-pin () (slack-buffer-pins-add this ts))
+           (handle-un-pin () (slack-buffer-pins-remove this ts))
+           (handle-delete-message () (slack-buffer-delete-message this ts))
+           (handle-star-message () (slack-buffer-add-star this ts))
+           (handle-unstar-message () (slack-buffer-remove-star this ts))
+           (handle-add-reaction () (let ((reaction
+                                          (slack-message-reaction-input team)))
+                                     (slack-buffer-add-reaction-to-message
+                                      this reaction ts)))
+           (handle-remove-reaction () (slack-buffer-remove-reaction-from-message
+                                       this ts))
+           (handle-share () (slack-buffer-share-message this ts))
+           (handle-edit () (slack-buffer-display-edit-message-buffer this
+                                                                     ts))
+           (handle-remind () (slack-if-let* ((message (get-message)))
+                                 (slack-reminder-add-from-message room
+                                                                  message
+                                                                  team)))
+           (display-pin-p ()
+                          (slack-if-let* ((message (get-message)))
+                              (not (slack-message-pinned-to-room-p message room))))
+           (display-un-pin-p ()
+                             (slack-if-let* ((message (get-message)))
+                                 (slack-message-pinned-to-room-p message room)))
+           (display-follow-p () display-follow)
+           (display-unfollow-p () (not display-follow))
+           (display-star-p () (slack-if-let* ((message (get-message)))
+                                  (not (slack-message-starred-p message))))
+           (display-unstar-p () (slack-if-let* ((message (get-message)))
+                                    (slack-message-starred-p message)))
+           (message-buffer-p () (eq (eieio-object-class this)
+                                    'slack-message-buffer)))
+        (let ((builtins `(:app_name
+                          "Slack"
+                          :actions
+                          ((:name "Follow message"
+                                  :handler ,#'handle-follow-message
+                                  :display-p ,#'display-follow-p)
+                           (:name "Unfollow message"
+                                  :handler ,#'handle-unfollow-message
+                                  :display-p ,#'display-unfollow-p)
+                           (:name "Star message"
+                                  :handler ,#'handle-star-message
+                                  :display-p ,#'display-star-p)
+                           (:name "Unstar message"
+                                  :handler ,#'handle-unstar-message
+                                  :display-p ,#'display-unstar-p)
+                           (:name "Add reaction to message"
+                                  :handler ,#'handle-add-reaction)
+                           (:name "Remove reaction from message"
+                                  :handler ,#'handle-remove-reaction)
+                           (:name "Edit message"
+                                  :handler ,#'handle-edit)
+                           (:name "Share message"
+                                  :handler ,#'handle-share)
+                           (:name "Copy link"
+                                  :handler ,#'handle-copy-link)
+                           (:name "Mark unread"
+                                  :display-p ,#'message-buffer-p
+                                  :handler ,#'handle-mark-unread)
+                           (:name "Remind me about this"
+                                  :handler ,#'handle-remind)
+                           (:name ,(format "Pin to %s%s"
+                                           (if (slack-im-p room) "@" "#")
+                                           (slack-room-name room team))
+                                  :display-p ,#'display-pin-p
+                                  :handler ,#'handle-pin)
+                           (:name ,(format "Un-pin from %s%s"
+                                           (if (slack-im-p room) "@" "#")
+                                           (slack-room-name room team))
+                                  :display-p ,#'display-un-pin-p
+                                  :handler ,#'handle-un-pin)
+                           (:name "Delete message"
+                                  :handler ,#'handle-delete-message)))))
+          (cl-labels
+              ((on-success (subscriptions)
+                           (if (cl-find ts subscriptions :test #'string=)
+                               (setq display-follow nil)
+                             (setq display-follow t))
+                           (funcall handler builtins))
+               (on-error (_err) (funcall handler builtins)))
+            (slack-subscriptions-thread-get room ts team #'on-success #'on-error)))))))
 
 (cl-defmethod slack-buffer-execute-message-action ((this slack-room-buffer) ts)
-  (with-slots (team) this
-    (let ((room (slack-buffer-room this)))
-      (cl-labels
-          ((run-action (selected)
-                       (slack-if-let*
-                           ((action (cdr selected))
-                            (app (car selected))
-                            (type (plist-get action :type))
-                            (action-id (plist-get action :action_id))
-                            (app-id (plist-get app :app_id)))
-                           (slack-actions-run ts room type action-id app-id team)))
-           (handler (builtin actions)
-                    (slack-if-let*
-                        ((selected (slack-actions-select (cons builtin actions)))
-                         (action (cdr selected)))
-                        (if (functionp (plist-get action :handler))
-                            (funcall (plist-get action :handler))
-                          (run-action selected))))
-           (on-success
-            (actions)
-            (slack-buffer-builtin-actions
-             this ts
-             #'(lambda (builtin) (run-at-time nil nil #'handler builtin actions))))
-           (on-error
-            (_err)
-            (slack-buffer-builtin-actions
-             this ts
-             #'(lambda (builtin) (run-at-time nil nil #'handler builtin nil)))))
-        (slack-actions-list team #'on-success #'on-error)))))
+  (let ((team (slack-buffer-team this))
+        (room (slack-buffer-room this)))
+    (cl-labels
+        ((run-action (selected)
+                     (slack-if-let*
+                         ((action (cdr selected))
+                          (app (car selected))
+                          (type (plist-get action :type))
+                          (action-id (plist-get action :action_id))
+                          (app-id (plist-get app :app_id)))
+                         (slack-actions-run ts room type action-id app-id team)))
+         (handler (builtin actions)
+                  (slack-if-let*
+                      ((selected (slack-actions-select (cons builtin actions)))
+                       (action (cdr selected)))
+                      (if (functionp (plist-get action :handler))
+                          (funcall (plist-get action :handler))
+                        (run-action selected))))
+         (on-success
+          (actions)
+          (slack-buffer-builtin-actions
+           this ts
+           #'(lambda (builtin) (run-at-time nil nil #'handler builtin actions))))
+         (on-error
+          (_err)
+          (slack-buffer-builtin-actions
+           this ts
+           #'(lambda (builtin) (run-at-time nil nil #'handler builtin nil)))))
+      (slack-actions-list team #'on-success #'on-error))))
 
 (defun slack-message-delete ()
   (interactive)
@@ -375,11 +371,11 @@
   "Debug notification.
 Execute this function when cursor is on some message."
   (interactive)
-  (let ((ts (slack-get-ts)))
-    (with-slots (team) slack-current-buffer
-      (let* ((room (slack-buffer-room slack-current-buffer))
-             (message (slack-room-find-message room ts)))
-        (slack-message-notify message room team)))))
+  (let* ((ts (slack-get-ts))
+         (team (slack-buffer-team slack-current-buffer))
+         (room (slack-buffer-room slack-current-buffer))
+         (message (slack-room-find-message room ts)))
+    (slack-message-notify message room team)))
 
 (defun slack--get-channel-id ()
   (interactive)
@@ -395,7 +391,7 @@ Execute this function when cursor is on some message."
   (interactive)
   (slack-if-let* ((buffer slack-current-buffer)
                   (room (slack-buffer-room buffer))
-                  (team (oref buffer team))
+                  (team (slack-buffer-team buffer))
                   (type (get-text-property (point) 'type))
                   (attachment-id (get-text-property (point) 'attachment-id))
                   (ts (slack-get-ts))
@@ -460,7 +456,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((bot (get-text-property (point) 'bot))
                   (payload (get-text-property (point) 'payload))
                   (buffer slack-current-buffer)
-                  (team (oref buffer team)))
+                  (team (slack-buffer-team buffer)))
       (let ((url "https://slack.com/api/chat.action")
             (params (list (cons "bot" bot)
                           (cons "payload" payload))))
@@ -503,14 +499,14 @@ Execute this function when cursor is on some message."
 
 (cl-defmethod slack-buffer-follow-message ((this slack-room-buffer))
   (slack-if-let* ((ts (slack-get-ts)))
-      (with-slots (team) this
-        (let ((room (slack-buffer-room this)))
-          (cl-labels
-              ((after-success ()
-                              (slack-log "Successfully followed."
-                                         team :level 'info)))
-            (slack-subscriptions-thread-add room ts team
-                                            #'after-success))))))
+      (let ((team (slack-buffer-team this))
+            (room (slack-buffer-room this)))
+        (cl-labels
+            ((after-success ()
+                            (slack-log "Successfully followed."
+                                       team :level 'info)))
+          (slack-subscriptions-thread-add room ts team
+                                          #'after-success)))))
 
 (defun slack-message-unfollow ()
   (interactive)
@@ -519,14 +515,14 @@ Execute this function when cursor is on some message."
 
 (cl-defmethod slack-buffer-unfollow-message ((this slack-room-buffer))
   (slack-if-let* ((ts (slack-get-ts)))
-      (with-slots (team) this
-        (let ((room (slack-buffer-room this)))
-          (cl-labels
-              ((after-success ()
-                              (slack-log "Successfully unfollowed."
-                                         team :level 'info)))
-            (slack-subscriptions-thread-remove room ts team
-                                               #'after-success))))))
+      (let ((team (slack-buffer-team this))
+            (room (slack-buffer-room this)))
+        (cl-labels
+            ((after-success ()
+                            (slack-log "Successfully unfollowed."
+                                       team :level 'info)))
+          (slack-subscriptions-thread-remove room ts team
+                                             #'after-success)))))
 
 (cl-defmethod slack-buffer-block-action-container ((this slack-room-buffer) message)
   (let ((room (slack-buffer-room this)))
@@ -551,7 +547,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -571,7 +567,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -591,7 +587,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -612,7 +608,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -642,7 +638,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -662,7 +658,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -692,7 +688,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))
@@ -713,7 +709,7 @@ Execute this function when cursor is on some message."
   (slack-if-let* ((cur-point (point))
                   (ts (slack-get-ts))
                   (room (slack-buffer-room this))
-                  (team (oref this team))
+                  (team (slack-buffer-team this))
                   (message (slack-room-find-message room ts))
                   (action (get-text-property cur-point
                                              'slack-action-payload))

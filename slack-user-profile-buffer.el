@@ -42,7 +42,7 @@
   "Create User Profile Buffer of USER-ID in TEAM."
   (slack-if-let* ((buf (slack-buffer-find 'slack-user-profile-buffer team user-id)))
       buf
-    (slack-user-profile-buffer :team team
+    (slack-user-profile-buffer :team-id (oref team id)
                                :user-id user-id)))
 
 (cl-defmethod slack-buffer-name ((this slack-user-profile-buffer))
@@ -63,13 +63,14 @@
   'slack-user-profile-buffer)
 
 (cl-defmethod slack-buffer--insert ((this slack-user-profile-buffer))
-  (let ((inhibit-read-only t))
+  (let ((inhibit-read-only t)
+        (team (slack-buffer-team this))
+        (user-id (oref this user-id)))
     (setq buffer-read-only nil)
     (erase-buffer)
     (goto-char (point-min))
-    (with-slots (user-id team) this
-      (insert (propertize (slack-user-profile-to-string user-id team)
-                          'ts 'dummy)))
+    (insert (propertize (slack-user-profile-to-string user-id team)
+                        'ts 'dummy))
     (setq buffer-read-only t)
     (slack-buffer-enable-emojify)
     (goto-char (point-min))

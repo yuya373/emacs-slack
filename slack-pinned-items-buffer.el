@@ -59,7 +59,7 @@
       (delete-region (point-min) lui-output-marker))
     (let ((lui-time-stamp-position nil))
       (lui-insert buf-header t))
-    (with-slots (team items) this
+    (let ((items (oref this items)))
       (if (< 0 (length items))
           (cl-loop for m in items
                    do (slack-buffer-insert this m t))
@@ -80,7 +80,7 @@
         (oset buf items items)
         buf)
     (slack-pinned-items-buffer :room-id (oref room id)
-                               :team team
+                               :team-id (oref team id)
                                :items items)))
 
 (cl-defmethod slack-buffer--replace ((this slack-pinned-items-buffer) ts)

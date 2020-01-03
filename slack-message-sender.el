@@ -98,12 +98,12 @@
 
 (defun slack-message-embed-channel ()
   (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (with-slots (team) buf
-        (slack-select-from-list
-            ((slack-channel-names team) "Select Channel: ")
-            (slack-insert-channel-mention (oref selected id)
-                                          (format "@%s" (slack-room-name selected team)))))))
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (slack-buffer-team buf)))
+      (slack-select-from-list
+          ((slack-channel-names team) "Select Channel: ")
+          (slack-insert-channel-mention (oref selected id)
+                                        (format "@%s" (slack-room-name selected team))))))
 
 (defun slack-insert-channel-mention (channel-id display)
   (insert (slack-propertize-mention-text 'slack-message-mention-face
@@ -127,29 +127,29 @@
 
 (defun slack-message-embed-mention ()
   (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (with-slots (team) buf
-        (let* ((keyworkds (list (list "here" :name "here" :type 'keyword)
-                                (list "channel" :name "channel" :type 'keyword)
-                                (list "everyone" :name "everyone" :type 'keyword)))
-               (usergroups (mapcar #'(lambda (e) (list (oref e handle)
-                                                       :name (oref e handle)
-                                                       :type 'usergroup))
-                                   (cl-remove-if #'slack-usergroup-deleted-p
-                                                 (oref team usergroups))))
-               (alist (append keyworkds (slack-user-names team) usergroups)))
-          (slack-select-from-list
-              (alist "Select User: ")
-              (cl-case (plist-get selected :type)
-                (keyword
-                 (slack-insert-keyword-mention (plist-get selected :name)
+  (slack-if-let* ((buf slack-current-buffer)
+                  (team (slack-buffer-team buf)))
+      (let* ((keyworkds (list (list "here" :name "here" :type 'keyword)
+                              (list "channel" :name "channel" :type 'keyword)
+                              (list "everyone" :name "everyone" :type 'keyword)))
+             (usergroups (mapcar #'(lambda (e) (list (oref e handle)
+                                                     :name (oref e handle)
+                                                     :type 'usergroup))
+                                 (cl-remove-if #'slack-usergroup-deleted-p
+                                               (oref team usergroups))))
+             (alist (append keyworkds (slack-user-names team) usergroups)))
+        (slack-select-from-list
+            (alist "Select User: ")
+            (cl-case (plist-get selected :type)
+              (keyword
+               (slack-insert-keyword-mention (plist-get selected :name)
+                                             (concat "@" (plist-get selected :name))))
+              (usergroup
+               (slack-insert-usergroup-mention (plist-get selected :id)
                                                (concat "@" (plist-get selected :name))))
-                (usergroup
-                 (slack-insert-usergroup-mention (plist-get selected :id)
-                                                 (concat "@" (plist-get selected :name))))
-                (t
-                 (slack-insert-user-mention (plist-get selected :id)
-                                            (concat "@" (slack-user--name selected team))))))))))
+              (t
+               (slack-insert-user-mention (plist-get selected :id)
+                                          (concat "@" (slack-user--name selected team)))))))))
 
 (defvar slack-enable-wysiwyg)
 

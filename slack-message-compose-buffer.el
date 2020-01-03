@@ -37,8 +37,8 @@
   :abstract t)
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
-  (with-slots (room-id team) this
-    (slack-room-find room-id team)))
+  (with-slots (room-id) this
+    (slack-room-find room-id (slack-buffer-team this))))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
   (let ((buffer (slack-buffer-buffer this)))

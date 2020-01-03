@@ -59,7 +59,7 @@
       (candidates (slack-if-let*
                       ((content (content arg))
                        (team (and slack-current-buffer
-                                  (oref slack-current-buffer team))))
+                                  (slack-buffer-team slack-current-buffer))))
                       (cl-case (prefix-type arg)
                         (user-or-usergroup
                          (nconc
@@ -138,14 +138,14 @@
        (cl-case (prefix-type arg)
          (user-or-usergroup
           (slack-if-let* ((team (and slack-current-buffer
-                                     (oref slack-current-buffer team)))
+                                     (slack-buffer-team slack-current-buffer)))
                           (user-id (get-text-property 0 'slack-user-id arg))
                           (user (slack-user--find user-id team)))
               (company-doc-buffer (slack-user--profile-to-string user team))))
          (slash
           (company-doc-buffer
            (let* ((team (and slack-current-buffer
-                             (oref slack-current-buffer team)))
+                             (slack-buffer-team slack-current-buffer)))
                   (command (slack-command-find arg team)))
              (when command
                (slack-command-company-doc-string command team))))))))))

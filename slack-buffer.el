@@ -93,7 +93,7 @@
   (lui-set-prompt " "))
 
 (defclass slack-buffer ()
-  ((team :initarg :team :type slack-team)
+  ((team-id :initarg :team-id :type string)
    (buf :initarg :buf :initform nil))
   :abstract t)
 
@@ -119,7 +119,7 @@
     (gethash key ht)))
 
 (cl-defmethod slack-buffer-team ((this slack-buffer))
-  (oref this team))
+  (slack-team-find (oref this team-id)))
 
 (cl-defmethod slack-team-set-buffer ((this slack-buffer))
   (let* ((key (slack-buffer-key this))
@@ -176,13 +176,13 @@
                    (kill-buffer buf))
                (ignore-errors
                  (slack-log (format "Backtrace: %S" (with-output-to-string (backtrace)))
-                            (oref this team)
+                            (slack-buffer-team this)
                             :level 'error))
                (signal (car err) (cdr err)))))))
 
 (cl-defmethod slack-buffer-insert ((this slack-buffer) message &optional not-tracked-p)
   (let ((lui-time-stamp-time (slack-message-time-stamp message))
-        (team (oref this team)))
+        (team (slack-buffer-team this)))
     (lui-insert-with-text-properties
      (slack-message-to-string message team)
      'not-tracked-p not-tracked-p
@@ -225,19 +225,18 @@
   (slack-buffer-insert-history this))
 
 (cl-defmethod slack-buffer-load-more ((this slack-buffer))
-  (with-slots (team) this
-    (if (slack-buffer-has-next-page-p this)
-        (cl-labels
-            ((after-success
-              ()
-              (with-current-buffer (slack-buffer-buffer this)
-                (let ((inhibit-read-only t))
-                  (slack-buffer-delete-load-more-string this)
-                  (slack-buffer-prepare-marker-for-history this)
-                  (slack-buffer-insert--history this)
-                  (lui-recover-output-marker)))))
-          (slack-buffer-request-history this #'after-success))
-      (message "No more items."))))
+  (if (slack-buffer-has-next-page-p this)
+      (cl-labels
+          ((after-success
+            ()
+            (with-current-buffer (slack-buffer-buffer this)
+              (let ((inhibit-read-only t))
+                (slack-buffer-delete-load-more-string this)
+                (slack-buffer-prepare-marker-for-history this)
+                (slack-buffer-insert--history this)
+                (lui-recover-output-marker)))))
+        (slack-buffer-request-history this #'after-success))
+    (message "No more items.")))
 
 (cl-defmethod slack-buffer-cant-execute ((this slack-buffer))
   (error "Can't execute this command from %s" (eieio-object-class-name this)))
@@ -293,10 +292,10 @@
   (if (and (bound-and-true-p slack-current-buffer)
            (slot-exists-p slack-current-buffer 'room-id)
            (slot-boundp slack-current-buffer 'room-id)
-           (slot-exists-p slack-current-buffer 'team)
-           (slot-boundp slack-current-buffer 'team))
+           (slot-exists-p slack-current-buffer 'team-id)
+           (slot-boundp slack-current-buffer 'team-id))
       (list (slack-buffer-room slack-current-buffer)
-            (oref slack-current-buffer team))
+            (slack-buffer-team slack-current-buffer))
     (list nil nil)))
 
 (defmacro slack-if-let-room-and-team (var-list then &rest else)
@@ -322,9 +321,8 @@
                     (ts (get-text-property beg 'ts))
                     (path (slack-image-path url)))
         (let* ((no-token-p (get-text-property (1- (point)) 'no-token))
-               (token (and (not no-token-p)
-                           (oref (oref slack-current-buffer team)
-                                 token))))
+               (team (slack-buffer-team slack-current-buffer))
+               (token (and (not no-token-p) (oref team token))))
           (cl-labels
               ((on-success ()
                            (slack-buffer-replace-image cur-buffer ts)))
@@ -335,7 +333,7 @@
                                    :token token)))))))
 
 (cl-defmethod slack-buffer-replace ((this slack-buffer) message)
-  (with-slots (team) this
+  (let ((team (slack-buffer-team this)))
     (with-current-buffer (slack-buffer-buffer this)
       (lui-replace (slack-message-to-string message team)
                    (lambda ()
@@ -350,7 +348,7 @@
 (defun slack-reaction-echo-description ()
   (slack-if-let* ((buffer slack-current-buffer)
                   (reaction (get-text-property (point) 'reaction))
-                  (team (oref buffer team)))
+                  (team (slack-buffer-team buffer)))
       (slack-reaction-help-text reaction
                                 team
                                 #'(lambda (text) (message text)))))
@@ -363,7 +361,7 @@
                            prev-point
                            (point)
                            type)
-                   (oref buffer team)
+                   (slack-buffer-team buffer)
                    :level 'trace)
 
         (slack-buffer--subscribe-cursor-event buffer
@@ -396,7 +394,7 @@
 
 (defun slack-handle-lazy-conversation-name ()
   (slack-if-let* ((buffer slack-current-buffer)
-                  (team (oref buffer team)))
+                  (team (slack-buffer-team buffer)))
       (progn
         (let ((cur-point (point-min)))
           (while (and cur-point (< cur-point (point-max)))
@@ -415,7 +413,7 @@
 
 (defun slack-handle-lazy-user-name ()
   (slack-if-let* ((buffer slack-current-buffer)
-                  (team (oref buffer team)))
+                  (team (slack-buffer-team buffer)))
       (progn
         (let ((cur-point (point-min)))
           (while (and cur-point (< cur-point (point-max)))
@@ -772,7 +770,7 @@
   (interactive)
   (slack-if-let*
       ((buffer slack-current-buffer)
-       (team (oref buffer team))
+       (team (slack-buffer-team buffer))
        (file (expand-file-name (car (find-file-read-args "Select File: " t))))
        (filename (read-from-minibuffer "Filename: "
                                        (file-name-nondirectory file)))

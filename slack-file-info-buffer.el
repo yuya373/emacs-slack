@@ -47,7 +47,7 @@
       (slack-buffer-display-file buf id)))
 
 (cl-defmethod slack-buffer-display-file ((this slack-buffer) file-id)
-  (let ((team (oref this team)))
+  (let ((team (slack-buffer-team this)))
     (cl-labels
         ((open (file &rest _args)
                (slack-buffer-display (slack-create-file-info-buffer team file))))
@@ -82,7 +82,7 @@
       (progn
         (oset buffer file file)
         buffer)
-    (slack-file-info-buffer :team team :file file)))
+    (slack-file-info-buffer :team-id (oref team id) :file file)))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-file-info-buffer))
   (let ((buf (cl-call-next-method)))
