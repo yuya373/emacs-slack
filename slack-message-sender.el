@@ -133,6 +133,7 @@
                               (list "channel" :name "channel" :type 'keyword)
                               (list "everyone" :name "everyone" :type 'keyword)))
              (usergroups (mapcar #'(lambda (e) (list (oref e handle)
+                                                     :id (oref e id)
                                                      :name (oref e handle)
                                                      :type 'usergroup))
                                  (cl-remove-if #'slack-usergroup-deleted-p
