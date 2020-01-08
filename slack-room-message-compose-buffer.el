@@ -52,7 +52,7 @@
 (cl-defmethod slack-team-buffer-key ((_class (subclass slack-room-message-compose-buffer)))
   'slack-room-message-compose-buffer)
 
-(cl-defmethod slack-buffer-init-buffer ((this slack-room-message-compose-buffer))
+(cl-defmethod slack-buffer-init-buffer ((_this slack-room-message-compose-buffer))
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (setq buffer-read-only nil)

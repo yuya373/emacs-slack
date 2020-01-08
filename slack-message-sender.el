@@ -409,7 +409,7 @@
                                                                                   (setq blockquote-ranges nil)))
                                                        (commit-list-block ()
                                                                           (when (commit-block "rich_text_list"
-                                                                                              (mapcan #'(lambda (range)
+                                                                                              (cl-mapcan #'(lambda (range)
                                                                                                           (create-section-elements-from-ranges
                                                                                                            (list range)))
                                                                                                       (reverse list-ranges))

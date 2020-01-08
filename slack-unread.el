@@ -23,8 +23,7 @@
 ;;
 
 ;;; Code:
-(eval-when-compile
-  (require 'cl))
+(require 'cl-lib)
 (require 'slack-util)
 (require 'slack-request)
 (require 'slack-room)

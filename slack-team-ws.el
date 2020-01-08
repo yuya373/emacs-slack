@@ -24,8 +24,7 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'cl))
+(require 'cl-lib)
 (require 'eieio)
 
 (defclass slack-team-ws ()
@@ -103,7 +102,7 @@
      (oref ws reconnect-count)))
 
 (cl-defmethod slack-ws-inc-reconnect-count ((ws slack-team-ws))
-  (incf (oref ws reconnect-count)))
+  (cl-incf (oref ws reconnect-count)))
 
 (cl-defmethod slack-ws-use-reconnect-url-p ((ws slack-team-ws))
   (< 0 (length (oref ws reconnect-url))))

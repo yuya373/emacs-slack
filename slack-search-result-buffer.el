@@ -108,8 +108,7 @@
     (slack-search-has-next-page-p search-result)))
 
 (cl-defmethod slack-buffer-insert-history ((this slack-search-result-buffer))
-  (let* ((team (slack-buffer-team this))
-         (search-result (oref this search-result))
+  (let* ((search-result (oref this search-result))
          (pagination (oref search-result pagination))
          (first (oref pagination first))
          (last (oref pagination last))

@@ -24,8 +24,7 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'cl))
+(require 'cl-lib)
 (require 'eieio)
 (require 'slack-room)
 (require 'slack-util)
@@ -412,7 +411,7 @@
              with next = nil
              do (when (slack-buffer-visible-message-p this m)
                   (if (string= (slack-ts m) ts)
-                      (return next)
+                      (cl-return next)
                     (setq next m))))))
 
 (cl-defmethod slack-buffer-prev-message ((this slack-message-buffer) message)
@@ -422,7 +421,7 @@
              do (when (string< ts current-ts)
                   (slack-if-let* ((message (slack-room-find-message room ts))
                                   (visible-p (slack-buffer-visible-message-p this message)))
-                      (return message))))))
+                      (cl-return message))))))
 
 (cl-defmethod slack-buffer-merge-message-p ((this slack-message-buffer) message prev)
   (let ((team (slack-buffer-team this)))

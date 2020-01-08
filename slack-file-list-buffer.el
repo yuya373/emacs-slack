@@ -116,9 +116,7 @@
     buf))
 
 (cl-defmethod slack-buffer-update ((this slack-file-list-buffer) message &key replace)
-  (let ((team (slack-buffer-team this))
-        (room (slack-buffer-room this))
-        (buffer (slack-buffer-buffer this)))
+  (let ((buffer (slack-buffer-buffer this)))
     (if replace (slack-buffer-replace this message)
       (with-current-buffer buffer
         (slack-buffer-insert this message)))))
@@ -216,7 +214,7 @@
                                                           team)))))))
 
 (cl-defmethod slack-buffer-add-star ((this slack-file-list-buffer) ts)
-  (slack-if-let* ((team ((slack-buffer-team this)))
+  (slack-if-let* ((team (slack-buffer-team this))
                   (file (slack-file-find ts team)))
       (slack-star-api-request slack-message-stars-add-url
                               (list (slack-message-star-api-params file))

@@ -245,9 +245,7 @@
           (slack-buffer-insert this)))))
 
 (cl-defmethod slack-buffer-update ((this slack-file-info-buffer))
-  (let ((buffer (slack-buffer-buffer this))
-        (file (oref this file))
-        (team (slack-buffer-team this)))
+  (let ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
