@@ -47,6 +47,36 @@
   :type 'string
   :group 'slack)
 
+(defvar slack-reaction-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'slack-reaction-toggle)
+    (define-key keymap [mouse-1] #'slack-reaction-toggle)
+    keymap))
+
+(cl-defgeneric slack-buffer-toggle-reaction (buffer reaction))
+
+(defun slack-reaction-toggle ()
+  (interactive)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property (point) 'reaction)))
+      (slack-buffer-toggle-reaction buffer reaction)))
+
+(cl-defgeneric slack-buffer-reaction-help-text (buffer reaction))
+
+(defun slack-reaction-help-echo (_window _string pos)
+  (slack-if-let* ((buffer slack-current-buffer)
+                  (reaction (get-text-property pos 'reaction)))
+      (slack-buffer-reaction-help-text buffer reaction)))
+
+
+(cl-defmethod slack-reaction-to-string ((r slack-reaction))
+  (propertize (format " :%s: %d " (oref r name) (oref r count))
+              'face 'slack-message-output-reaction
+              'mouse-face 'highlight
+              'keymap slack-reaction-keymap
+              'reaction r
+              'help-echo #'slack-reaction-help-echo))
+
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header m team))
          (attachment (mapconcat #'(lambda (attachment)
@@ -78,6 +108,58 @@
                             (concat "\n" reactions))
                           (if (slack-string-blankp thread) thread
                             (concat "\n" thread)))))
+
+(cl-defmethod slack-file-summary ((file slack-file) _ts team)
+  (with-slots (mode permalink) file
+    (if (string= mode "tombstone")
+        "This file was deleted."
+      (let ((type (slack-file-type file))
+            (title (slack-file-title file)))
+        (format "uploaded this %s: %s <%s|open in browser>"
+                type
+                (slack-file-link-info (oref file id)
+                                      (slack-unescape title team))
+                permalink)))))
+
+(defvar slack-expand-email-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'slack-toggle-email-expand)
+    map))
+
+(cl-defgeneric slack-buffer-toggle-email-expand (buffer file-id))
+
+(defun slack-toggle-email-expand ()
+  (interactive)
+  (let ((buffer slack-current-buffer))
+    (slack-if-let* ((file-id (get-text-property (point) 'id)))
+        (slack-buffer-toggle-email-expand buffer file-id))))
+
+(cl-defmethod slack-file-summary ((this slack-file-email) ts team)
+  (with-slots (preview-plain-text plain-text is-expanded) this
+    (let* ((has-more (< (length preview-plain-text)
+                        (length plain-text)))
+           (body (slack-unescape
+                  (or (and is-expanded plain-text)
+                      (or (and has-more (format "%s…" preview-plain-text))
+                          preview-plain-text))
+                  team)))
+      (format "%s\n\n%s\n\n%s"
+              (cl-call-next-method)
+              (propertize body
+                          'slack-defer-face #'slack-put-preview-overlay)
+              (propertize (or (and is-expanded "Collapse ↑")
+                              "+ Click to expand inline")
+                          'ts ts
+                          'id (oref this id)
+                          'face '(:underline t)
+                          'keymap slack-expand-email-keymap)))))
+
+(cl-defmethod slack-message-to-string ((this slack-file) ts team)
+  (if (slack-file-hidden-by-limit-p this)
+      (slack-file-hidden-by-limit-message this)
+    (let ((body (slack-file-summary this ts team))
+          (thumb (slack-image-string (slack-file-thumb-image-spec this))))
+      (slack-format-message body thumb))))
 
 (cl-defmethod slack-message-to-alert ((m slack-message) team)
   (with-slots (text attachments files) m

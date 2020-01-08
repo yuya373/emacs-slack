@@ -538,46 +538,6 @@
                            ts)
                return i))))
 
-(defun slack-execute-button-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-button-block-action buf)))
-
-(defun slack-execute-conversation-select-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-conversation-select-block-action buf)))
-
-(defun slack-execute-channel-select-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-channel-select-block-action buf)))
-
-(defun slack-execute-user-select-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-user-select-block-action buf)))
-
-(defun slack-execute-static-select-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-static-select-block-action buf)))
-
-(defun slack-execute-external-select-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-external-select-block-action buf)))
-
-(defun slack-execute-overflow-menu-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-overflow-menu-block-action buf)))
-
-(defun slack-execute-datepicker-block-action ()
-  (interactive)
-  (slack-if-let* ((buf slack-current-buffer))
-      (slack-buffer-execute-datepicker-block-action buf)))
-
 (defun slack-group-rename ()
   (interactive)
   (slack-if-let-room-and-team (room team)

@@ -31,7 +31,6 @@
 (require 'slack-file)
 (require 'slack-message-formatter)
 (require 'slack-message-reaction)
-(require 'slack-stringify)
 (require 'slack-star)
 
 (defvar slack-file-link-keymap
@@ -110,6 +109,56 @@
         (propertize (concat "<style>\n" css "</style>" "\n" html)
                     'slack-file-html-content t)
       "")))
+
+(cl-defmethod slack-file-body-to-string ((file slack-file))
+  (let* ((url (oref file url-private))
+         (type (slack-file-type file))
+         (size (slack-file-size file))
+         (title (slack-file-title file)))
+    (slack-format-message (propertize (format "<%s|%s>" url title)
+                                      'face '(:weight bold))
+                          (format "%s%s"
+                                  (or (and size (format "%s " size)) "")
+                                  type))))
+
+(cl-defmethod slack-file-body-to-string ((this slack-file-email))
+  (let* ((label-face '(:foreground "#586e75" :weight bold))
+         (from (format "%s %s"
+                       (propertize "From:" 'face label-face)
+                       (mapconcat #'(lambda (e) (oref e original))
+                                  (oref this from)
+                                  ", ")))
+         (to (format "%s %s"
+                     (propertize "To:" 'face label-face)
+                     (mapconcat #'(lambda (e) (oref e original))
+                                (oref this to)
+                                ", ")))
+         (cc (format "%s %s"
+                     (propertize "CC:" 'face label-face)
+                     (mapconcat #'(lambda (e) (oref e original))
+                                (oref this cc)
+                                ", ")))
+         (subject (format "%s %s"
+                          (propertize "Subject:" 'face label-face)
+                          (propertize (oref this subject)
+                                      'face '(:weight bold :height 1.1))))
+         (body (propertize (format "\n%s" (oref this plain-text))
+                           'slack-defer-face #'slack-put-email-body-overlay))
+         (date (format "%s %s"
+                       (propertize "Date:" 'face label-face)
+                       (slack-format-ts (oref this created)))))
+    (mapconcat #'identity
+               (list from to cc subject date "" body)
+               "\n")))
+
+(cl-defmethod slack-message-to-string ((this slack-file-comment) team)
+  (with-slots (user comment) this
+    (let ((name (slack-user-name user team))
+          (status (slack-user-status user team)))
+      (format "%s\n%s\n"
+              (propertize (format "%s %s" name status)
+                          'face 'slack-message-output-header)
+              (slack-unescape comment team)))))
 
 (cl-defmethod slack-buffer-file-to-string ((this slack-file-info-buffer))
   (let* ((file (oref this file))

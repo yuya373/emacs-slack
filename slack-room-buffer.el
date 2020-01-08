@@ -45,12 +45,6 @@
 (defvar slack-alert-icon)
 (defvar slack-message-minibuffer-local-map nil)
 
-(defvar slack-expand-email-keymap
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET")
-      #'slack-toggle-email-expand)
-    map))
-
 (defvar slack-attachment-action-keymap
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "RET") #'slack-attachment-action-run)
@@ -155,12 +149,6 @@
       (progn
         (oset file is-expanded (not (oref file is-expanded)))
         (slack-buffer-update this message :replace t))))
-
-(defun slack-toggle-email-expand ()
-  (interactive)
-  (let ((buffer slack-current-buffer))
-    (slack-if-let* ((file-id (get-text-property (point) 'id)))
-        (slack-buffer-toggle-email-expand buffer file-id))))
 
 (defun slack-pins-request (url room team ts)
   (cl-labels ((on-pins-add
@@ -721,18 +709,6 @@ Execute this function when cursor is on some message."
          (list (append action (list (cons "selected_date" selected-date))))
          (slack-buffer-block-action-container this message)
          team))))
-
-(defun slack-reaction-toggle ()
-  (interactive)
-  (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property (point) 'reaction)))
-      (slack-buffer-toggle-reaction buffer reaction)))
-
-(defun slack-reaction-help-echo (_window _string pos)
-  (slack-if-let* ((buffer slack-current-buffer)
-                  (reaction (get-text-property pos 'reaction)))
-      (slack-buffer-reaction-help-text buffer reaction)))
-
 
 (provide 'slack-room-buffer)
 ;;; slack-room-buffer.el ends here

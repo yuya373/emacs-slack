@@ -72,7 +72,6 @@
 (require 'slack-usergroup)
 (require 'slack-unread)
 (require 'slack-modeline)
-(require 'slack-stringify)
 (require 'slack-create-message)
 
 (when (featurep 'helm)

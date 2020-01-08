@@ -6,7 +6,6 @@
 (require 'slack-block)
 (require 'slack-mrkdwn)
 (require 'slack-message-sender)
-(require 'slack-stringify)
 
 (defvar slack-channel-button-keymap nil)
 (setq slack-render-image-p t)

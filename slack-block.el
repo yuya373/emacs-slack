@@ -34,6 +34,7 @@
 
 (defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap)
+(defvar slack-current-buffer)
 
 ;; Layout Blocks
 ;; [Reference: Message layout blocks | Slack](https://api.slack.com/reference/messaging/blocks)
@@ -750,6 +751,26 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(cl-defgeneric slack-buffer-execute-button-block-action (buffer))
+
+(defun slack-execute-button-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-button-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-button-block-element) &optional _option)
+  (with-slots (text style) this
+    (let ((face (cond ((string= "danger" style) 'slack-button-danger-block-element-face)
+                      ((string= "primary" style) 'slack-button-primary-block-element-face)
+                      (t 'slack-button-block-element-face))))
+      (propertize (slack-block-to-string text)
+                  'face face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET")
+                              #'slack-execute-button-block-action)
+                            map)))))
+
 (defface slack-button-block-element-face
   '((t (:box (:line-width 1 :style released-button :foreground "#2aa198"))))
   "Used to button block element"
@@ -820,6 +841,22 @@
                    :initial_option (slack-create-option-message-composition-object
                                     initial-option))))
 
+(cl-defgeneric slack-buffer-execute-static-select-block-action (buffer))
+
+(defun slack-execute-static-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-static-select-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-static-select-block-element) &optional _option)
+  (with-slots (initial-option placeholder) this
+    (propertize (slack-block-to-string (or initial-option placeholder))
+                'face 'slack-select-block-element-face
+                'slack-action-payload (slack-block-action-payload this)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET") #'slack-execute-static-select-block-action)
+                          map))))
+
 (cl-defmethod slack-block-action-payload ((this slack-static-select-block-element))
   (with-slots (type action-id block-id placeholder) this
     (list (cons "type" type)
@@ -840,6 +877,22 @@
                                                                     slack-option-group-message-composition-object))
    (min-query-length :initarg :min_query_length :type (or integer null) :initform nil)
    (block-id :initarg :block_id :type (or null string) :initform nil)))
+
+(cl-defgeneric slack-buffer-execute-external-select-block-action (buffer))
+
+(defun slack-execute-external-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-external-select-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-external-select-block-element))
+  (with-slots (placeholder initial-option) this
+    (propertize (slack-block-to-string (or initial-option placeholder))
+                'face 'slack-select-block-element-face
+                'slack-action-payload (slack-block-action-payload this)
+                'keymap (let ((map (make-sparse-keymap)))
+                          (define-key map (kbd "RET") #'slack-execute-external-select-block-action)
+                          map))))
 
 (defun slack-create-external-select-block-element (payload block-id)
   (make-instance 'slack-external-select-block-element
@@ -904,6 +957,28 @@
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
 
+(cl-defgeneric slack-buffer-execute-user-select-block-action (buffer))
+
+(defun slack-execute-user-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-user-select-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-user-select-block-element) &optional _option)
+  (with-slots (initial-user placeholder) this
+    (let ((props (list
+                  'face 'slack-select-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-user-select-block-action)
+                            map))))
+      (if initial-user
+          (apply #'propertize (format "USER: %s" initial-user)
+                 (append (list 'slack-user-id initial-user
+                               'slack-lazy-user-name t)
+                         props))
+        (apply #'propertize (slack-block-to-string placeholder) props)))))
+
 (cl-defmethod slack-block-action-payload ((this slack-user-select-block-element))
   (with-slots (type action-id block-id) this
     (list (cons "type" type)
@@ -924,6 +999,27 @@
                  :initial_conversation (plist-get payload :initial_conversation)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
+
+(cl-defgeneric slack-buffer-execute-conversation-select-block-action (buffer))
+
+(defun slack-execute-conversation-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-conversation-select-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-conversation-select-block-element) &optional _option)
+  (with-slots (initial-conversation placeholder) this
+    (let ((props (list 'face 'slack-select-block-element-face
+                       'slack-action-payload (slack-block-action-payload this)
+                       'keymap (let ((map (make-sparse-keymap)))
+                                 (define-key map (kbd "RET") #'slack-execute-conversation-select-block-action)
+                                 map))))
+      (if initial-conversation
+          (apply #'propertize (format "CONVERSATION: %s" initial-conversation)
+                 (append (list 'slack-conversation-id initial-conversation
+                               'slack-lazy-conversation-name t)
+                         props))
+        (apply #'propertize (slack-block-to-string placeholder) props)))))
 
 (cl-defmethod slack-block-action-payload ((this slack-conversation-select-block-element))
   (with-slots (type action-id block-id) this
@@ -946,6 +1042,28 @@
                  :initial_channel (plist-get payload :initial_channel)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
+
+(cl-defgeneric slack-buffer-execute-channel-select-block-action (buffer))
+
+(defun slack-execute-channel-select-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-channel-select-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-channel-select-block-element) &optional _option)
+  (with-slots (placeholder initial-channel) this
+    (let ((props (list
+                  'face 'slack-select-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-channel-select-block-action)
+                            map))))
+      (if initial-channel
+          (apply #'propertize (format "CHANNEL: %s" initial-channel)
+                 (append (list 'slack-lazy-conversation-name t
+                               'slack-conversation-id initial-channel)
+                         props))
+        (apply #'propertize (slack-block-to-string placeholder) props)))))
 
 (cl-defmethod slack-block-action-payload ((this slack-channel-select-block-element))
   (with-slots (block-id action-id type) this
@@ -974,6 +1092,21 @@
   "Used to overflow block element"
   :group 'slack)
 
+(cl-defgeneric slack-buffer-execute-overflow-menu-block-action (buffer))
+
+(defun slack-execute-overflow-menu-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-overflow-menu-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-overflow-menu-block-element) &optional _option)
+  (propertize " … "
+              'face 'slack-overflow-block-element-face
+              'slack-action-payload (slack-block-action-payload this)
+              'keymap (let ((map (make-sparse-keymap)))
+                        (define-key map (kbd "RET") #'slack-execute-overflow-menu-block-action)
+                        map)))
+
 (cl-defmethod slack-block-action-payload ((this slack-overflow-menu-block-element))
   (with-slots (type action-id block-id) this
     (list (cons "type" type)
@@ -997,6 +1130,25 @@
                  :initial_date (plist-get payload :initial_date)
                  :confirm (slack-create-confirmation-dialog-message-composition-object
                            (plist-get payload :confirm))))
+
+(cl-defgeneric slack-buffer-execute-datepicker-block-action (buffer))
+
+(defun slack-execute-datepicker-block-action ()
+  (interactive)
+  (slack-if-let* ((buf slack-current-buffer))
+      (slack-buffer-execute-datepicker-block-action buf)))
+
+(cl-defmethod slack-block-to-string ((this slack-date-picker-block-element) &optional _option)
+  (with-slots (placeholder initial-date) this
+    (let ((text (or initial-date
+                    (slack-block-to-string placeholder)
+                    "Pick a date")))
+      (propertize text
+                  'face 'slack-date-picker-block-element-face
+                  'slack-action-payload (slack-block-action-payload this)
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (define-key map (kbd "RET") #'slack-execute-datepicker-block-action)
+                            map)))))
 
 (defface slack-date-picker-block-element-face
   '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
