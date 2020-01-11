@@ -242,6 +242,7 @@
   (slack-if-let* ((buffer (slack-buffer-buffer this)))
       (with-current-buffer buffer
         (let ((inhibit-read-only t))
+          (erase-buffer)
           (slack-buffer-insert this)))))
 
 (cl-defmethod slack-buffer-update ((this slack-file-info-buffer))
