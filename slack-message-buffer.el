@@ -120,7 +120,8 @@
       (cl-labels
           ((update-mark ()
                         (slack-buffer-update-mark-request this ts)))
-        (setq update-mark-timer
+        (oset this
+              update-mark-timer
               (cons ts (run-at-time timer-timeout-sec nil #'update-mark)))))))
 
 (cl-defmethod slack-buffer-update-mark-request ((this slack-message-buffer) ts &optional after-success)
