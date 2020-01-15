@@ -39,6 +39,7 @@
 (require 'slack-user-profile-buffer)
 (require 'slack-mrkdwn)
 (require 'slack-modeline)
+(require 'slack-message-notification)
 
 (defvar slack-completing-read-function)
 (defvar slack-channel-button-keymap
@@ -663,7 +664,8 @@
                              (slack-room-set-messages this messages team)
                              (tracking-add-buffer
                               (slack-buffer-buffer
-                               (slack-create-message-buffer this cursor team))))))))
+                               (slack-create-message-buffer this cursor team))
+                              (slack-messages-tracking-faces messages this team)))))))
 
 (defun slack-select-unread-rooms ()
   (interactive)
@@ -745,7 +747,8 @@
          (cl-labels ((after-success (_next-cursor has-more)
                                     (tracking-add-buffer (slack-buffer-buffer
                                                           (slack-create-thread-message-buffer
-                                                           room team (slack-thread-ts message) has-more)))))
+                                                           room team (slack-thread-ts message) has-more))
+                                                         slack-message-tracking-faces)))
            (slack-thread-replies message room team
                                  :after-success #'after-success)))))
 
