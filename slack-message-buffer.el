@@ -107,7 +107,7 @@
          (room (slack-buffer-room this))
          (update-mark-timer (oref this update-mark-timer))
          (ts (slack-get-ts))
-         (timer-timeout-sec (or (and force 0) 5))
+         (timer-timeout-sec (or (and force 0) 3))
          (prev-mark (or (car update-mark-timer)
                         (slack-buffer-last-read this)))
          (prev-timer (cdr update-mark-timer)))
