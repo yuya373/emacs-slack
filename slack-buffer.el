@@ -287,6 +287,8 @@
   (slack-buffer-cant-execute this))
 (cl-defmethod slack-buffer-request-history ((this slack-buffer) _after-success)
   (slack-buffer-cant-execute this))
+(cl-defmethod slack-buffer-select-file ((this slack-buffer))
+  (slack-buffer-cant-execute this))
 
 (defun slack-current-room-and-team ()
   (if (and (bound-and-true-p slack-current-buffer)

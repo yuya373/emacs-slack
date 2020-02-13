@@ -31,6 +31,11 @@
 (defconst slack-file-get-upload-url-url "https://slack.com/api/files.getUploadURL")
 (defconst slack-file-upload-complete-url "https://slack.com/api/files.completeUpload")
 
+(defvar slack-message-compose-buffer-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "C-c C-f") #'slack-message-select-file)
+    keymap))
+
 (define-derived-mode slack-message-compose-buffer-mode
   slack-edit-message-mode
   "Slack Compose Message")
@@ -144,8 +149,21 @@
       :success #'on-complete))))
 
 (defclass slack-message-compose-buffer (slack-buffer)
-  ((room-id :initarg :room-id type string))
+  ((room-id :initarg :room-id :type string)
+   (files :initarg :files :type (or null list) :initform nil))
   :abstract t)
+
+(defun slack-message-select-file ()
+  (interactive)
+  (slack-buffer-select-file slack-current-buffer))
+
+(cl-defmethod slack-buffer-select-file ((this slack-message-compose-buffer))
+  (let* ((path (expand-file-name (car (find-file-read-args "Select File: " t))))
+         (filename (read-from-minibuffer "Filename: " (file-name-nondirectory path))))
+    (oset this files (append (oref this files)
+                             (list (make-instance 'slack-message-compose-buffer-file
+                                                  :path path
+                                                  :filename filename))))))
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
   (with-slots (room-id) this
