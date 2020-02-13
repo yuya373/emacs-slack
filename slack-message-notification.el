@@ -62,6 +62,11 @@
   :type '(choice file (const :tag "Stock alert icon" nil))
   :group 'slack)
 
+(defcustom slack-message-tracking-faces nil
+  "A list of faces to be added by `tracking` to the mode-line notifications."
+  :type '(repeat face)
+  :group 'slack)
+
 (defun slack-message-notify (message room team)
   (if slack-message-custom-notifier
       (funcall slack-message-custom-notifier message room team)
@@ -88,6 +93,13 @@
            (slack-room-subscribedp room team)
            (slack-message-mentioned-p message team)
            (slack-message-subscribed-thread-message-p message room))))
+
+(defun slack-messages-tracking-faces (messages room team)
+  (when (and slack-message-tracking-faces
+             (cl-find-if (lambda (m)
+                           (ignore-errors (slack-message-notify-p m room team)))
+                         messages))
+    slack-message-tracking-faces))
 
 (defun slack-message-notify-alert (message room team)
   (if (slack-message-notify-p message room team)
