@@ -80,18 +80,58 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
   (setq alert-default-style 'notifier))
 
 ```
+
 ## How to get token
 
-### 1. From Request Payload
+1. Using Chrome, open and sign into the slack customization page,
+   e.g. https://my.slack.com/customize
+2. Right click anywhere on the page and choose "inspect" from the
+   context menu. This will open the Chrome developer tools.
+3. Find the console (it's one of the tabs in the developer tools window)
+4. At the prompt ("> ") type the following:
+   `window.prompt("your api token is: ", TS.boot_data.api_token)`
+5. Copy the displayed token elsewhere, and close the window.
 
- 1. Log into the Slack team you're interested in with a web browser
- 2. Open DevTools
- 3. Open Network tab
- 4. Search for (Ctrl-F) "xoxs-" and copy token from Request Payload
- 
-### 2. From customize page
-https://github.com/jackellenberger/emojme#slack-for-web
+For further explanation, see the documentation for the emojme project:
+[(github.com/jackellenberger/emojme)](https://github.com/jackellenberger/emojme#slack-for-web)
 
+## How to secure your token
+
+If someone steals your token they can use the token to impersonate
+you, reading and posting to Slack as if they were you.  It's important
+to take reasonable precautions to secure your token.
+
+One way to do this is by using the Emacs `auth-source` library. Read
+the [auth-source
+documentation](https://www.gnu.org/software/emacs/manual/html_node/auth/index.html)
+to learn how to use it to store login information for remote services.
+
+Then configure the `auth-sources` variable to select a "backend"
+store. The default backend is `~/.authinfo` file, which is simple but
+also un-encrypted. A more complex option is to encrypt that
+`.~/authinfo` file with `gnupg` and configure `auth-sources` to use
+`~/.authinfo.gpg` as the source for all passwords and secrets. Other
+backends exist beyond these; read the documentation for details.
+
+How to store your slack tokens in your `auth-source` backend will vary
+depending which backend you chose. See documentation for details. The
+"host" and "user" fields can be whatever you like as long as they are
+unique; as a suggestion use "myslackteam.slack.com" for host, and use
+your email address for user. The "secret" or "password" field should
+contain the token you obtained earlier ([How to get
+token](#how-to-get-token)).
+
+Then finally, in your Emacs init read the token from your
+`auth-source`:
+
+``` elisp
+(slack-register-team
+ :name "myslackteam"
+ :token (auth-source-pick-first-password
+         :host "myslackteam.slack.com"
+         :user "me@example.com")
+ :subscribed-channels '((channel1 channel2)))
+```
 
 ## How to use
 
