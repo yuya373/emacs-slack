@@ -180,8 +180,8 @@
     (with-current-buffer buf
       (slack-message-compose-buffer-mode)
       (slack-buffer-set-current-buffer this))
+    (message "C-c C-c to send message")
     buf))
-
 
 (provide 'slack-message-compose-buffer)
 ;;; slack-message-compose-buffer.el ends here
