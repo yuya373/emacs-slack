@@ -164,7 +164,7 @@
                                message
                                thread-ts)))
 
-(defun slack-thread-send-message (room team message thread-ts)
+(defun slack-thread-send-message (room team message thread-ts &optional files)
   (let ((broadcast (if (eq slack-thread-also-send-to-room 'ask)
                        (y-or-n-p (format "Also send to %s ? "
                                          (slack-room-name room team)))
@@ -172,7 +172,8 @@
     (let* ((payload (list (cons "reply_broadcast" broadcast)
                           (cons "thread_ts" thread-ts))))
       (slack-message-send-internal message room team
-                                   :payload payload))))
+                                   :payload payload
+                                   :files files))))
 
 (defun slack-thread-message--send (message)
   (slack-if-let* ((buf slack-current-buffer))

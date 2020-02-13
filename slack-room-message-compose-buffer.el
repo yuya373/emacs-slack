@@ -63,7 +63,8 @@
 (cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
   (slack-message-send-internal message
                                (slack-buffer-room this)
-                               (slack-buffer-team this))
+                               (slack-buffer-team this)
+                               :files (oref this files))
   (cl-call-next-method))
 
 

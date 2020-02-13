@@ -45,23 +45,43 @@
 (defconst slack-usergroup-mention-regex "\\(<!subteam^\\([A-Za-z0-9]+\\)>\\)")
 (defconst slack-special-mention-regex "\\(<!\\(here\\|channel\\|everyone\\)>\\)")
 
-(cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil))
+
+(cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil) (files nil))
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
       (slack-conversations-join
        room team
        #'(lambda (_data) (slack-message-send-internal message
                                                       room
-                                                      team)))
-    (with-slots (message-id self-id) team
-      (let* ((channel-id (oref room id))
-             (m (apply #'list
-                       (cons "type" "message")
-                       (cons "channel" channel-id)
-                       (with-temp-buffer
-                         (insert message)
-                         (slack-create-blocks-from-buffer)))))
-        (slack-chat-post-message team (append m payload)
+                                                      team
+                                                      :on-success on-success
+                                                      :on-error on-error
+                                                      :payload payload
+                                                      :files files)))
+    (if files
+        (slack-upload-files team
+                            files
+                            :on-error on-error
+                            :on-success #'(lambda (files) (let ((message-payload (append (apply #'list
+                                                                                                (cons "channel" (oref room id))
+                                                                                                (with-temp-buffer
+                                                                                                  (insert message)
+                                                                                                  (slack-create-blocks-from-buffer)))
+                                                                                         payload)))
+                                                            (slack-files-upload-complete team
+                                                                                         files
+                                                                                         message-payload
+                                                                                         :on-success on-success
+                                                                                         :on-error on-error))))
+      (let ((message-payload (append (apply #'list
+                                            (cons "type" "message")
+                                            (cons "channel" (oref room id))
+                                            (with-temp-buffer
+                                              (insert message)
+                                              (slack-create-blocks-from-buffer)))
+                                     payload)))
+        (slack-chat-post-message team
+                                 message-payload
                                  :on-success on-success
                                  :on-error on-error)))))
 
