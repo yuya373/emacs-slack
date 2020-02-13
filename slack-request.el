@@ -68,13 +68,13 @@
    (sync :initarg :sync :initform nil)
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
-   (timeout :initarg :timeout :initform `,slack-request-timeout)
+   (timeout :initarg :timeout :initform nil)
    (execute-at :initform 0.0 :type float)
    (retry-count :initform 0 :type number)
    (without-auth :initarg :without-auth :initform nil :type boolean)))
 
 (cl-defun slack-request-create
-    (url team &key type success error params data parser sync files headers timeout without-auth)
+    (url team &key type success error params data parser sync files headers (timeout slack-request-timeout) without-auth)
   (let ((args (list
                :url url :team team :type type
                :success success :error error
