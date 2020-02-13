@@ -169,7 +169,9 @@
                        (y-or-n-p (format "Also send to %s ? "
                                          (slack-room-name room team)))
                      slack-thread-also-send-to-room)))
-    (let* ((payload (list (cons "reply_broadcast" broadcast)
+    (let* ((payload (list (if files
+                              (cons "broadcast" broadcast)
+                            (cons "reply_broadcast" broadcast))
                           (cons "thread_ts" thread-ts))))
       (slack-message-send-internal message room team
                                    :payload payload
