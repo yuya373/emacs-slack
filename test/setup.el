@@ -17,5 +17,4 @@
 (el-get-bundle oauth2)
 (el-get-bundle jorgenschaefer/circe)
 (el-get-bundle alert)
-(el-get-bundle helm)
 (el-get-bundle company)

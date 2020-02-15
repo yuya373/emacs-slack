@@ -74,9 +74,6 @@
 (require 'slack-modeline)
 (require 'slack-create-message)
 
-(when (featurep 'helm)
-  (require 'helm-slack))
-
 (require 'slack-company)
 
 (defgroup slack nil
