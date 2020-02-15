@@ -24,6 +24,10 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 - [request](https://github.com/tkf/emacs-request)
 - [websocket](https://github.com/ahyatt/emacs-websocket)
 
+## Extensions
+
+- [helm-slack](https://github.com/yuya373/helm-slack)
+
 ## Configuration
 
 [How to get token](#how-to-get-token)
@@ -32,6 +36,8 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 ;; I'm using use-package and el-get and evil
 
 (el-get-bundle slack)
+(el-get-bundle yuya373/helm-slack) ;; optional
+(use-package helm-slack :after (slack)) ;; optional
 (use-package slack
   :commands (slack-start)
   :init
