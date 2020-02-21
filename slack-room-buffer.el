@@ -1,4 +1,4 @@
-:;;; slack-room-buffer.el ---                         -*- lexical-binding: t; -*-
+;;; slack-room-buffer.el ---                         -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017
 
