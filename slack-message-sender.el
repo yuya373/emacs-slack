@@ -188,31 +188,37 @@
 
 (defun slack-wysiwyg-after-change (_beg _end _length)
   (when (slack-wysiwyg-enabled-p)
-    (save-excursion
-      (save-restriction
-        (put-text-property (point-min) (point-max) 'face nil)
-        (put-text-property (point-min) (point-max) 'invisible nil)
-        (put-text-property (point-min) (point-max) 'slack-code-block-type nil)
-        (put-text-property (point-min) (point-max) 'display nil)
-        (remove-overlays (point-min) (point-max))
-        (slack-mrkdwn-add-face)
-        (mapc #'(lambda (regex)
-                  (goto-char (point-min))
-                  (while (re-search-forward regex (point-max) t)
-                    (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
-                      (let* ((beg (match-beginning 0))
-                             (end (match-end 0))
-                             (props (get-text-property beg 'slack-mention-props)))
-                        (when props
-                          (let ((properties (append (plist-get props :props) nil)))
-                            (while (< 0 (length properties))
-                              (put-text-property beg end
-                                                 (pop properties)
-                                                 (pop properties)))))))))
-              (list slack-user-mention-regex
-                    slack-usergroup-mention-regex
-                    slack-channel-mention-regex
-                    slack-special-mention-regex))))))
+    (let ((beg (point-at-bol))
+          (end (max (point-at-eol) (1- (point-at-eol)))))
+      (when (and (not (get-text-property beg 'slack-attachment-preview))
+                 (not (get-text-property end 'slack-attachment-preview)))
+        (save-excursion
+          (save-restriction
+            (narrow-to-region beg end)
+            (put-text-property (point-min) (point-max) 'face nil)
+            (put-text-property (point-min) (point-max) 'invisible nil)
+            (put-text-property (point-min) (point-max) 'slack-code-block-type nil)
+            (put-text-property (point-min) (point-max) 'display nil)
+            (remove-overlays (point-min) (point-max))
+            (slack-mrkdwn-add-face)
+            (mapc #'(lambda (regex)
+                      (goto-char (point-min))
+                      (while (re-search-forward regex (point-max) t)
+                        (unless (slack-mrkdwn-inside-code-p (match-beginning 0))
+                          (let* ((beg (match-beginning 0))
+                                 (end (match-end 0))
+                                 (props (get-text-property beg 'slack-mention-props)))
+                            (when props
+                              (let ((properties (append (plist-get props :props) nil)))
+                                (while (< 0 (length properties))
+                                  (put-text-property beg end
+                                                     (pop properties)
+                                                     (pop properties)))))))))
+                  (list slack-user-mention-regex
+                        slack-usergroup-mention-regex
+                        slack-channel-mention-regex
+                        slack-special-mention-regex))))))
+    ))
 
 (defun slack-put-block-props (beg end value)
   (put-text-property beg end 'slack-block-props value))
@@ -430,9 +436,9 @@
                                                        (commit-list-block ()
                                                                           (when (commit-block "rich_text_list"
                                                                                               (cl-mapcan #'(lambda (range)
-                                                                                                          (create-section-elements-from-ranges
-                                                                                                           (list range)))
-                                                                                                      (reverse list-ranges))
+                                                                                                             (create-section-elements-from-ranges
+                                                                                                              (list range)))
+                                                                                                         (reverse list-ranges))
                                                                                               (cons "style" list-style)
                                                                                               (cons "indent" list-indent))
                                                                             (setq list-ranges nil)

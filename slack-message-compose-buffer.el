@@ -163,7 +163,68 @@
     (oset this files (append (oref this files)
                              (list (make-instance 'slack-message-compose-buffer-file
                                                   :path path
-                                                  :filename filename))))))
+                                                  :filename filename))))
+    (slack-buffer-insert-attachment-preview this)))
+
+(cl-defmethod slack-buffer-remove-file ((this slack-message-compose-buffer))
+  (let ((path (get-text-property (point) 'slack-file-path)))
+    (when path
+      (oset this files (cl-remove-if #'(lambda (file)
+                                         (string= path (oref file path)))
+                                     (oref this files)))
+      (slack-buffer-insert-attachment-preview this))))
+
+(defface slack-message-attachment-preview-header-face
+  '((t (:underline t :height 1.2 :weight bold)))
+  "Used to attachment preview header"
+  :group 'slack)
+
+(defun slack-message-remove-file ()
+  (interactive)
+  (slack-buffer-remove-file slack-current-buffer))
+
+(cl-defmethod slack-buffer-insert-attachment-preview ((this slack-message-compose-buffer))
+  (let ((buffer (slack-buffer-buffer this))
+        (prop 'slack-attachment-preview)
+        (cur-point (point)))
+    (with-current-buffer buffer
+      (save-excursion
+        (save-restriction
+          (let ((points (cl-loop for i from (point-min) to (point-max)
+                                 when (get-text-property i prop)
+                                 collect i))
+                (inhibit-read-only t))
+            (when (<= 2 (length points))
+              (delete-region (apply #'min points)
+                             (1+ (apply #'max points)))))
+          (goto-char (point-max))
+          (when (< 0 (length (oref this files)))
+            (let ((inhibit-read-only t)
+                  (size 300))
+              (insert (propertize
+                       (format "\n%s\n\n%s"
+                               (propertize "Attachments"
+                                           'face 'slack-message-attachment-preview-header-face)
+                               (mapconcat #'(lambda (file)
+                                              (format "%s %s\n%s"
+                                                      (propertize "Remove"
+                                                                  'face 'slack-message-action-face
+                                                                  'slack-file-path (oref file path)
+                                                                  'keymap (let ((map (make-sparse-keymap)))
+                                                                            (define-key map (kbd "RET") #'slack-message-remove-file)
+                                                                            map))
+                                                      (file-name-nondirectory (oref file path))
+                                                      (slack-mapconcat-images
+                                                       (slack-image-slice
+                                                        (slack-image--create
+                                                         (oref file path)
+                                                         :max-height size))))
+                                              )
+                                          (oref this files)
+                                          "\n\n"))
+                       prop t
+                       'read-only t))))))
+      (goto-char cur-point))))
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
   (with-slots (room-id) this

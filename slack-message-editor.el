@@ -91,7 +91,11 @@
 (defun slack-message-send-from-buffer ()
   (interactive)
   (slack-if-let* ((buf slack-current-buffer)
-                  (text (buffer-substring-no-properties (point-min) (point-max))))
+                  (end (or (cl-loop for i from (point-min) to (point-max)
+                                    if (get-text-property i 'slack-attachment-preview)
+                                    return i)
+                           (point-max)))
+                  (text (buffer-substring-no-properties (point-min) end)))
       (slack-buffer-send-message buf text)))
 
 (defun slack-message--edit (channel team ts text)
