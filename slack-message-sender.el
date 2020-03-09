@@ -47,6 +47,8 @@
 
 
 (cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil) (files nil))
+  (when (slack-string-blankp message)
+    (error "Empty message"))
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
       (slack-conversations-join
