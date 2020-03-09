@@ -178,7 +178,7 @@
       (slack-buffer-insert-attachment-preview this))))
 
 (defface slack-message-attachment-preview-header-face
-  '((t (:underline t :height 1.2 :weight bold)))
+  '((t (:height 1.2 :weight bold :foreground "#2aa198")))
   "Used to attachment preview header"
   :group 'slack)
 
@@ -205,29 +205,36 @@
             (let ((inhibit-read-only t)
                   (size 300))
               (insert (propertize
-                       (format "\n%s\n\n%s"
+                       (format "\n%s%s%s\n"
                                (propertize (format "Attachments (%s/%s)"
                                                    (length (oref this files))
                                                    slack-max-message-attachment-count)
-                                           'face 'slack-message-attachment-preview-header-face)
-                               (mapconcat #'(lambda (file)
-                                              (format "%s %s\n%s"
-                                                      (propertize "Remove"
-                                                                  'face 'slack-message-action-face
-                                                                  'slack-file-path (oref file path)
-                                                                  'keymap (let ((map (make-sparse-keymap)))
-                                                                            (define-key map (kbd "RET") #'slack-message-remove-file)
-                                                                            map))
-                                                      (oref file filename)
-                                                      (if (and slack-render-image-p
-                                                               (ignore-errors (image-type (oref file path))))
-                                                          (slack-mapconcat-images
-                                                           (slack-image-slice
-                                                            (slack-image--create (oref file path)
-                                                                                 :max-height size)))
-                                                        "")))
-                                          (oref this files)
-                                          "\n\n"))
+                                           'face '(slack-message-attachment-preview-header-face slack-preview-face))
+                               (propertize "\n\n"
+                                           'face 'slack-preview-face)
+                               (let ((result ""))
+                                 (dolist (file (oref this files))
+                                   (let ((s (format "%s%s%s"
+                                                    (propertize "Remove"
+                                                                'face 'slack-message-action-face
+                                                                'slack-file-path (oref file path)
+                                                                'keymap (let ((map (make-sparse-keymap)))
+                                                                          (define-key map (kbd "RET") #'slack-message-remove-file)
+                                                                          map))
+                                                    (propertize (format " %s" (oref file filename))
+                                                                'face 'slack-preview-face)
+                                                    (if (and slack-render-image-p
+                                                             (ignore-errors (image-type (oref file path))))
+                                                        (propertize (format "\n%s" (slack-mapconcat-images
+                                                                                    (slack-image-slice
+                                                                                     (slack-image--create (oref file path)
+                                                                                                          :max-height size))))
+                                                                    'face 'slack-preview-face)
+
+                                                      ""))))
+                                     (setq result (format "%s%s%s" result s (propertize "\n\n" 'face 'slack-preview-face)))))
+                                 result)
+                               )
                        prop t
                        'read-only t))))))
       (goto-char cur-point))))
