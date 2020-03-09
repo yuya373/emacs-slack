@@ -219,12 +219,13 @@
                                                                             (define-key map (kbd "RET") #'slack-message-remove-file)
                                                                             map))
                                                       (oref file filename)
-                                                      (slack-mapconcat-images
-                                                       (slack-image-slice
-                                                        (slack-image--create
-                                                         (oref file path)
-                                                         :max-height size))))
-                                              )
+                                                      (if (and slack-render-image-p
+                                                               (ignore-errors (image-type (oref file path))))
+                                                          (slack-mapconcat-images
+                                                           (slack-image-slice
+                                                            (slack-image--create (oref file path)
+                                                                                 :max-height size)))
+                                                        "")))
                                           (oref this files)
                                           "\n\n"))
                        prop t
