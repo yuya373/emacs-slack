@@ -30,6 +30,7 @@
 
 (defconst slack-file-get-upload-url-url "https://slack.com/api/files.getUploadURL")
 (defconst slack-file-upload-complete-url "https://slack.com/api/files.completeUpload")
+(defconst slack-max-message-attachment-count 10)
 
 (defvar slack-message-compose-buffer-mode-map
   (let ((keymap (make-sparse-keymap)))
@@ -158,13 +159,15 @@
   (slack-buffer-select-file slack-current-buffer))
 
 (cl-defmethod slack-buffer-select-file ((this slack-message-compose-buffer))
-  (let* ((path (expand-file-name (car (find-file-read-args "Select File: " t))))
-         (filename (read-from-minibuffer "Filename: " (file-name-nondirectory path))))
-    (oset this files (append (oref this files)
-                             (list (make-instance 'slack-message-compose-buffer-file
-                                                  :path path
-                                                  :filename filename))))
-    (slack-buffer-insert-attachment-preview this)))
+  (if (<= slack-max-message-attachment-count (length (oref this files)))
+      (message "You can add up to 10 files.")
+    (let* ((path (expand-file-name (car (find-file-read-args "Select File: " t))))
+           (filename (read-from-minibuffer "Filename: " (file-name-nondirectory path))))
+      (oset this files (append (oref this files)
+                               (list (make-instance 'slack-message-compose-buffer-file
+                                                    :path path
+                                                    :filename filename))))
+      (slack-buffer-insert-attachment-preview this))))
 
 (cl-defmethod slack-buffer-remove-file ((this slack-message-compose-buffer))
   (let ((path (get-text-property (point) 'slack-file-path)))
@@ -203,7 +206,9 @@
                   (size 300))
               (insert (propertize
                        (format "\n%s\n\n%s"
-                               (propertize "Attachments"
+                               (propertize (format "Attachments (%s/%s)"
+                                                   (length (oref this files))
+                                                   slack-max-message-attachment-count)
                                            'face 'slack-message-attachment-preview-header-face)
                                (mapconcat #'(lambda (file)
                                               (format "%s %s\n%s"
