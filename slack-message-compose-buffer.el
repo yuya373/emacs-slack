@@ -218,7 +218,7 @@
                                                                   'keymap (let ((map (make-sparse-keymap)))
                                                                             (define-key map (kbd "RET") #'slack-message-remove-file)
                                                                             map))
-                                                      (file-name-nondirectory (oref file path))
+                                                      (oref file filename)
                                                       (slack-mapconcat-images
                                                        (slack-image-slice
                                                         (slack-image--create
