@@ -173,11 +173,14 @@
       (slack-buffer-insert-attachment-preview this))))
 
 (cl-defmethod slack-buffer-remove-file ((this slack-message-compose-buffer))
-  (let ((path (get-text-property (point) 'slack-file-path)))
-    (when path
-      (oset this files (cl-remove-if #'(lambda (file)
-                                         (string= path (oref file path)))
-                                     (oref this files)))
+  (let ((index (get-text-property (point) 'slack-file-index))
+        (new-files nil))
+    (when index
+      (cl-loop for file in (oref this files)
+               for i = 0 then (+ 1 i)
+               unless (eq index i)
+               do (push file new-files))
+      (oset this files (reverse new-files))
       (slack-buffer-insert-attachment-preview this))))
 
 (defface slack-message-attachment-preview-header-face
@@ -216,26 +219,27 @@
                                (propertize "\n\n"
                                            'face 'slack-preview-face)
                                (let ((result ""))
-                                 (dolist (file (oref this files))
-                                   (let ((s (format "%s%s%s"
-                                                    (propertize "Remove"
-                                                                'face 'slack-message-action-face
-                                                                'slack-file-path (oref file path)
-                                                                'keymap (let ((map (make-sparse-keymap)))
-                                                                          (define-key map (kbd "RET") #'slack-message-remove-file)
-                                                                          map))
-                                                    (propertize (format " %s" (oref file filename))
-                                                                'face 'slack-preview-face)
-                                                    (if (and slack-render-image-p
-                                                             (ignore-errors (image-type (oref file path))))
-                                                        (propertize (format "\n%s" (slack-mapconcat-images
-                                                                                    (slack-image-slice
-                                                                                     (slack-image--create (oref file path)
-                                                                                                          :max-height size))))
-                                                                    'face 'slack-preview-face)
+                                 (cl-loop for file in (oref this files)
+                                          for i = 0 then (+ 1 i)
+                                          do (let ((s (format "%s%s%s"
+                                                              (propertize "Remove"
+                                                                          'face 'slack-message-action-face
+                                                                          'slack-file-index i
+                                                                          'keymap (let ((map (make-sparse-keymap)))
+                                                                                    (define-key map (kbd "RET") #'slack-message-remove-file)
+                                                                                    map))
+                                                              (propertize (format " %s" (oref file filename))
+                                                                          'face 'slack-preview-face)
+                                                              (if (and slack-render-image-p
+                                                                       (ignore-errors (image-type (oref file path))))
+                                                                  (propertize (format "\n%s" (slack-mapconcat-images
+                                                                                              (slack-image-slice
+                                                                                               (slack-image--create (oref file path)
+                                                                                                                    :max-height size))))
+                                                                              'face 'slack-preview-face)
 
-                                                      ""))))
-                                     (setq result (format "%s%s%s" result s (propertize "\n\n" 'face 'slack-preview-face)))))
+                                                                ""))))
+                                               (setq result (format "%s%s%s" result s (propertize "\n\n" 'face 'slack-preview-face)))))
                                  result)
                                )
                        prop t
