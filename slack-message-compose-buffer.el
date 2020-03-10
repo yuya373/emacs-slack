@@ -46,6 +46,9 @@
    (filename :initarg :filename :type string)
    (id :initarg :id :type (or null string) :initarg nil)))
 
+(defun slack-request-plain-parser ()
+  (buffer-substring-no-properties (point-min) (point-max)))
+
 (cl-defmethod slack--upload-file ((this slack-message-compose-buffer-file) team url cb)
   (let ((path (oref this path)))
     (cl-labels
@@ -61,7 +64,7 @@
         team
         :type "POST"
         :files (list (cons "file" path))
-        :parser #'(lambda () (buffer-substring-no-properties (point-min) (point-max)))
+        :parser #'slack-request-plain-parser
         :headers (list (cons "Content-Type" "multipart/form-data"))
         :timeout nil
         :success #'on-file-upload
