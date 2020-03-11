@@ -95,6 +95,7 @@ use `slack-change-current-team' to change `slack-current-team'"
    (slack-room-info-buffer :initform nil :type (or null hash-table))
    (slack-all-threads-buffer :initform nil :type (or null hash-table))
    (full-and-display-names :initarg :full-and-display-names :initform nil)
+   (display-profile-image :initarg :display-profile-image :initform t)
    (mark-as-read-immediately :initarg :mark-as-read-immediately :initform t)
    (commands :initform '() :type list)
    (usergroups :initarg :usergroups :initform '() :type list)

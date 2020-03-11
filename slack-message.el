@@ -200,10 +200,11 @@
          (status (slack-message-user-status this team))
          (edited-at (slack-format-ts (slack-message-edited-at this)))
          (deleted-at (slack-format-ts (oref this deleted-at))))
-    (concat (slack-if-let* ((image (slack-message-profile-image this team)))
-                (concat (propertize "image" 'display image 'face 'slack-profile-image-face)
-                        " ")
-              "")
+    (concat (if (oref team display-profile-image)
+                (slack-if-let* ((image (slack-message-profile-image this team)))
+                    (concat (propertize "image" 'display image 'face 'slack-profile-image-face)
+                            " ")
+                  ""))
             (slack-message-put-header-property (concat name
                                                        (if (slack-string-blankp status)
                                                            ""

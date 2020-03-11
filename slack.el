@@ -173,7 +173,8 @@ Available options (property name, type, default value)
 :default [boolean] nil
   if `slack-prefer-current-team' is t,
   some functions use this team without asking.
-:display-profile-image [boolean] nil
+:display-profile-image [boolean] t
+  if t, display profile image next to names
 :full-and-display-names [boolean] nil
   if t, use full name to display user name.
 :mark-as-read-immediately [boolean] these
