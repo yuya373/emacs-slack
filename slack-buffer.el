@@ -162,7 +162,7 @@
       (let* ((key (slack-buffer-key this))
              (team (slack-buffer-team this))
              (ht (slot-value team (slack-team-buffer-key this))))
-        (puthash key nil ht))))
+        (remhash key ht))))
 
 (defvar slack-debug nil)
 

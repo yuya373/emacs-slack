@@ -257,14 +257,12 @@
     ;; (slack-user-list-update team)
 
     (slack-dnd-status-team-info team)
-    (cl-loop for buffer in (oref team slack-message-buffer)
-             do (slack-if-let*
-                    ((live-p (buffer-live-p buffer))
-                     (buffer (with-current-buffer buffer
-                               (and (bound-and-true-p
-                                     slack-current-buffer)
-                                    slack-current-buffer))))
-                    (slack-buffer-load-missing-messages buffer)))
+    (when (hash-table-p (oref team slack-message-buffer))
+      (cl-loop for sb in (hash-table-values (oref team slack-message-buffer))
+               do (slack-if-let* ((buffer (and sb (slack-buffer-buffer sb)))
+                                  (live-p (buffer-live-p buffer)))
+                      (slack-buffer-load-missing-messages sb))))
+
     (slack-team-kill-buffers
      team :except '(slack-message-buffer
                     slack-message-edit-buffer
