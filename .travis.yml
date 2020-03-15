@@ -5,6 +5,7 @@ cache:
     - test/dot_emacs_25
     - test/dot_emacs_26
     - test/dot_emacs_master
+    - test/dot_emacs_master_package
 services:
   - docker
 env:
@@ -12,6 +13,7 @@ env:
     - EMACS_VERSION=emacs25
     - EMACS_VERSION=emacs26
     - EMACS_VERSION=master
+    - EMACS_VERSION=master_package
 before_install:
   - docker-compose build $EMACS_VERSION
 install:

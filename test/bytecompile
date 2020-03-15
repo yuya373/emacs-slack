@@ -19,7 +19,7 @@ cp *.el $EMACS_VERSION/
 
 emacs --batch -Q \
       -L /slack \
-      -l ./test/setup.el \
+      -l $1 \
       -f batch-byte-compile ./$EMACS_VERSION/*.el \
       || clean_up_on_error
 

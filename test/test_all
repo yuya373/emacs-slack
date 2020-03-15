@@ -1,5 +1,20 @@
 #!/bin/sh
-set -eu
+set -e
 
-./test/bytecompile
-./test/run_test
+setupfile="./test/setup.el"
+
+if [ "$USE_PACKAGE_EL" = "1" ]; then
+    setupfile="./test/setup-with-package.el"
+fi
+
+./test/bytecompile $setupfile
+./test/run_test $setupfile
+
+if [ "$USE_PACKAGE_EL" = "1" ]; then
+    emacs --batch -Q \
+          -L /slack \
+          -l $setupfile \
+          -eval '(slack-register-team :name "Foo" :token "Bar")' \
+          -eval '(slack-start)' \
+          -eval '(message "Test autoloads finished.")'
+fi

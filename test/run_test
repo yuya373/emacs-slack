@@ -4,5 +4,5 @@ set -eu
 
 emacs --batch -Q \
       -L /slack \
-      -l ./test/setup.el \
+      -l $1 \
       -l ./test/run-test.el

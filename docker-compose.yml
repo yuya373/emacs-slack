@@ -24,4 +24,14 @@ services:
     volumes:
       - .:/slack
       - ./test/dot_emacs_master:/root/.emacs.d
+  master_package:
+    build:
+      context: .
+      dockerfile: ./test/Dockerfile.master
+    environment:
+      USE_PACKAGE_EL: 1
+    command: ./test/test_all
+    volumes:
+      - .:/slack
+      - ./test/dot_emacs_master_package:/root/.emacs.d
       
