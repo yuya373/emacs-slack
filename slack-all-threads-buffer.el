@@ -79,7 +79,7 @@
     ret))
 
 (cl-defmethod slack-buffer-find-message ((this slack-all-threads-buffer) ts)
-  (block outer
+  (cl-block outer
     (cl-loop for thread in (reverse (oref this threads))
              do (cl-loop for message in (append (list (oref thread root-msg))
                                                 (oref thread latest-replies)
