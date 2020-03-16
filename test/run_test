@@ -2,7 +2,14 @@
 
 set -eu
 
+loaddir="-L /slack"
+
+if [ "$1" != "./test/setup.el" ]; then
+    loaddir=""
+fi
+
+
 emacs --batch -Q \
-      -L /slack \
+      $loaddir \
       -l $1 \
       -l ./test/run-test.el

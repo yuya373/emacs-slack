@@ -12,7 +12,6 @@ fi
 
 if [ "$USE_PACKAGE_EL" = "1" ]; then
     emacs --batch -Q \
-          -L /slack \
           -l $setupfile \
           -eval '(slack-register-team :name "Foo" :token "Bar")' \
           -eval '(slack-start)' \

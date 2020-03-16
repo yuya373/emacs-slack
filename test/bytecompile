@@ -16,9 +16,14 @@ clean_up
 mkdir $EMACS_VERSION
 cp *.el $EMACS_VERSION/
 
+loaddir="-L /slack"
+
+if [ "$1" != "./test/setup.el" ]; then
+    loaddir=""
+fi
 
 emacs --batch -Q \
-      -L /slack \
+      $loaddir \
       -l $1 \
       -f batch-byte-compile ./$EMACS_VERSION/*.el \
       || clean_up_on_error
