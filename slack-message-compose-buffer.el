@@ -192,26 +192,24 @@
   (interactive)
   (slack-buffer-remove-file slack-current-buffer))
 
+(cl-defmethod slack-buffer-attachment-buffer-name ((this slack-message-compose-buffer))
+  (format "%s Attachments" (buffer-name (slack-buffer-buffer this))))
+
 (cl-defmethod slack-buffer-insert-attachment-preview ((this slack-message-compose-buffer))
-  (let ((buffer (slack-buffer-buffer this))
-        (prop 'slack-attachment-preview)
-        (cur-point (point)))
+  (let* ((buffer (get-buffer-create (slack-buffer-attachment-buffer-name this)))
+         (cur-point (point)))
     (with-current-buffer buffer
+      (setq-local slack-current-buffer this)
       (save-excursion
         (save-restriction
-          (let ((points (cl-loop for i from (point-min) to (point-max)
-                                 when (get-text-property i prop)
-                                 collect i))
-                (inhibit-read-only t))
-            (when (<= 2 (length points))
-              (delete-region (apply #'min points)
-                             (1+ (apply #'max points)))))
-          (goto-char (point-max))
+          (let ((inhibit-read-only t))
+            (delete-region (point-min) (point-max)))
+          (goto-char (point-min))
           (when (< 0 (length (oref this files)))
             (let ((inhibit-read-only t)
                   (size 300))
               (insert (propertize
-                       (format "\n%s%s%s\n"
+                       (format "%s%s%s\n"
                                (propertize (format "Attachments (%s/%s)"
                                                    (length (oref this files))
                                                    slack-max-message-attachment-count)
@@ -240,21 +238,24 @@
 
                                                                 ""))))
                                                (setq result (format "%s%s%s" result s (propertize "\n\n" 'face 'slack-preview-face)))))
-                                 result)
-                               )
-                       prop t
+                                 result))
                        'read-only t))))))
-      (goto-char cur-point))))
+      (goto-char cur-point))
+    (funcall slack-buffer-function buffer)))
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
   (with-slots (room-id) this
     (slack-room-find room-id (slack-buffer-team this))))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
-  (let ((buffer (slack-buffer-buffer this)))
+  (let* ((buffer (slack-buffer-buffer this))
+         (attachment-buffer (get-buffer (slack-buffer-attachment-buffer-name this))))
     (with-current-buffer buffer
       (kill-buffer)
-      (if (> (count-windows) 1) (delete-window)))))
+      (if (> (count-windows) 1) (delete-window)))
+    (when attachment-buffer
+      (with-current-buffer attachment-buffer
+        (kill-buffer)))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
   (let ((buf (cl-call-next-method)))
