@@ -75,7 +75,7 @@
                                (slack-buffer-team this)
                                message
                                thread-ts
-                               (oref this files)))
+                               (slack-buffer-attachments this)))
   (cl-call-next-method))
 
 (cl-defmethod slack-buffer-display-message-compose-buffer ((this slack-thread-message-buffer))

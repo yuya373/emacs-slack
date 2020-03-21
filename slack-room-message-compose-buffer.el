@@ -63,7 +63,7 @@
   (slack-message-send-internal message
                                (slack-buffer-room this)
                                (slack-buffer-team this)
-                               :files (oref this files))
+                               :files (slack-buffer-attachments this))
   (cl-call-next-method))
 
 

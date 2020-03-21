@@ -25,12 +25,10 @@
 ;;; Code:
 
 (require 'eieio)
+(require 'slack-util)
 (require 'slack-buffer)
 (require 'slack-message-editor)
-
-(defconst slack-file-get-upload-url-url "https://slack.com/api/files.getUploadURL")
-(defconst slack-file-upload-complete-url "https://slack.com/api/files.completeUpload")
-(defconst slack-max-message-attachment-count 10)
+(require 'slack-message-attachment-preview-buffer)
 
 (defvar slack-message-compose-buffer-mode-map
   (let ((keymap (make-sparse-keymap)))
@@ -41,120 +39,11 @@
   slack-edit-message-mode
   "Slack Compose Message")
 
-(defclass slack-message-compose-buffer-file ()
-  ((path :initarg :path type string)
-   (filename :initarg :filename :type string)
-   (id :initarg :id :type (or null string) :initarg nil)))
-
-(defun slack-request-plain-parser ()
-  (buffer-substring-no-properties (point-min) (point-max)))
-
-(cl-defmethod slack--upload-file ((this slack-message-compose-buffer-file) team url cb)
-  (let ((path (oref this path)))
-    (cl-labels
-        ((on-file-upload (&key data &allow-other-keys)
-                         (slack-request-handle-error
-                          (data "slack-upload-file")
-                          (funcall cb t (oref this id))))
-         (on-error (&allow-other-keys)
-                   (funcall cb nil)))
-      (slack-request
-       (slack-request-create
-        url
-        team
-        :type "POST"
-        :files (list (cons "file" path))
-        :parser #'slack-request-plain-parser
-        :headers (list (cons "Content-Type" "multipart/form-data"))
-        :timeout nil
-        :success #'on-file-upload
-        :error #'on-error)))))
-
-(cl-defmethod slack-upload-file ((this slack-message-compose-buffer-file) team cb)
-  (let ((filename (oref this filename))
-        (path (oref this path)))
-    (cl-labels
-        ((on-error (&allow-other-keys)
-                   (funcall cb nil))
-         (on-get-upload-url (&key data &allow-other-keys)
-                            (condition-case err-var
-                                (slack-request-handle-error
-                                 (data "files.getUploadUrl"
-                                       (lambda (err)
-                                         (slack-log (format "Failed to get upload url of %s. %s" filename err)
-                                                    team)
-                                         (funcall cb nil)))
-                                 (let ((url (plist-get data :upload_url))
-                                       (file-id (plist-get data :file)))
-                                   (oset this id file-id)
-                                   (slack--upload-file this team url cb)))
-                              (progn
-                                (slack-log (format "Failed to get upload url. Error: %s" err-var)
-                                           team)
-                                (funcall cb nil)))))
-      (slack-request
-       (slack-request-create
-        slack-file-get-upload-url-url
-        team
-        :type "POST"
-        :params (list (cons "filename" filename)
-                      (cons "length" (number-to-string (file-attribute-size (file-attributes path)))))
-        :headers (list (cons "Content-Type" "multipart/form-data"))
-        :success #'on-get-upload-url
-        :error #'on-error)))))
-
-(cl-defun slack-upload-files (team files &key on-success on-error)
-  (let ((files-count (length files))
-        (result nil)
-        (timer nil)
-        (failed-p nil))
-    (cl-labels
-        ((on-upload (success-p &optional file-id)
-                    (if success-p
-                        (push file-id result)
-                      (setq failed-p t))))
-      (dolist (file files)
-        (slack-upload-file file team #'on-upload))
-      (setq timer (run-at-time t 1 #'(lambda ()
-                                       (slack-log (format "Uploading files... (%s/%s)" (length result) files-count)
-                                                  team)
-                                       (when failed-p
-                                         (funcall on-error)
-                                         (cancel-timer timer))
-                                       (when (<= files-count (length result))
-                                         (funcall on-success files)
-                                         (cancel-timer timer))))))))
-
-(cl-defun slack-files-upload-complete (team files message-payload &key (on-success nil) (on-error nil))
-  (cl-labels ((on-complete (&key data &allow-other-keys)
-                           (slack-request-handle-error
-                            (data "slack-files-upload-complete"
-                                  #'(lambda (err)
-                                      (slack-log (format "Failed to files upload complete. FILES: %s, ERROR: %s"
-                                                         (mapcar #'(lambda (file) (oref file filename))
-                                                                 files)
-                                                         err)
-                                                 team)
-                                      (when (functionp on-error)
-                                        (funcall on-error))))
-                            (when (functionp on-success)
-                              (funcall on-success)))))
-    (slack-request
-     (slack-request-create
-      slack-file-upload-complete-url
-      team
-      :type "POST"
-      :data (json-encode (append (list (cons "files" (mapcar #'(lambda (file)
-                                                                 (list (cons "id" (oref file id))
-                                                                       (cons "title" (oref file filename))))
-                                                             files)))
-                                 message-payload))
-      :headers (list (cons "Content-Type" "application/json;charset=utf-8"))
-      :success #'on-complete))))
-
 (defclass slack-message-compose-buffer (slack-buffer)
   ((room-id :initarg :room-id :type string)
-   (files :initarg :files :type (or null list) :initform nil))
+   (attachment-buffer
+    :type (or null slack-message-attachment-preview-buffer)
+    :initform nil))
   :abstract t)
 
 (defun slack-message-select-file ()
@@ -162,100 +51,46 @@
   (slack-buffer-select-file slack-current-buffer))
 
 (cl-defmethod slack-buffer-select-file ((this slack-message-compose-buffer))
-  (if (<= slack-max-message-attachment-count (length (oref this files)))
-      (message "You can add up to 10 files.")
-    (let* ((path (expand-file-name (car (find-file-read-args "Select File: " t))))
-           (filename (read-from-minibuffer "Filename: " (file-name-nondirectory path))))
-      (oset this files (append (oref this files)
-                               (list (make-instance 'slack-message-compose-buffer-file
-                                                    :path path
-                                                    :filename filename))))
-      (slack-buffer-insert-attachment-preview this))))
+  (when (null (oref this attachment-buffer))
+    (oset this
+          attachment-buffer
+          (make-instance 'slack-message-attachment-preview-buffer
+                         :team-id (oref this team-id)
+                         :room-id (oref this room-id))))
+  (let* ((path (expand-file-name
+                (car (find-file-read-args "Select File: " t))))
+         (filename (read-from-minibuffer "Filename: "
+                                         (file-name-nondirectory path))))
+
+    (slack-buffer-append-file (oref this attachment-buffer)
+                              path
+                              filename)))
 
 (cl-defmethod slack-buffer-remove-file ((this slack-message-compose-buffer))
-  (let ((index (get-text-property (point) 'slack-file-index))
-        (new-files nil))
-    (when index
-      (cl-loop for file in (oref this files)
-               for i = 0 then (+ 1 i)
-               unless (eq index i)
-               do (push file new-files))
-      (oset this files (reverse new-files))
-      (slack-buffer-insert-attachment-preview this))))
-
-(defface slack-message-attachment-preview-header-face
-  '((t (:height 1.2 :weight bold :foreground "#2aa198")))
-  "Used to attachment preview header"
-  :group 'slack)
+  (slack-buffer-remove-file (oref this attachment-buffer)))
 
 (defun slack-message-remove-file ()
   (interactive)
   (slack-buffer-remove-file slack-current-buffer))
 
-(cl-defmethod slack-buffer-attachment-buffer-name ((this slack-message-compose-buffer))
-  (format "%s Attachments" (buffer-name (slack-buffer-buffer this))))
-
-(cl-defmethod slack-buffer-insert-attachment-preview ((this slack-message-compose-buffer))
-  (let* ((buffer (get-buffer-create (slack-buffer-attachment-buffer-name this)))
-         (cur-point (point)))
-    (with-current-buffer buffer
-      (setq-local slack-current-buffer this)
-      (save-excursion
-        (save-restriction
-          (let ((inhibit-read-only t))
-            (delete-region (point-min) (point-max)))
-          (goto-char (point-min))
-          (when (< 0 (length (oref this files)))
-            (let ((inhibit-read-only t)
-                  (size 300))
-              (insert (propertize
-                       (format "%s%s%s\n"
-                               (propertize (format "Attachments (%s/%s)"
-                                                   (length (oref this files))
-                                                   slack-max-message-attachment-count)
-                                           'face '(slack-message-attachment-preview-header-face slack-preview-face))
-                               (propertize "\n\n"
-                                           'face 'slack-preview-face)
-                               (let ((result ""))
-                                 (cl-loop for file in (oref this files)
-                                          for i = 0 then (+ 1 i)
-                                          do (let ((s (format "%s%s%s"
-                                                              (propertize "Remove"
-                                                                          'face 'slack-message-action-face
-                                                                          'slack-file-index i
-                                                                          'keymap (let ((map (make-sparse-keymap)))
-                                                                                    (define-key map (kbd "RET") #'slack-message-remove-file)
-                                                                                    map))
-                                                              (propertize (format " %s" (oref file filename))
-                                                                          'face 'slack-preview-face)
-                                                              (if (and slack-render-image-p
-                                                                       (ignore-errors (image-type (oref file path))))
-                                                                  (propertize (format "\n%s" (slack-mapconcat-images
-                                                                                              (slack-image-slice
-                                                                                               (slack-image--create (oref file path)
-                                                                                                                    :max-height size))))
-                                                                              'face 'slack-preview-face)
-
-                                                                ""))))
-                                               (setq result (format "%s%s%s" result s (propertize "\n\n" 'face 'slack-preview-face)))))
-                                 result))
-                       'read-only t))))))
-      (goto-char cur-point))
-    (funcall slack-buffer-function buffer)))
+(cl-defmethod slack-buffer-attachments ((this slack-message-compose-buffer))
+  (slack-if-let* ((attachment-buffer (oref this attachment-buffer)))
+      (oref attachment-buffer files)))
 
 (cl-defmethod slack-buffer-room ((this slack-message-compose-buffer))
   (with-slots (room-id) this
     (slack-room-find room-id (slack-buffer-team this))))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
-  (let* ((buffer (slack-buffer-buffer this))
-         (attachment-buffer (get-buffer (slack-buffer-attachment-buffer-name this))))
+  (let* ((buffer (slack-buffer-buffer this)))
     (with-current-buffer buffer
       (kill-buffer)
       (if (> (count-windows) 1) (delete-window)))
-    (when attachment-buffer
-      (with-current-buffer attachment-buffer
-        (kill-buffer)))))
+    (when (oref this attachment-buffer)
+      (with-current-buffer (slack-buffer-buffer
+                            (oref this attachment-buffer))
+        (kill-buffer)
+        (if (> (count-windows) 1) (delete-window))))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
   (let ((buf (cl-call-next-method)))
