@@ -900,7 +900,8 @@ TEAM is one of `slack-teams'"
                          :params (list (cons "mpim_aware" "1")
                                        (cons "presence_sub" "true"))
                          :success #'on-success
-                         :error #'on-error))))
+                         :error #'on-error
+                         :no-retry t))))
           (oset team authorize-request request))))))
 
 (defalias 'slack-room-list-update 'slack-conversations-list-update)
