@@ -82,15 +82,15 @@
     (slack-room-find room-id (slack-buffer-team this))))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-compose-buffer) _message)
-  (let* ((buffer (slack-buffer-buffer this)))
-    (with-current-buffer buffer
-      (kill-buffer)
-      (if (> (count-windows) 1) (delete-window)))
-    (when (oref this attachment-buffer)
-      (with-current-buffer (slack-buffer-buffer
-                            (oref this attachment-buffer))
-        (kill-buffer)
-        (if (> (count-windows) 1) (delete-window))))))
+  (dolist (buf (list (and (oref this attachment-buffer)
+                          (slack-buffer-buffer (oref this attachment-buffer)))
+                     (slack-buffer-buffer this)))
+    (when (and buf (buffer-live-p buf))
+      (when (< 1 (count-windows))
+        (let ((win (get-buffer-window buf)))
+          (when (window-live-p win)
+            (delete-window win))))
+      (kill-buffer buf))))
 
 (cl-defmethod slack-buffer-init-buffer ((this slack-message-compose-buffer))
   (let ((buf (cl-call-next-method)))
