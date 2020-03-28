@@ -157,6 +157,15 @@
           (add-hook 'kill-buffer-hook (slack-buffer-create-kill-hook this) nil t))
         buf)))
 
+(cl-defmethod slack-buffer-kill-buffer-window ((this slack-buffer))
+  (let ((b (slack-buffer-buffer this)))
+    (when (and b (buffer-live-p b))
+      (let ((w (get-buffer-window b)))
+        (when (and (window-live-p w) (< 1 (count-windows)))
+          (delete-window w)))
+
+      (kill-buffer b))))
+
 (cl-defmethod slack-buffer-create-kill-hook ((this slack-buffer))
   #'(lambda ()
       (let* ((key (slack-buffer-key this))
