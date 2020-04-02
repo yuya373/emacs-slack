@@ -252,8 +252,9 @@
 (defun slack-message-set-replies (room ts messages &optional append-p)
   (let ((message (slack-room-find-message room ts))
         (replies (mapcar #'(lambda (m) (slack-ts m)) messages)))
-    (oset message replies (if append-p (append (oref message replies) replies)
-                            replies))))
+    (oset message replies (cl-remove-if #'(lambda (timestamp) (string= ts timestamp))
+                                        (if append-p (append (oref message replies) replies)
+                                          replies)))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here
