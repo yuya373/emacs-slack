@@ -56,14 +56,14 @@
   (let* ((buf (cl-call-next-method)))
     (with-current-buffer buf
       (setq buffer-read-only nil)
-      (erase-buffer)
-      (message "C-c C-c to send message"))
+      (erase-buffer))
     buf))
 
 (cl-defmethod slack-buffer-send-message ((this slack-room-message-compose-buffer) message)
   (slack-message-send-internal message
                                (slack-buffer-room this)
-                               (slack-buffer-team this))
+                               (slack-buffer-team this)
+                               :files (slack-buffer-attachments this))
   (cl-call-next-method))
 
 

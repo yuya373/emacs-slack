@@ -33,7 +33,8 @@
 
 (defclass slack-room-info-buffer (slack-room-buffer) ())
 
-(define-derived-mode slack-room-info-buffer-mode fundamental-mode
+(define-derived-mode slack-room-info-buffer-mode
+  fundamental-mode
   "Slack Room Info"
   (setq-local default-directory slack-default-directory)
   (setq-local buffer-read-only t))

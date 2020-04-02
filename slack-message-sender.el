@@ -44,24 +44,46 @@
 (defconst slack-user-mention-regex "\\(<@\\([A-Za-z0-9]+\\)>\\)")
 (defconst slack-usergroup-mention-regex "\\(<!subteam^\\([A-Za-z0-9]+\\)>\\)")
 (defconst slack-special-mention-regex "\\(<!\\(here\\|channel\\|everyone\\)>\\)")
+(defconst slack-file-upload-complete-url "https://slack.com/api/files.completeUpload")
 
-(cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil))
+(cl-defun slack-message-send-internal (message room team &key (on-success nil) (on-error nil) (payload nil) (files nil))
+  (when (slack-string-blankp message)
+    (error "Empty message"))
   (if (and (slack-channel-p room)
            (not (oref room is-member)))
       (slack-conversations-join
        room team
        #'(lambda (_data) (slack-message-send-internal message
                                                       room
-                                                      team)))
-    (with-slots (message-id self-id) team
-      (let* ((channel-id (oref room id))
-             (m (apply #'list
-                       (cons "type" "message")
-                       (cons "channel" channel-id)
-                       (with-temp-buffer
-                         (insert message)
-                         (slack-create-blocks-from-buffer)))))
-        (slack-chat-post-message team (append m payload)
+                                                      team
+                                                      :on-success on-success
+                                                      :on-error on-error
+                                                      :payload payload
+                                                      :files files)))
+    (if files
+        (slack-message-upload-files team
+                                    files
+                                    :on-error on-error
+                                    :on-success #'(lambda (files) (let ((message-payload (append (apply #'list
+                                                                                                        (cons "channel" (oref room id))
+                                                                                                        (with-temp-buffer
+                                                                                                          (insert message)
+                                                                                                          (slack-create-blocks-from-buffer)))
+                                                                                                 payload)))
+                                                                    (slack-files-upload-complete team
+                                                                                                 files
+                                                                                                 message-payload
+                                                                                                 :on-success on-success
+                                                                                                 :on-error on-error))))
+      (let ((message-payload (append (apply #'list
+                                            (cons "type" "message")
+                                            (cons "channel" (oref room id))
+                                            (with-temp-buffer
+                                              (insert message)
+                                              (slack-create-blocks-from-buffer)))
+                                     payload)))
+        (slack-chat-post-message team
+                                 message-payload
                                  :on-success on-success
                                  :on-error on-error)))))
 
@@ -410,9 +432,9 @@
                                                        (commit-list-block ()
                                                                           (when (commit-block "rich_text_list"
                                                                                               (cl-mapcan #'(lambda (range)
-                                                                                                          (create-section-elements-from-ranges
-                                                                                                           (list range)))
-                                                                                                      (reverse list-ranges))
+                                                                                                             (create-section-elements-from-ranges
+                                                                                                              (list range)))
+                                                                                                         (reverse list-ranges))
                                                                                               (cons "style" list-style)
                                                                                               (cons "indent" list-indent))
                                                                             (setq list-ranges nil)
@@ -521,6 +543,55 @@
           ;;     (json-pretty-print-buffer))
           ;;   (switch-to-buffer-other-window buf))
           blocks)))))
+
+(cl-defun slack-message-upload-files (team files &key on-success on-error)
+  (let ((files-count (length files))
+        (result nil)
+        (timer nil)
+        (failed-p nil))
+    (cl-labels
+        ((on-upload (success-p &optional file-id)
+                    (if success-p
+                        (push file-id result)
+                      (setq failed-p t))))
+      (dolist (file files)
+        (slack-upload-file file team #'on-upload))
+      (setq timer (run-at-time t 1 #'(lambda ()
+                                       (slack-log (format "Uploading files... (%s/%s)" (length result) files-count)
+                                                  team)
+                                       (when failed-p
+                                         (funcall on-error)
+                                         (cancel-timer timer))
+                                       (when (<= files-count (length result))
+                                         (funcall on-success files)
+                                         (cancel-timer timer))))))))
+
+(cl-defun slack-files-upload-complete (team files message-payload &key (on-success nil) (on-error nil))
+  (cl-labels ((on-complete (&key data &allow-other-keys)
+                           (slack-request-handle-error
+                            (data "slack-files-upload-complete"
+                                  #'(lambda (err)
+                                      (slack-log (format "Failed to files upload complete. FILES: %s, ERROR: %s"
+                                                         (mapcar #'(lambda (file) (oref file filename))
+                                                                 files)
+                                                         err)
+                                                 team)
+                                      (when (functionp on-error)
+                                        (funcall on-error))))
+                            (when (functionp on-success)
+                              (funcall on-success)))))
+    (slack-request
+     (slack-request-create
+      slack-file-upload-complete-url
+      team
+      :type "POST"
+      :data (json-encode (append (list (cons "files" (mapcar #'(lambda (file)
+                                                                 (list (cons "id" (oref file id))
+                                                                       (cons "title" (oref file filename))))
+                                                             files)))
+                                 message-payload))
+      :headers (list (cons "Content-Type" "application/json;charset=utf-8"))
+      :success #'on-complete))))
 
 (provide 'slack-message-sender)
 ;;; slack-message-sender.el ends here

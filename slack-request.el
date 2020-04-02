@@ -68,20 +68,22 @@
    (sync :initarg :sync :initform nil)
    (files :initarg :files :initform nil)
    (headers :initarg :headers :initform nil)
-   (timeout :initarg :timeout :initform `,slack-request-timeout)
-   (execute-at :initform 0.0 :type float)
-   (retry-count :initform 0 :type number)
+   (timeout :initarg :timeout :initform nil)
+   (execute-at :initarg :execute-at :initform 0.0 :type float)
+   (retry-count :initarg :retry-count :initform 0 :type number)
+   (no-retry :initarg :no-retry :initform nil :type boolean)
    (without-auth :initarg :without-auth :initform nil :type boolean)))
 
 (cl-defun slack-request-create
-    (url team &key type success error params data parser sync files headers timeout without-auth)
+    (url team &key type success error params data parser sync files headers (timeout slack-request-timeout) without-auth no-retry)
   (let ((args (list
                :url url :team team :type type
                :success success :error error
                :params params :data data :parser parser
                :sync sync :files files :headers headers
                :timeout timeout
-               :without-auth without-auth))
+               :without-auth without-auth
+               :no-retry no-retry))
         (ret nil))
     (mapc #'(lambda (maybe-key)
               (let ((value (plist-get args maybe-key)))
@@ -107,8 +109,9 @@
   (slack-request-worker-push req))
 
 (cl-defmethod slack-request-retry-failed-request-p ((req slack-request-request) error-thrown symbol-status)
-  (with-slots (type retry-count) req
-    (and (or (zerop slack-request-max-retry)
+  (with-slots (no-retry type retry-count) req
+    (and (not no-retry)
+         (or (zerop slack-request-max-retry)
              (<= retry-count slack-request-max-retry))
          (and (string= type "GET")
               (or (and error-thrown
