@@ -7,13 +7,13 @@ if [ "$USE_PACKAGE_EL" = "1" ]; then
     setupfile="./test/setup-with-package.el"
 fi
 
-./test/bytecompile $setupfile
-./test/run_test $setupfile
-
 if [ "$USE_PACKAGE_EL" = "1" ]; then
     emacs --batch -Q \
           -l $setupfile \
           -eval '(slack-register-team :name "Foo" :token "Bar")' \
           -eval '(slack-start)' \
           -eval '(message "Test autoloads finished.")'
+else
+    ./test/bytecompile $setupfile
+    ./test/run_test $setupfile
 fi
