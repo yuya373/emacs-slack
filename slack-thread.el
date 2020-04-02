@@ -69,9 +69,8 @@ Any other non-nil value: send to the room."
 (cl-defmethod slack-thread-to-string ((m slack-message) team)
   (if (slack-message-thread-parentp m)
       (let* ((usernames (let ((ht (make-hash-table :test 'equal)))
-                          (dolist (reply (oref m replies))
-                            (puthash (slack-user-name (plist-get reply :user)
-                                                      team)
+                          (dolist (user-id (oref m reply-users))
+                            (puthash (slack-user-name user-id team)
                                      t
                                      ht))
                           (mapconcat #'identity
