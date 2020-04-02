@@ -57,6 +57,7 @@ Any other non-nil value: send to the room."
          (oldest (or oldest ts)))
     (cl-labels ((success (messages next-cursor has-more)
                          (slack-room-set-messages room messages team)
+                         (slack-message-set-replies room ts messages cursor)
                          (when (functionp after-success)
                            (funcall after-success next-cursor has-more))))
       (slack-conversations-replies room ts team
@@ -89,14 +90,12 @@ Any other non-nil value: send to the room."
 
 (cl-defmethod slack-thread-create ((m slack-message) &optional payload)
   (if payload
-      (let ((replies (plist-get payload :replies))
-            (reply-count (plist-get payload :reply_count))
+      (let ((reply-count (plist-get payload :reply_count))
             (unread-count (plist-get payload :unread_count))
             (last-read (plist-get payload :last_read)))
         (make-instance 'slack-thread
                        :thread_ts (slack-ts m)
                        :root m
-                       :replies replies
                        :reply_count (or reply-count 0)
                        :unread_count (or unread-count 1)
                        :last_read last-read))

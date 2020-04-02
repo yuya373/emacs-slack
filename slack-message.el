@@ -65,7 +65,7 @@
    (thread-ts :initarg :thread_ts :initform nil)
    (latest-reply :initarg :latest_reply :initform "" :type string)
    (last-read :initarg :last_read :initform "" :type string)
-   (replies :initarg :replies :initform '() :type list)
+   (replies :initarg :replies :initform nil :type (or null list))
    (reply-count :initarg :reply_count :initform 0 :type number)
    (reply-users :initarg :reply_users :initform '() :type list)
    (reply-users-count :initarg :reply_users_count :initform 0 :type number)
@@ -246,10 +246,14 @@
   (slack-room-find (oref this channel) team))
 
 (cl-defmethod slack-message-replies ((this slack-message) room)
-  (slack-if-let* ((replies (oref this replies))
-                  (ids (mapcar #'(lambda (e) (plist-get e :ts))
-                               replies)))
+  (slack-if-let* ((ids (oref this replies)))
       (slack-room-sorted-messages room ids)))
+
+(defun slack-message-set-replies (room ts messages &optional append-p)
+  (let ((message (slack-room-find-message room ts))
+        (replies (mapcar #'(lambda (m) (slack-ts m)) messages)))
+    (oset message replies (if append-p (append (oref message replies) replies)
+                            replies))))
 
 (provide 'slack-message)
 ;;; slack-message.el ends here

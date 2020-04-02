@@ -109,7 +109,6 @@
         (oset message reply-users-count (plist-get payload :reply_users_count))
         (oset message latest-reply (plist-get payload :latest_reply))
         (oset message reply-users (plist-get payload :reply_users))
-        (oset message replies (plist-get payload :replies))
         (slack-room-push-message room message team))))
 
 (cl-defmethod slack-event-update-buffer ((_this slack-message-event) message team)
