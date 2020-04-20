@@ -118,29 +118,27 @@
 
 (defun slack-ws-close ()
   (interactive)
-  (mapc #'(lambda (team) (slack-ws--close (oref team ws) team t))
+  (mapc #'(lambda (team)
+            (let ((ws (oref team ws)))
+              (slack-ws-cancel-reconnect-timer ws)
+              (slack-ws--close ws team)))
         (hash-table-values slack-teams-by-token))
   (slack-request-worker-quit))
 
-(cl-defun slack-ws--close (ws team &optional (close-reconnection nil))
-  (cl-labels
-      ((close (ws team)
-              (slack-ws-cancel-ping-timer ws)
-              (slack-ws-cancel-ping-check-timers ws)
-              (when close-reconnection
-                (slack-ws-cancel-reconnect-timer ws)
-                (oset ws inhibit-reconnection t))
-              (with-slots (connected conn last-pong) ws
-                (when conn
-                  (condition-case error-var
-                      (websocket-close conn)
-                    (error (slack-log (format "An Error occured while closing websocket connection: %s"
-                                              error-var)
-                                      team
-                                      :level 'error)))
-                  (slack-log "Slack Websocket Closed" team)))))
-    (close ws team)
-    (slack-request-worker-remove-request team)))
+(cl-defun slack-ws--close (ws team)
+  (slack-ws-cancel-ping-timer ws)
+  (slack-ws-cancel-ping-check-timers ws)
+  (slack-if-let* ((conn (oref ws conn))
+                  (open-p (websocket-openp conn)))
+      (condition-case error-var
+          (websocket-close (oref ws conn))
+        (error (slack-log (format "An Error occured while closing websocket connection: %s"
+                                  error-var)
+                          team
+                          :level 'error))))
+  (oset ws conn nil)
+  (slack-log "Slack Websocket Closed" team)
+  (slack-request-worker-remove-request team))
 
 (defun slack-ws-payload-ping-p (payload)
   (string= "ping" (plist-get payload :type)))
@@ -236,7 +234,8 @@
   (let* ((team (slack-team-find team-id))
          (ws (oref team ws)))
     (slack-notify-abandon-reconnect team)
-    (slack-ws--close ws team t)))
+    (slack-ws-cancel-reconnect-timer ws)
+    (slack-ws--close ws team)))
 
 (defun slack-ws-reconnect-with-reconnect-url (team-id)
   (let* ((team (slack-team-find team-id))
