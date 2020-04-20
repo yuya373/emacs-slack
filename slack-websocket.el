@@ -88,16 +88,10 @@
                            (when (functionp on-open)
                              (funcall on-open)))
            (on-close (websocket)
-                     (oset ws conn nil)
                      (oset ws connected nil)
                      (slack-log (format "Websocket on-close: STATE: %s"
                                         (websocket-ready-state websocket))
-                                team :level 'debug)
-                     (unwind-protect
-                         (progn
-                           (unless (oref ws inhibit-reconnection)
-                             (slack-ws-reconnect ws team)))
-                       (oset ws inhibit-reconnection nil)))
+                                team :level 'debug))
            (on-error (_websocket type err)
                      (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
                                         type err)
