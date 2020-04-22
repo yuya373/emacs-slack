@@ -64,57 +64,48 @@
     (slack-ws-reconnect ws team)))
 
 (cl-defmethod slack-ws-open ((ws slack-team-ws) team &key (on-open nil) (ws-url nil))
-  (slack-if-let* ((conn (oref ws conn))
-                  (state (websocket-ready-state conn)))
-      (cond ((websocket-openp conn)
-             (slack-log "Websocket is Already Open" team))
-            ((eq state 'connecting)
-             (slack-log "Websocket is connecting" team))
-            ((eq state 'closed)
-             (slack-log "Websocket is closed" team)))
+  (slack-ws-set-connect-timeout-timer ws
+                                      #'slack-ws-on-timeout
+                                      (slack-team-id team))
+  (cl-labels ((on-message (_websocket frame)
+                          (slack-ws-on-message ws frame team))
+              (handle-on-open (_websocket)
+                              (oset ws reconnect-count 0)
+                              (oset ws connected t)
+                              (slack-log "WebSocket on-open"
+                                         team :level 'debug)
+                              (when (functionp on-open)
+                                (funcall on-open)))
+              (on-close (websocket)
+                        (oset ws connected nil)
+                        (slack-log (format "Websocket on-close: STATE: %s"
+                                           (websocket-ready-state websocket))
+                                   team :level 'debug))
+              (on-error (_websocket type err)
+                        (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
+                                           type err)
+                                   team
+                                   :level 'error)))
+    (slack-log (format "Opening websocket connection. NOWAIT: %s"
+                       (oref ws websocket-nowait))
+               team
+               :level 'debug)
+    (oset ws conn
+          (condition-case error-var
+              (websocket-open (or ws-url (oref ws url))
+                              :on-message #'on-message
+                              :on-open #'handle-on-open
+                              :on-close #'on-close
+                              :on-error #'on-error
+                              :nowait (oref ws websocket-nowait))
+            (error (slack-log (format "An Error occured while opening websocket connection: %s"
+                                      error-var)
+                              team
+                              :level 'error)
+                   nil))))
 
-    (progn
-      (slack-ws-set-connect-timeout-timer ws
-                                          #'slack-ws-on-timeout
-                                          (slack-team-id team))
-      (cl-labels
-          ((on-message (_websocket frame)
-                       (slack-ws-on-message ws frame team))
-           (handle-on-open (_websocket)
-                           (oset ws reconnect-count 0)
-                           (oset ws connected t)
-                           (slack-log "WebSocket on-open"
-                                      team :level 'debug)
-                           (when (functionp on-open)
-                             (funcall on-open)))
-           (on-close (websocket)
-                     (oset ws connected nil)
-                     (slack-log (format "Websocket on-close: STATE: %s"
-                                        (websocket-ready-state websocket))
-                                team :level 'debug))
-           (on-error (_websocket type err)
-                     (slack-log (format "Error on `websocket-open'. TYPE: %s, ERR: %s"
-                                        type err)
-                                team
-                                :level 'error)))
-        (slack-log (format "Opening websocket connection. NOWAIT: %s"
-                           (oref ws websocket-nowait))
-                   team
-                   :level 'debug)
-        (oset ws conn
-              (condition-case error-var
-                  (websocket-open (or ws-url (oref ws url))
-                                  :on-message #'on-message
-                                  :on-open #'handle-on-open
-                                  :on-close #'on-close
-                                  :on-error #'on-error
-                                  :nowait (oref ws websocket-nowait))
-                (error
-                 (slack-log (format "An Error occured while opening websocket connection: %s"
-                                    error-var)
-                            team
-                            :level 'error)
-                 nil)))))))
+  (slack-log (format "called websocket-open. conn: %s" (not (null (oref ws conn))))
+             team))
 
 (defun slack-ws-close ()
   (interactive)
@@ -136,7 +127,6 @@
                                   error-var)
                           team
                           :level 'error))))
-  (oset ws conn nil)
   (slack-log "Slack Websocket Closed" team)
   (slack-request-worker-remove-request team))
 
