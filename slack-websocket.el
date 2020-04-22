@@ -224,8 +224,7 @@
   (let* ((team (slack-team-find team-id))
          (ws (oref team ws)))
     (slack-notify-abandon-reconnect team)
-    (slack-ws-cancel-reconnect-timer ws)
-    (slack-ws--close ws team)))
+    (slack-ws-cancel-reconnect-timer ws)))
 
 (defun slack-ws-reconnect-with-reconnect-url (team-id)
   (let* ((team (slack-team-find team-id))
@@ -279,7 +278,6 @@
           (slack-ws-abort-reconnect team-id)
         (progn
           (slack-ws-inc-reconnect-count ws)
-          (slack-ws--close ws team)
           (if (slack-ws-use-reconnect-url-p ws)
               (slack-request-api-test team
                                       #'(lambda ()
