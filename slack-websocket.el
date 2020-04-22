@@ -60,7 +60,13 @@
          (ws (oref team ws)))
     (slack-log (format "websocket open timeout")
                team)
-    (slack-ws--close ws team)
+    (slack-if-let* ((conn (oref ws conn)))
+        (progn
+          (delete-process (websocket-conn conn))
+          (slack-log (format "called delete-process")
+                     team :level 'debug))
+      (slack-log (format "Failed to delete-process")
+                 team :level 'debug))
     (slack-ws-reconnect ws team)))
 
 (cl-defmethod slack-ws-open ((ws slack-team-ws) team &key (on-open nil) (ws-url nil))
@@ -285,6 +291,8 @@
             (slack-authorize team
                              #'on-authorize-error
                              #'on-authorize-success))
+          (slack-log (format "Processes: %s" (mapcar #'process-name (process-list)))
+                     team)
           (slack-log (format "Reconnecting... [%s/%s]"
                              (oref ws reconnect-count)
                              (oref ws reconnect-count-max))
