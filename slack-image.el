@@ -47,12 +47,27 @@
   :group 'slack)
 
 (defun slack-image-path (image-url)
-  (and image-url
-       (expand-file-name
-        (concat (md5 image-url)
-                "."
-                (file-name-extension image-url))
-        slack-image-file-directory)))
+  "Compute cache path for IMAGE-URL"
+  (and
+   image-url
+   (let* ((raw-extension (file-name-extension image-url))
+          (extension
+           (if raw-extension
+               (save-match-data
+                 (if (string-match "\\?" raw-extension)
+                     (let ((real-ext (substring raw-extension 0 (match-beginning 0)))
+                           (query (substring raw-extension (match-end 0))))
+                       ;; mangle query because it might contain characters
+                       ;; that are illegal in filenames,
+                       ;; e.g. "jpg?crop=2616:1369;0,187" contains ?:,
+                       ;; which may not appear in filenames on Microsoft
+                       ;; Windows.
+                       (concat "." (md5 query) "." real-ext))
+                   (concat "." raw-extension)))
+             "")))
+     (expand-file-name
+      (concat (md5 image-url) extension)
+      slack-image-file-directory))))
 
 (defun slack-image-slice (image)
   (when image
