@@ -51,6 +51,7 @@
 (require 'slack-star)
 
 (require 'slack-buffer)
+(require 'slack-room-info-buffer)
 (require 'slack-message-buffer)
 (require 'slack-message-edit-buffer)
 (require 'slack-message-share-buffer)
