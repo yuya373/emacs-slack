@@ -343,7 +343,8 @@
     (with-current-buffer buf
       (slack-dialog-buffer-mode)
       (slack-buffer-set-current-buffer this)
-      (slack-buffer-insert this))))
+      (slack-buffer-insert this))
+    buf))
 
 (defun slack-create-dialog-buffer (dialog-id dialog team)
   (slack-if-let*
