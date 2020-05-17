@@ -737,15 +737,17 @@
                          "Select Channel: "))))
       (slack-conversations-unarchive channel team))))
 
-(defun slack-file-upload ()
-  (interactive)
+(defun slack-file-upload (file filetype filename)
+  "Uploads FILE with FILETYPE and FILENAME."
+  (interactive
+   (let ((file (expand-file-name (car (find-file-read-args "Select File: " t)))))
+     (list file
+           (slack-file-select-filetype (file-name-extension file))
+           (read-from-minibuffer "Filename: " (file-name-nondirectory file)))))
+
   (slack-if-let*
       ((buffer slack-current-buffer)
        (team (slack-buffer-team buffer))
-       (file (expand-file-name (car (find-file-read-args "Select File: " t))))
-       (filename (read-from-minibuffer "Filename: "
-                                       (file-name-nondirectory file)))
-       (filetype (slack-file-select-filetype (file-name-extension file)))
        (initial-comment (read-from-minibuffer "Message: ")))
       (cl-labels
           ((on-file-upload (&key data &allow-other-keys)
@@ -767,6 +769,20 @@
           :headers (list (cons "Content-Type" "multipart/form-data"))
           :success #'on-file-upload)))
     (error "Call from message buffer or thread buffer")))
+
+(defun slack-clipboard-image-upload ()
+  "Uploads png image from clipboard."
+  (interactive)
+
+  (let* ((file (make-temp-file "clip" nil ".png"))
+         (selection-coding-system 'no-conversion)
+         (coding-system-for-write 'binary))
+
+    (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
+                      (error "No image in CLIPBOARD"))
+                  nil file nil 'quiet)
+
+    (slack-file-upload file "png" "image.png")))
 
 (provide 'slack-buffer)
 ;;; slack-buffer.el ends here
