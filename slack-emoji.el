@@ -97,11 +97,11 @@
              (cl-labels
                  ((select ()
                           (emojify-completing-read "Select Emoji: "
-                                                   #'(lambda (_emoji data)
-                                                       (or (gethash (gethash "emoji" data)
+                                                   #'(lambda (data)
+                                                       (or (gethash data
                                                                     slack-emoji-master
                                                                     nil)
-                                                           (gethash (gethash "emoji" data)
+                                                           (gethash data
                                                                     (oref team emoji-master)
                                                                     nil))))))
                (if (< 0 (hash-table-count slack-emoji-master))
@@ -119,9 +119,13 @@
                           do (let ((short-names (plist-get emoji :short_names)))
                                (when short-names
                                  (cl-loop for name in short-names
-                                          do (puthash (format ":%s:" name)
-                                                      t
-                                                      slack-emoji-master))))))))
+                                          do (let* ((emoji-key (format ":%s:" name))
+                                                    (emoji (emojify-get-emoji emoji-key))
+                                                    (emoji-name (if emoji (ht-get emoji "name") ""))
+                                                    (emoji-style (if emoji (ht-get emoji "style") "")))
+                                               (puthash (format "%s - %s (%s)" emoji-key emoji-name emoji-style)
+                                                        t
+                                                        slack-emoji-master)))))))))
     (slack-request
      (slack-request-create
       slack-emoji-master-data-url
