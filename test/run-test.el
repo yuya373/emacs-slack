@@ -6,6 +6,7 @@
 (require 'slack-block)
 (require 'slack-mrkdwn)
 (require 'slack-message-sender)
+(require 'slack-image)
 
 (defvar slack-channel-button-keymap nil)
 (setq slack-render-image-p t)
@@ -43,6 +44,20 @@
                                         h)
                                :usergroups (list usergroup))))
      ,@body))
+
+(ert-deftest slack-test-image-path ()
+  (let* ((url "http://example.com/image.jpg?crop=1:2;3:4")
+         (splitted (split-string url "?"))
+         (query (cadr splitted))
+         (ext (file-name-extension (car splitted))))
+    (should (equal (expand-file-name (concat (md5 url) "." (md5 query) "." ext)
+                                     slack-image-file-directory)
+                   (slack-image-path url))))
+  (let* ((url "http://example.com/image.jpg")
+         (ext "jpg"))
+    (should (equal (expand-file-name (concat (md5 url) "." ext)
+                                     slack-image-file-directory)
+                   (slack-image-path url)))))
 
 (ert-deftest slack-test-unescape-&<> ()
   (should (equal "<" (slack-unescape-&<> "&lt;")))
