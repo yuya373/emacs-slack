@@ -57,6 +57,13 @@
          (ext "jpg"))
     (should (equal (expand-file-name (concat (md5 url) "." ext)
                                      slack-image-file-directory)
+                   (slack-image-path url))))
+  (let* ((url "https://qiita-user-contents.imgix.net/https%3A%2F%2Fcdn.qiita.com%2Fassets%2Fpublic%2Farticle-ogp-background-1150d8b18a7c15795b701a55ae908f94.png?ixlib=rb-1.2.2&w=1200&mark=https%3A%2F%2Fqiita-user-contents.imgix.net%2F~text%3Fixlib%3Drb-1.2.2%26w%3D840%26h%3D380%26txt%3DRuby%25E3%2581%25AESJIS%25E3%2581%25AFShift_JIS%25E3%2581%2598%25E3%2582%2583%25E3%2581%25AA%25E3%2581%2584%26txt-color%3D%2523333%26txt-font%3DAvenir-Black%26txt-size%3D54%26txt-clip%3Dellipsis%26txt-align%3Dcenter%252Cmiddle%26s%3D7bec43d35ef823368af1e72227127508&mark-align=center%2Cmiddle&blend=https%3A%2F%2Fqiita-user-contents.imgix.net%2F~text%3Fixlib%3Drb-1.2.2%26w%3D840%26h%3D500%26txt%3D%2540yugo-yamamoto%26txt-color%3D%2523333%26txt-font%3DAvenir-Black%26txt-size%3D45%26txt-align%3Dright%252Cbottom%26s%3D8d65eaf7282eb521ea4a47ecac74efc5&blend-align=center%2Cmiddle&blend-mode=normal&s=1b2bdc847358703b21238cb69b5f37d8")
+         (splitted (split-string url "?"))
+         (query (cadr splitted))
+         (ext (file-name-extension (car splitted))))
+    (should (equal (expand-file-name (concat (md5 url) "." (md5 query) "." ext)
+                                     slack-image-file-directory)
                    (slack-image-path url)))))
 
 (ert-deftest slack-test-unescape-&<> ()
