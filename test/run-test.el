@@ -50,7 +50,7 @@
          (splitted (split-string url "?"))
          (query (cadr splitted))
          (ext (file-name-extension (car splitted))))
-    (should (equal (expand-file-name (concat (md5 url) "." (md5 query) "." ext)
+    (should (equal (expand-file-name (concat (md5 url) "." ext)
                                      slack-image-file-directory)
                    (slack-image-path url))))
   (let* ((url "http://example.com/image.jpg")
@@ -62,7 +62,7 @@
          (splitted (split-string url "?"))
          (query (cadr splitted))
          (ext (file-name-extension (car splitted))))
-    (should (equal (expand-file-name (concat (md5 url) "." (md5 query) "." ext)
+    (should (equal (expand-file-name (concat (md5 url) "." ext)
                                      slack-image-file-directory)
                    (slack-image-path url)))))
 

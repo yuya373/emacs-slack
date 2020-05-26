@@ -51,18 +51,9 @@
   (and
    image-url
    (let* ((splitted (split-string image-url "?"))
-          (url (car splitted))
-          (query (cadr splitted)))
+          (url (car splitted)))
      (expand-file-name
       (concat (md5 image-url)
-              (if query
-                  ;; mangle query because it might contain characters
-                  ;; that are illegal in filenames,
-                  ;; e.g. "jpg?crop=2616:1369;0,187" contains ?:,
-                  ;; which may not appear in filenames on Microsoft
-                  ;; Windows.
-                  (concat "." (md5 query))
-                "")
               "."
               (file-name-extension url))
       slack-image-file-directory))))
