@@ -154,8 +154,11 @@ When `never', never display typing indicator."
   (cl-labels ((start
                (team)
                (slack-team-kill-buffers team)
-               (when (slot-boundp team 'ws)
-                 (slack-ws--close (oref team ws) team))
+               (slack-if-let* ((ws (and (slot-boundp team 'ws)
+                                        (oref team ws))))
+                   (progn
+                     (slack-ws--close (oref team ws) team)
+                     (oset (oref team ws) inhibit-reconnection nil)))
                (slack-authorize team)))
     (if team
         (start team)
