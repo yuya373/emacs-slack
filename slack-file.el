@@ -464,7 +464,7 @@
   (oref file id))
 
 (cl-defmethod slack-file-thumb-image-spec ((file slack-file) &optional (size 360))
-  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h) file
+  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h url-private) file
     (or (and (<= 360 size) thumb-360
              (list thumb-360 thumb-360-w thumb-360-h size size))
         (and (<= 160 size) thumb-160
@@ -475,6 +475,8 @@
              (list thumb-64 nil nil size size))
         (and thumb-pdf
              (list thumb-pdf thumb-pdf-w thumb-pdf-h size size))
+        (and url-private
+             (list url-private nil nil))
         (list nil nil nil))))
 
 (cl-defmethod slack-file-image-spec ((this slack-file))
