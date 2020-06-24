@@ -187,8 +187,8 @@
 (defclass slack-file ()
   ((id :initarg :id)
    (created :initarg :created)
-   (name :initarg :name)
-   (size :initarg :size)
+   (name :initarg :name :initform nil)
+   (size :initarg :size :initform nil)
    (public :initarg :public)
    (filetype :initarg :filetype)
    (user :initarg :user)
@@ -463,21 +463,24 @@
 (cl-defmethod slack-file-id ((file slack-file))
   (oref file id))
 
+(cl-defmethod slack-file-thumb-image-spec ((_file slack-file-email) &optional _)
+  nil)
 (cl-defmethod slack-file-thumb-image-spec ((file slack-file) &optional (size 360))
-  (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h url-private) file
-    (or (and (<= 360 size) thumb-360
-             (list thumb-360 thumb-360-w thumb-360-h size size))
-        (and (<= 160 size) thumb-160
-             (list thumb-160 nil nil size size))
-        (and (<= 80 size) thumb-80
-             (list thumb-80 nil nil size size))
-        (and (<= 64 size) thumb-64
-             (list thumb-64 nil nil size size))
-        (and thumb-pdf
-             (list thumb-pdf thumb-pdf-w thumb-pdf-h size size))
-        (and url-private
-             (list url-private nil nil))
-        (list nil nil nil))))
+  (unless (slack-file-deleted-p file)
+    (with-slots (thumb-360 thumb-360-w thumb-360-h thumb-160 thumb-80 thumb-64 thumb-pdf thumb-pdf-w thumb-pdf-h url-private) file
+      (or (and (<= 360 size) thumb-360
+               (list thumb-360 thumb-360-w thumb-360-h size size))
+          (and (<= 160 size) thumb-160
+               (list thumb-160 nil nil size size))
+          (and (<= 80 size) thumb-80
+               (list thumb-80 nil nil size size))
+          (and (<= 64 size) thumb-64
+               (list thumb-64 nil nil size size))
+          (and thumb-pdf
+               (list thumb-pdf thumb-pdf-w thumb-pdf-h size size))
+          (and url-private
+               (list url-private nil nil))
+          (list nil nil nil)))))
 
 (cl-defmethod slack-file-image-spec ((this slack-file))
   (with-slots (is-public url-download url-private-download) this
@@ -576,21 +579,24 @@
                         map)))
 
 (cl-defmethod slack-file-size ((file slack-file))
-  (let ((size (oref file size))
-        (unit ""))
-    (when size
-      (setq unit "KB")
-      (setq size (/ size 1000.0))
-      (when (<= 1000 size)
-        (setq unit "MB")
-        (setq size (/ size 1000.0)))
-      (setq size (format "%s%s" size unit)))
-    size))
-
+  (if (slack-file-deleted-p file)
+      ""
+    (let ((size (oref file size))
+          (unit ""))
+      (when size
+        (setq unit "KB")
+        (setq size (/ size 1000.0))
+        (when (<= 1000 size)
+          (setq unit "MB")
+          (setq size (/ size 1000.0)))
+        (setq size (format "%s%s" size unit)))
+      size)))
 
 (cl-defmethod slack-file-title ((file slack-file))
-  (or (oref file title)
-      (oref file name)))
+  (if (slack-file-deleted-p file)
+      "This file is deleted"
+    (or (oref file title)
+        (oref file name))))
 
 (cl-defmethod slack-file-type ((file slack-file))
   (or (oref file pretty-type)

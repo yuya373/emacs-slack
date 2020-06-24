@@ -109,9 +109,13 @@
                           (if (slack-string-blankp thread) thread
                             (concat "\n" thread)))))
 
+(cl-defmethod slack-file-deleted-p ((file slack-file))
+  (let ((mode (oref file mode)))
+    (string= mode "tombstone")))
+
 (cl-defmethod slack-file-summary ((file slack-file) _ts team)
   (with-slots (mode permalink) file
-    (if (string= mode "tombstone")
+    (if (slack-file-deleted-p file)
         "This file was deleted."
       (let ((type (slack-file-type file))
             (title (slack-file-title file)))
