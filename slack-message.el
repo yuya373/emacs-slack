@@ -116,7 +116,8 @@
     (setq reactions (slack-reaction-delete reaction reactions))))
 
 (cl-defmethod slack-reaction-push ((this slack-message) reaction)
-  (push reaction (oref this reactions)))
+  (oset this reactions (append (oref this reactions)
+                               (list reaction))))
 
 (cl-defmethod slack-reaction-find ((m slack-message) reaction)
   (slack-reaction--find (oref m reactions) reaction))
