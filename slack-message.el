@@ -233,10 +233,11 @@
   (let ((use-blocks-p (and (not (oref team disable-block-format))
                            (oref m blocks))))
     (if use-blocks-p
-        (mapconcat #'(lambda (bl)
-                       (slack-block-to-string bl (list :team team)))
-                   (oref m blocks)
-                   "\n\n")
+        (slack-unescape (mapconcat #'(lambda (bl)
+                                       (slack-block-to-string bl (list :team team)))
+                                   (oref m blocks)
+                                   "\n\n")
+                        team)
       (if (oref m text)
           (propertize (slack-unescape (oref m text) team)
                       'face 'slack-message-output-text
