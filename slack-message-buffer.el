@@ -717,7 +717,7 @@
       (message "%s" text)))
 
 (cl-defmethod slack-message--inspect ((this slack-message) room team)
-  (format "RAW: %s\nROOM: %s\nUSER: %s\nBOT: %S\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s"
+  (format "RAW: %s\nROOM: %s\nUSER: %s\nBOT: %S\nMESSAGE: %s\nATTACHMENTS: %s - %s\nFILES: %s - %s\nUSER_IDS: %s"
           (oref this text)
           (oref room id)
           (oref this user)
@@ -740,7 +740,8 @@
           (length (oref this files))
           (mapcar (lambda (e) (format "(TITLE: %s)"
                                       (oref e title)))
-                  (oref this files))))
+                  (oref this files))
+          (slack-message-user-ids this)))
 
 (defun slack-message-update-mark ()
   "Update Channel's last-read marker to this message."

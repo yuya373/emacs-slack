@@ -157,17 +157,21 @@
         (sender-id (slack-message-sender-id this)))
     (unless (slack-string-blankp sender-id)
       (push sender-id result))
-    (with-slots (text) this
-      (when text
-        (let ((start 0))
-          (while (and (< start (length text))
-                      (string-match slack-message-user-regexp
-                                    text
-                                    start))
-            (let ((user-id (match-string 1 text)))
-              (when user-id
-                (push user-id result)))
-            (setq start (match-end 0))))))
+    (with-slots (text attachments) this
+      (let ((texts (append (mapcar #'(lambda (e) (oref e text))
+                                   attachments)
+                           (list text))))
+        (dolist (text texts)
+          (when text
+            (let ((start 0))
+              (while (and (< start (length text))
+                          (string-match slack-message-user-regexp
+                                        text
+                                        start))
+                (let ((user-id (match-string 1 text)))
+                  (when user-id
+                    (push user-id result)))
+                (setq start (match-end 0))))))))
     result))
 
 (cl-defmethod slack-message-visible-p ((this slack-message) team)
