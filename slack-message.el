@@ -154,24 +154,57 @@
 
 (cl-defmethod slack-message-user-ids ((this slack-message))
   (let ((result (append (oref this reply-users) nil))
-        (sender-id (slack-message-sender-id this)))
+        (sender-id (slack-message-sender-id this))
+        (texts (append (mapcar #'(lambda (e) (oref e text))
+                               (oref this attachments))
+                       (list (oref this text)))))
     (unless (slack-string-blankp sender-id)
       (push sender-id result))
-    (with-slots (text attachments) this
-      (let ((texts (append (mapcar #'(lambda (e) (oref e text))
-                                   attachments)
-                           (list text))))
-        (dolist (text texts)
-          (when text
-            (let ((start 0))
-              (while (and (< start (length text))
-                          (string-match slack-message-user-regexp
-                                        text
-                                        start))
-                (let ((user-id (match-string 1 text)))
-                  (when user-id
-                    (push user-id result)))
-                (setq start (match-end 0))))))))
+
+    (when (oref this blocks)
+      (dolist (bl (oref this blocks))
+        (let ((class-name (eieio-object-class-name bl)))
+          (when (eq class-name 'slack-section-layout-block)
+            (push (oref bl text) texts)
+            (dolist (el (oref bl fields))
+              (push (oref el text) texts)))
+
+          (when  (eq class-name 'slack-context-layout-block)
+            (dolist (el (oref bl elements))
+              (when (eq (eieio-object-class-name el)
+                        'slack-text-message-composition-object)
+                (push (oref el text)
+                      texts))))
+
+          (when (eq (eieio-object-class-name bl)
+                    'slack-rich-text-block)
+            (dolist (el (oref bl elements))
+              (when (or (eq (eieio-object-class-name el)
+                            'slack-rich-text-section)
+                        (eq (eieio-object-class-name el)
+                            'slack-rich-text-preformatted)
+                        (eq (eieio-object-class-name el)
+                            'slack-rich-text-quote)
+                        (eq (eieio-object-class-name el)
+                            'slack-rich-text-block-element))
+                (dolist (el (oref el elements))
+                  (when (eq (eieio-object-class-name el)
+                            'slack-rich-text-text-element)
+                    (push (oref el text) texts))
+                  (when (eq (eieio-object-class-name el)
+                            'slack-rich-text-user-element)
+                    (push (oref el user-id) texts)))))))))
+    (dolist (text texts)
+      (when text
+        (let ((start 0))
+          (while (and (< start (length text))
+                      (string-match slack-message-user-regexp
+                                    text
+                                    start))
+            (let ((user-id (match-string 1 text)))
+              (when user-id
+                (push user-id result)))
+            (setq start (match-end 0))))))
     result))
 
 (cl-defmethod slack-message-visible-p ((this slack-message) team)
