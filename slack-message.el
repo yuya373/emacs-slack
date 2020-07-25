@@ -70,6 +70,8 @@
    (reply-users :initarg :reply_users :initform '() :type list)
    (reply-users-count :initarg :reply_users_count :initform 0 :type number)
    (subscribed :initarg :subscribed :initform nil :type boolean)
+   ;; file comment (Deprecated)
+   (comment :initarg :comment :initform nil :type (or null list))
    ))
 
 (defclass slack-message-edited ()
@@ -85,7 +87,14 @@
   (string= (slack-ts m) (slack-ts n)))
 
 (cl-defmethod slack-message-sender-name ((m slack-message) team)
-  (slack-user-name (oref m user) team))
+  (let ((user (or (and (slot-exists-p m 'user)
+                       (slot-boundp m 'user)
+                       (oref m user))
+                  (and (slot-boundp m 'comment)
+                       (plist-get (oref m comment) :user)))))
+    (if user
+        (slack-user-name user team)
+      "User Not Found")))
 
 (cl-defmethod slack-message-sender-id ((_this slack-message))
   "")
