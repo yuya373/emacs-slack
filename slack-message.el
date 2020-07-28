@@ -204,7 +204,7 @@
                             'slack-rich-text-user-element)
                     (push (oref el user-id) texts)))))))))
     (dolist (text texts)
-      (when text
+      (when (and text (stringp text))
         (let ((start 0))
           (while (and (< start (length text))
                       (string-match slack-message-user-regexp
