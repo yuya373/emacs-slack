@@ -42,7 +42,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-strike
-  "\\(?:^\\|\\W\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t*]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\(\\W\\|$\\)\\)")
+  "\\(?:^\\|\\W\\)\\(\\(~\\)\\([^ \n\t\\]\\|[^ \n\t]\\(?:.\\)*?[^\\ ]\\)\\(\\2\\)\\(\\W\\|$\\)\\)")
 
 (defface slack-mrkdwn-strike-face
   '((t (:strike-through t)))

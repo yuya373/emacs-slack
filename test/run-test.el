@@ -450,7 +450,8 @@
   (should (not (string-match-p slack-mrkdwn-regex-strike "aaa~bbb~")))
   (should (not (string-match-p slack-mrkdwn-regex-strike "aaa~bbb~aaa")))
   (should (not (string-match-p slack-mrkdwn-regex-strike "aaa ~Ace Wasabi Rock-n-Roll\n Sushi Bar~ aaa")))
-  (should (string-match-p slack-mrkdwn-regex-strike "~Ace Wasabi Rock-n-Roll Sushi Bar~")))
+  (should (string-match-p slack-mrkdwn-regex-strike "~Ace Wasabi Rock-n-Roll Sushi Bar~"))
+  (should (string-match-p slack-mrkdwn-regex-strike "~*When:*  7月 31, 2020 16:30 - 17:00~")))
 
 (ert-deftest slack-test-mrkdwn-regex-code ()
   (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
