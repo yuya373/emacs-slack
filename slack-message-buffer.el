@@ -576,16 +576,17 @@
   (when (display-graphic-p)
     (slack-if-let* ((images (slack-buffer-get-images ts)))
         (cl-loop for image in images
-                 do (when (and image (image-multi-frame-p image))
-                      (let* ((metadata (image-metadata image))
-                             (count (plist-get metadata 'count)))
-                        (if (< 200 count)
-                            (slack-if-let* ((buffer slack-current-buffer)
-                                            (team (slack-buffer-team buffer)))
-                                (slack-log (format "Image too big to animate. metadata: %s"
-                                                   metadata)
-                                           team :level 'debug))
-                          (image-animate image nil t))))))))
+                 do (when image
+                      (slack-if-let* ((data (and image (image-multi-frame-p image)))
+                                      (count (car data))
+                                      (delay (cdr data)))
+                          (if (< 200 count)
+                              (slack-if-let* ((buffer slack-current-buffer)
+                                              (team (slack-buffer-team buffer)))
+                                  (slack-log (format "Image too big to animate. metadata: %s"
+                                                     metadata)
+                                             team :level 'debug))
+                            (image-animate image nil t))))))))
 
 (defun slack-buffer-cancel-animate-image (ts)
   (when (and ts (display-graphic-p))
