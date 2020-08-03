@@ -110,9 +110,6 @@
       (slack-conversations-list team #'success (list "private_channel" "mpim")))))
 
 
-(cl-defmethod slack-room-update-mark-url ((_room slack-group))
-  slack-group-update-mark-url)
-
 (defun slack-create-group ()
   (interactive)
   (let ((team (slack-team-select)))

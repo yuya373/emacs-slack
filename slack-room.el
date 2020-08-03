@@ -53,7 +53,6 @@
    (last-read :initarg :last_read :type string :initform "0")))
 
 (cl-defgeneric slack-room-name (room team))
-(cl-defgeneric slack-room-update-mark-url (room))
 
 (cl-defmethod slack-equalp ((this slack-room) other)
   (string= (oref this id)
@@ -211,18 +210,7 @@
       (slack-room--update-latest room counts latest)))
 
 (cl-defmethod slack-room-update-mark ((room slack-room) team ts)
-  (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                              (slack-request-handle-error
-                               (data "slack-room-update-mark"))))
-    (with-slots (id) room
-      (slack-request
-       (slack-request-create
-        (slack-room-update-mark-url room)
-        team
-        :type "POST"
-        :params (list (cons "channel"  id)
-                      (cons "ts"  ts))
-        :success #'on-update-mark)))))
+  (slack-conversations-mark room team ts))
 
 (cl-defmethod slack-room-member-p ((_room slack-room)) t)
 

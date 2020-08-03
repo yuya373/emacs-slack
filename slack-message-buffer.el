@@ -131,21 +131,7 @@
     (when (slack-room-member-p room)
       (oset room last-read ts)
       (slack-buffer-update-marker-overlay this)
-
-      (cl-labels ((on-update-mark (&key data &allow-other-keys)
-                                  (slack-request-handle-error
-                                   (data "slack-buffer-update-mark-request")
-                                   (when (functionp after-success)
-                                     (funcall after-success)))))
-        (with-slots (id) room
-          (slack-request
-           (slack-request-create
-            (slack-room-update-mark-url room)
-            team
-            :type "POST"
-            :params (list (cons "channel"  id)
-                          (cons "ts"  ts))
-            :success #'on-update-mark)))))))
+      (slack-conversations-mark room team ts after-success))))
 
 (cl-defmethod slack-buffer-send-message ((this slack-message-buffer) message)
   (slack-message-send-internal message

@@ -69,6 +69,8 @@
   "https://slack.com/api/conversations.open")
 (defconst slack-conversations-view-url
   "https://slack.com/api/conversations.view")
+(defconst slack-conversations-mark-url
+  "https://slack.com/api/conversations.mark")
 
 (cl-defun slack-conversations-success-handler (team &key on-errors on-success)
   (cl-function
@@ -312,13 +314,13 @@
              (funcall success-callback
                       channels groups ims))))
          (request ()
-                  (slack-request
-                   (slack-request-create
-                    slack-conversations-list-url
-                    team
-                    :params (list (cons "types" (mapconcat #'identity types ","))
-                                  (and cursor (cons "cursor" cursor)))
-                    :success #'on-success))))
+           (slack-request
+            (slack-request-create
+             slack-conversations-list-url
+             team
+             :params (list (cons "types" (mapconcat #'identity types ","))
+                           (and cursor (cons "cursor" cursor)))
+             :success #'on-success))))
       (request))))
 
 (defun slack-conversations-info (room team &optional after-success)
@@ -549,6 +551,19 @@
                     (and oldest (cons "oldest" oldest))
                     (and inclusive (cons "inclusive" inclusive)))
       :success #'success))))
+
+(defun slack-conversations-mark (room team ts &optional after-success)
+  (cl-labels ((on-success (&rest _ignore)
+                          (when (functionp after-success)
+                            (funcall after-success))))
+    (slack-request
+     (slack-request-create
+      slack-conversations-mark-url
+      team
+      :type "POST"
+      :params (list (cons "channel"  (oref room id))
+                    (cons "ts"  ts))
+      :success (slack-conversations-success-handler team :on-success #'on-success)))))
 
 (provide 'slack-conversations)
 ;;; slack-conversations.el ends here

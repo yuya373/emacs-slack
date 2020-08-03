@@ -94,9 +94,6 @@
                       team
                       #'filter)))
 
-(cl-defmethod slack-room-update-mark-url ((_room slack-im))
-  slack-im-update-mark-url)
-
 (defun slack-im-open ()
   (interactive)
   (let* ((team (slack-team-select))

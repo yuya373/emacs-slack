@@ -55,9 +55,6 @@
                              team :level 'info)))
       (slack-conversations-list team #'success (list "public_channel")))))
 
-(cl-defmethod slack-room-update-mark-url ((_room slack-channel))
-  slack-channel-update-mark-url)
-
 (defun slack-create-channel ()
   (interactive)
   (let ((team (slack-team-select)))
