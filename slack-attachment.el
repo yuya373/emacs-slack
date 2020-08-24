@@ -189,24 +189,14 @@
 (cl-defmethod slack-image-spec ((this slack-attachment))
   (with-slots (image-url image-height image-width) this
     (when image-url
-      (let* ((max-height (and image-height
-                              image-width
-                              (< image-width image-height)
-                              slack-image-max-height))
+      (let* ((max-height slack-image-max-height)
              (height (or (and image-height
                               max-height
                               (min image-height max-height))
-                         image-height))
-             (max-width (and image-height
-                             image-width
-                             (<= image-height image-width)
-                             (* 2 (/ (window-width nil t) 3))
-                             ))
-             (width (or (and image-width
-                        max-width
-                        (min image-width max-width))
-                   image-width)))
-        (list image-url width height)))))
+                         image-height)))
+        (list image-url
+              nil
+              height)))))
 
 (defface slack-message-action-primary-face
   '((t (:box (:line-width 1 :style released-button)
