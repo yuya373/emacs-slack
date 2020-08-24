@@ -97,13 +97,17 @@
              (cl-labels
                  ((select ()
                           (emojify-completing-read "Select Emoji: "
-                                                   #'(lambda (_emoji data)
-                                                       (or (gethash (gethash "emoji" data)
-                                                                    slack-emoji-master
-                                                                    nil)
-                                                           (gethash (gethash "emoji" data)
-                                                                    (oref team emoji-master)
-                                                                    nil))))))
+                                                   #'(lambda (data &rest args)
+                                                       (unless (null args)
+                                                         (slack-log (format "Invalid completing argments: %s, %s" data args)
+                                                                    team :level 'debug))
+                                                       (let ((emoji (car (split-string data " "))))
+                                                         (or (gethash emoji
+                                                                      slack-emoji-master
+                                                                      nil)
+                                                             (gethash emoji
+                                                                      (oref team emoji-master)
+                                                                      nil)))))))
                (if (< 0 (hash-table-count slack-emoji-master))
                    (select)
                  (slack-emoji-fetch-master-data (car (hash-table-values slack-teams-by-token)))
