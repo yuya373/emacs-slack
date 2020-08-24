@@ -788,11 +788,13 @@
 
 (cl-defmethod slack-block-action-payload ((this slack-button-block-element))
   (with-slots (block-id action-id value text) this
-    (list (cons "block_id" (or block-id ""))
-          (cons "action_id" action-id)
-          (cons "value" value)
-          (cons "type" "button")
-          (cons "text" (slack-block-action-payload text)))))
+    (cl-remove-if #'null
+                  (list (cons "block_id" (or block-id ""))
+                        (cons "action_id" action-id)
+                        (when value
+                          (cons "value" value))
+                        (cons "type" "button")
+                        (cons "text" (slack-block-action-payload text))))))
 
 (defclass slack-select-block-element (slack-block-element)
   ((placeholder :initarg :placeholder :type slack-text-message-composition-object)
