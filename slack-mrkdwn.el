@@ -50,7 +50,7 @@
   :group 'slack)
 
 (defconst slack-mrkdwn-regex-code
-  "\\(?:\\`\\|\\W\\)\\(\\(`\\)\\(\\(?:.\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
+  "\\(\\(`\\)\\(\\(?:.\\)*?[^`]\\)\\(\\2\\)\\)\\(?:[^`]\\|\\'\\)")
 
 (defface slack-mrkdwn-code-face
   '((t (:inherit slack-preview-face)))

@@ -455,6 +455,7 @@
 
 (ert-deftest slack-test-mrkdwn-regex-code ()
   (let ((code "aaa `Ace Wasabi Rock-n-Roll Sushi Bar` aaa"))
+    (should (string-match-p slack-mrkdwn-regex-code code))
     (string-match slack-mrkdwn-regex-code code)
     (should (equal "Ace Wasabi Rock-n-Roll Sushi Bar"
                    (match-string 3 code)))
@@ -464,8 +465,8 @@
   ;; TODO
   ;; (let ((block "   ```This is a `code` block\nAnd it's multi-line```   "))
   ;;   (should (eq nil (string-match-p slack-mrkdwn-regex-code block))))
-  (should (not (string-match-p slack-mrkdwn-regex-code "aaa`bbb`aaa")))
-  (should (not (string-match-p slack-mrkdwn-regex-code "aaa`bbb`")))
+  (should (string-match-p slack-mrkdwn-regex-code "aaa`bbb`aaa"))
+  (should (string-match-p slack-mrkdwn-regex-code "aaa`bbb`"))
   (should (not (string-match-p slack-mrkdwn-regex-code "   ```This is a code block\nAnd it's multi-line```   ")))
   (should (not (string-match-p slack-mrkdwn-regex-code "aaa `Ace Wasabi \nRock-n-Roll Sushi Bar` aaa")))
   (should (string-match-p slack-mrkdwn-regex-code "`bbb`aaa"))
