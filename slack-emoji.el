@@ -96,14 +96,7 @@
       (progn (emojify-download-emoji-maybe)
              (cl-labels
                  ((select ()
-                          (emojify-completing-read "Select Emoji: "
-                                                   #'(lambda (_emoji data)
-                                                       (or (gethash (gethash "emoji" data)
-                                                                    slack-emoji-master
-                                                                    nil)
-                                                           (gethash (gethash "emoji" data)
-                                                                    (oref team emoji-master)
-                                                                    nil))))))
+                          (emojify-completing-read "Select Emoji: ")))
                (if (< 0 (hash-table-count slack-emoji-master))
                    (select)
                  (slack-emoji-fetch-master-data (car (hash-table-values slack-teams-by-token)))
