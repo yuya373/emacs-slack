@@ -6,7 +6,7 @@
 ;; Author: yuya.minami <yuya.minami@yuyaminami-no-MacBook-Pro.local>
 ;; Keywords: tools
 ;; Version: 0.0.2
-;; Package-Requires: ((websocket "1.8") (request "0.2.0") (circe "2.3") (alert "1.2") (emojify "0.4") (emacs "24.4"))
+;; Package-Requires: ((websocket "1.8") (request "0.2.0") (circe "2.3") (alert "1.2") (emojify "1.2.1") (emacs "24.4"))
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -157,8 +157,9 @@ When `never', never display typing indicator."
                (slack-if-let* ((ws (and (slot-boundp team 'ws)
                                         (oref team ws))))
                    (progn
-                     (slack-ws--close (oref team ws) team)
-                     (oset (oref team ws) inhibit-reconnection nil)))
+                     (when (oref ws conn)
+                       (slack-ws--close ws team))
+                     (oset ws inhibit-reconnection nil)))
                (slack-authorize team)))
     (if team
         (start team)
