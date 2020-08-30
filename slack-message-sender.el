@@ -125,7 +125,7 @@
       (slack-select-from-list
           ((slack-channel-names team) "Select Channel: ")
           (slack-insert-channel-mention (oref selected id)
-                                        (format "@%s" (slack-room-name selected team))))))
+                                        (format "#%s" (slack-room-name selected team))))))
 
 (defun slack-insert-channel-mention (channel-id display)
   (insert (slack-propertize-mention-text 'slack-message-mention-face
