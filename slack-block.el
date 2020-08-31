@@ -707,9 +707,9 @@
   ((type :initarg :type :type string :initform "image")
    (image-url :initarg :image_url :type string)
    (alt-text :initarg :alt_text :type string)
-   (image-height :initarg :image_height :type number)
-   (image-width :initarg :image_width :type number)
-   (image-bytes :initarg :image_bytes :type number)))
+   (image-height :initarg :image_height :type (or number null))
+   (image-width :initarg :image_width :type (or number null))
+   (image-bytes :initarg :image_bytes :type (or number null))))
 
 (defun slack-create-image-block-element (payload)
   (make-instance 'slack-image-block-element
