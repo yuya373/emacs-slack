@@ -199,6 +199,8 @@
                          (if without-auth nil
                            (list (cons "Authorization"
                                        (format "Bearer %s" (slack-team-token team)))))
+                         (when (string= "xoxc" (substring (slack-team-token team) 0 4))
+                           (list (cons "Cookie" (format "d=%s; " (slack-team-cookie team)))))
                          headers)
                :parser parser
                :success #'-on-success
