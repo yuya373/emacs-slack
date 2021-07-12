@@ -36,6 +36,7 @@
   slack-buffer-mode
   "Slack Thread Message"
   (lui-set-prompt lui-prompt-string)
+  (cursor-sensor-mode)
   (setq lui-input-function 'slack-thread-message--send))
 
 (defclass slack-thread-message-buffer (slack-room-buffer)
