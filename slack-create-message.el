@@ -101,13 +101,14 @@
                   (plist-get payload :reply_broadcast)
                   (plist-get payload :is_thread_broadcast))
               (slack-reply-broadcast-message-create payload))
+             ((or (and subtype (string= "bot_message" subtype))
+                  (and (plist-member payload :bot_id)
+                       (plist-get payload :bot_id)))
+              (apply #'slack-bot-message "bot-msg"
+                     (slack-collect-slots 'slack-bot-message payload)))
              ((and (plist-member payload :user) (plist-get payload :user))
               (apply #'slack-user-message "user-msg"
                      (slack-collect-slots 'slack-user-message payload)))
-             ((or (and subtype (string= "bot_message" subtype))
-                  (and (plist-member payload :bot_id) (plist-get payload :bot_id)))
-              (apply #'slack-bot-message "bot-msg"
-                     (slack-collect-slots 'slack-bot-message payload)))
              (t (progn
                   (slack-log (format "Unknown Message Type: %s" payload)
                              team :level 'debug)
