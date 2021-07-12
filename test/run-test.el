@@ -411,6 +411,7 @@
                    "Ace Wasabi Rock-n-Roll Sushi Bar"))
     (should (eq (match-beginning 2) 4))
     (should (eq (match-beginning 4) 37)))
+  (should (string-match-p slack-mrkdwn-regex-bold "*@channel お題案だしてもらったので以下から2つ選んでください*"))
 
   (should (not (string-match-p slack-mrkdwn-regex-bold "* bbb *")))
   (should (not (string-match-p slack-mrkdwn-regex-bold "*bbb*aaa")))
@@ -687,6 +688,23 @@
                :blocks)))
 
 (ert-deftest slack-test-create-blocks-from-buffer ()
+  (let* ((str (string-trim "*<!here> fff*"))
+         (blocks (slack-test-parse-blocks str)))
+    (let ((block (car blocks)))
+      (should (string= "rich_text" (plist-get block :type)))
+      (let ((elements (plist-get block :elements)))
+        (should (eq 1 (length elements)))
+        (let ((section (car elements)))
+          (let ((elements (plist-get section :elements)))
+            (should (eq 1 (length elements)))
+            (let ((element (car elements)))
+              (should (string= "text" (plist-get element :type)))
+              (should (string= "<!here> fff" (plist-get element :text)))
+              (should (eq 2 (length (plist-get element :style))))
+              (let ((style (plist-get element :style)))
+                (should (eq t (plist-get style :bold))))))))))
+;; (:type "mrkdwn" :text "*<!channel|channel> お題案だしてもらったので以下から2つ選んでください*
+;; You may vote for multiple options" :verbatim t)
   (let* ((str (string-trim "
 bold *bold* bold
 italic _italic_ italic

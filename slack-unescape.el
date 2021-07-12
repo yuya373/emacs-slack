@@ -116,7 +116,9 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
           (let ((match (match-string 1 text)))
             (propertize (if (string= "here|here" match)
                             "@here"
-                          (slack-if-let*
+                          (if (string= "channel|channel" match)
+                              "@channel"
+                            (slack-if-let*
                               ((command (cl-find match commands :test #'string=)))
                               (format "@%s" command)
                             (cl-destructuring-bind (variable label)
@@ -129,6 +131,7 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
                                           (mapconcat #'char-to-string
                                                      (reverse variable)
                                                      ""))))))
+                          )
                         'slack-defer-face
                         'slack-message-mention-keyword-face))))
       (replace-regexp-in-string regexp #'replace text t t))))

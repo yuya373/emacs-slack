@@ -299,28 +299,28 @@
 (defun slack-mark-mentions ()
   (goto-char (point-min))
   (while (re-search-forward slack-user-mention-regex (point-max) t)
-    (unless (slack-mark-inside-code-p (match-beginning 1))
+    (unless (slack-mark-inhibit-mention-p (match-beginning 1))
       (slack-put-block-props (match-beginning 1)
                              (match-end 1)
                              (list :type 'user
                                    :user-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-usergroup-mention-regex (point-max) t)
-    (unless (slack-mark-inside-code-p (match-beginning 1))
+    (unless (slack-mark-inhibit-mention-p (match-beginning 1))
       (slack-put-block-props (match-beginning 1)
                              (match-end 1)
                              (list :type 'usergroup
                                    :usergroup-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-channel-mention-regex (point-max) t)
-    (unless (slack-mark-inside-code-p (match-beginning 1))
+    (unless (slack-mark-inhibit-mention-p (match-beginning 1))
       (slack-put-block-props (match-beginning 1)
                              (match-end 1)
                              (list :type 'channel
                                    :channel-id (match-string 2)))))
   (goto-char (point-min))
   (while (re-search-forward slack-special-mention-regex (point-max) t)
-    (unless (slack-mark-inside-code-p (match-beginning 1))
+    (unless (slack-mark-inhibit-mention-p (match-beginning 1))
       (slack-put-block-props (match-beginning 1)
                              (match-end 1)
                              (list :type 'broadcast
@@ -348,11 +348,19 @@
                                          :url (buffer-substring-no-properties (car bounds)
                                                                               (cdr bounds))))))))))
 
+(defun slack-mark-inhibit-mention-p (point)
+  (or (slack-mark-inside-code-p point)
+      (slack-mark-inside-bold-p point)))
+
 (defun slack-mark-inside-code-p (point)
   (slack-if-let* ((props (or (get-text-property point 'slack-block-props)
                              (get-text-property point 'slack-section-block-props))))
       (or (eq 'code (plist-get props :type))
           (eq 'code-block (plist-get props :section-type)))))
+
+(defun slack-mark-inside-bold-p (point)
+  (slack-if-let* ((props (get-text-property point 'slack-block-props)))
+      (eq 'bold (plist-get props :type))))
 
 (defun slack-mark-rich-text-elements ()
   (slack-mark-bold)
@@ -526,15 +534,19 @@
                                                                (t (create-text-element
                                                                    (buffer-substring-no-properties cur-point
                                                                                                    next-change-point)))))))
+                                             ;; (message "props: %s, element: %s" block-props element)
                                              (when element
                                                (push element elements))
                                              (let* ((n (min (or next-change-point end))))
+                                               ;; (message "cur: %s, end: %s, %s" cur-point n (buffer-substring-no-properties cur-point n))
                                                (setq cur-point n)))))
 
                                        (reverse elements))))))
       (let ((elements (create-section-elements (point-min) (point-max))))
+
         (let ((blocks (list (cons "blocks" (list (list (cons "type" "rich_text")
                                                        (cons "elements" elements)))))))
+        ;; (message "elements: %s, blocks: %s" elements blocks)
           ;; (let ((buf (get-buffer-create "emacs-slack blocks")))
           ;;   (with-current-buffer buf
           ;;     (delete-region (point-min) (point-max))
