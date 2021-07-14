@@ -30,7 +30,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 
 ## Configuration
 
-[How to get token](#how-to-get-token)
+[How to get token and cookie](#how-to-get-token-and-cookie)
 
 ```elisp
 ;; I'm using use-package and el-get and evil
@@ -87,7 +87,7 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 
 ```
 
-## How to get token
+## How to get token and cookie
 
 1. Using Chrome, open and sign into the slack customization page,
    e.g. https://my.slack.com/customize
@@ -96,10 +96,19 @@ You can see some gifs on the [wiki](https://github.com/yuya373/emacs-slack/wiki/
 3. Find the console (it's one of the tabs in the developer tools window)
 4. At the prompt ("> ") type the following:
    `window.prompt("your api token is: ", TS.boot_data.api_token)`
-5. Copy the displayed token elsewhere, and close the window.
+5. Copy the displayed token elsewhere.
+6. If your token starts with `xoxc` then keep following the other steps below, otherwise you are done and can close the window.
+7. Now switch to the Applications tab in the Chrome developer tools (or Storage tab in Firefox developer tools).
+8. Expand Cookies in the left-hand sidebar.
+9. Click the cookie entry named `d` and copy its value. Note, use the default encoded version, so *don't click* the Show URL decoded checkbox.
+10. Now you're done and can close the window.
 
 For further explanation, see the documentation for the emojme project:
 [(github.com/jackellenberger/emojme)](https://github.com/jackellenberger/emojme#slack-for-web)
+
+Note that it is only possible to obtain the cookie manually, not through
+client-side javascript, due to it being set as `HttpOnly` and `Secure`. See
+[OWASP HttpOnly](https://owasp.org/www-community/HttpOnly#Browsers_Supporting_HttpOnly).
 
 ## How to secure your token
 
@@ -125,7 +134,11 @@ depending which backend you chose. See documentation for details. The
 unique; as a suggestion use "myslackteam.slack.com" for host, and use
 your email address for user. The "secret" or "password" field should
 contain the token you obtained earlier ([How to get
-token](#how-to-get-token)).
+token and cookie](#how-to-get-token-and-cookie)).
+
+Do the same for the cookie, however for the "user" field append `^cookie`, so if
+for the token you picked `user@email.com` then for the cookie use
+`user@email.com^cookie`.
 
 Then finally, in your Emacs init read the token from your
 `auth-source`:
@@ -138,6 +151,26 @@ Then finally, in your Emacs init read the token from your
          :user "me@example.com")
  :subscribed-channels '((channel1 channel2)))
 ```
+
+If your token starts with `xoxc` you'll also need to manually obtain the cookie
+as described in [How to get token and cookie](#how-to-get-token-and-cookie) and
+make sure the "user" has `^cookie` in it as described above in [How to secure
+your token](#how-to-secure-your-token):
+
+``` elisp
+(slack-register-team
+ :name "myslackteam"
+ :token (auth-source-pick-first-password
+         :host "myslackteam.slack.com"
+         :user "me@example.com")
+ :cookie (auth-source-pick-first-password
+         :host "myslackteam.slack.com"
+         :user "me@example.com^cookie")
+ :subscribed-channels '((channel1 channel2)))
+```
+
+If you do not specify `:cookie` then you'll automatically be prompted for one if
+you are using an `xoxc` token.
 
 ## How to use
 

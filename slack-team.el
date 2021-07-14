@@ -51,6 +51,7 @@ use `slack-change-current-team' to change `slack-current-team'"
 (defclass slack-team ()
   ((id :initarg :id)
    (token :initarg :token :initform nil)
+   (cookie :initarg :cookie :initform nil)
    (name :initarg :name :initform nil)
    (domain :initarg :domain)
    (self :initarg :self)
@@ -236,6 +237,9 @@ use `slack-change-current-team' to change `slack-current-team'"
 
 (cl-defmethod slack-team-token ((this slack-team))
   (oref this token))
+
+(cl-defmethod slack-team-cookie ((this slack-team))
+  (oref this cookie))
 
 (cl-defmethod slack-team-missing-user-ids ((this slack-team) user-ids)
   (let ((exists-user-ids (hash-table-keys (oref this users))))

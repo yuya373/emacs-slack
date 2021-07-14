@@ -196,9 +196,11 @@ Available options (property name, type, default value)
 :animate-image [boolean] nil
   if t, animate gif images."
   (interactive
-   (let ((name (read-from-minibuffer "Team Name: "))
-         (token (read-from-minibuffer "Token: ")))
-     (list :name name :token token)))
+   (let* ((name (read-from-minibuffer "Team Name: "))
+          (token (read-from-minibuffer "Token: "))
+          (cookie (when (string= "xoxc" (substring token 0 4))
+                    (read-from-minibuffer "Cookie: "))))
+     (list :name name :token token :cookie cookie)))
   (cl-labels ((has-token-p (plist)
                            (let ((token (plist-get plist :token)))
                              (and token (< 0 (length token)))))
