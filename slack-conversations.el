@@ -31,6 +31,11 @@
 (require 'slack-message)
 (require 'slack-create-message)
 
+(defcustom slack-exclude-archived-channels t
+  "If t, filter out archived channels for listing and selection. If nil, include archived channels."
+  :type 'boolean
+  :group 'slack)
+
 (defvar slack-completing-read-function)
 
 (defconst slack-conversations-archive-url
@@ -319,6 +324,7 @@
              slack-conversations-list-url
              team
              :params (list (cons "types" (mapconcat #'identity types ","))
+                           (and slack-exclude-archived-channels (cons "exclude_archived" "true"))
                            (and cursor (cons "cursor" cursor)))
              :success #'on-success))))
       (request))))
