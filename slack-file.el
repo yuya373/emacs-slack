@@ -558,6 +558,7 @@
                                                  filename dir))))
       (slack-url-copy-file url (format "%s%s" dir filename)
                            :token (slack-team-token team)
+                           :cookie (slack-team-cookie team)
                            :sync t)))
 
 (cl-defmethod slack-file-downloadable-p ((file slack-file))

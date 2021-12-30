@@ -333,7 +333,8 @@
                     (path (slack-image-path url)))
         (let* ((no-token-p (get-text-property (1- (point)) 'no-token))
                (team (slack-buffer-team slack-current-buffer))
-               (token (and (not no-token-p) (oref team token))))
+               (token (and (not no-token-p) (oref team token)))
+               (cookie (and (not no-token-p) (oref team cookie))))
           (cl-labels
               ((on-success ()
                            (slack-buffer-replace-image cur-buffer ts)))
@@ -341,7 +342,8 @@
               (slack-url-copy-file url
                                    path
                                    :success #'on-success
-                                   :token token)))))))
+                                   :token token
+                                   :cookie cookie)))))))
 
 (cl-defmethod slack-buffer-replace ((this slack-buffer) message)
   (let ((team (slack-buffer-team this)))

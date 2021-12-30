@@ -198,7 +198,7 @@ Available options (property name, type, default value)
   (interactive
    (let* ((name (read-from-minibuffer "Team Name: "))
           (token (read-from-minibuffer "Token: "))
-          (cookie (when (string= "xoxc" (substring token 0 4))
+          (cookie (when (slack-need-cookie-p token)
                     (read-from-minibuffer "Cookie: "))))
      (list :name name :token token :cookie cookie)))
   (cl-labels ((has-token-p (plist)
