@@ -662,19 +662,32 @@
                                (slack-create-message-buffer this cursor team))
                               (slack-messages-tracking-faces messages this team)))))))
 
+(defun slack-unread-rooms (team)
+  "Return rooms with unread messages."
+  (cl-loop for team in (list team)
+           append (cl-remove-if
+                   #'(lambda (room)
+                       (not (slack-room-has-unread-p room team)))
+                   (append (slack-team-ims team)
+                           (slack-team-groups team)
+                           (slack-team-channels team)))))
+
 (defun slack-select-unread-rooms ()
   (interactive)
   (let* ((team (slack-team-select))
          (room (slack-room-select
-                (cl-loop for team in (list team)
-                         append (cl-remove-if
-                                 #'(lambda (room)
-                                     (not (slack-room-has-unread-p room team)))
-                                 (append (slack-team-ims team)
-                                         (slack-team-groups team)
-                                         (slack-team-channels team))))
+                (slack-unread-rooms team)
                 team)))
     (slack-room-display room team)))
+
+(defun slack-display-first-unread-room ()
+  "Display the first room with unread messages."
+  (interactive)
+  (let* ((team (slack-team-select))
+         (rooms (slack-unread-rooms team)))
+    (if rooms
+        (slack-room-display (nth 1 rooms) team)
+      (message "No unread messages."))))
 
 (defun slack-select-rooms ()
   (interactive)
