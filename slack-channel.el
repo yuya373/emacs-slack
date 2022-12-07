@@ -39,6 +39,13 @@
 (defclass slack-channel (slack-group)
   ((is-member :initarg :is_member :initform nil :type boolean)))
 
+(cl-defmethod slack-room-name ((room slack-channel) team)
+  (if (slack-mpim-p room)
+      (format "MPIM: %s"
+          (string-join (mapcar (lambda (userid)
+                                   (slack-user-name userid team))
+                           (slack-room-members room)) ", "))
+    (oref room name)))
 
 (defun slack-channel-names (team &optional filter)
   (slack-room-names (slack-team-channels team) team filter))
