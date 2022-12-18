@@ -15,7 +15,10 @@
 (defclass slack-reply-broadcast-message (slack-user-message) ())
 
 (cl-defmethod slack-message-sender-id ((m slack-user-message))
-  (oref m user))
+  (if (slot-boundp m 'user)
+      (oref m user)
+    (format "Unknown user %s" m))
+  )
 
 (cl-defmethod slack-thread-message-p ((_this slack-reply-broadcast-message))
   t)
