@@ -69,13 +69,17 @@
       (slack-buffer-reaction-help-text buffer reaction)))
 
 
-(cl-defmethod slack-reaction-to-string ((r slack-reaction))
-  (propertize (format " :%s: %d " (oref r name) (oref r count))
-              'face 'slack-message-output-reaction
-              'mouse-face 'highlight
-              'keymap slack-reaction-keymap
-              'reaction r
-              'help-echo #'slack-reaction-help-echo))
+(cl-defmethod slack-reaction-to-string ((r slack-reaction) team)
+  (let* ((current-user-id (oref team self-id))
+         (reaction-face (if (slack-reaction-user-reacted-p r current-user-id)
+                            'slack-message-output-reaction-pressed
+                          'slack-message-output-reaction)))
+    (propertize (format " :%s: %d " (oref r name) (oref r count))
+                'face reaction-face
+                'mouse-face 'highlight
+                'keymap slack-reaction-keymap
+                'reaction r
+                'help-echo #'slack-reaction-help-echo)))
 
 (cl-defmethod slack-message-to-string ((m slack-message) team)
   (let* ((header (slack-message-header m team))
@@ -93,7 +97,7 @@
                                  (slack-message-to-string file ts team))
                              (oref m files)
                              "\n\n")))
-         (reactions (mapconcat #'slack-reaction-to-string
+         (reactions (mapconcat #'(lambda (_r) (slack-reaction-to-string _r team))
                                (slack-message-reactions m)
                                " "))
          (thread (slack-thread-to-string m team)))

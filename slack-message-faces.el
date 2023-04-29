@@ -48,6 +48,11 @@
   "Face used to reactions."
   :group 'slack)
 
+(defface slack-message-output-reaction-pressed
+  '((t (:background "cyan" :box (:line-width 1 :style released-button))))
+  "Face used to reactions pressed by user."
+  :group 'slack)
+
 (defface slack-message-deleted-face
   '((t (:strike-through t)))
   "Face used to deleted message."

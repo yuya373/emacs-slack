@@ -66,6 +66,9 @@
                                           (oset this user-loading nil)
                                           (funcall cb (collect-users (oref this users)))))))))))
 
+(cl-defmethod slack-reaction-user-reacted-p ((this slack-reaction) user-id)
+  (member user-id (oref this users)))
+
 (cl-defmethod slack-reaction-help-text ((r slack-reaction) team cb)
   (slack-reaction-fetch-users r team #'(lambda (users)
                                          (let ((user-names (mapcar #'(lambda (user)
