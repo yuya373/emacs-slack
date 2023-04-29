@@ -304,9 +304,9 @@
                         (oset this cursor next-cursor)
                         (slack-room-set-messages room messages team)
                         (update-buffer (slack-room-sorted-messages room))))
-      (slack-conversations-view room team
-                                :cursor (oref this cursor)
-                                :after-success #'after-success))))
+      (slack-conversations-history room team
+                                   :cursor (oref this cursor)
+                                   :after-success #'after-success))))
 
 (cl-defmethod slack-buffer-display-pins-list ((this slack-message-buffer))
   (let ((team (slack-buffer-team this))
