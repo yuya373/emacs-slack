@@ -102,7 +102,8 @@
                                 :on-open #'handle-on-open
                                 :on-close #'on-close
                                 :on-error #'on-error
-                                :nowait websocket-nowait-p)
+                                :nowait websocket-nowait-p
+                                :custom-header-alist (list (cons "Cookie" (format "d=%s" (slack-team-cookie team)))))
               (error
                (slack-log (format "An Error occured while opening websocket connection: %s"
                                   error-var)
