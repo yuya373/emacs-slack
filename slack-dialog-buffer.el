@@ -85,7 +85,7 @@
 
 (defface slack-dialog-submit-button-face
   '((t (:box (:line-width 1 :style released-button)
-             :foreground "#2aa198")))
+             :color "#2aa198")))
   "Used to dialog's submit button"
   :group 'slack)
 
