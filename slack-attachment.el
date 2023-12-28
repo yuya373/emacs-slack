@@ -200,13 +200,13 @@
 
 (defface slack-message-action-primary-face
   '((t (:box (:line-width 1 :style released-button)
-             :foreground "#2aa198")))
+             :color "#2aa198")))
   "Face used to primary action."
   :group 'slack)
 
 (defface slack-message-action-danger-face
   '((t (:box (:line-width 1 :style released-button)
-             :foreground "#FF6E64")))
+             :color "#FF6E64")))
   "Face used to danger action."
   :group 'slack)
 

@@ -772,7 +772,7 @@
                             map)))))
 
 (defface slack-button-block-element-face
-  '((t (:box (:line-width 1 :style released-button :foreground "#2aa198"))))
+  '((t (:box (:line-width 1 :style released-button :color "#2aa198"))))
   "Used to button block element"
   :group 'slack)
 
@@ -811,7 +811,7 @@
       (slack-block-select-from-option-group group)))
 
 (defface slack-select-block-element-face
-  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  '((t (:box (:line-width 1 :style released-button :color "#2aa198"))))
   "Used to select block element"
   :group 'slack)
 
@@ -1090,7 +1090,7 @@
                            (plist-get payload :confirm))))
 
 (defface slack-overflow-block-element-face
-  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  '((t (:box (:line-width 1 :style released-button :color "#2aa198"))))
   "Used to overflow block element"
   :group 'slack)
 
@@ -1153,7 +1153,7 @@
                             map)))))
 
 (defface slack-date-picker-block-element-face
-  '((t (:box (:line-width 1 :style released-button :forground "#2aa198"))))
+  '((t (:box (:line-width 1 :style released-button :color "#2aa198"))))
   "Used to date picker block element"
   :group 'slack)
 
