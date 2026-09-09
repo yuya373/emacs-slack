@@ -46,6 +46,14 @@
   :type 'boolean
   :group 'slack)
 
+(defcustom slack-image-open-externally nil
+  "If non-nil, `slack-image-open-at-point' opens images in the
+system default image viewer instead of an Emacs buffer.
+A prefix argument to `slack-image-open-at-point' reverses this
+behavior for that invocation."
+  :type 'boolean
+  :group 'slack)
+
 (defun slack-image-path (image-url)
   "Compute cache path for IMAGE-URL"
   (and
@@ -103,7 +111,7 @@
                         (cl-sort images compare :key
                                  #'(lambda (image) (caddr (car image))))))
          (slack-image-help-echo (_window _string _pos)
-                                "RET: Open full image in another buffer")
+                                "RET: Open full image in another buffer (C-u RET: system viewer)")
          (propertize-image (image)
                            (concat (or pad "")
                                    (propertize "image"
@@ -193,29 +201,64 @@ DISPLAY-PROP may be a sliced image specification or an image object."
    ;; Plain image object
    (t display-prop)))
 
-(defun slack-image-open-at-point ()
-  "Open the full-size image for the thumbnail at point in another buffer."
-  (interactive)
+(defun slack-image--viewer-command (path)
+  "Return the argument list to open PATH with the system default viewer."
+  (pcase system-type
+    (`darwin (list "open" path))
+    (`windows-nt (list "cmd" "/c" "start" "" path))
+    (_ (list "xdg-open" path))))
+
+(defun slack-image--open-with-system-viewer (path)
+  "Open PATH with the system default image viewer.
+The viewer runs in a subprocess, so Emacs is never blocked by it."
+  (apply #'start-process "slack-image-viewer" nil
+         (slack-image--viewer-command path)))
+
+(defun slack-image--open-in-emacs (path)
+  "Open PATH in an image buffer in another window."
+  (condition-case err
+      (find-file-other-window path)
+    (error (user-error "Failed to open image: %s" (error-message-string err)))))
+
+(defun slack-image--ensure-downloaded (url path team then)
+  "Call THEN with no arguments once PATH exists.
+If PATH does not exist yet, download URL to it asynchronously
+first, so Emacs is not blocked while the file transfers."
+  (if (file-exists-p path)
+      (funcall then)
+    (message "Downloading image ...")
+    (slack-url-copy-file url path team
+                         :success then
+                         :error (lambda (&rest _)
+                                  (message "Failed to download image: %s" url))
+                         :token (slack-team-token team)
+                         :cookie (slack-team-cookie team))))
+
+(defun slack-image-open-at-point (arg)
+  "Open the full-size image for the thumbnail at point.
+If the file is not cached locally yet, it is downloaded
+asynchronously first and opened when the download completes.
+
+With prefix ARG or `slack-image-open-externally' non-nil, open
+the image with the system default image viewer instead of an
+Emacs buffer (ARG reverses the value of
+`slack-image-open-externally')."
+  (interactive "P")
   (slack-if-let*
       ((url (get-text-property (point) 'slack-file-url))
        (url-not-blank-p (not (slack-string-blankp url)))
        (path (and url (slack-image-path url)))
        (team (and (bound-and-true-p slack-current-buffer)
                   (ignore-errors (slack-buffer-team slack-current-buffer)))))
-      (cl-labels
-          ((open-file ()
-             (condition-case err
-                 (find-file-other-window path)
-               (error (user-error "Failed to open image: %s" (error-message-string err)))))
-           (on-success () (open-file)))
-        (if (file-exists-p path)
-            (open-file)
-          (slack-url-copy-file url path team
-                               :success #'on-success
-                               :token (slack-team-token team)
-                               :cookie (slack-team-cookie team))))
-    )
-  )
+      (let ((externally (if arg
+                            (not slack-image-open-externally)
+                          slack-image-open-externally)))
+        (slack-image--ensure-downloaded
+         url path team
+         (lambda ()
+           (if externally
+               (slack-image--open-with-system-viewer path)
+             (slack-image--open-in-emacs path)))))))
 
 (defun slack-image--round-content (file image)
   "Wrap IMAGE (created from FILE) in an SVG with small rounded corners.

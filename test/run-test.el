@@ -1347,7 +1347,8 @@ just the sender."
    "slack-vip-test.el"
    "slack-activity-feed-test.el"
    "slack-group-test.el"
-   "slack-file-attach-test.el"))
+   "slack-file-attach-test.el"
+   "slack-image-test.el"))
 
 (dolist (test-file slack-tests-to-run)
   (load (expand-file-name

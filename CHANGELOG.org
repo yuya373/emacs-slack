@@ -59,6 +59,13 @@ All notable changes to this project will be documented in this file.
 - Default team on ~slack-start~
 - Pagination and resilience for activity feed
 - Present-in active icon
+- Non-blocking full image opening: ~slack-image-open-at-point~ downloads the
+  file asynchronously (showing "Downloading image ..." while it transfers) and
+  opens it only when the download completes
+- Option to open images in the system default image viewer:
+  ~slack-image-open-externally~ opens with ~xdg-open~ / ~open~ / ~cmd start~
+  instead of an Emacs buffer; a prefix argument (=C-u RET= / =C-u mouse-1= on
+  the thumbnail) inverts it per invocation
 
 ** Changed
 
