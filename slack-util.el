@@ -670,18 +670,20 @@ Note the input timestamp must drop the last 6 digits.
 
 >> (slack-info-to-permalink (list :team-domain \"clojurians\" :room-id \"C099W16KZ\" :ts \"1730182493.679269\" :thread-ts \"1730182493.679269\"))
 => \"https://clojurians.slack.com/archives/C099W16KZ/p1730182493679269?thread_ts=1730182493.679269&cid=C099W16KZ\"
+>> (slack-info-to-permalink (list :team-domain \"clojurians\" :room-id \"C099W16KZ\" :ts \"1730182493.679269\" :thread-ts nil))
+=> \"https://clojurians.slack.com/archives/C099W16KZ/p1730182493679269?cid=C099W16KZ\"
 >>  (slack-info-to-permalink (slack-permalink-to-info \"https://clojurians.slack.com/archives/C099W16KZ/p1730182493679269?thread_ts=1730182493.679269&cid=C099W16KZ\"))
 => \"https://clojurians.slack.com/archives/C099W16KZ/p1730182493679269?thread_ts=1730182493.679269&cid=C099W16KZ\""
-  (with-demoted-errors "slack-permalink-to-info: failed with %S"
+  (with-demoted-errors "slack-info-to-permalink: failed with %S"
     (format
-     "https://%s.slack.com/archives/%s/p%s%s&cid=%s"
+     "https://%s.slack.com/archives/%s/p%s?%s"
      (plist-get info :team-domain)
      (plist-get info :room-id)
      (s-replace "." "" (plist-get info :ts))
-     (if (plist-get info :thread-ts)
-         (concat "?thread_ts=" (plist-get info :thread-ts))
-       "")
-     (plist-get info :room-id))))
+     (concat
+      (when (plist-get info :thread-ts)
+        (format "thread_ts=%s&" (plist-get info :thread-ts)))
+      "cid=" (plist-get info :room-id)))))
 
 (provide 'slack-util)
 ;;; slack-util.el ends here

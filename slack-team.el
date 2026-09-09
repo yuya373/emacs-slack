@@ -176,6 +176,11 @@ Populated by `slack-vip-list-update', the `users.priority.add'/
    (equal team-domain (oref it domain))
    (hash-table-values slack-teams-by-token)))
 
+(defun slack-team-domain (team)
+  "Return TEAM's domain, or nil when the slot is unset."
+  (when (and team (slot-boundp team 'domain))
+    (oref team domain)))
+
 (cl-defmethod slack-team--delete ((this slack-team))
   (remhash (oref this id) slack-tokens-by-id)
   (remhash (oref this token) slack-teams-by-token))

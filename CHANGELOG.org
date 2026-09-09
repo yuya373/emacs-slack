@@ -66,6 +66,22 @@ All notable changes to this project will be documented in this file.
   ~slack-image-open-externally~ opens with ~xdg-open~ / ~open~ / ~cmd start~
   instead of an Emacs buffer; a prefix argument (=C-u RET= / =C-u mouse-1= on
   the thumbnail) inverts it per invocation
+- Org links to Slack messages (~slack-org-link.el~): the =emacs-slack:= Org
+  link type now uses Slack permalinks as its address, so following it opens
+  the message in emacs-slack and falls back to the browser when the team or
+  room is not available; ~org-store-link~ works in message, thread, search
+  result and pinned item buffers; export emits real https permalinks; typing
+  a link completes over the connected teams' rooms; the
+  TEAMID[&|]ROOMID[&|]ts:TS format stored by the ol-emacs-slack package is
+  still understood, with the old ~ol/...~ function names kept as obsolete
+  aliases.  Adds a reusable ~slack-team-domain~ helper on ~slack-team.el~
+- Optional alert style capturing message alerts as Org TODO headings
+  (~slack-org-alert.el~): ~slack-org-alert-setup~ registers the style and
+  ~slack-org-alert-file~ enables capture; captured headings carry a permalink
+  link and the ~slack-org-alert-tag~ tag (kept separate from the heading
+  format so customizing it does not break agenda actions); duplicates and
+  alerts without message identity are skipped; ~slack-org-agenda-mark-all-done~
+  marks all tagged agenda entries done
 
 ** Changed
 
@@ -91,6 +107,10 @@ All notable changes to this project will be documented in this file.
 
 ** Fixed
 
+- ~slack-info-to-permalink~ now emits a well-formed query string (a single
+  =?cid=...= when there is no thread, instead of a dangling =&cid=...=), so
+  permalinks open correctly in browsers; also fixed the wrong function name in
+  its error demotion message
 - Network failure recovery
 - Cached cookie deletion at ~slack-start~
 - Go to main room from first message of a thread

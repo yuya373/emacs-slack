@@ -1348,7 +1348,10 @@ just the sender."
    "slack-activity-feed-test.el"
    "slack-group-test.el"
    "slack-file-attach-test.el"
-   "slack-image-test.el"))
+   "slack-image-test.el"
+   "slack-permalink-test.el"
+   "slack-org-link-test.el"
+   "slack-org-alert-test.el"))
 
 (dolist (test-file slack-tests-to-run)
   (load (expand-file-name

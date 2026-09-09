@@ -1,6 +1,6 @@
 ;;; slack-vip.el --- VIP/priority user support          -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2026  emacs-slack
+;; Copyright (C) 2026  Andrea
 
 ;; Author: Andrea <andrea-dev@hotmail.com>
 ;; Keywords: tools
