@@ -107,16 +107,13 @@ You need to install `language-detection' for this to work.")
       (slack-create-timeline-layout-block payload))
      ((string= "video" type)
       (slack-create-video-layout-block payload))
+     ((string= "input" type)
+      (slack-create-input-layout-block payload))
      (t (make-instance 'slack-layout-block
                        :type type
                        :payload payload))
      ;; ;; TODO https://api.slack.com/reference/block-kit/blocks#file
      ;; ((string= "file" type)
-     ;;  (message "TODO: %S" payload)
-     ;;  nil
-     ;;  )
-     ;; ;; TODO https://api.slack.com/reference/block-kit/blocks#input
-     ;; ((string= "input" type)
      ;;  (message "TODO: %S" payload)
      ;;  nil
      ;;  )
@@ -507,6 +504,64 @@ without a `block_id'), or something else we don't yet understand."
       (if parts
           (concat (mapconcat #'identity parts " · ") "\n")
         ""))))
+
+(defface slack-input-block-label-face
+  '((t (:weight bold)))
+  "Face for input layout block labels."
+  :group 'slack)
+
+(defface slack-input-block-hint-face
+  '((t (:inherit shadow)))
+  "Face for input layout block hints and optional markers."
+  :group 'slack)
+
+(defclass slack-input-layout-block (slack-layout-block)
+  ((type :initarg :type :type string :initform "input")
+   (label :initarg :label :type (or null slack-text-message-composition-object) :initform nil)
+   (hint :initarg :hint :type (or null slack-text-message-composition-object) :initform nil)
+   (optional :initarg :optional :type boolean :initform nil)
+   (dispatch-action :initarg :dispatch_action :type boolean :initform nil)
+   (element :initarg :element :initform nil :type (or null slack-block-element))))
+
+(defun slack-create-input-layout-block (payload)
+  (let ((block-id (plist-get payload :block_id)))
+    (make-instance 'slack-input-layout-block
+                   :type (plist-get payload :type)
+                   :block_id block-id
+                   :label (slack-create-text-message-composition-object
+                           (plist-get payload :label))
+                   :hint (slack-create-text-message-composition-object
+                          (plist-get payload :hint))
+                   :optional (eq t (plist-get payload :optional))
+                   :dispatch_action (eq t (plist-get payload :dispatch_action))
+                   :element (slack-create-block-element
+                             (plist-get payload :element)
+                             block-id)
+                   :payload payload)))
+
+(cl-defmethod slack-block-to-string ((this slack-input-layout-block) &optional option)
+  (with-slots (label hint optional element) this
+    (let* ((label-str (when label (slack-block-to-string label option)))
+           (optional-str (when optional
+                           (propertize " (optional)"
+                                       'face 'slack-input-block-hint-face)))
+           (header (when label-str
+                     (concat (propertize label-str
+                                         'face 'slack-input-block-label-face)
+                             optional-str)))
+           (element-str (when element (slack-block-to-string element option)))
+           (hint-str (when hint
+                       (propertize (slack-block-to-string hint option)
+                                   'face 'slack-input-block-hint-face))))
+      (mapconcat #'identity
+                 (cl-remove-if #'null (list header element-str hint-str))
+                 "\n"))))
+
+(cl-defmethod slack-block-find-action ((this slack-input-layout-block) action-id)
+  (with-slots (element) this
+    (when (and element
+               (string= (slack-block-action-id element) action-id))
+      element)))
 
 (defclass slack-rich-text-block-element ()
   ((type :initarg :type :type string)
