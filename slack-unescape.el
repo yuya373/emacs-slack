@@ -146,30 +146,37 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defun slack-unescape-@ (text team)
   (cl-labels ((replace
                (text)
-               (let* ((user-id (match-string 1 text))
-                      (label (match-string 2 text))
-                      (face (if (string= user-id (oref team self-id))
-                                'slack-message-mention-me-face
-                              'slack-message-mention-face))
-                      (vip-p (slack-user-vip-p-id user-id team)))
-                 (propertize
-                  (concat "@" (or (slack-if-let* ((user (slack-user--find user-id
-                                                                          team)))
-                                      (slack-user--name user team)
-                                    (progn
-                                      (slack-log (format "User not found. ID: %S" user-id) team)
-                                      nil))
-                                  (and label (substring label 1))
-                                  "<Unknown USER>"))
-                  'user-id user-id
-                  'mouse-face 'highlight
-                  'keymap slack-user-mention-keymap
-                  'slack-defer-face
-                  (if vip-p
-                      (lambda (beg end)
-                        (add-text-properties beg end (list 'face face))
-                        (add-face-text-property beg end 'slack-user-vip-face))
-                    face)))))
+               ;; `replace-regexp-in-string' relies on match-data still
+               ;; pointing at TEXT after this function returns (it calls
+               ;; `replace-match' internally). Some lookups below (for
+               ;; example `slack-user--find', which may trigger an async
+               ;; fetch via `slack-request') can clobber match-data as a
+               ;; side effect, so preserve it around the whole body.
+               (save-match-data
+                 (let* ((user-id (match-string 1 text))
+                        (label (match-string 2 text))
+                        (face (if (string= user-id (oref team self-id))
+                                  'slack-message-mention-me-face
+                                'slack-message-mention-face))
+                        (vip-p (slack-user-vip-p-id user-id team)))
+                   (propertize
+                    (concat "@" (or (slack-if-let* ((user (slack-user--find user-id
+                                                                            team)))
+                                        (slack-user--name user team)
+                                      (progn
+                                        (slack-log (format "User not found. ID: %S" user-id) team)
+                                        nil))
+                                    (and label (substring label 1))
+                                    "<Unknown USER>"))
+                    'user-id user-id
+                    'mouse-face 'highlight
+                    'keymap slack-user-mention-keymap
+                    'slack-defer-face
+                    (if vip-p
+                        (lambda (beg end)
+                          (add-text-properties beg end (list 'face face))
+                          (add-face-text-property beg end 'slack-user-vip-face))
+                      face))))))
     (replace-regexp-in-string slack-message-user-regexp
                               #'replace
                               text t t)))
@@ -177,18 +184,22 @@ see \"Formatting dates\" section in https://api.slack.com/docs/message-formattin
 (defun slack-unescape-channel (text team)
   (let ((channel-regexp "<#\\(C.*?\\)\\(|.*?\\)?>"))
     (cl-labels ((unescape-channel
-                 (text)
-                 (let ((name (match-string 2 text))
-                       (id (match-string 1 text)))
-                   (propertize (concat "#" (or (and name (substring name 1))
-                                               (slack-if-let* ((room (slack-room-find id team)))
-                                                   (slack-room-name room team)
-                                                 (slack-log (format "Channel not found. ID: %S" id) team)
-                                                 "<Unknown CHANNEL>")))
-                               'room-id id
-                               'keymap slack-channel-button-keymap
-                               'slack-defer-face 'slack-channel-button-face
-                               ))))
+                  (text)
+                  ;; Preserve match-data for `replace-regexp-in-string':
+                  ;; `slack-room-find' and friends can invoke code that
+                  ;; clobbers match-data as a side effect.
+                  (save-match-data
+                    (let ((name (match-string 2 text))
+                          (id (match-string 1 text)))
+                      (propertize (concat "#" (or (and name (substring name 1))
+                                                  (slack-if-let* ((room (slack-room-find id team)))
+                                                      (slack-room-name room team)
+                                                    (slack-log (format "Channel not found. ID: %S" id) team)
+                                                    "<Unknown CHANNEL>")))
+                                  'room-id id
+                                  'keymap slack-channel-button-keymap
+                                  'slack-defer-face 'slack-channel-button-face
+                                  )))))
       (replace-regexp-in-string channel-regexp
                                 #'unescape-channel
                                 text t))))
