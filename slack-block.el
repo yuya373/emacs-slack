@@ -294,12 +294,34 @@ You need to install `language-detection' for this to work.")
    (num-columns :initarg :num_columns :type (or null number) :initform nil)
    (border :initarg :border :type (or null number) :initform nil)))
 
+(defun slack-create-table-cell (cell)
+  "Build a renderable value for a table CELL.
+CELL may be nil, a `raw_text' plist, a `rich_text' plist (with or
+without a `block_id'), or something else we don't yet understand."
+  (cond
+   ((null cell) nil)
+   ((and (listp cell) (plist-member cell :type))
+    (let ((type (plist-get cell :type)))
+      (cond
+       ((string= "rich_text" type)
+        ;; `slack-rich-text-block' requires a string `block-id'; fall
+        ;; back to an empty string when the payload omits one.
+        (slack-create-rich-text-block
+         (if (plist-get cell :block_id)
+             cell
+           (plist-put (copy-sequence cell) :block_id ""))))
+       ((string= "raw_text" type)
+        (or (plist-get cell :text) ""))
+       (t (format "%S" cell)))))
+   ((stringp cell) cell)
+   (t (format "%S" cell))))
+
 (defun slack-create-table-layout-block (payload)
   (make-instance 'slack-table-layout-block
                  :type (plist-get payload :type)
                  :block_id (plist-get payload :block_id)
                  :rows (mapcar #'(lambda (row)
-                                   (mapcar #'slack-create-rich-text-block row))
+                                   (mapcar #'slack-create-table-cell row))
                                 (plist-get payload :rows))
                  :num_columns (plist-get payload :num_columns)
                  :border (plist-get payload :border)
@@ -310,7 +332,10 @@ You need to install `language-detection' for this to work.")
     (when (and rows (cl-every #'listp rows))
       (let* ((rendered-rows (mapcar #'(lambda (row)
                                         (mapcar #'(lambda (cell)
-                                                    (let ((s (slack-block-to-string cell option)))
+                                                    (let ((s (cond
+                                                              ((null cell) "")
+                                                              ((stringp cell) cell)
+                                                              (t (slack-block-to-string cell option)))))
                                                       (or s "")))
                                                   row))
                                       rows))
